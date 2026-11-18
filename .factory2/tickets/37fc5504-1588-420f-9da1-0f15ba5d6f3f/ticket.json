@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "ticket_id": "37fc5504-1588-420f-9da1-0f15ba5d6f3f",
-  "revision": 31,
-  "title": "indigo_mount_synscan: refuse a sync within 5 degrees of the celestial pole, it records a right ascension offset of hours and sends later GoTos far off",
-  "description": "Origin: a user who upgraded to 3.0-11 reported that the SynScan driver points the mount in a completely wrong, opposite direction.\n\nCause (reproduced on the simulator, see the notes): since 3.0.0.22 the driver's coordinates are J2000 throughout (raw coordinates, aligned coordinates, alignment points), which is consistent and stays as it is. In the home position the axes are at Dec 90 of the date, i.e. about RA 0h / Dec 89.85 J2000 whatever the hour angle. A sync is an alignment point of the framework model, which adds raw_ra - ra to every target it is used for. A sync in the home position (for example RA = LST - 6 h, Dec 90, a no-op up to 3.0.0.21) therefore records an arbitrary right ascension offset of hours, and later GoTos end hours of hour angle away (8.25 h in the reproduction). Near the pole the right ascension is ill-defined and no right ascension offset can be measured there at all.\n\nOwner decisions (2026-11-18), binding for this ticket:\n- indigo_libs/indigo_mount_driver.c and the generator are not changed.\n- The driver never rewrites coordinates coming from a client and never hands other values than the client's to the base driver.\n- The bus never shows coordinates other than the real J2000 ones, not even transiently, alignment point labels included.\n- The coordinate frames of 3.0.0.22 are kept exactly (no precession moved, raw coordinates stay J2000).\n- A sync within 5 degrees of the pole is refused with ALERT and a message.\n\nRequested change (driver only, indigo_drivers/mount_synscan/indigo_mount_synscan.driver, regenerated outputs):\n- In the sync branch of MOUNT_EQUATORIAL_COORDINATES (framework alignment modes, i.e. not CONTROLLER), before the request is handed to indigo_mount_change_property: when the requested declination or the current raw declination is more than 85 degrees from the equator, refuse the sync. MOUNT_EQUATORIAL_COORDINATES ends in ALERT with a message that says why and what to do (sync on a star below 85 degrees of declination); no alignment point is added; the client's values are not adopted, the property keeps publishing the real coordinates of the mount; nothing moves; the next accepted request works normally. Follow the driver's existing refusal pattern (refusal reasons added in 3.0.0.16) and the generated-handler rules in AGENTS.md.\n- The limit is 85 degrees, the same as the base driver's pole warning (d7f5c4e30).\n- A sync below the limit behaves exactly as in 3.0.0.22.\n- Increment the driver version to 23 in the .driver source and regenerate the checked-in outputs with the unchanged generator.\n\nKnown limitation to state in the ticket result: alignment points with an offset of hours that 3.0.0.22 already saved from a pole sync stay in the user's configuration until deleted with MOUNT_ALIGNMENT_DELETE_POINTS; the driver cannot tell them from real points.\n\nTests, simulator suite (indigo_test/integration/test_mount_synscan_simulator.c), no assertion of an existing case weakened:\n- sync in the home position to RA = LST - 6 h / Dec 90 (north) and RA = LST + 6 h / Dec -90 (south): ALERT with the message, alignment point count unchanged, published coordinates still the real ones (not the requested ones) after the next poll, then a GoTo to a target at moderate declination is pointed within the usual tolerance (decode the pointing from the :G/:H commands and the pier side from the DEC axis position); this case must fail on 3.0.0.22;\n- sync requested with |Dec| > 85 while the mount stands at moderate declination: refused the same way;\n- sync just below the limit and at moderate declination: accepted, alignment point added, exactly as before;\n- an existing case that syncs while the mount still stands at the pole (synscan_mount_sync_adds_alignment_point) is moved to a moderate declination first, keeping all its assertions;\n- a refused sync leaves the mount usable: following sync below the limit and GoTo succeed.\nHardware suite (indigo_test/hardware/test_mount_synscan_hw.c): the same refusal at the pole and an accepted sync at moderate declination followed by a GoTo, restoring the starting position and deleting its alignment points on every exit path; a case never passes silently when its precondition is not met.\n\nTest runs, both non-interactive and recorded with the script: python3 tools/run_driver_test.py mount_synscan and python3 tools/run_driver_test.py mount_synscan --hw against the AZ-GTi on the network (no telescope mounted, it may move as needed; no hot-plug). MIGRATION_STATUS.md test counts updated in the status column only. indigo_docs/PROPERTIES.md needs no change (no property added or removed).",
+  "revision": 39,
+  "title": "indigo_mount_driver: refuse a sync within 5 degrees of the celestial pole instead of warning, it sends later GoTos to the other side of the pier (reported for indigo_mount_synscan 3.0.0.22)",
+  "description": "Origin: a user who upgraded to 3.0-11 reported that the SynScan driver moves the mount in the opposite direction on GoTo; it was correct before 3.0.0.22.\n\nCause, established by running the same sequence on an AZ-GTi with drivers 3.0.0.20, 3.0.0.21 and 3.0.0.22 and reading the axis counters straight from the motor controller (see the notes): GoTos without an alignment point end at the same axis positions in all three versions (3.0.0.22 differs by the intended precession only). After a sync in the home position (RA = LST - 6 h, Dec 90) 3.0.0.20 and 3.0.0.21 go where they went without it, 3.0.0.22 ends on the other side of the pier (target HA +2.5 h: RA axis +313314 instead of -302393 steps) and still publishes the target coordinates. Since 3.0.0.22 the raw coordinates are J2000, so at the pole of the date the raw right ascension no longer equals LST - hour angle and the alignment point of the framework model records a right ascension offset of hours. Near the pole no right ascension offset can be measured in any frame.\n\nOwner decision (2026-11-18, supersedes the earlier ones in the notes): change the pole sync warning of indigo_libs/indigo_mount_driver.c (commit d7f5c4e30, not released yet) into a refusal with an error. The SynScan driver itself is not changed; its coordinate frames stay as in 3.0.0.22.\n\nChange:\n- indigo_libs/indigo_mount_driver.c, sync branch of MOUNT_EQUATORIAL_COORDINATES in the framework alignment modes: when the requested declination or the raw declination is more than 85 degrees from the equator, the request is refused: MOUNT_EQUATORIAL_COORDINATES is published in ALERT with a message, no alignment point is added and the requested values are not adopted, the property keeps the real pointing. The warning message on the BUSY property is removed. A request without the declination item is judged by the declination the property holds.\n- Tests: unit case of the warning turned into the refusal (indigo_test/unit/test_mount_alignment_load.c); SynScan simulator suite: new case for the refused home sync in both hemispheres followed by an accurate GoTo, the existing sync case leaves the pole first; mount simulator suite: the case that synced at the pole leaves it first; SynScan hardware suite: new case for the refused home sync followed by an accurate GoTo.\n- Recorded runs: tools/run_driver_test.py mount_synscan (simulator) and --hw (AZ-GTi on the network, non-interactive, no hot-plug).\n\nKnown limitation: alignment points with an offset of hours that a pole sync already saved under 3.0.0.22 stay in the user's configuration until deleted with MOUNT_ALIGNMENT_DELETE_POINTS. Baseline: mount_abort_allows_fresh_goto of the mount simulator suite fails on master as well (test_mount_simulator.c, target RA after an alignment mode change) and is not part of this ticket.",
   "type": "bug",
   "discovered_at": null,
   "created_at": "2026-11-18T17:50:20.533534Z",
@@ -25,8 +25,8 @@
           "execution_mode": "manual",
           "worker": {
             "provider": "anthropic",
-            "model": "claude-sonnet-5-5",
-            "reasoning": "medium"
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
           },
           "status": "succeeded",
           "started_at": "2026-11-18T18:02:16.364534Z",
@@ -89,8 +89,8 @@
           "execution_mode": "manual",
           "worker": {
             "provider": "anthropic",
-            "model": "claude-opus-5-5",
-            "reasoning": "high"
+            "model": "claude-fable-5-2",
+            "reasoning": null
           },
           "status": "running",
           "started_at": "2026-11-18T19:26:22.448116Z",
@@ -417,6 +417,96 @@
       "actor": "human/owner",
       "previous_description": "Origin: a user who upgraded reported that the SynScan driver points the mount in a completely wrong, opposite direction. The report has no version, log or procedure, so the cause below is the most plausible one found by code reading; it was not reproduced on the simulator yet.\n\nCause: 3.0.0.22 (commit 8dd1ac0ee, released in 3.0-11) fixed J2000 targets being pointed at their place in 2000 by precessing at the axis boundary, after the framework alignment model. MOUNT_RAW_COORDINATES and the alignment points therefore became J2000. In the home position the axes are at Dec 90 of the date; precessed to J2000 this is always about RA 0h / Dec 89.85 regardless of the hour angle, while up to 3.0.0.21 the raw RA there was LST -/+ 6h. The NEAREST_POINT / SINGLE_POINT model stores raw_ra - ra and adds it to every target (indigo_translated_to_raw_with_lst in indigo_libs/indigo_mount_driver.c), so a sync made in the home position (for example RA = LST - 6h, Dec 90), which gave a zero offset before, now records an arbitrary offset of up to 12 hours and later GoTos go far from their targets. Commit d7f5c4e30 only adds a warning for syncs above 85 degrees and is not in 3.0-11.\n\nRequested change (the smaller variant, driver only):\n- Keep MOUNT_RAW_COORDINATES and the raw side of the alignment points in the frame of the date, as up to 3.0.0.21, so they are again a direct image of the axes (raw RA = LST - mechanical hour angle).\n- GoTo and sync target path in synscan_radec_to_steps: precess the J2000 target to the date first, then apply indigo_translated_to_raw, then form the hour angle.\n- Read-back in synscan_read_mount_coordinates: raw of the date from the encoders, through indigo_raw_to_translated_with_lst, then precess the result to J2000 for MOUNT_EQUATORIAL_COORDINATES; horizontal coordinates are computed from the coordinates of the date.\n- Keep the driver's MOUNT_PARK_SET / MOUNT_HOME_SET handlers that take CURRENT from the axis counters; they are needed in both variants.\n- Keep the 21' precession fix itself: a J2000 target must still be pointed at its place of the date.\n- Increment the driver version in the .driver source and regenerate the checked-in outputs.\n\nKnown limitation to state in the ticket result: the framework stores the alignment point's ra from the bus (J2000) and raw_ra from the driver (date), so a point's offset contains the local precession and is off by arcminutes for targets far from the point. Removing that needs a change of indigo_mount_driver.c (store the point's ra precessed to the date) and is out of scope unless the owner approves it separately. Do not change the generator or the mount base driver in this ticket.\n\nTests (simulator suite indigo_test/integration/test_mount_synscan_simulator.c):\n- new case: sync in the home position to RA = LST -/+ 6h, Dec 90, then a GoTo to a target at moderate declination ends within the usual tolerance of the target, not hours away; the case must fail on 3.0.0.22;\n- J2000 GoTo still lands on the place of the date (existing 3.0.0.22 cases adapted to raw coordinates of the date);\n- raw coordinates in the home position equal LST -/+ 6h, Dec +/-90, both hemispheres;\n- park/home CURRENT and DEFAULT cases remain green.\nFinal run recorded with python3 tools/run_driver_test.py mount_synscan; hardware coverage is not part of this ticket and stays a stated gap.\n\nAlso update CHANGELOG-relevant behaviour notes only through the normal release process; indigo_docs/PROPERTIES.md needs no change (no property added or removed).",
       "description": "Origin: a user who upgraded to 3.0-11 reported that the SynScan driver points the mount in a completely wrong, opposite direction.\n\nCause (reproduced on the simulator, see the notes): since 3.0.0.22 the driver's coordinates are J2000 throughout (raw coordinates, aligned coordinates, alignment points), which is consistent and stays as it is. In the home position the axes are at Dec 90 of the date, i.e. about RA 0h / Dec 89.85 J2000 whatever the hour angle. A sync is an alignment point of the framework model, which adds raw_ra - ra to every target it is used for. A sync in the home position (for example RA = LST - 6 h, Dec 90, a no-op up to 3.0.0.21) therefore records an arbitrary right ascension offset of hours, and later GoTos end hours of hour angle away (8.25 h in the reproduction). Near the pole the right ascension is ill-defined and no right ascension offset can be measured there at all.\n\nOwner decisions (2026-11-18), binding for this ticket:\n- indigo_libs/indigo_mount_driver.c and the generator are not changed.\n- The driver never rewrites coordinates coming from a client and never hands other values than the client's to the base driver.\n- The bus never shows coordinates other than the real J2000 ones, not even transiently, alignment point labels included.\n- The coordinate frames of 3.0.0.22 are kept exactly (no precession moved, raw coordinates stay J2000).\n- A sync within 5 degrees of the pole is refused with ALERT and a message.\n\nRequested change (driver only, indigo_drivers/mount_synscan/indigo_mount_synscan.driver, regenerated outputs):\n- In the sync branch of MOUNT_EQUATORIAL_COORDINATES (framework alignment modes, i.e. not CONTROLLER), before the request is handed to indigo_mount_change_property: when the requested declination or the current raw declination is more than 85 degrees from the equator, refuse the sync. MOUNT_EQUATORIAL_COORDINATES ends in ALERT with a message that says why and what to do (sync on a star below 85 degrees of declination); no alignment point is added; the client's values are not adopted, the property keeps publishing the real coordinates of the mount; nothing moves; the next accepted request works normally. Follow the driver's existing refusal pattern (refusal reasons added in 3.0.0.16) and the generated-handler rules in AGENTS.md.\n- The limit is 85 degrees, the same as the base driver's pole warning (d7f5c4e30).\n- A sync below the limit behaves exactly as in 3.0.0.22.\n- Increment the driver version to 23 in the .driver source and regenerate the checked-in outputs with the unchanged generator.\n\nKnown limitation to state in the ticket result: alignment points with an offset of hours that 3.0.0.22 already saved from a pole sync stay in the user's configuration until deleted with MOUNT_ALIGNMENT_DELETE_POINTS; the driver cannot tell them from real points.\n\nTests, simulator suite (indigo_test/integration/test_mount_synscan_simulator.c), no assertion of an existing case weakened:\n- sync in the home position to RA = LST - 6 h / Dec 90 (north) and RA = LST + 6 h / Dec -90 (south): ALERT with the message, alignment point count unchanged, published coordinates still the real ones (not the requested ones) after the next poll, then a GoTo to a target at moderate declination is pointed within the usual tolerance (decode the pointing from the :G/:H commands and the pier side from the DEC axis position); this case must fail on 3.0.0.22;\n- sync requested with |Dec| > 85 while the mount stands at moderate declination: refused the same way;\n- sync just below the limit and at moderate declination: accepted, alignment point added, exactly as before;\n- an existing case that syncs while the mount still stands at the pole (synscan_mount_sync_adds_alignment_point) is moved to a moderate declination first, keeping all its assertions;\n- a refused sync leaves the mount usable: following sync below the limit and GoTo succeed.\nHardware suite (indigo_test/hardware/test_mount_synscan_hw.c): the same refusal at the pole and an accepted sync at moderate declination followed by a GoTo, restoring the starting position and deleting its alignment points on every exit path; a case never passes silently when its precondition is not met.\n\nTest runs, both non-interactive and recorded with the script: python3 tools/run_driver_test.py mount_synscan and python3 tools/run_driver_test.py mount_synscan --hw against the AZ-GTi on the network (no telescope mounted, it may move as needed; no hot-plug). MIGRATION_STATUS.md test counts updated in the status column only. indigo_docs/PROPERTIES.md needs no change (no property added or removed)."
+    },
+    {
+      "event_id": "f71c6f76-bef0-4c18-929d-8f9f3c87d38b",
+      "event": "ticket/note",
+      "at": "2026-11-18T19:36:30.795821Z",
+      "actor": "human/owner",
+      "text": "Supersedes the earlier notes about the date-frame variant and its recorded runs: the binding design is the one in the ticket description (frames of 3.0.0.22 kept, sync within 5 degrees of the pole refused with ALERT). The reproduction note (GoTo 8.25 h off after a home sync on 3.0.0.22, fine on 3.0.0.21) still stands as the before-fix evidence. The one-off reproduction case is at /private/tmp/claude-501/-Users-polakovic--claude-spares-spare-eOwxQs/7706c262-6db9-40e2-8ccd-6f11c700eb0a/scratchpad/pole/case.inc (its printout assumed the west pier solution; decode the pier side from the DEC axis position). AZ-GTi was last found by UDP autodetection at 192.168.111.139:11880, firmware 3.16; the first discovery attempt of a session may fail, retry once before reporting.",
+      "tokens": null
+    },
+    {
+      "event_id": "063a8c58-c3ad-4d75-8723-0845d55c0f82",
+      "event": "task/progress",
+      "at": "2026-11-18T19:37:05.216979Z",
+      "actor": "human/owner",
+      "task_id": "ad701fe2-e884-4b00-9020-73bf3ec719eb",
+      "text": "Implementer launched (second attempt, refuse-with-ALERT design)",
+      "attempt_id": "99f25c7f-0840-4155-b671-a2cd87b7f33d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "907c4819-9873-4805-9c79-7889aa721731",
+      "event": "task/progress",
+      "at": "2026-11-18T19:37:20.820436Z",
+      "actor": "human/owner",
+      "task_id": "0fd06589-af41-446d-861d-dc0dff8835a1",
+      "text": "Implementer launched (second attempt, refuse-with-ALERT design)",
+      "attempt_id": "39409c91-4239-4b51-8da1-aaa4f9012fbf",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "18533556-5e2b-4cb9-8bf2-8068b695c09c",
+      "event": "task/progress",
+      "at": "2026-11-18T19:40:28.153221Z",
+      "actor": "human/owner",
+      "task_id": "ad701fe2-e884-4b00-9020-73bf3ec719eb",
+      "text": "Driver 3.0.0.23: sync within 5 deg of the pole refused in on_change_request; regenerating"
+    },
+    {
+      "event_id": "3970bbba-9e96-44c1-9fb9-ad3c2be2888a",
+      "event": "task/progress",
+      "at": "2026-11-18T19:43:45.909401Z",
+      "actor": "human/owner",
+      "task_id": "ad701fe2-e884-4b00-9020-73bf3ec719eb",
+      "text": "Writing simulator cases: home-position sync refusal (N/S), near-pole refusal, below-limit sync"
+    },
+    {
+      "event_id": "fcb06a60-6ba3-4ad0-9477-37ec0fe77c4f",
+      "event": "task/progress",
+      "at": "2026-11-18T20:25:47.171730Z",
+      "actor": "human/owner",
+      "task_id": "ad701fe2-e884-4b00-9020-73bf3ec719eb",
+      "text": "Coordinator implements: pole sync warning in indigo_mount_driver.c changed to a refusal; running mount_simulator cases",
+      "attempt_id": "99f25c7f-0840-4155-b671-a2cd87b7f33d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-fable-5-2",
+        "reasoning": null
+      }
+    },
+    {
+      "event_id": "bcbc0586-beb3-4f2f-b834-28d1fb8c2016",
+      "event": "task/progress",
+      "at": "2026-11-18T20:35:43.436441Z",
+      "actor": "human/owner",
+      "task_id": "ad701fe2-e884-4b00-9020-73bf3ec719eb",
+      "text": "Recorded simulator run: tools/run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "422c70a0-2c15-47e7-8ae3-5e6dd65477be",
+      "event": "ticket/title_changed",
+      "at": "2026-11-18T20:36:04.662458Z",
+      "actor": "human/owner",
+      "previous_title": "indigo_mount_synscan: refuse a sync within 5 degrees of the celestial pole, it records a right ascension offset of hours and sends later GoTos far off",
+      "title": "indigo_mount_driver: refuse a sync within 5 degrees of the celestial pole instead of warning, it sends later GoTos to the other side of the pier (reported for indigo_mount_synscan 3.0.0.22)"
+    },
+    {
+      "event_id": "726bf147-21e5-461c-b156-95fe2eb14cfe",
+      "event": "ticket/description_changed",
+      "at": "2026-11-18T20:36:04.662642Z",
+      "actor": "human/owner",
+      "previous_description": "Origin: a user who upgraded to 3.0-11 reported that the SynScan driver points the mount in a completely wrong, opposite direction.\n\nCause (reproduced on the simulator, see the notes): since 3.0.0.22 the driver's coordinates are J2000 throughout (raw coordinates, aligned coordinates, alignment points), which is consistent and stays as it is. In the home position the axes are at Dec 90 of the date, i.e. about RA 0h / Dec 89.85 J2000 whatever the hour angle. A sync is an alignment point of the framework model, which adds raw_ra - ra to every target it is used for. A sync in the home position (for example RA = LST - 6 h, Dec 90, a no-op up to 3.0.0.21) therefore records an arbitrary right ascension offset of hours, and later GoTos end hours of hour angle away (8.25 h in the reproduction). Near the pole the right ascension is ill-defined and no right ascension offset can be measured there at all.\n\nOwner decisions (2026-11-18), binding for this ticket:\n- indigo_libs/indigo_mount_driver.c and the generator are not changed.\n- The driver never rewrites coordinates coming from a client and never hands other values than the client's to the base driver.\n- The bus never shows coordinates other than the real J2000 ones, not even transiently, alignment point labels included.\n- The coordinate frames of 3.0.0.22 are kept exactly (no precession moved, raw coordinates stay J2000).\n- A sync within 5 degrees of the pole is refused with ALERT and a message.\n\nRequested change (driver only, indigo_drivers/mount_synscan/indigo_mount_synscan.driver, regenerated outputs):\n- In the sync branch of MOUNT_EQUATORIAL_COORDINATES (framework alignment modes, i.e. not CONTROLLER), before the request is handed to indigo_mount_change_property: when the requested declination or the current raw declination is more than 85 degrees from the equator, refuse the sync. MOUNT_EQUATORIAL_COORDINATES ends in ALERT with a message that says why and what to do (sync on a star below 85 degrees of declination); no alignment point is added; the client's values are not adopted, the property keeps publishing the real coordinates of the mount; nothing moves; the next accepted request works normally. Follow the driver's existing refusal pattern (refusal reasons added in 3.0.0.16) and the generated-handler rules in AGENTS.md.\n- The limit is 85 degrees, the same as the base driver's pole warning (d7f5c4e30).\n- A sync below the limit behaves exactly as in 3.0.0.22.\n- Increment the driver version to 23 in the .driver source and regenerate the checked-in outputs with the unchanged generator.\n\nKnown limitation to state in the ticket result: alignment points with an offset of hours that 3.0.0.22 already saved from a pole sync stay in the user's configuration until deleted with MOUNT_ALIGNMENT_DELETE_POINTS; the driver cannot tell them from real points.\n\nTests, simulator suite (indigo_test/integration/test_mount_synscan_simulator.c), no assertion of an existing case weakened:\n- sync in the home position to RA = LST - 6 h / Dec 90 (north) and RA = LST + 6 h / Dec -90 (south): ALERT with the message, alignment point count unchanged, published coordinates still the real ones (not the requested ones) after the next poll, then a GoTo to a target at moderate declination is pointed within the usual tolerance (decode the pointing from the :G/:H commands and the pier side from the DEC axis position); this case must fail on 3.0.0.22;\n- sync requested with |Dec| > 85 while the mount stands at moderate declination: refused the same way;\n- sync just below the limit and at moderate declination: accepted, alignment point added, exactly as before;\n- an existing case that syncs while the mount still stands at the pole (synscan_mount_sync_adds_alignment_point) is moved to a moderate declination first, keeping all its assertions;\n- a refused sync leaves the mount usable: following sync below the limit and GoTo succeed.\nHardware suite (indigo_test/hardware/test_mount_synscan_hw.c): the same refusal at the pole and an accepted sync at moderate declination followed by a GoTo, restoring the starting position and deleting its alignment points on every exit path; a case never passes silently when its precondition is not met.\n\nTest runs, both non-interactive and recorded with the script: python3 tools/run_driver_test.py mount_synscan and python3 tools/run_driver_test.py mount_synscan --hw against the AZ-GTi on the network (no telescope mounted, it may move as needed; no hot-plug). MIGRATION_STATUS.md test counts updated in the status column only. indigo_docs/PROPERTIES.md needs no change (no property added or removed).",
+      "description": "Origin: a user who upgraded to 3.0-11 reported that the SynScan driver moves the mount in the opposite direction on GoTo; it was correct before 3.0.0.22.\n\nCause, established by running the same sequence on an AZ-GTi with drivers 3.0.0.20, 3.0.0.21 and 3.0.0.22 and reading the axis counters straight from the motor controller (see the notes): GoTos without an alignment point end at the same axis positions in all three versions (3.0.0.22 differs by the intended precession only). After a sync in the home position (RA = LST - 6 h, Dec 90) 3.0.0.20 and 3.0.0.21 go where they went without it, 3.0.0.22 ends on the other side of the pier (target HA +2.5 h: RA axis +313314 instead of -302393 steps) and still publishes the target coordinates. Since 3.0.0.22 the raw coordinates are J2000, so at the pole of the date the raw right ascension no longer equals LST - hour angle and the alignment point of the framework model records a right ascension offset of hours. Near the pole no right ascension offset can be measured in any frame.\n\nOwner decision (2026-11-18, supersedes the earlier ones in the notes): change the pole sync warning of indigo_libs/indigo_mount_driver.c (commit d7f5c4e30, not released yet) into a refusal with an error. The SynScan driver itself is not changed; its coordinate frames stay as in 3.0.0.22.\n\nChange:\n- indigo_libs/indigo_mount_driver.c, sync branch of MOUNT_EQUATORIAL_COORDINATES in the framework alignment modes: when the requested declination or the raw declination is more than 85 degrees from the equator, the request is refused: MOUNT_EQUATORIAL_COORDINATES is published in ALERT with a message, no alignment point is added and the requested values are not adopted, the property keeps the real pointing. The warning message on the BUSY property is removed. A request without the declination item is judged by the declination the property holds.\n- Tests: unit case of the warning turned into the refusal (indigo_test/unit/test_mount_alignment_load.c); SynScan simulator suite: new case for the refused home sync in both hemispheres followed by an accurate GoTo, the existing sync case leaves the pole first; mount simulator suite: the case that synced at the pole leaves it first; SynScan hardware suite: new case for the refused home sync followed by an accurate GoTo.\n- Recorded runs: tools/run_driver_test.py mount_synscan (simulator) and --hw (AZ-GTi on the network, non-interactive, no hot-plug).\n\nKnown limitation: alignment points with an offset of hours that a pole sync already saved under 3.0.0.22 stay in the user's configuration until deleted with MOUNT_ALIGNMENT_DELETE_POINTS. Baseline: mount_abort_allows_fresh_goto of the mount simulator suite fails on master as well (test_mount_simulator.c, target RA after an alignment mode change) and is not part of this ticket."
     }
   ],
   "closure": null,
@@ -490,6 +580,12 @@
         "actor": "human/owner",
         "text": "Owner instruction (2026-11-18): discard the change of this ticket and redo it with a stronger model. All seven changed files in the worktree were restored to their master content (driver 3.0.0.22, recorded runs of 2026-11-07 and 2026-10-23); the earlier wip commits stay in the branch history and are not rewritten.",
         "tokens": null
+      },
+      {
+        "at": "2026-11-18T19:36:30.794202Z",
+        "actor": "human/owner",
+        "text": "Supersedes the earlier notes about the date-frame variant and its recorded runs: the binding design is the one in the ticket description (frames of 3.0.0.22 kept, sync within 5 degrees of the pole refused with ALERT). The reproduction note (GoTo 8.25 h off after a home sync on 3.0.0.22, fine on 3.0.0.21) still stands as the before-fix evidence. The one-off reproduction case is at /private/tmp/claude-501/-Users-polakovic--claude-spares-spare-eOwxQs/7706c262-6db9-40e2-8ccd-6f11c700eb0a/scratchpad/pole/case.inc (its printout assumed the west pier solution; decode the pier side from the DEC axis position). AZ-GTi was last found by UDP autodetection at 192.168.111.139:11880, firmware 3.16; the first discovery attempt of a session may fail, retry once before reporting.",
+        "tokens": null
       }
     ],
     "questions": [],
@@ -522,7 +618,7 @@
     }
   },
   "journal": {
-    "entries": 37,
-    "sha256": "12f6957ba38aa3d0432d55c5a797f19346f13c5bda7d971285d9c8316441ca79"
+    "entries": 46,
+    "sha256": "b13dc8889d54dcf8ac1d60e4a5a12549e1c844b91c9f755224d79b0ae60d73d9"
   }
 }
