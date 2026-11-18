@@ -516,7 +516,7 @@ The grid and the task tables are rebuilt when the site coordinates change and ev
 
 The `STARTUP`, `SHUTDOWN` and `IDLE` hooks name stored tasks.
 
-- A hook task runs outside the state machine. Its constraints, state and counters are not evaluated or changed, so it can run every night. The task list shows it with the state `HOOK` and a priority such as `hook startup`, `hook shutdown` or `hook idle`; a task with `@priority hook` that no hook names shows the priority `hook`.
+- A hook task runs outside the state machine. Its constraints, state and counters are not evaluated or changed, so it can run every night. The task list shows it with the state `HOOK` (`DISABLED` while the task is disabled) and a priority such as `hook startup`, `hook shutdown` or `hook idle`; a task with `@priority hook` that no hook names shows the priority `hook`.
 - A task named as a hook, or with `@priority hook`, is never selected as an ordinary task and does not count when deciding that all tasks have finished. It is not planned in the night plan, not even as `NOT TONIGHT`, and `DELETE_ALL` keeps it. A task uploaded for use as a hook therefore does not run at once as an ordinary task before it is named in `AGENT_SCHEDULER_HOOKS`; with `@priority hook` it also stays hook-only when it is removed from the hooks. The header does not name the hook role, only `AGENT_SCHEDULER_HOOKS` does. An urgent submission with `@priority hook` is rejected with Alert.
 - Hook runs appear in the run history, marked as hooks.
 - A hook that fails is reported by a message. A failed `STARTUP` hook stops the scheduler with Alert; a failed `SHUTDOWN` hook still stops it, with Alert.
@@ -524,7 +524,7 @@ The `STARTUP`, `SHUTDOWN` and `IDLE` hooks name stored tasks.
 - `START` while the `SHUTDOWN` hook runs cancels the stop: after the hook, the `STARTUP` hook runs again and scheduling continues.
 - A hook runs whatever the state of its task; an edit of a hook while it runs takes effect after it ends.
 - The `IDLE` hook runs once per idle period, `IDLE_PARK_AFTER` minutes after the scheduler last found nothing eligible. A task that starts begins a new idle period.
-- A hook that names no task is reported by a message and skipped.
+- A hook that names no task, or a disabled task (`DISABLE` or `@enabled no`), is reported by a message (`The idle hook 'Park' is disabled, skipped`) and skipped, and scheduling continues as without that hook. The disabled hook is not planned in the night plan, and `ENABLE` makes it run again from the next occasion.
 
 The `STARTUP`, `SHUTDOWN` and `IDLE` hooks follow `START`, the stop and idle periods, not the night. The [night hooks](#night-hooks) run at the start and the end of every night.
 

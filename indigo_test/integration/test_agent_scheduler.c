@@ -1470,6 +1470,68 @@ static void hooks_run_at_start_idle_and_stop(void) {
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Later'"));
 }
 
+static void disabled_startup_hook_is_skipped_until_enabled(void) {
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(command("Prepare", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Prepare", "DISABLED | hook startup", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_TRUE(wait_message("The startup hook 'Prepare' is disabled, skipped", 1, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Prepare'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Prepare'"));
+	REQUIRE(command("Prepare", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Prepare", "HOOK | hook startup", 5));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 15));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Prepare' completed", 1, 15));
+}
+
+static void disabled_idle_hook_is_skipped_and_reported_once(void) {
+	char future[32], text[256];
+	time_t now = time(NULL);
+	utc(now - now % 60 + 7200, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Park"));
+	REQUIRE(command("Park", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Park", "DISABLED | hook idle", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_TRUE(wait_message("The idle hook 'Park' is disabled, skipped", 1, 15));
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(1, count_messages("The idle hook 'Park' is disabled, skipped"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Park'"));
+	// the hook stays out of the ordinary tasks
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Park'"));
+}
+
+static void disabled_night_hook_is_not_planned(void) {
+	time_t dusk = minute_ahead(30);
+	char start[32], future[32], text[256];
+	utc(dusk, start);
+	utc(dusk + 2 * 86400, future);
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Work\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_night_hooks("Evening", "Morning", ""));
+	REQUIRE(command("Evening", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	ASSERT_TRUE(wait_task_state("Evening", "DISABLED | hook night start", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_plan_contains(" | Morning | - | hook night end | ", true, 15));
+	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | ", false, 5));
+	REQUIRE(command("Evening", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | ", true, 15));
+}
+
 static void failed_startup_hook_stops_the_scheduler(void) {
 	REQUIRE(upload("// @task Bad start\nif (!scheduler_task.estimate) { throw new Error(\"no power\"); }\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
@@ -3689,6 +3751,9 @@ static const indigo_test_case cases[] = {
 	{ "pending_rename_reserves_the_name", pending_rename_reserves_the_name },
 	{ "library_reload_keeps_scheduled_task", library_reload_keeps_scheduled_task },
 	{ "hooks_run_at_start_idle_and_stop", hooks_run_at_start_idle_and_stop },
+	{ "disabled_startup_hook_is_skipped_until_enabled", disabled_startup_hook_is_skipped_until_enabled },
+	{ "disabled_idle_hook_is_skipped_and_reported_once", disabled_idle_hook_is_skipped_and_reported_once },
+	{ "disabled_night_hook_is_not_planned", disabled_night_hook_is_not_planned },
 	{ "hook_priority_class_keeps_a_task_from_running", hook_priority_class_keeps_a_task_from_running },
 	{ "hook_priority_class_rejects_a_level_and_scheduling_keys", hook_priority_class_rejects_a_level_and_scheduling_keys },
 	{ "hook_priority_class_task_is_not_planned_or_counted", hook_priority_class_task_is_not_planned_or_counted },

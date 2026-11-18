@@ -576,6 +576,7 @@ The mount is unparked on `START`, parked when nothing can run for `IDLE_PARK_AFT
 
 - Hooks name their tasks: renaming a hook task with an edit detaches it from the hook.
 - A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it with the state `HOOK` and its hook in the priority column: `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`, for example `Park | HOOK | hook shutdown | - | - | -`.
+- A hook task that you disable with `DISABLE` (or `@enabled no`) does not run: the scheduler sends a message such as `The idle hook 'Park' is disabled, skipped` and continues as it does for a hook that names no task, and the message is not repeated within one idle period. `ENABLE` makes it run again from the next occasion. The night plan does not include a disabled hook. The task list shows it with the state `DISABLED` and its hook in the priority column, for example `Park | DISABLED | hook idle | - | - | -`.
 - One task may serve several hooks, for example `Park` as `SHUTDOWN`, `IDLE` and `NIGHT_END`. The task list shows the first of them. When two hooks naming the same task are due one right after the other, such as `STARTUP` and `NIGHT_START` on `START` during the night, the task runs once.
 - Hook runs appear in the history with `hook` in the kind column.
 - A task with `@priority hook` is a hook only: it is never scheduled as an ordinary task, also while no hook names it. Upload the task with `@priority hook` first, so that it does not run at once on a running scheduler, then name it in `AGENT_SCHEDULER_HOOKS`; the header does not name the hook role. It has no level and is not in the night plan.
@@ -766,7 +767,7 @@ The priority is `urgent`, the class and level of the task such as `normal 60`, o
 | DONE | Ok | All runs completed |
 | FAILED | Alert | Failed with no retries left, or interrupted with `@preempted fail` |
 | EXPIRED | Alert | The end of its `@window` passed before it completed |
-| DISABLED | Idle | `@enabled no`, or disabled by command |
+| DISABLED | Idle | `@enabled no`, or disabled by command; a disabled hook task shows it too, with its hook in the priority column |
 | SCRIPT ERROR | Alert | The body has an error; fix it with an edit |
 | HOOK | Idle | The task is named in `AGENT_SCHEDULER_HOOKS` or has `@priority hook`; its state is not tracked |
 
@@ -879,7 +880,7 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_TASK_COMMAND.DISABLE=ON"
 | Command | What it does |
 |---|---|
 | `RESET` | Puts the task back to QUEUED and clears its run and retry counters. Use it to run a DONE, FAILED or EXPIRED task again, or to retry a task after a script error. A running task cannot be reset |
-| `DISABLE` | Keeps the task but never selects it. A running task finishes its run first |
+| `DISABLE` | Keeps the task but never selects it; a hook task is skipped like a hook that names no task. A running task finishes its run first |
 | `ENABLE` | Undoes `DISABLE`. A task with `@enabled no` in its header stays disabled until you edit the header |
 | `MOVE_UP`, `MOVE_DOWN` | Moves the task in the list. The list order decides only between otherwise equal tasks |
 | `RESET_ALL` | Resets every task as `RESET` does. A running task is left alone, and the message says so. Pending urgent tasks keep their order |

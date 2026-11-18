@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000016
+#define DRIVER_VERSION 0x03000017
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -861,7 +861,7 @@ static const char *task_priority_text(indigo_device *device, scheduler_task *tas
 }
 
 static void build_task_state_label(indigo_device *device, scheduler_task *task, char *label, size_t size) {
-	const char *state = is_hook(device, task) ? "HOOK" : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
+	const char *state = is_hook(device, task) ? is_enabled(task) ? "HOOK" : "DISABLED" : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
 	char priority[48], runs[32] = "", retries[32] = "", duration[48] = "";
 	const char *priority_text = task_priority_text(device, task, priority, sizeof(priority));
 	if (!is_hook(device, task)) {
@@ -1770,10 +1770,21 @@ static void process_stopping(indigo_device *device) {
 	}
 }
 
-// the slot of a configured hook, -1 if it is not set or names no task
+// the slot of a configured hook, -1 if it is not set, names no task or names a disabled task
 static int hook_slot(indigo_device *device, indigo_item *item) {
 	const char *name = indigo_get_text_item_value(item);
-	return *name ? find_task(device, name) : -1;
+	int slot = *name ? find_task(device, name) : -1;
+	return slot >= 0 && is_enabled(PRIVATE_DATA->tasks + slot) ? slot : -1;
+}
+
+// tells why a configured hook has no task to run
+static void send_hook_notice(indigo_device *device, const char *role, indigo_item *item) {
+	const char *name = indigo_get_text_item_value(item);
+	if (find_task(device, name) < 0) {
+		indigo_send_message(device, NULL, "The %s hook '%s' names no task", role, name);
+	} else {
+		indigo_send_message(device, NULL, "The %s hook '%s' is disabled, skipped", role, name);
+	}
 }
 
 // -------------------------------------------------------------------------------- Night hooks
@@ -1846,9 +1857,9 @@ static bool start_night_hook(indigo_device *device, indigo_item *item, run_kind 
 	if (*name == 0) {
 		return false;
 	}
-	int slot = find_task(device, name);
+	int slot = hook_slot(device, item);
 	if (slot < 0) {
-		indigo_send_message(device, NULL, "The %s hook '%s' names no task", kind == RUN_NIGHT_START_HOOK ? "night start" : kind == RUN_NIGHT_END_HOOK ? "night end" : "resume", name);
+		send_hook_notice(device, kind == RUN_NIGHT_START_HOOK ? "night start" : kind == RUN_NIGHT_END_HOOK ? "night end" : "resume", item);
 		return false;
 	}
 	if (slot == PRIVATE_DATA->chain_slot) {
@@ -1937,7 +1948,7 @@ static void process_idle(indigo_device *device, time_t now) {
 			start_task(device, slot, RUN_SHUTDOWN_HOOK);
 		} else {
 			if (slot < 0 && *indigo_get_text_item_value(HOOKS_SHUTDOWN_ITEM)) {
-				indigo_send_message(device, NULL, "The shutdown hook '%s' names no task", indigo_get_text_item_value(HOOKS_SHUTDOWN_ITEM));
+				send_hook_notice(device, "shutdown", HOOKS_SHUTDOWN_ITEM);
 			} else if (slot >= 0 && !PRIVATE_DATA->shutdown_ran) {
 				indigo_send_message(device, NULL, "The shutdown hook '%s' could not run, %s", PRIVATE_DATA->tasks[slot].header.name, occupied ? "another sequence is running" : "the Scripting Agent or Sequencer.js is missing");
 			}
@@ -1970,7 +1981,7 @@ static void process_idle(indigo_device *device, time_t now) {
 			start_task(device, slot, RUN_STARTUP_HOOK);
 			return;
 		}
-		indigo_send_message(device, NULL, "The startup hook '%s' names no task", indigo_get_text_item_value(HOOKS_STARTUP_ITEM));
+		send_hook_notice(device, "startup", HOOKS_STARTUP_ITEM);
 	}
 	if (all_tasks_finished(device)) {
 		set_reason(device, "all tasks finished");
@@ -2021,7 +2032,7 @@ static void process_idle(indigo_device *device, time_t now) {
 			start_task(device, idle, RUN_IDLE_HOOK);
 		} else if (!PRIVATE_DATA->idle_hook_reported) {
 			PRIVATE_DATA->idle_hook_reported = true;
-			indigo_send_message(device, NULL, "The idle hook '%s' names no task", indigo_get_text_item_value(HOOKS_IDLE_ITEM));
+			send_hook_notice(device, "idle", HOOKS_IDLE_ITEM);
 		}
 	}
 }
