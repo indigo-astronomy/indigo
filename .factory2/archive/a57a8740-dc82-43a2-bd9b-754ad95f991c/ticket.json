@@ -1,0 +1,456 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a57a8740-dc82-43a2-bd9b-754ad95f991c",
+  "revision": 20,
+  "title": "indigo_agent_scheduler: a disabled hook task does not run",
+  "description": "Requested by the owner. AGENT_SCHEDULER_TASK_COMMAND DISABLE on a hook task (named in AGENT_SCHEDULER_HOOKS or of the @priority hook class) sets task->disabled, but hook starts never check is_enabled(), so the hook still runs and the command silently has no effect.\n\nRequired behavior:\n- A disabled hook task does not run. Every hook role (STARTUP, SHUTDOWN, IDLE, NIGHT_START, NIGHT_END, RESUME) treats a disabled task like an empty hook item: the step is skipped and scheduling continues exactly as it does today when the item is empty. Send one message naming the hook and the task, e.g. \"The idle hook 'park' is disabled, skipped\", no more often than the existing 'names no task' notice for the same hook.\n- ENABLE makes it run again from the next occasion.\n- AGENT_SCHEDULER_PLAN does not plan a disabled hook (and does not shift later runs for it).\n- AGENT_SCHEDULER_TASK_STATE shows the hook task as DISABLED in the state column, keeping the hook role in the priority column ('hook idle', 'hook').\n- A disabled hook still never runs as an ordinary task and DELETE_ALL still keeps it.\n- Reproduce first (integration test showing a disabled hook running), then fix.\n- Integration tests in indigo_test/integration/test_agent_scheduler.c: a disabled STARTUP (or IDLE) hook is skipped and the ordinary task still runs; after ENABLE it runs again; the label shows DISABLED; the plan does not include it. Unit tests if the plan code changes.\n- Update INDIGO_SCHEDULER_GUIDE.md (hooks section, task command table, task list states) and doc/SCHEDULER.md. Increment the scheduler agent DRIVER_VERSION.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-18T12:33:56.698727Z",
+  "status": "closed",
+  "branch": "ticket/a57a8740-dc82-43a2-bd9b-754ad95f991c",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "cd0755c3-8bef-43c4-9820-12e18ea4f069",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T12:34:18.336292Z",
+          "last_activity_at": "2026-11-18T12:43:26.990306Z",
+          "ended_at": "2026-11-18T12:43:26.990306Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 548654.014,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T12:34:18.336292Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/a57a8740-dc82-43a2-bd9b-754ad95f991c"
+        },
+        {
+          "at": "2026-11-18T12:43:26.990306Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 548654.014,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "c56acf37-81ac-40eb-93a4-708287dc1818",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "e9b0f41e-be2c-4c0a-ad7f-4a0bf9a12e45",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-18T12:43:26.990368Z",
+          "last_activity_at": "2026-11-18T12:44:28.142360Z",
+          "ended_at": "2026-11-18T12:44:28.142360Z",
+          "outcome": {
+            "summary": "Reviewed diff master...f3064c608 (indigo_agent_scheduler.c, test_agent_scheduler.c, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md, PROPERTIES.md). hook_slot() (c:1774) now returns -1 for !is_enabled(), and its only callers are the five hook starts: shutdown (1941), startup (1979), idle (2028), start_night_hook for NIGHT_START/NIGHT_END/RESUME (1860) and add_plan_hook (2164). Each disabled case follows the existing names-no-task path: shutdown stops directly (slot>=0 guards the chain_slot check), startup falls through to scheduling, idle keeps idle_hook_reported once per period, start_night_hook returns false without touching standby (as for an empty item), and the resume path then starts the task, which clears standby. A task serving two hooks is skipped by both, so the chain dedup is not involved. For enabled hooks, hook_slot == find_task because start_night_hook already returns early on an empty name. Other lookups are unchanged and still use find_task/is_hook: labels, DELETE_ALL, delete, edit/rename, task command, the running-hook entry of the plan (current slot) and hook completion. A hook disabled while it runs finishes normally: the completion code does not use hook_slot, and a shutdown hook completion calls stop_scheduler directly, so no false skip message is sent. send_hook_notice keeps the 'names no task' text for missing tasks and the notice frequency is the same. The label shows DISABLED with the hook role kept (864); the light stays Idle. The three new integration tests cover startup skip plus ENABLE, idle once and not run as an ordinary task, and plan exclusion plus re-planning on ENABLE. The docs are accurate. DRIVER_VERSION goes from 0x03000016 to 0x03000017. The whitespace, unit and command-1 checks were recorded at f3064c608 = HEAD, and the worktree is clean. Not a defect: night_hooks_named() (1802) still counts a disabled night hook for the night notices. This matches the existing names-no-task behavior. Limits: tests not rerun by the reviewer; resume/sh",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 61151.992,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T12:43:26.990368Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-18T12:44:28.142360Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Reviewed diff master...f3064c608 (indigo_agent_scheduler.c, test_agent_scheduler.c, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md, PROPERTIES.md). hook_slot() (c:1774) now returns -1 for !is_enabled(), and its only callers are the five hook starts: shutdown (1941), startup (1979), idle (2028), start_night_hook for NIGHT_START/NIGHT_END/RESUME (1860) and add_plan_hook (2164). Each disabled case follows the existing names-no-task path: shutdown stops directly (slot>=0 guards the chain_slot check), startup falls through to scheduling, idle keeps idle_hook_reported once per period, start_night_hook returns false without touching standby (as for an empty item), and the resume path then starts the task, which clears standby. A task serving two hooks is skipped by both, so the chain dedup is not involved. For enabled hooks, hook_slot == find_task because start_night_hook already returns early on an empty name. Other lookups are unchanged and still use find_task/is_hook: labels, DELETE_ALL, delete, edit/rename, task command, the running-hook entry of the plan (current slot) and hook completion. A hook disabled while it runs finishes normally: the completion code does not use hook_slot, and a shutdown hook completion calls stop_scheduler directly, so no false skip message is sent. send_hook_notice keeps the 'names no task' text for missing tasks and the notice frequency is the same. The label shows DISABLED with the hook role kept (864); the light stays Idle. The three new integration tests cover startup skip plus ENABLE, idle once and not run as an ordinary task, and plan exclusion plus re-planning on ENABLE. The docs are accurate. DRIVER_VERSION goes from 0x03000016 to 0x03000017. The whitespace, unit and command-1 checks were recorded at f3064c608 = HEAD, and the worktree is clean. Not a defect: night_hooks_named() (1802) still counts a disabled night hook for the night notices. This matches the existing names-no-task behavior. Limits: tests not rerun by the reviewer; resume/sh"
+        }
+      ],
+      "result": {
+        "summary": "Reviewed diff master...f3064c608 (indigo_agent_scheduler.c, test_agent_scheduler.c, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md, PROPERTIES.md). hook_slot() (c:1774) now returns -1 for !is_enabled(), and its only callers are the five hook starts: shutdown (1941), startup (1979), idle (2028), start_night_hook for NIGHT_START/NIGHT_END/RESUME (1860) and add_plan_hook (2164). Each disabled case follows the existing names-no-task path: shutdown stops directly (slot>=0 guards the chain_slot check), startup falls through to scheduling, idle keeps idle_hook_reported once per period, start_night_hook returns false without touching standby (as for an empty item), and the resume path then starts the task, which clears standby. A task serving two hooks is skipped by both, so the chain dedup is not involved. For enabled hooks, hook_slot == find_task because start_night_hook already returns early on an empty name. Other lookups are unchanged and still use find_task/is_hook: labels, DELETE_ALL, delete, edit/rename, task command, the running-hook entry of the plan (current slot) and hook completion. A hook disabled while it runs finishes normally: the completion code does not use hook_slot, and a shutdown hook completion calls stop_scheduler directly, so no false skip message is sent. send_hook_notice keeps the 'names no task' text for missing tasks and the notice frequency is the same. The label shows DISABLED with the hook role kept (864); the light stays Idle. The three new integration tests cover startup skip plus ENABLE, idle once and not run as an ordinary task, and plan exclusion plus re-planning on ENABLE. The docs are accurate. DRIVER_VERSION goes from 0x03000016 to 0x03000017. The whitespace, unit and command-1 checks were recorded at f3064c608 = HEAD, and the worktree is clean. Not a defect: night_hooks_named() (1802) still counts a disabled night hook for the night notices. This matches the existing names-no-task behavior. Limits: tests not rerun by the reviewer; resume/sh",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 61151.992,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9ac73661-a51c-4bce-9902-897bcbf91c3c",
+      "event": "ticket/created",
+      "at": "2026-11-18T12:33:56.699112Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "1095b32d-c346-467f-a3b3-3458020364d6",
+      "event": "task/progress",
+      "at": "2026-11-18T12:34:18.337055Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Implementation started on branch ticket/a57a8740-dc82-43a2-bd9b-754ad95f991c"
+    },
+    {
+      "event_id": "3d1deaec-b7bf-4530-b528-8c56ed407653",
+      "event": "ticket/started",
+      "at": "2026-11-18T12:34:18.340090Z",
+      "actor": "human/owner",
+      "branch": "ticket/a57a8740-dc82-43a2-bd9b-754ad95f991c",
+      "base": "master"
+    },
+    {
+      "event_id": "be6b29a0-e4d3-4c1c-8320-15298db10f1a",
+      "event": "task/progress",
+      "at": "2026-11-18T12:34:34.003453Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Implementer launched",
+      "attempt_id": "cd0755c3-8bef-43c4-9820-12e18ea4f069",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "7d9ed775-3d3a-46e6-aadb-c5b5748a5904",
+      "event": "task/progress",
+      "at": "2026-11-18T12:35:09.781336Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Reproducing: running the new disabled-hook tests before the fix"
+    },
+    {
+      "event_id": "71fe0c38-6f84-4be3-88dc-f0f3296a24be",
+      "event": "ticket/confirmed",
+      "at": "2026-11-18T12:35:53.919943Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "b4bb8f44-2bbb-4134-9d9d-f00e9ba0d752",
+      "event": "task/progress",
+      "at": "2026-11-18T12:37:10.257954Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "24e2dddb-6ad6-455a-a470-20c3100afe7c",
+      "event": "task/progress",
+      "at": "2026-11-18T12:37:10.274524Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "50958e56-f10e-4b56-88dd-40065ede15de",
+      "event": "check/passed",
+      "at": "2026-11-18T12:37:10.278351Z",
+      "actor": "human/owner",
+      "commit": "f3064c60840b1477022695f8f3bff7a2e32fd2b6",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "1a728bc5-c8fa-4c57-a364-04bf1334ae5b",
+      "event": "task/progress",
+      "at": "2026-11-18T12:37:13.242919Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "54c84eb9-0183-4ef2-83d9-03d23a915f39",
+      "event": "task/progress",
+      "at": "2026-11-18T12:38:15.679970Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "3bb34b65-748b-44e0-aa3a-353249a2a14b",
+      "event": "check/passed",
+      "at": "2026-11-18T12:38:15.686081Z",
+      "actor": "human/owner",
+      "commit": "f3064c60840b1477022695f8f3bff7a2e32fd2b6",
+      "checks": "unit passed"
+    },
+    {
+      "event_id": "b3188e25-1787-4500-b984-c5bb12a1f6af",
+      "event": "task/progress",
+      "at": "2026-11-18T12:38:15.823835Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "bd0b5c53-17c6-43d2-8910-0e17edd47dc7",
+      "event": "ticket/note",
+      "at": "2026-11-18T12:39:27.065321Z",
+      "actor": "human/owner",
+      "text": "Reproduction (before fix): 3 new integration tests failed on the unfixed driver (label showed HOOK instead of DISABLED; with the label assertion relaxed, no 'is disabled, skipped' message for startup/idle and the disabled night start hook stayed in the plan). Fix: hook_slot() in indigo_agent_scheduler.c returns -1 for a disabled task, so STARTUP, SHUTDOWN, IDLE, NIGHT_START, NIGHT_END, RESUME (start_night_hook) and the plan (add_plan_hook) treat it like an empty hook item; send_hook_notice() sends 'The <role> hook 'X' is disabled, skipped' (idle keeps its once-per-period flag); label shows DISABLED with the hook role kept; DRIVER_VERSION 0x03000017. Tests: disabled_startup_hook_is_skipped_until_enabled (skip, ordinary task runs, label, ENABLE runs it again), disabled_idle_hook_is_skipped_and_reported_once (idle, once, never an ordinary task), disabled_night_hook_is_not_planned (plan, ENABLE plans it). Docs: INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md, PROPERTIES.md. Checks: whitespace and unit passed; scheduler integration passed via flow check --command.",
+      "tokens": null
+    },
+    {
+      "event_id": "32fdfe3a-63c7-4f1f-9b16-193d8c72240f",
+      "event": "task/progress",
+      "at": "2026-11-18T12:43:07.191923Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "d91bb49c-e956-46d7-97a8-fcf9c7a64d60",
+      "event": "check/passed",
+      "at": "2026-11-18T12:43:07.207203Z",
+      "actor": "human/owner",
+      "commit": "f3064c60840b1477022695f8f3bff7a2e32fd2b6",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "9c61800f-fb5c-4a85-b874-4104b74f3380",
+      "event": "task/progress",
+      "at": "2026-11-18T12:43:26.910521Z",
+      "actor": "human/owner",
+      "task_id": "f2ffa6df-a477-40b3-9fc1-5fd32d5fda68",
+      "text": "Reviewer launched",
+      "attempt_id": "cd0755c3-8bef-43c4-9820-12e18ea4f069",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5682e1de-a77b-4703-9951-d9b84310b4f3",
+      "event": "task/progress",
+      "at": "2026-11-18T12:43:26.990435Z",
+      "actor": "human/owner",
+      "task_id": "c56acf37-81ac-40eb-93a4-708287dc1818",
+      "text": "Review started"
+    },
+    {
+      "event_id": "cc57864a-9ff1-40f3-8ce8-89d66bc15c99",
+      "event": "review/started",
+      "at": "2026-11-18T12:43:26.990844Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "ddbde21c-4897-4c05-bb08-586c33ec6266",
+      "event": "task/progress",
+      "at": "2026-11-18T12:44:28.142428Z",
+      "actor": "human/owner",
+      "task_id": "c56acf37-81ac-40eb-93a4-708287dc1818",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "27712412-0ba9-47df-8ffc-f27cd28f81ef",
+      "event": "review/passed",
+      "at": "2026-11-18T12:44:28.142760Z",
+      "actor": "human/owner",
+      "task_id": "c56acf37-81ac-40eb-93a4-708287dc1818",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "f3064c60840b1477022695f8f3bff7a2e32fd2b6"
+    },
+    {
+      "event_id": "a1bb55dd-3993-4511-b882-dcee6a210727",
+      "event": "ticket/closed",
+      "at": "2026-11-18T12:53:33.720728Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-18T12:53:33.720700Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "ccb057eb584b0d7c442472d878df62bf99b0ed8d"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f3064c60840b1477022695f8f3bff7a2e32fd2b6",
+        "tree": "4fefc0a9eaffbae9ad21233fea1bbf3ea4c01d01",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:37:10.274194Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/a57a8740-dc82-43a2-bd9b-754ad95f991c/4fefc0a9eaff-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "f3064c60840b1477022695f8f3bff7a2e32fd2b6",
+        "tree": "4fefc0a9eaffbae9ad21233fea1bbf3ea4c01d01",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:38:15.677917Z",
+        "duration_s": 62.4,
+        "log": "/tmp/factory-flow/a57a8740-dc82-43a2-bd9b-754ad95f991c/4fefc0a9eaff-unit.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "f3064c60840b1477022695f8f3bff7a2e32fd2b6",
+        "tree": "4fefc0a9eaffbae9ad21233fea1bbf3ea4c01d01",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:43:07.182269Z",
+        "duration_s": 291.4,
+        "log": "/tmp/factory-flow/a57a8740-dc82-43a2-bd9b-754ad95f991c/4fefc0a9eaff-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed diff master...f3064c608 (indigo_agent_scheduler.c, test_agent_scheduler.c, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md, PROPERTIES.md). hook_slot() (c:1774) now returns -1 for !is_enabled(), and its only callers are the five hook starts: shutdown (1941), startup (1979), idle (2028), start_night_hook for NIGHT_START/NIGHT_END/RESUME (1860) and add_plan_hook (2164). Each disabled case follows the existing names-no-task path: shutdown stops directly (slot>=0 guards the chain_slot check), startup falls through to scheduling, idle keeps idle_hook_reported once per period, start_night_hook returns false without touching standby (as for an empty item), and the resume path then starts the task, which clears standby. A task serving two hooks is skipped by both, so the chain dedup is not involved. For enabled hooks, hook_slot == find_task because start_night_hook already returns early on an empty name. Other lookups are unchanged and still use find_task/is_hook: labels, DELETE_ALL, delete, edit/rename, task command, the running-hook entry of the plan (current slot) and hook completion. A hook disabled while it runs finishes normally: the completion code does not use hook_slot, and a shutdown hook completion calls stop_scheduler directly, so no false skip message is sent. send_hook_notice keeps the 'names no task' text for missing tasks and the notice frequency is the same. The label shows DISABLED with the hook role kept (864); the light stays Idle. The three new integration tests cover startup skip plus ENABLE, idle once and not run as an ordinary task, and plan exclusion plus re-planning on ENABLE. The docs are accurate. DRIVER_VERSION goes from 0x03000016 to 0x03000017. The whitespace, unit and command-1 checks were recorded at f3064c608 = HEAD, and the worktree is clean. Not a defect: night_hooks_named() (1802) still counts a disabled night hook for the night notices. This matches the existing names-no-task behavior. Limits: tests not rerun by the reviewer; resume/shutdown/night-end disabled paths are verified by reading only.",
+        "reviewer": "human/owner",
+        "commit": "f3064c60840b1477022695f8f3bff7a2e32fd2b6",
+        "tree": "4fefc0a9eaffbae9ad21233fea1bbf3ea4c01d01",
+        "at": "2026-11-18T12:44:28.142286Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-18T12:39:27.065039Z",
+        "actor": "human/owner",
+        "text": "Reproduction (before fix): 3 new integration tests failed on the unfixed driver (label showed HOOK instead of DISABLED; with the label assertion relaxed, no 'is disabled, skipped' message for startup/idle and the disabled night start hook stayed in the plan). Fix: hook_slot() in indigo_agent_scheduler.c returns -1 for a disabled task, so STARTUP, SHUTDOWN, IDLE, NIGHT_START, NIGHT_END, RESUME (start_night_hook) and the plan (add_plan_hook) treat it like an empty hook item; send_hook_notice() sends 'The <role> hook 'X' is disabled, skipped' (idle keeps its once-per-period flag); label shows DISABLED with the hook role kept; DRIVER_VERSION 0x03000017. Tests: disabled_startup_hook_is_skipped_until_enabled (skip, ordinary task runs, label, ENABLE runs it again), disabled_idle_hook_is_skipped_and_reported_once (idle, once, never an ordinary task), disabled_night_hook_is_not_planned (plan, ENABLE plans it). Docs: INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md, PROPERTIES.md. Checks: whitespace and unit passed; scheduler integration passed via flow check --command.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "ccb057eb584b0d7c442472d878df62bf99b0ed8d",
+      "tree": "4fefc0a9eaffbae9ad21233fea1bbf3ea4c01d01",
+      "base": "master",
+      "at": "2026-11-18T12:53:33.644034Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-18T12:33:56.698727Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-18T12:35:53.919824Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 609806.006,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 26,
+    "sha256": "411b2a0481583a7351a88b87f4fc6927fa665632f8bf95629641fc08e7b790af"
+  }
+}
