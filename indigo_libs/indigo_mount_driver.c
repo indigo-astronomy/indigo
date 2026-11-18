@@ -41,8 +41,8 @@
 
 # define DEG2RAD (M_PI/180.0)
 
-// A sync whose target or raw declination is farther from the equator than this is warned about
-#define MOUNT_SYNC_POLE_WARNING_DEC	85.0
+// A sync whose requested or raw declination is farther from the equator than this is refused
+#define MOUNT_SYNC_POLE_LIMIT_DEC	85.0
 
 static double indigo_range24(double ha) {
 	return fmod(ha + (24000), 24);
@@ -796,12 +796,25 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+			// The declination the request asks for; an item the request leaves out keeps its current value
+			double sync_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
+					sync_dec = property->items[i].number.value;
+				}
+			}
 			if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_coordinates(device, "SYNC in CONTROLLER mode passed to indigo_mount_change_property");
 			} else if (MOUNT_CONTEXT->alignment_point_count >= MOUNT_MAX_ALIGNMENT_POINTS) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_coordinates(device, "Too many alignment points");
+			} else if (fabs(sync_dec) > MOUNT_SYNC_POLE_LIMIT_DEC || fabs(MOUNT_RAW_COORDINATES_DEC_ITEM->number.value) > MOUNT_SYNC_POLE_LIMIT_DEC) {
+				// Near the pole any right ascension points almost the same way, but the RA offset of an alignment point applies to
+				// the targets it is used for: a point made there (for example RA 6:00 / Dec 90 in the home position) would send
+				// later GoTos hours away. The request is refused before its values are adopted, the property keeps the real pointing.
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_coordinates(device, "Sync refused: right ascension is ill-defined within 5 degrees of the celestial pole, sync below 85 degrees of declination");
 			} else {
 				indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 				int index = MOUNT_CONTEXT->alignment_point_count++;
@@ -849,10 +862,6 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 				indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_coordinates(device, NULL);
-				// Near the pole any right ascension points almost the same way, but the point's RA offset applies to the targets it is used for
-				if (fabs(point->dec) > MOUNT_SYNC_POLE_WARNING_DEC || fabs(point->raw_dec) > MOUNT_SYNC_POLE_WARNING_DEC) {
-					indigo_send_message(device, BUSY_PROPERTY, "Sync close to the celestial pole: right ascension is ill-defined there and this alignment point shifts the right ascension of the targets it is used for, sync below 85 degrees of declination");
-				}
 			}
 		}
 		return INDIGO_OK;

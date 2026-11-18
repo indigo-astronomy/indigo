@@ -973,6 +973,68 @@ static void synscan_sync_adds_alignment_point(void) {
 	ASSERT_TRUE(cleared);
 }
 
+// A sync within 5 degrees of the pole, the home position of a mount just switched on, is refused: its alignment point
+// would send later GoTos hours away, to the other side of the pier. No point is added, the reported pointing stays the
+// real one and the next GoTo is accurate.
+static void synscan_refuses_sync_near_the_pole(void) {
+	double start_ra = 0, start_dec = 0, lst = 0, home_dec = 0, after_dec = 0, raw_ra = 0, raw_dec = 0;
+	ASSERT_TRUE(prepare_mount());
+	ASSERT_TRUE(clear_alignment_model());
+	ASSERT_TRUE(current_coordinates(&start_ra, &start_dec));
+	// the home position at the pole, wherever an earlier scenario left the mount
+	bool homed = set_switch(mount, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_DEFAULT_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT) && set_switch(mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT);
+	indigo_usleep(3000000);
+	bool at_home = number_item(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, &home_dec) && number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst);
+	double sync_dec = site_latitude >= 0 ? 90.0 : -90.0;
+	bool sync_mode = set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
+	pthread_mutex_lock(&mutex);
+	last_message_text[0] = 0;
+	pthread_mutex_unlock(&mutex);
+	static const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { fmod(lst - 6.0 + 24.0, 24.0), sync_dec };
+	indigo_change_number_property(&client, devices[mount].name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values);
+	bool refused = false;
+	for (int i = 0; i < 100 && !refused; i++) {
+		indigo_usleep(100000);
+		pthread_mutex_lock(&mutex);
+		refused = strstr(last_message_text, "celestial pole") != NULL;
+		pthread_mutex_unlock(&mutex);
+	}
+	// several polls later the mount still reports its real pointing, not the requested one
+	indigo_usleep(3000000);
+	int points = alignment_point_count();
+	bool after = number_item(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, &after_dec);
+	printf("    home DEC %.5f, sync to RA %.5f DEC %.5f %s, %d alignment point(s), 3 s later DEC %.5f\n", home_dec, values[0], values[1], refused ? "refused" : "NOT refused", points, after_dec);
+	// the GoTo after the refused sync: one hour west of the meridian at the test declination of the date
+	set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
+	number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst);
+	double target_ra = fmod(lst - 1.0 + 24.0, 24.0), target_dec = site_latitude >= 0 ? test_declination : -test_declination;
+	indigo_jnow_to_j2k(&target_ra, &target_dec);
+	bool reached = slew_coordinates(mount, target_ra, target_dec, MOTION_TIMEOUT);
+	bool read = number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME, &raw_ra) && number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME, &raw_dec) && number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst);
+	indigo_j2k_to_jnow(&raw_ra, &raw_dec);
+	double ha = ra_difference(lst, raw_ra);
+	printf("    GoTo after the refused sync reached HA %+.4f h (wanted +1) DEC %.4f of the date\n", ha, raw_dec);
+	// back to where the scenario started, without alignment points
+	set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
+	bool cleared = clear_alignment_model() && alignment_point_count() == 0;
+	bool back = prepare_mount() && slew_coordinates(mount, start_ra, start_dec, MOTION_TIMEOUT);
+	ASSERT_TRUE(homed);
+	ASSERT_TRUE(at_home);
+	ASSERT_TRUE(fabs(home_dec) > 85.0);
+	ASSERT_TRUE(sync_mode);
+	ASSERT_TRUE(refused);
+	ASSERT_TRUE(points == 0);
+	ASSERT_TRUE(after);
+	ASSERT_TRUE(fabs(after_dec - home_dec) < 0.01 && fabs(after_dec - sync_dec) > 0.1);
+	ASSERT_TRUE(reached);
+	ASSERT_TRUE(read);
+	ASSERT_TRUE(fabs(ha - 1.0) < 0.05);
+	ASSERT_NEAR(fabs(test_declination), fabs(raw_dec), 0.3);
+	ASSERT_TRUE(cleared);
+	ASSERT_TRUE(back);
+}
+
 static void synscan_aborts_slew_and_recovers(void) {
 	double ra = 0, dec = 0, target_ra = 0, target_dec = 0, aborted_dec = 0, settled_dec = 0;
 	ASSERT_TRUE(prepare_mount());
@@ -1387,6 +1449,7 @@ int main(int argc, char **argv) {
 		{ "synscan_syncs_and_slews", synscan_syncs_and_slews },
 		{ "synscan_resumes_tracking_after_manual_motion", synscan_resumes_tracking_after_manual_motion },
 		{ "synscan_sync_adds_alignment_point", synscan_sync_adds_alignment_point },
+		{ "synscan_refuses_sync_near_the_pole", synscan_refuses_sync_near_the_pole },
 		{ "synscan_aborts_slew_and_recovers", synscan_aborts_slew_and_recovers },
 		{ "synscan_parks_and_unparks", synscan_parks_and_unparks },
 		{ "synscan_homes", synscan_homes },

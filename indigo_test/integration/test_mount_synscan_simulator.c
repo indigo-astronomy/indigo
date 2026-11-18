@@ -833,6 +833,9 @@ static int last_synscan_command_line(external_serial_simulator *simulator, const
 	return last;
 }
 
+static bool synscan_goto(const char *mode_item, double ra, double dec);
+static double synscan_lst(void);
+
 // Forum report (A1 v6 beta, EQ8-R Pro): releasing an E/W arrow stopped the RA axis and left it
 // stopped, while the tracking switch still said on. The release has to put RA back on the tracking
 // rate: the axis is started again after it was stopped, at the tracking step period.
@@ -907,6 +910,8 @@ static void synscan_mount_sync_adds_alignment_point(void) {
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME)->sw.value);
 	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+	// a sync within 5 degrees of the pole is refused, so the mount leaves its home position first
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 2 + 24, 24), 40));
 	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
 	double raw_ra = cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME);
@@ -920,8 +925,7 @@ static void synscan_mount_sync_adds_alignment_point(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(coordinate_items), coordinate_items, coordinate_values));
 	SERIAL_CHECK_TRUE(wait_for_synscan_alignment_point_count(1));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
-	// only polls publish the raw coordinates, so a new revision proves a poll after the sync (the raw RA itself
-	// does not follow the sidereal time here: the OTA is at the pole of the date, a fixed J2000 point)
+	// only polls publish the raw coordinates, so a new revision proves a poll after the sync
 	unsigned int raw_revision = property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME);
 	bool polled = false;
 	for (int i = 0; i < 100 && !polled; i++) {
@@ -3289,6 +3293,111 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A sync within 5 degrees of the pole (the home position of a mount just switched on) is refused: the right ascension is
+// ill-defined there and the alignment point would shift every later GoTo by hours, to the other side of the pier. The
+// refusal adds no point, keeps the real coordinates on the bus and leaves the mount pointing GoTos where they belong.
+static void synscan_mount_refuses_sync_near_the_pole(void) {
+	static const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	static const double latitudes[] = { 48, -35 };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	double latitude = NAN;
+	char ra_mode[32], ra_increment[32], dec_mode[32], dec_increment[32];
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	latitude = cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
+	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+	// the home position in both hemispheres: the hour angle +6 h of the northern and -6 h of the southern home, at the pole
+	for (int i = ARRAY_SIZE(latitudes) - 1; i >= 0; i--) {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, latitudes[i]));
+		SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, latitudes[i], 0.001));
+		double home_ra = synscan_fresh_raw(MOUNT_RAW_COORDINATES_RA_ITEM_NAME);
+		double home_dec = cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+		double sync_values[] = { fmod(synscan_lst() + (latitudes[i] > 0 ? -6 : 6) + 48, 24), latitudes[i] > 0 ? 90 : -90 };
+		SERIAL_CHECK_TRUE(fabs(home_dec) > 85);
+		SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+		atomic_store(&observed_coordinates_alert, false);
+		pthread_mutex_lock(&observed_mutex);
+		observed_coordinates_message[0] = 0;
+		pthread_mutex_unlock(&observed_mutex);
+		unsigned int alert = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, sync_values));
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alert));
+		SERIAL_CHECK_TRUE(atomic_load(&observed_coordinates_alert));
+		SERIAL_CHECK_TRUE(observed_message_contains(observed_coordinates_message, "celestial pole"));
+		double refused_ra = atomic_load(&observed_alert_ra);
+		double refused_dec = atomic_load(&observed_alert_dec);
+		double after_ra = synscan_fresh_raw(MOUNT_RAW_COORDINATES_RA_ITEM_NAME);
+		double published_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+		double published_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		printf("    latitude %+.0f: home raw %.4f h %+.4f deg, sync to %.4f h %+.4f deg refused; ALERT carried %.4f h %+.4f deg, the next poll %.4f h %+.4f deg, alignment points %d\n", latitudes[i], home_ra, home_dec, sync_values[0], sync_values[1], refused_ra, refused_dec, published_ra, published_dec, synscan_alignment_point_count());
+		SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+		// the refusal and the following poll carry the real pointing, never the requested coordinates
+		SERIAL_CHECK_TRUE(fabs(refused_dec - home_dec) < 0.01 && fabs(refused_dec - sync_values[1]) > 0.1);
+		SERIAL_CHECK_TRUE(fabs(published_dec - home_dec) < 0.01 && fabs(published_dec - sync_values[1]) > 0.1);
+		SERIAL_CHECK_TRUE(fabs(synscan_wrap_hours(published_ra - after_ra)) < 0.01);
+		SERIAL_CHECK_TRUE(fabs(synscan_wrap_hours(refused_ra - home_ra)) < 0.01);
+	}
+	// northern hemisphere again: the GoTo after the refused sync goes where it went without it
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - 48) < 0.001);
+	int mark = synscan_mark(&simulator);
+	double date_ha = 2.5;
+	double date_dec = 30;
+	double ra = fmod(synscan_lst() - date_ha + 48, 24);
+	double dec = date_dec;
+	indigo_jnow_to_j2k(&ra, &dec);
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, ra, dec));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":G1", ra_mode, sizeof(ra_mode), NULL));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":H1", ra_increment, sizeof(ra_increment), NULL));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":G2", dec_mode, sizeof(dec_mode), NULL));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":H2", dec_increment, sizeof(dec_increment), NULL));
+	// a turn of the axis from its zero; the DEC axis past a quarter turn is the OTA west of the meridian, where the RA axis
+	// turns the hour angle and the DEC axis a half turn less the declination, otherwise the other side of the pier
+	double ra_position = 0.25 + (ra_mode[4] == '1' ? -1 : 1) * synscan_command_value(ra_increment) / SIM_STEPS_PER_REVOLUTION;
+	double dec_position = 0.25 + (dec_mode[4] == '1' ? -1 : 1) * synscan_command_value(dec_increment) / SIM_STEPS_PER_REVOLUTION;
+	bool west = dec_position >= 0.25 && dec_position < 0.75;
+	double pointed_ha = synscan_wrap_hours(24 * (west ? ra_position : ra_position - 0.5));
+	double pointed_dec = west ? 180 - 360 * dec_position : 360 * dec_position;
+	printf("    GoTo to HA %.4f h DEC %+.4f deg of the date pointed the axes at HA %.4f h DEC %+.4f deg, OTA %s of the meridian\n", date_ha, date_dec, pointed_ha, pointed_dec, west ? "west" : "east");
+	SERIAL_CHECK_TRUE(west);
+	SERIAL_CHECK_TRUE(fabs(pointed_ha - date_ha) < 0.005);
+	SERIAL_CHECK_TRUE(fabs(pointed_dec - date_dec) < 0.01);
+	// a requested declination past the limit is refused away from the pole too, one below it adds its point
+	double here_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double far_values[] = { here_ra, 86 };
+	double near_values[] = { here_ra, dec - 3 };
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+	atomic_store(&observed_coordinates_alert, false);
+	pthread_mutex_lock(&observed_mutex);
+	observed_coordinates_message[0] = 0;
+	pthread_mutex_unlock(&observed_mutex);
+	unsigned int alert = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, far_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alert));
+	SERIAL_CHECK_TRUE(observed_message_contains(observed_coordinates_message, "celestial pole"));
+	SERIAL_CHECK_TRUE(fabs(atomic_load(&observed_alert_dec) - dec) < 0.01);
+	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, near_values));
+	SERIAL_CHECK_TRUE(wait_for_synscan_alignment_point_count(1));
+
+cleanup:
+	remove_observer();
+	if (driver_started) {
+		if (synscan_alignment_point_count() > 0) {
+			indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, true);
+			wait_for_synscan_alignment_point_count(0);
+		}
+		if (!isnan(latitude)) {
+			indigo_change_number_property_1(&simulator_test_client, synscan_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, latitude);
+			wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, latitude, 0.001);
+		}
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (indigo_test_mkdtemp_home(park_folder) == NULL) {
@@ -3390,7 +3499,8 @@ int main(void) {
 		{ "synscan_aux_refuses_connection_without_snap_port", synscan_aux_refuses_connection_without_snap_port },
 		{ "synscan_guider_keeps_pulsing_after_mount_disconnects", synscan_guider_keeps_pulsing_after_mount_disconnects },
 		{ "synscan_guider_pulse_and_goto_share_the_axes", synscan_guider_pulse_and_goto_share_the_axes },
-		{ "synscan_mount_releases_motion_of_detached_client", synscan_mount_releases_motion_of_detached_client }
+		{ "synscan_mount_releases_motion_of_detached_client", synscan_mount_releases_motion_of_detached_client },
+		{ "synscan_mount_refuses_sync_near_the_pole", synscan_mount_refuses_sync_near_the_pole }
 	};
 	int result = 0;
 	const char *trace_path = getenv("INDIGO_SYNSCAN_PROPERTY_TRACE");
