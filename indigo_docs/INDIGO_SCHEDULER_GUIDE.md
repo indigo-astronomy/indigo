@@ -218,7 +218,7 @@ The check is made when the task starts, with the expected duration, in five-minu
   With the default weights of 1, the two bonuses together can add up to 200 points, more than the whole level range. A `normal 40` target that is high and about to set can therefore run before a `normal 60` target. To make the level decide strictly, set `SETTING_WEIGHT` and `ALTITUDE_WEIGHT` to 0 in [Settings](#settings); to make the sky position count more, raise them. The bonuses never cross a class: with the maximum weights of 4, the level and the bonuses together add at most 900 points, less than the 1000-point gap between classes.
 - When the scores are equal, the task higher in the task list wins. You can move tasks in the list, see [Changing the order](#changing-the-order).
 
-`hook` is a class of its own, without a level: `@priority hook` marks a hook-only task that is never scheduled as an ordinary task, see [Hooks](#hooks). `@priority hook 50` is a script error, and so are `@repeat`, `@retry`, `@enabled`, `@window`, `@altitude`, `@airmass`, `@ha`, `@moon`, `@illumination`, `@twilight` and `@preempted` in the same header, because a hook never uses them. `@duration` (it places the hook in the night plan), `@target` and the data keys stay valid. A task submitted through `AGENT_SCHEDULER_URGENT_TASK` cannot be a hook.
+`hook` is a class of its own, without a level: `@priority hook` marks a hook-only task that is never scheduled as an ordinary task, see [Hooks](#hooks). `@priority hook 50` is a script error, and so are `@repeat`, `@retry`, `@enabled`, `@window`, `@altitude`, `@airmass`, `@ha`, `@moon`, `@illumination`, `@twilight` and `@preempted` in the same header, because a hook never uses them. `@duration` (it places the hook in the night plan), `@target` and the data keys stay valid; a hook run uses only `@folder <name>` of them, see [Where the data goes](#where-the-data-goes). A task submitted through `AGENT_SCHEDULER_URGENT_TASK` cannot be a hook.
 
 `urgent` is different from the other classes:
 
@@ -325,7 +325,7 @@ Checkpoints act only where the sequence reaches them: an exposure, a slew or a f
 
 ### Where the data goes
 
-By default the frames of all tasks are saved by the Imager Agent into the same folder, with the object name and the FITS headers it holds at that moment. The scheduler can tell the frames which task made them. Before every run of a task or a hook, and before the body starts, it sets on the Imager Agent:
+By default the frames of all tasks are saved by the Imager Agent into the same folder, with the object name and the FITS headers it holds at that moment. The scheduler can tell the frames which task made them. Before every run of a task, and before the body starts, it sets on the Imager Agent:
 
 - the **object name** (`CCD_LOCAL_MODE.OBJECT`) to the task name, so `%o` in the file name prefix stands for the task;
 - the FITS keywords `SCHTASK` (the task name, in quotes), `SCHRUN` (the run number, as `scheduler_task.run`) and `SCHNIGHT` (the date of the session night, the same as `%N` in the file name prefix, for example `'2026-11-16'`). Use `SCHNIGHT` to match flats and darks with the lights of the same night;
@@ -360,11 +360,12 @@ To identify the frames of a group or a project, give the task the observer, the 
 
 The frames then carry `OBSERVER = 'Jane Doe'`, `PI_NAME = 'Prof. Smith'` and `PROPID = 'SURVEY-7'` (with `FITS` on). Each key is optional and sets only its own header.
 
-After every run, whatever its outcome (succeeded, failed, preempted or aborted), the scheduler puts the folder and the object name back as it found them and removes the keywords it set (`SCHTASK`, `SCHRUN`, `SCHNIGHT` and the ones from `@observer`, `@pi` and `@project`). A task that has to change them for a part of its run still can: `sequence.set_object_name()`, `sequence.set_directory()` and `sequence.set_fits_header()` run after the scheduler has set its values and win, but only until the end of that run. In particular, a `set_directory()` of a task no longer stays for the next task.
+After every task run, whatever its outcome (succeeded, failed, preempted or aborted), the scheduler puts the folder and the object name back as it found them and removes the keywords it set (`SCHTASK`, `SCHRUN`, `SCHNIGHT` and the ones from `@observer`, `@pi` and `@project`). A task that has to change them for a part of its run still can: `sequence.set_object_name()`, `sequence.set_directory()` and `sequence.set_fits_header()` run after the scheduler has set its values and win, but only until the end of that run. In particular, a `set_directory()` of a task no longer stays for the next task. A hook run with `@folder <name>` gets its folder and object name back in the same way. For any other hook run the scheduler sets nothing and puts nothing back, so a folder or object name that the hook script sets stays after the hook.
 
 Notes:
 
 - Nothing is set or restored when the Imager Agent is not loaded or has no `CCD_LOCAL_MODE`.
+- Hooks are not labelled: a hook run sets no object name, no FITS keywords and no folder from `FOLDER`. A hook may deselect the camera, for example a shutdown hook with `sequence.select_imager_camera("NONE")`, and the scheduler could not put the camera back afterwards. Only `@folder <name>` in the header of a hook task gives that hook its folder, which is put back after the hook as for a task; a hook with `@folder <name>` must not deselect or disconnect the camera. Without `@folder`, or with `@folder none`, a hook leaves the folder alone.
 - Only the agent named "Imager Agent" is labelled. A script that works with another imager agent gets no labels.
 - Changes of the settings take effect at the next run. The duration estimate of a task never sets anything.
 
@@ -579,6 +580,7 @@ The mount is unparked on `START`, parked when nothing can run for `IDLE_PARK_AFT
 - A hook task that you disable with `DISABLE` (or `@enabled no`) does not run: the scheduler sends a message such as `The idle hook 'Park' is disabled, skipped` and continues as it does for a hook that names no task, and the message is not repeated within one idle period. `ENABLE` makes it run again from the next occasion. The night plan does not include a disabled hook. The task list shows it with the state `DISABLED` and its hook in the priority column, for example `Park | DISABLED | hook idle | - | - | -`.
 - One task may serve several hooks, for example `Park` as `SHUTDOWN`, `IDLE` and `NIGHT_END`. The task list shows the first of them. When two hooks naming the same task are due one right after the other, such as `STARTUP` and `NIGHT_START` on `START` during the night, the task runs once.
 - Hook runs appear in the history with `hook` in the kind column.
+- Hook runs are not labelled with the object name, the FITS keywords or a folder of their own, see [Where the data goes](#where-the-data-goes). Only `@folder <name>` gives a hook a folder.
 - A task with `@priority hook` is a hook only: it is never scheduled as an ordinary task, also while no hook names it. Upload the task with `@priority hook` first, so that it does not run at once on a running scheduler, then name it in `AGENT_SCHEDULER_HOOKS`; the header does not name the hook role. It has no level and is not in the night plan.
 - To remove a hook, set its item to an empty value, for example `indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE="`. Its task then becomes an ordinary task again and is scheduled like the others, unless it has `@priority hook`.
 

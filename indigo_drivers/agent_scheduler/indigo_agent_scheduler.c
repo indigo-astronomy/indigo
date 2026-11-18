@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000017
+#define DRIVER_VERSION 0x03000018
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -1116,14 +1116,14 @@ static void sanitize_folder(const char *name, char *folder, size_t size) {
 	}
 }
 
-// the folder of the task: the @folder key decides, the FOLDER setting gives every task its own folder named after it
-static bool data_directory(indigo_device *device, scheduler_task *task, char *directory, size_t size) {
+// the folder of the task: the @folder key decides, the FOLDER setting gives every task its own folder named after it; a hook gets a folder only from @folder
+static bool data_directory(indigo_device *device, scheduler_task *task, bool hook, char *directory, size_t size) {
 	const char *name = task->header.name;
 	if (task->header.folder_none) {
 		return false;
 	} else if (*task->header.folder) {
 		name = task->header.folder;
-	} else if (!DATA_FOLDER_ITEM->sw.value) {
+	} else if (hook || !DATA_FOLDER_ITEM->sw.value) {
 		return false;
 	}
 	const char *base = indigo_get_text_item_value(DATA_DIR_BASE_ITEM);
@@ -1172,7 +1172,9 @@ static const struct {
 };
 
 // labels the data of a run with its task, before the script runs; nothing is applied when the Imager Agent is not known
+// a hook may deselect the camera, which takes CCD_LOCAL_MODE from the Imager Agent and loses the restore, so a hook is not labelled; only its @folder sets the folder
 static void apply_context(indigo_device *device, scheduler_task *task, int run_number) {
+	bool hook = PRIVATE_DATA->kind != RUN_TASK;
 	PRIVATE_DATA->context_applied = PRIVATE_DATA->context_fits = false;
 	PRIVATE_DATA->context_headers = 0;
 	if (!PRIVATE_DATA->original_valid) {
@@ -1185,11 +1187,11 @@ static void apply_context(indigo_device *device, scheduler_task *task, int run_n
 	const char *values[2];
 	int count = 0;
 	char directory[INDIGO_VALUE_SIZE];
-	if (DATA_OBJECT_ITEM->sw.value) {
+	if (DATA_OBJECT_ITEM->sw.value && !hook) {
 		items[count] = CCD_LOCAL_MODE_OBJECT_ITEM_NAME;
 		values[count++] = task->header.name;
 	}
-	if (data_directory(device, task, directory, sizeof(directory))) {
+	if (data_directory(device, task, hook, directory, sizeof(directory))) {
 		items[count] = CCD_LOCAL_MODE_DIR_ITEM_NAME;
 		values[count++] = directory;
 	}
@@ -1197,7 +1199,7 @@ static void apply_context(indigo_device *device, scheduler_task *task, int run_n
 		indigo_change_text_property(agent_client, IMAGER_AGENT, CCD_LOCAL_MODE_PROPERTY_NAME, count, items, values);
 		PRIVATE_DATA->context_applied = true;
 	}
-	if (DATA_FITS_ITEM->sw.value) {
+	if (DATA_FITS_ITEM->sw.value && !hook) {
 		char value[INDIGO_VALUE_SIZE];
 		char night[32];
 		fits_string(task->header.name, value, sizeof(value));
