@@ -1,0 +1,370 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4882a4eb-f428-42a5-9ad5-c8d14a5f3f56",
+  "revision": 13,
+  "title": "factory: recommend the strong model tier for implementation workers",
+  "description": "Owner decision (2026-11-18): the balanced tier (anthropic claude-sonnet-5-5) is too weak as the implementer; on ticket 37fc5504-1588-420f-9da1-0f15ba5d6f3f it needed several reruns and a prompt after going idle for a change of a few driver lines.\n\nChange: in .factory2/config.json set models/assignment_types/implementation from \"balanced\" to \"strong\". Nothing else in the model policy changes: the other assignment types (including test_design: balanced), difficulty_floor, retry_escalation and the provider tier tables stay as they are.\n\nDone when: flow start / flow brief --role implement of a ticket with difficulty low, medium, high and unknown recommends the strong tier for every provider with a model policy (anthropic claude-opus-5-5, reasoning high), verified with the recommendation output of the Factory CLI (for example policy select, or the recommendation field of flow brief on an open ticket), and the configured flow checks pass. If AGENTS.md or another instruction file states the implementation tier explicitly, update it in the same change; they are expected to only point to the rule files. No application code, test or Xcode project change.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-18T19:14:08.460042Z",
+  "status": "closed",
+  "branch": "ticket/4882a4eb-f428-42a5-9ad5-c8d14a5f3f56",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "cc506be5-bb46-4d88-b8cb-2179ec2058dd",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "e8692c6f-6466-48f7-8669-5679ece14396",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-fable-5-2",
+            "reasoning": null
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T19:14:57.322459Z",
+          "last_activity_at": "2026-11-18T19:15:42.181522Z",
+          "ended_at": "2026-11-18T19:15:42.181522Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 44859.063,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T19:14:57.322459Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/4882a4eb-f428-42a5-9ad5-c8d14a5f3f56"
+        },
+        {
+          "at": "2026-11-18T19:15:42.181522Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 44859.063,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "2806acce-ecdd-4d78-a6c7-a93884182f41",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "e38c72b3-fa55-407e-a50f-72923d5525be",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T19:15:42.181736Z",
+          "last_activity_at": "2026-11-18T19:16:51.650007Z",
+          "ended_at": "2026-11-18T19:16:51.650007Z",
+          "outcome": {
+            "summary": "Diff master...HEAD is exactly one line: .factory2/config.json models/assignment_types/implementation balanced -> strong; other assignment types (test_design stays balanced), difficulty_floor, retry_escalation and provider tier tables unchanged (compared models section structurally). JSON parses; config.resolve(config.defaults(), config.json) passes policy.load/validate for all providers. policy.select (policy.py:94-108, tier = max(assignment, difficulty floor), retry escalation to strong) yields strong for implementation at difficulty low/medium/high/unknown, with and without 2 failed attempts: anthropic claude-opus-5-5/high, openai gpt-6-astra/high, deepseek deepseek-v4-pro/high; test_design still balanced. Local layer .factory2/local/config.json has no models override. default_config.json:12 keeps the Factory default balanced; config.resolve (config.py:99-118) overlays project leaves on defaults and settings_fields only uses its key set, so no equality is required. No AGENTS.md/CLAUDE.md/other instruction file or rules.json/project-rules.json states the implementation tier. Whitespace check passed on the current tree; unit check not selected for this path. No defects.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 69468.271,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T19:15:42.181736Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-18T19:16:51.650007Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Diff master...HEAD is exactly one line: .factory2/config.json models/assignment_types/implementation balanced -> strong; other assignment types (test_design stays balanced), difficulty_floor, retry_escalation and provider tier tables unchanged (compared models section structurally). JSON parses; config.resolve(config.defaults(), config.json) passes policy.load/validate for all providers. policy.select (policy.py:94-108, tier = max(assignment, difficulty floor), retry escalation to strong) yields strong for implementation at difficulty low/medium/high/unknown, with and without 2 failed attempts: anthropic claude-opus-5-5/high, openai gpt-6-astra/high, deepseek deepseek-v4-pro/high; test_design still balanced. Local layer .factory2/local/config.json has no models override. default_config.json:12 keeps the Factory default balanced; config.resolve (config.py:99-118) overlays project leaves on defaults and settings_fields only uses its key set, so no equality is required. No AGENTS.md/CLAUDE.md/other instruction file or rules.json/project-rules.json states the implementation tier. Whitespace check passed on the current tree; unit check not selected for this path. No defects."
+        }
+      ],
+      "result": {
+        "summary": "Diff master...HEAD is exactly one line: .factory2/config.json models/assignment_types/implementation balanced -> strong; other assignment types (test_design stays balanced), difficulty_floor, retry_escalation and provider tier tables unchanged (compared models section structurally). JSON parses; config.resolve(config.defaults(), config.json) passes policy.load/validate for all providers. policy.select (policy.py:94-108, tier = max(assignment, difficulty floor), retry escalation to strong) yields strong for implementation at difficulty low/medium/high/unknown, with and without 2 failed attempts: anthropic claude-opus-5-5/high, openai gpt-6-astra/high, deepseek deepseek-v4-pro/high; test_design still balanced. Local layer .factory2/local/config.json has no models override. default_config.json:12 keeps the Factory default balanced; config.resolve (config.py:99-118) overlays project leaves on defaults and settings_fields only uses its key set, so no equality is required. No AGENTS.md/CLAUDE.md/other instruction file or rules.json/project-rules.json states the implementation tier. Whitespace check passed on the current tree; unit check not selected for this path. No defects.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 69468.271,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "a134aadf-333f-4835-a9fc-33a66185390a",
+      "event": "ticket/created",
+      "at": "2026-11-18T19:14:08.460915Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "b19e310c-3b3b-46b9-84de-c86fc46abe9f",
+      "event": "ticket/confirmed",
+      "at": "2026-11-18T19:14:51.602324Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "90c1eb7e-8274-44f5-943a-acc60fb5bdae",
+      "event": "task/progress",
+      "at": "2026-11-18T19:14:57.322752Z",
+      "actor": "human/owner",
+      "task_id": "cc506be5-bb46-4d88-b8cb-2179ec2058dd",
+      "text": "Implementation started on branch ticket/4882a4eb-f428-42a5-9ad5-c8d14a5f3f56"
+    },
+    {
+      "event_id": "bfea1636-cccb-424d-a598-4e8399fd7d34",
+      "event": "ticket/started",
+      "at": "2026-11-18T19:14:57.324086Z",
+      "actor": "human/owner",
+      "branch": "ticket/4882a4eb-f428-42a5-9ad5-c8d14a5f3f56",
+      "base": "master"
+    },
+    {
+      "event_id": "4b80e8b5-131a-4a8b-881c-1d071c7575d9",
+      "event": "task/progress",
+      "at": "2026-11-18T19:15:05.859691Z",
+      "actor": "human/owner",
+      "task_id": "cc506be5-bb46-4d88-b8cb-2179ec2058dd",
+      "text": "Coordinator implements the one-line config change itself (owner prefers not to use the balanced tier)",
+      "attempt_id": "e8692c6f-6466-48f7-8669-5679ece14396",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-fable-5-2",
+        "reasoning": null
+      }
+    },
+    {
+      "event_id": "fc3f16f0-c679-49d4-9695-ce835264db37",
+      "event": "task/progress",
+      "at": "2026-11-18T19:15:41.816256Z",
+      "actor": "human/owner",
+      "task_id": "cc506be5-bb46-4d88-b8cb-2179ec2058dd",
+      "text": "Tier per difficulty computed from the worktree config with the policy.py rule: strong for all"
+    },
+    {
+      "event_id": "a024f066-a16c-4c8f-a69a-7396b9e86275",
+      "event": "task/progress",
+      "at": "2026-11-18T19:15:42.063167Z",
+      "actor": "human/owner",
+      "task_id": "cc506be5-bb46-4d88-b8cb-2179ec2058dd",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5705162e-303f-4b8d-bf6e-4a25feec2eee",
+      "event": "task/progress",
+      "at": "2026-11-18T19:15:42.084482Z",
+      "actor": "human/owner",
+      "task_id": "cc506be5-bb46-4d88-b8cb-2179ec2058dd",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "9285cc06-7cff-42e3-a0af-97de15fbb64c",
+      "event": "check/passed",
+      "at": "2026-11-18T19:15:42.085967Z",
+      "actor": "human/owner",
+      "commit": "81510e63a4c46f74a3a76249cbcecb05b4a32f7d",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "4e035e66-d394-4ad0-9f5d-561650ba6d58",
+      "event": "task/progress",
+      "at": "2026-11-18T19:15:42.181820Z",
+      "actor": "human/owner",
+      "task_id": "2806acce-ecdd-4d78-a6c7-a93884182f41",
+      "text": "Review started"
+    },
+    {
+      "event_id": "c0cab477-61d3-435b-9d3f-d7a9c1b530ea",
+      "event": "review/started",
+      "at": "2026-11-18T19:15:42.183153Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "f16deee6-e5e9-4d1c-a634-4b2a9fdcd920",
+      "event": "task/progress",
+      "at": "2026-11-18T19:16:01.246096Z",
+      "actor": "human/owner",
+      "task_id": "2806acce-ecdd-4d78-a6c7-a93884182f41",
+      "text": "Reviewer launched",
+      "attempt_id": "e38c72b3-fa55-407e-a50f-72923d5525be",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "25fee466-8b92-44e8-9b11-a2c41e6aa986",
+      "event": "task/progress",
+      "at": "2026-11-18T19:16:51.650097Z",
+      "actor": "human/owner",
+      "task_id": "2806acce-ecdd-4d78-a6c7-a93884182f41",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "cd8e15e7-e2d5-44e2-80c1-4ff5d36e02e6",
+      "event": "review/passed",
+      "at": "2026-11-18T19:16:51.651270Z",
+      "actor": "human/owner",
+      "task_id": "2806acce-ecdd-4d78-a6c7-a93884182f41",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "81510e63a4c46f74a3a76249cbcecb05b4a32f7d"
+    },
+    {
+      "event_id": "4f3d6007-3102-4e9e-be12-20978efc3baa",
+      "event": "ticket/closed",
+      "at": "2026-11-18T19:17:17.342180Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-18T19:17:17.342156Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "c0a174147f42dea3c62e1b761e9f3eeafb11cf47"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "81510e63a4c46f74a3a76249cbcecb05b4a32f7d",
+        "tree": "8af9820b73cf89174069d2623ad959c55593299f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T19:15:42.083826Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4882a4eb-f428-42a5-9ad5-c8d14a5f3f56/8af9820b73cf-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Diff master...HEAD is exactly one line: .factory2/config.json models/assignment_types/implementation balanced -> strong; other assignment types (test_design stays balanced), difficulty_floor, retry_escalation and provider tier tables unchanged (compared models section structurally). JSON parses; config.resolve(config.defaults(), config.json) passes policy.load/validate for all providers. policy.select (policy.py:94-108, tier = max(assignment, difficulty floor), retry escalation to strong) yields strong for implementation at difficulty low/medium/high/unknown, with and without 2 failed attempts: anthropic claude-opus-5-5/high, openai gpt-6-astra/high, deepseek deepseek-v4-pro/high; test_design still balanced. Local layer .factory2/local/config.json has no models override. default_config.json:12 keeps the Factory default balanced; config.resolve (config.py:99-118) overlays project leaves on defaults and settings_fields only uses its key set, so no equality is required. No AGENTS.md/CLAUDE.md/other instruction file or rules.json/project-rules.json states the implementation tier. Whitespace check passed on the current tree; unit check not selected for this path. No defects.",
+        "reviewer": "human/owner",
+        "commit": "81510e63a4c46f74a3a76249cbcecb05b4a32f7d",
+        "tree": "8af9820b73cf89174069d2623ad959c55593299f",
+        "at": "2026-11-18T19:16:51.649819Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "c0a174147f42dea3c62e1b761e9f3eeafb11cf47",
+      "tree": "8af9820b73cf89174069d2623ad959c55593299f",
+      "base": "master",
+      "at": "2026-11-18T19:17:17.279317Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-18T19:14:08.460042Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-18T19:14:51.602124Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 114327.334,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 19,
+    "sha256": "64ecce0b4c5ef386ce70146bb2caac96ef8a97bfdf4bc2c2593eaa90a27ba464"
+  }
+}
