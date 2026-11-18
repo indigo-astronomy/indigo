@@ -172,7 +172,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 | Key | Syntax | Meaning | Default |
 |---|---|---|---|
 | `@task` | `name` | Display name, 1–40 bytes, no control characters and no `\|`, unique among stored and urgent tasks, compared case-insensitively | required |
-| `@priority` | `urgent` \| `high` \| `normal` \| `low` [`level`] \| `hook` | Priority class and level 0–100 within the class. The level is ignored for `urgent`. `hook` takes no level; it marks a hook-only task that is never selected as an ordinary task, and rejects `@repeat`, `@retry`, `@window`, `@altitude`, `@airmass`, `@ha`, `@moon`, `@illumination`, `@twilight` and `@preempted` | `normal 50` |
+| `@priority` | `urgent` \| `high` \| `normal` \| `low` [`level`] \| `hook` | Priority class and level 0–100 within the class. The level is ignored for `urgent`. `hook` takes no level; it marks a hook-only task that is never selected as an ordinary task, and rejects `@repeat`, `@retry`, `@enabled`, `@window`, `@altitude`, `@airmass`, `@ha`, `@moon`, `@illumination`, `@twilight` and `@preempted` | `normal 50` |
 | `@target` | `ra dec` | J2000 coordinates. RA in hours (`hh:mm:ss.s` or decimal) and Dec in degrees (`±dd:mm:ss` or decimal) | none |
 | `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
 | `@airmass` | `< value` | Maximum target airmass, 1–100 | off |

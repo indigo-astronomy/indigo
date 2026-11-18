@@ -2272,6 +2272,15 @@ static void hook_priority_class_keeps_a_task_from_running(void) {
 	ASSERT_EQ_INT(INDIGO_IDLE_STATE, light);
 }
 
+static void hook_priority_class_rejects_a_level_and_scheduling_keys(void) {
+	char message[INDIGO_VALUE_SIZE];
+	REQUIRE(change_text(AGENT_SCHEDULER_ADD_TASK_PROPERTY_NAME, AGENT_SCHEDULER_ADD_TASK_TASK_ITEM_NAME, "// @task Level\n// @priority hook 50\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "line 2: @priority: expected") != NULL);
+	REQUIRE(change_text(AGENT_SCHEDULER_ADD_TASK_PROPERTY_NAME, AGENT_SCHEDULER_ADD_TASK_TASK_ITEM_NAME, "// @task Disabled hook\n// @priority hook\n// @enabled no\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "line 3: @enabled: not allowed with @priority hook") != NULL);
+	ASSERT_EQ_INT(0, task_count());
+}
+
 static void hook_priority_class_task_is_not_planned_or_counted(void) {
 	char message[INDIGO_VALUE_SIZE];
 	char label[INDIGO_VALUE_SIZE];
@@ -3681,6 +3690,7 @@ static const indigo_test_case cases[] = {
 	{ "library_reload_keeps_scheduled_task", library_reload_keeps_scheduled_task },
 	{ "hooks_run_at_start_idle_and_stop", hooks_run_at_start_idle_and_stop },
 	{ "hook_priority_class_keeps_a_task_from_running", hook_priority_class_keeps_a_task_from_running },
+	{ "hook_priority_class_rejects_a_level_and_scheduling_keys", hook_priority_class_rejects_a_level_and_scheduling_keys },
 	{ "hook_priority_class_task_is_not_planned_or_counted", hook_priority_class_task_is_not_planned_or_counted },
 	{ "urgent_task_cannot_be_a_hook", urgent_task_cannot_be_a_hook },
 	{ "failed_startup_hook_stops_the_scheduler", failed_startup_hook_stops_the_scheduler },

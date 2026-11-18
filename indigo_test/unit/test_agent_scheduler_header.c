@@ -265,7 +265,7 @@ static void test_hook_priority_class(void) {
 	ASSERT_TRUE(parse("// @task A\n// @PRIORITY  HOOK   \n" BODY));
 	ASSERT_EQ_INT(SCHEDULER_PRIORITY_HOOK, header.priority_class);
 	// keys a hook uses stay accepted
-	ASSERT_TRUE(parse("// @task A\n// @priority hook\n// @duration 5\n// @target 10:00:00 20:00:00\n// @enabled no\n// @folder none\n// @observer A\n" BODY));
+	ASSERT_TRUE(parse("// @task A\n// @priority hook\n// @duration 5\n// @target 10:00:00 20:00:00\n// @folder none\n// @observer A\n" BODY));
 	ASSERT_EQ_INT(5, header.duration);
 	ASSERT_TRUE(header.has_target);
 	assert_rejected("// @task A\n// @priority hook 50\n" BODY, "line 2: @priority: expected");
@@ -276,6 +276,8 @@ static void test_hook_priority_class(void) {
 
 static void test_hook_priority_rejects_scheduling_keys(void) {
 	assert_rejected("// @task A\n// @priority hook\n// @repeat 2\n" BODY, "line 3: @repeat: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @enabled no\n" BODY, "line 3: @enabled: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @enabled yes\n// @priority hook\n" BODY, "line 3: @enabled: not allowed with @priority hook");
 	assert_rejected("// @task A\n// @repeat 2\n// @priority hook\n" BODY, "line 3: @repeat: not allowed with @priority hook");
 	assert_rejected("// @task A\n// @priority hook\n// @retry 1\n" BODY, "line 3: @retry: not allowed with @priority hook");
 	assert_rejected("// @task A\n// @priority hook\n// @window 20:00 .. 04:00\n" BODY, "line 3: @window: not allowed with @priority hook");
