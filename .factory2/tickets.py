@@ -178,7 +178,7 @@ def primary_checkout(project):
     return project
 
 
-def run_git(cwd, *arguments):
+def run_git(cwd, *arguments, text=True):
     """Run Git in a checkout through the platform layer and return the completed process.
 
     git_invocation finds the Git executable and, on Windows, applies the checkout trust set up
@@ -190,7 +190,7 @@ def run_git(cwd, *arguments):
         environment.pop(name)
         if name in os.environ:
             environment[name] = os.environ[name]
-    return subprocess.run([*argv, *arguments], env=environment, capture_output=True, text=True,
+    return subprocess.run([*argv, *arguments], env=environment, capture_output=True, text=text,
                           stdin=subprocess.DEVNULL)
 
 
@@ -411,7 +411,7 @@ class Tickets:
             rules.validate(config.read_json(target))
         from installation import install_missing
         install_missing(self)
-        ignore = self.root / ".gitignore"
+        ignore = self.safe(self.root / ".gitignore")
         existing = ignore.read_text(encoding="utf-8") if ignore.exists() else ""
         missing = [line for line in ("/local/", "__pycache__/", "*.py[cod]") if line not in existing.splitlines()]
         if missing:
