@@ -1,0 +1,517 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ceebf3be-c937-4737-b53c-2e3bc2577913",
+  "revision": 25,
+  "title": "indigo_agent_scripting: sun_altitude() passes J2000 Sun coordinates to indigo_radec_to_altaz(), which needs coordinates of date",
+  "description": "Found 2026-11-19 while measuring indigocat accuracy. indigo_drivers/agent_scripting/indigo_agent_scripting.c:906-908: sun_altitude() takes indigocat_sun_equatorial_coords() (J2000 frame, see indigo_agent_scheduler_sky.c solar_system() which precesses with indigo_eq_of_date()/indigo_precess() for the same reason) and passes it straight to indigo_radec_to_altaz(), which expects coordinates of date. The error is the precession since J2000, about 0.36 deg today, i.e. about 2-2.5 minutes in Sun altitude timing at mid latitudes, affecting the sequencer's wait_until_solar_altitude_below() and every script using sun_altitude().\nOwner asked to fix it.\n- Reproduce first: a test (unit or integration through the Scripting Agent) comparing sun_altitude() with a reference altitude (e.g. JPL Horizons apparent alt for a fixed site and time, embedded as constants, or the scheduler's own precessed computation) showing the ~0.3 deg error.\n- Fix by precessing to the date as the scheduler does (or via an existing INDIGO J2000->JNow helper), minimal change.\n- Audit the other places in agent_scripting (and other agents, excluding the off-limits drivers) that pass indigocat solar-system positions to indigo_radec_to_altaz() or similar 'of date' functions without precession; fix the same defect where found and list them in a note.\n- Increment DRIVER_VERSION of every fixed driver; update docs only if they state the behaviour.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T10:47:15.651652Z",
+  "status": "closed",
+  "branch": "ticket/ceebf3be-c937-4737-b53c-2e3bc2577913",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "f85f9550-0fa8-4bec-9de3-ed56fcd65eef",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T10:47:32.993958Z",
+          "last_activity_at": "2026-11-19T10:57:19.053277Z",
+          "ended_at": "2026-11-19T10:57:19.053277Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 586059.319,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T10:47:32.993958Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/ceebf3be-c937-4737-b53c-2e3bc2577913"
+        },
+        {
+          "at": "2026-11-19T10:57:19.053277Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 586059.319,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "6753af8f-bed7-44cf-950e-0e42e2a5cb8b",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "06c8edee-c364-4e20-a50e-a007142bd60e",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T10:57:19.053309Z",
+          "last_activity_at": "2026-11-19T10:58:14.718581Z",
+          "ended_at": "2026-11-19T10:58:14.718581Z",
+          "outcome": {
+            "summary": "Pass. Fix (indigo_agent_scripting.c:906-912) converts indigocat J2000 RA from degrees to hours before indigo_j2k_to_eq(), which expects RA in hours (indigo_align.c:72-79), then passes hours to indigo_radec_to_altaz(); the equinox is indigo_eq_of_date(jd) with jd = UT2JD(now), the same 'now' passed to altaz. Mathematically equivalent to the scheduler's indigo_precess(2000 -> eq_of_date) in indigo_agent_scheduler_sky.c:88-97 and _night.c:42-50. Reference values independently recomputed with Meeus low-precision apparent Sun + GAST (accuracy ~0.01 deg): 15.3814 and 34.6418 vs embedded 15.3778 and 34.6436 - plausible. Tolerance 0.02 deg rejects the reproduced 0.123 deg error and leaves margin for < 1 arcmin indigocat changes. Test time is fixed via -Dtime=scripting_test_time (indigo_test/Makefile:2560). Audit confirmed with git grep of indigocat_ outside indigocat/off-limits: only scheduler (already precessed), scripting (fixed), server stars.json (J2000 JSON, no altaz), star-catalog users. DRIVER_VERSION 0x03000012 -> 0x03000013. git diff --check clean; whitespace and command-1 passed at HEAD 24f4a40c3 (tree 4d063680, matches notes). Non-blocking nit: test comment at test_agent_scripting.c:947 says precession 'moves the result by about 0.3 deg' - it moves RA by ~0.3 deg, the altitude by ~0.12 deg here. Limits: did not rerun the test suite myself; did not query Horizons.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 55665.272,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T10:57:19.053309Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T10:58:14.718581Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Fix (indigo_agent_scripting.c:906-912) converts indigocat J2000 RA from degrees to hours before indigo_j2k_to_eq(), which expects RA in hours (indigo_align.c:72-79), then passes hours to indigo_radec_to_altaz(); the equinox is indigo_eq_of_date(jd) with jd = UT2JD(now), the same 'now' passed to altaz. Mathematically equivalent to the scheduler's indigo_precess(2000 -> eq_of_date) in indigo_agent_scheduler_sky.c:88-97 and _night.c:42-50. Reference values independently recomputed with Meeus low-precision apparent Sun + GAST (accuracy ~0.01 deg): 15.3814 and 34.6418 vs embedded 15.3778 and 34.6436 - plausible. Tolerance 0.02 deg rejects the reproduced 0.123 deg error and leaves margin for < 1 arcmin indigocat changes. Test time is fixed via -Dtime=scripting_test_time (indigo_test/Makefile:2560). Audit confirmed with git grep of indigocat_ outside indigocat/off-limits: only scheduler (already precessed), scripting (fixed), server stars.json (J2000 JSON, no altaz), star-catalog users. DRIVER_VERSION 0x03000012 -> 0x03000013. git diff --check clean; whitespace and command-1 passed at HEAD 24f4a40c3 (tree 4d063680, matches notes). Non-blocking nit: test comment at test_agent_scripting.c:947 says precession 'moves the result by about 0.3 deg' - it moves RA by ~0.3 deg, the altitude by ~0.12 deg here. Limits: did not rerun the test suite myself; did not query Horizons."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Fix (indigo_agent_scripting.c:906-912) converts indigocat J2000 RA from degrees to hours before indigo_j2k_to_eq(), which expects RA in hours (indigo_align.c:72-79), then passes hours to indigo_radec_to_altaz(); the equinox is indigo_eq_of_date(jd) with jd = UT2JD(now), the same 'now' passed to altaz. Mathematically equivalent to the scheduler's indigo_precess(2000 -> eq_of_date) in indigo_agent_scheduler_sky.c:88-97 and _night.c:42-50. Reference values independently recomputed with Meeus low-precision apparent Sun + GAST (accuracy ~0.01 deg): 15.3814 and 34.6418 vs embedded 15.3778 and 34.6436 - plausible. Tolerance 0.02 deg rejects the reproduced 0.123 deg error and leaves margin for < 1 arcmin indigocat changes. Test time is fixed via -Dtime=scripting_test_time (indigo_test/Makefile:2560). Audit confirmed with git grep of indigocat_ outside indigocat/off-limits: only scheduler (already precessed), scripting (fixed), server stars.json (J2000 JSON, no altaz), star-catalog users. DRIVER_VERSION 0x03000012 -> 0x03000013. git diff --check clean; whitespace and command-1 passed at HEAD 24f4a40c3 (tree 4d063680, matches notes). Non-blocking nit: test comment at test_agent_scripting.c:947 says precession 'moves the result by about 0.3 deg' - it moves RA by ~0.3 deg, the altitude by ~0.12 deg here. Limits: did not rerun the test suite myself; did not query Horizons.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 55665.272,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "c18abc31-1369-4122-8a01-d5c81ce5afef",
+      "event": "ticket/created",
+      "at": "2026-11-19T10:47:15.653185Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "5f5d619c-2b84-4e4d-b092-ee2ca050c95a",
+      "event": "task/progress",
+      "at": "2026-11-19T10:47:32.994674Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Implementation started on branch ticket/ceebf3be-c937-4737-b53c-2e3bc2577913"
+    },
+    {
+      "event_id": "bd4641db-d19c-4843-b262-69c1b75bbfd5",
+      "event": "ticket/started",
+      "at": "2026-11-19T10:47:32.999495Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/ceebf3be-c937-4737-b53c-2e3bc2577913",
+      "base": "master"
+    },
+    {
+      "event_id": "8a058fa8-2665-4f08-a160-9472a02089e7",
+      "event": "task/progress",
+      "at": "2026-11-19T10:48:16.723206Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Implementer launched",
+      "attempt_id": "f85f9550-0fa8-4bec-9de3-ed56fcd65eef",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "fbce1652-9d56-4dc2-a3e3-b8837b1dd0aa",
+      "event": "task/progress",
+      "at": "2026-11-19T10:48:56.097914Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Fetching JPL Horizons Sun reference altitudes for a synthetic site"
+    },
+    {
+      "event_id": "0dd34393-27dd-4af0-8234-f338490a696d",
+      "event": "task/progress",
+      "at": "2026-11-19T10:49:30.747447Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting"
+    },
+    {
+      "event_id": "0005c556-8f06-4bca-a47f-f30b53b1d6f9",
+      "event": "task/progress",
+      "at": "2026-11-19T10:50:47.829313Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Check command-1 failed: exit code 2"
+    },
+    {
+      "event_id": "75e4ce34-5610-44bc-959b-4eb08145f690",
+      "event": "check/failed",
+      "at": "2026-11-19T10:50:47.849297Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "a0f080b71100c815c04ec0a4564b4a7e2244f153",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "df77467b-0aef-405a-a451-da35ee195a2b",
+      "event": "task/progress",
+      "at": "2026-11-19T10:51:08.315665Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "7de6a13a-636b-4e05-af5f-a9a1fc142f04",
+      "event": "task/progress",
+      "at": "2026-11-19T10:51:08.329749Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "0e1586fc-ce6b-4f15-9423-ea8a6ad54c57",
+      "event": "check/passed",
+      "at": "2026-11-19T10:51:08.334009Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "24f4a40c34f0edda10caf36a5e40e739e5e9f76c",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "3057336d-7061-4dc0-935c-fef27caec9ec",
+      "event": "task/progress",
+      "at": "2026-11-19T10:51:12.568536Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "a078b4f9-1a08-4da6-aa49-dfd4a99152ee",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:54:24.783508Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: new integration case 'solar altitude matches reference' in indigo_test/integration/test_agent_scripting.c calls indigo_solar_altitude() through the Scripting Agent at the suite's existing fixed time override (time() -> 1704112496, 2024-01-01 12:34:56 UTC) and compares with JPL Horizons apparent airless Sun elevation (queried once, synthetic sites 48.15N 17.11E and 30S 70W: 15.377750482 and 34.643634261 deg), tolerance 0.02 deg. On unmodified driver code (flow check command-1, tree 85e74042): FAIL, 'solar altitude 15.254896504203412 instead of 15.377750482' (error 0.123 deg in altitude from ~0.33 deg precession since J2000); 37/38 cases passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "b7dce8fa-1c1f-45b6-8cd5-5abfbaff7570",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:54:24.856592Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Fix: indigo_drivers/agent_scripting/indigo_agent_scripting.c solar_altitude() now precesses the indigocat J2000 Sun position to the equinox of date with indigo_j2k_to_eq(indigo_eq_of_date(jd), ...) before indigo_radec_to_altaz(), as the scheduler does. DRIVER_VERSION 0x03000012 -> 0x03000013. No indigocat change; the 0.02 deg tolerance holds before and after ticket 885c8a5b removes nutation/aberration from indigocat_sun_equatorial_coords() (< 1 arcmin). Docs (indigo_docs/mcp/agents/scripting.md 'geometric altitude', Sequencer.md) do not state the frame; no doc change.",
+      "tokens": null
+    },
+    {
+      "event_id": "8cacc0bc-b171-42fa-8fba-00628ebad555",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:54:24.916466Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Audit: indigocat solar-system positions (indigocat_sun/moon_equatorial_coords*) are used in agent_scheduler/indigo_agent_scheduler_sky.c solar_system() and agent_scheduler/indigo_agent_scheduler_night.c sun_coordinates(), both already precess with indigo_precess(2000 -> indigo_eq_of_date(jd)) - correct. agent_scripting solar_altitude() was the only defective caller (fixed). indigo_server.c uses indigocat_get_ss_data() only to emit J2000 sky-map JSON next to J2000 stars (no alt/az conversion) - not affected. ccd_simulator and agent_platesolver use star catalogs only. Off-limits drivers excluded. Observation, not changed (out of scope): indigo_target_altitude(ra, dec, ...) passes caller-supplied coordinates straight to indigo_radec_to_altaz(), so it expects coordinates of date; Sequencer wait_until_target_altitude_above()/break_if_target_altitude_below() pass user values whose frame is undocumented.",
+      "tokens": null
+    },
+    {
+      "event_id": "e994bdfb-b59b-4959-8735-1e0ead4ed56b",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:54:24.975998Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Test mapping: acceptance 'sun_altitude() matches reference within 0.02 deg' -> test_agent_scripting 'solar altitude matches reference' (two sites, northern and southern hemisphere, Horizons apparent airless constants). Existing 'conversion and astronomy bindings' and test_agent_scripting_sequencer cover binding presence and sequencer use. Running via flow check --command: make test-agent-scripting test-agent-scripting-sequencer.",
+      "tokens": null
+    },
+    {
+      "event_id": "1b36b1de-1cf1-4d64-bba6-be6287694ea1",
+      "event": "task/progress",
+      "at": "2026-11-19T10:56:40.208306Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "9e7e3f9a-9e11-46af-8b15-3a90a2295c4a",
+      "event": "check/passed",
+      "at": "2026-11-19T10:56:40.221674Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "24f4a40c34f0edda10caf36a5e40e739e5e9f76c",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "d7d03841-a33d-469d-b587-fd2fe649cdc1",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:56:49.121630Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "After fix (tree 4d063680): flow check whitespace passed (only configured check selected for these paths); flow check --command 'make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting test-agent-scripting-sequencer' passed: Scripting Agent 38/38, Sequencer.js 68/68.",
+      "tokens": null
+    },
+    {
+      "event_id": "6e51da02-aec4-4cca-88e5-c6e449f381b2",
+      "event": "task/progress",
+      "at": "2026-11-19T10:57:18.986225Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "31b36846-c3f0-48c8-8dfd-75d6081acaf0",
+      "text": "Reviewer launched",
+      "attempt_id": "f85f9550-0fa8-4bec-9de3-ed56fcd65eef",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "20b49f5a-f036-49b1-b8f4-576795bbb64a",
+      "event": "task/progress",
+      "at": "2026-11-19T10:57:19.053340Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6753af8f-bed7-44cf-950e-0e42e2a5cb8b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "9d719416-672a-455e-b38d-877fe8246aae",
+      "event": "review/started",
+      "at": "2026-11-19T10:57:19.053561Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "5dd8b879-7838-4d19-881e-159ed703400c",
+      "event": "task/progress",
+      "at": "2026-11-19T10:57:42.378008Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6753af8f-bed7-44cf-950e-0e42e2a5cb8b",
+      "text": "Recomputing reference Sun altitudes independently"
+    },
+    {
+      "event_id": "2e6e85b6-2049-4e61-9ec8-98b533ea6022",
+      "event": "task/progress",
+      "at": "2026-11-19T10:58:14.718654Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6753af8f-bed7-44cf-950e-0e42e2a5cb8b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d6aaa477-e790-44ac-8499-598cd8f337df",
+      "event": "review/passed",
+      "at": "2026-11-19T10:58:14.719044Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6753af8f-bed7-44cf-950e-0e42e2a5cb8b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "24f4a40c34f0edda10caf36a5e40e739e5e9f76c"
+    },
+    {
+      "event_id": "2cf98b66-7653-42b5-a00d-b7a9a936e590",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T10:59:14.088645Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "88c6e5d5-d66d-46d5-8dc5-3430890825c4",
+      "event": "ticket/closed",
+      "at": "2026-11-19T10:59:14.378062Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T10:59:14.378042Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "4c19c5be98bdf0d2be060fc72754f3926baa0caa"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting",
+        "commit": "a0f080b71100c815c04ec0a4564b4a7e2244f153",
+        "tree": "85e7404258004ee153509db3a5c31b113e712f67",
+        "exit_code": 2,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-19T10:50:47.826872Z",
+        "duration_s": 77.1,
+        "log": "/tmp/factory-flow/ceebf3be-c937-4737-b53c-2e3bc2577913/85e740425800-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "24f4a40c34f0edda10caf36a5e40e739e5e9f76c",
+        "tree": "4d063680fe08143f36d02fdcd85a074422ca1a5a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T10:51:08.329385Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ceebf3be-c937-4737-b53c-2e3bc2577913/4d063680fe08-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting test-agent-scripting-sequencer",
+        "commit": "24f4a40c34f0edda10caf36a5e40e739e5e9f76c",
+        "tree": "4d063680fe08143f36d02fdcd85a074422ca1a5a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T10:56:40.205414Z",
+        "duration_s": 327.6,
+        "log": "/tmp/factory-flow/ceebf3be-c937-4737-b53c-2e3bc2577913/4d063680fe08-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Fix (indigo_agent_scripting.c:906-912) converts indigocat J2000 RA from degrees to hours before indigo_j2k_to_eq(), which expects RA in hours (indigo_align.c:72-79), then passes hours to indigo_radec_to_altaz(); the equinox is indigo_eq_of_date(jd) with jd = UT2JD(now), the same 'now' passed to altaz. Mathematically equivalent to the scheduler's indigo_precess(2000 -> eq_of_date) in indigo_agent_scheduler_sky.c:88-97 and _night.c:42-50. Reference values independently recomputed with Meeus low-precision apparent Sun + GAST (accuracy ~0.01 deg): 15.3814 and 34.6418 vs embedded 15.3778 and 34.6436 - plausible. Tolerance 0.02 deg rejects the reproduced 0.123 deg error and leaves margin for < 1 arcmin indigocat changes. Test time is fixed via -Dtime=scripting_test_time (indigo_test/Makefile:2560). Audit confirmed with git grep of indigocat_ outside indigocat/off-limits: only scheduler (already precessed), scripting (fixed), server stars.json (J2000 JSON, no altaz), star-catalog users. DRIVER_VERSION 0x03000012 -> 0x03000013. git diff --check clean; whitespace and command-1 passed at HEAD 24f4a40c3 (tree 4d063680, matches notes). Non-blocking nit: test comment at test_agent_scripting.c:947 says precession 'moves the result by about 0.3 deg' - it moves RA by ~0.3 deg, the altitude by ~0.12 deg here. Limits: did not rerun the test suite myself; did not query Horizons.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "24f4a40c34f0edda10caf36a5e40e739e5e9f76c",
+        "tree": "4d063680fe08143f36d02fdcd85a074422ca1a5a",
+        "at": "2026-11-19T10:58:14.718526Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T10:54:24.783189Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: new integration case 'solar altitude matches reference' in indigo_test/integration/test_agent_scripting.c calls indigo_solar_altitude() through the Scripting Agent at the suite's existing fixed time override (time() -> 1704112496, 2024-01-01 12:34:56 UTC) and compares with JPL Horizons apparent airless Sun elevation (queried once, synthetic sites 48.15N 17.11E and 30S 70W: 15.377750482 and 34.643634261 deg), tolerance 0.02 deg. On unmodified driver code (flow check command-1, tree 85e74042): FAIL, 'solar altitude 15.254896504203412 instead of 15.377750482' (error 0.123 deg in altitude from ~0.33 deg precession since J2000); 37/38 cases passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T10:54:24.856357Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Fix: indigo_drivers/agent_scripting/indigo_agent_scripting.c solar_altitude() now precesses the indigocat J2000 Sun position to the equinox of date with indigo_j2k_to_eq(indigo_eq_of_date(jd), ...) before indigo_radec_to_altaz(), as the scheduler does. DRIVER_VERSION 0x03000012 -> 0x03000013. No indigocat change; the 0.02 deg tolerance holds before and after ticket 885c8a5b removes nutation/aberration from indigocat_sun_equatorial_coords() (< 1 arcmin). Docs (indigo_docs/mcp/agents/scripting.md 'geometric altitude', Sequencer.md) do not state the frame; no doc change.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T10:54:24.916239Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Audit: indigocat solar-system positions (indigocat_sun/moon_equatorial_coords*) are used in agent_scheduler/indigo_agent_scheduler_sky.c solar_system() and agent_scheduler/indigo_agent_scheduler_night.c sun_coordinates(), both already precess with indigo_precess(2000 -> indigo_eq_of_date(jd)) - correct. agent_scripting solar_altitude() was the only defective caller (fixed). indigo_server.c uses indigocat_get_ss_data() only to emit J2000 sky-map JSON next to J2000 stars (no alt/az conversion) - not affected. ccd_simulator and agent_platesolver use star catalogs only. Off-limits drivers excluded. Observation, not changed (out of scope): indigo_target_altitude(ra, dec, ...) passes caller-supplied coordinates straight to indigo_radec_to_altaz(), so it expects coordinates of date; Sequencer wait_until_target_altitude_above()/break_if_target_altitude_below() pass user values whose frame is undocumented.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T10:54:24.975741Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Test mapping: acceptance 'sun_altitude() matches reference within 0.02 deg' -> test_agent_scripting 'solar altitude matches reference' (two sites, northern and southern hemisphere, Horizons apparent airless constants). Existing 'conversion and astronomy bindings' and test_agent_scripting_sequencer cover binding presence and sequencer use. Running via flow check --command: make test-agent-scripting test-agent-scripting-sequencer.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T10:56:49.121344Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "After fix (tree 4d063680): flow check whitespace passed (only configured check selected for these paths); flow check --command 'make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting test-agent-scripting-sequencer' passed: Scripting Agent 38/38, Sequencer.js 68/68.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "4c19c5be98bdf0d2be060fc72754f3926baa0caa",
+      "tree": "4d063680fe08143f36d02fdcd85a074422ca1a5a",
+      "base": "master",
+      "at": "2026-11-19T10:59:14.298740Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-19T10:47:15.651652Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T10:59:14.088581Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 641724.591,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 31,
+    "sha256": "20e774a9f1171fae1d4427527d79715215bc905ffc6d41b1cecffaeca3555a59"
+  }
+}
