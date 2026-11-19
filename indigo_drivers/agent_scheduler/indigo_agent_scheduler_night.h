@@ -81,6 +81,10 @@ extern double indigo_scheduler_sun_altitude(time_t t, double latitude, double lo
  */
 extern void indigo_scheduler_nights_build(scheduler_nights *nights, time_t now, double latitude, double longitude, double elevation, double limit, int start_offset, int end_offset);
 
+/** Return true if nights built now with these inputs could differ from the built ones by more than the time they were built for: they are not valid, or the site, the limit or an offset (clamped as indigo_scheduler_nights_build() clamps it) is different.
+ */
+extern bool indigo_scheduler_nights_changed(const scheduler_nights *nights, double latitude, double longitude, double elevation, double limit, int start_offset, int end_offset);
+
 /** The night containing t, NULL during the day.
  */
 extern const scheduler_night *indigo_scheduler_night_at(const scheduler_nights *nights, time_t t);

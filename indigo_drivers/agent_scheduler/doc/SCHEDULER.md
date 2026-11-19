@@ -1,6 +1,6 @@
 # INDIGO Scheduler
 
-Revision: 15.11.2026
+Revision: 19.11.2026
 
 Author: **Rumen G. Bogdanovski**
 
@@ -25,7 +25,7 @@ The last column shows the INDIGO scheduler for comparison.
 | Feature | Ekos | SGP | N.I.N.A. Target Scheduler | Voyager RoboTarget | ACP Scheduler | INDIGO |
 |---|---|---|---|---|---|---|
 | Job unit | target + `.esq` sequence, job list `.esl` | target with events, sequence file | project → target → exposure plan (database) | set → target → shots | project → plan → observation (plan text files) | task text: `// @key` header + `Sequencer.js` body, stored in agent properties |
-| Selection | greedy, re-planned every second | list order | weighted score, re-planned per step | priority order | weighted efficiency score | score, selected only between tasks |
+| Selection | greedy, re-planned every second | list order | weighted score, re-planned per step | priority order | weighted efficiency score | score, selected only between tasks; optional look-ahead that holds a task back for a slot nearer its culmination when no run is lost |
 | Priority | row order | none | one weighted rule | Very Low … First | per-user, normalized | urgent, high, normal, low class + level 0–100 |
 | Constraints | altitude, horizon, moon separation, twilight, weather | start/end time or altitude | altitude, horizon, meridian window, moon (Lorentzian), twilight per filter, minimum time span | altitude, HA window, moon phase and distance, Lorentzian | air mass, horizon, moon, dark time, checked at start and end | altitude, airmass, HA, moon separation (Lorentzian), moon illumination, twilight, time window, checked over the whole duration |
 | Completion | repeat N, until a time, loop | events done or end time | accepted frames reached | shots done | plan done, "best efforts" | sequence ends Ok; repeat N with interval |
@@ -356,7 +356,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN`, `RESET_ALL`, `DELETE_ALL` | The first five apply to the task named in `AGENT_SCHEDULER_TASK_NAME`; `RESET_ALL` and `DELETE_ALL` apply to all tasks, see [Commands for all tasks](#commands-for-all-tasks). List order breaks score ties |
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Scheduler control, see [Scheduler control](#scheduler-control) |
 | `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Task counters: `DONE` and `FAILED` (failed or expired) count the tasks of the list; `URGENT_DONE` and `URGENT_FAILED` count the one-off urgent tasks, which leave the list when they end; a deleted or aborted one-off task is not counted. The urgent counters are saved with the history and reset with it. `TOTAL` counts the tasks of the list. The property state is Idle before the first `START`, Busy while scheduling, Ok after `STOP` and the automatic stop, and Alert after `ABORT` (also while stopped), a failed `STARTUP`, `NIGHT_START`, `RESUME` or `SHUTDOWN` hook, or a `STOP_TIMEOUT` stop |
-| `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `REASON` | The running task or hook, and why nothing is eligible when the scheduler waits. What comes next is in the [night plan](#night-plan-preview) |
+| `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `REASON` | The running task or hook, and why nothing starts when the scheduler waits: why nothing is eligible, or which task is [deferred](#deferral) until when. What comes next is in the [night plan](#night-plan-preview) |
 | `AGENT_SCHEDULER_PLAN` | light | one per planned run | The forecast of the rest of the night in expected run order, see [Night plan preview](#night-plan-preview) |
 | `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The record of finished runs, oldest first, newest last, see [Run history](#run-history) |
 | `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Remove all entries from `AGENT_SCHEDULER_HISTORY` |
@@ -381,6 +381,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `OPERATION_OVERHEAD` | s | 120 | Time added per slew, centering, focus, guiding start or similar step in the duration estimate |
 | `NIGHT_START_OFFSET` | min | 0 | Shift of the night start, −240 to 240, negative is earlier |
 | `NIGHT_END_OFFSET` | min | 0 | Shift of the night end, −240 to 240, negative is earlier |
+| `DEFER_GAIN` | % | 0 | 0 is off. Otherwise a task without urgency is held back while a start later tonight raises its mean relative altitude by at least this many percentage points and holding it back loses no planned run, 0–100, see [Deferral](#deferral) |
 
 **Requests.** Every change of a writable property is queued. The agent's handler acknowledges it with the property in the Busy state and completes it with Ok or Alert. Only the handler changes the properties; client enumerations receive copies. INDIGO does not publish an update that changes neither values nor state, so without the Busy state a client, and the configuration restore, would not see the result.
 
@@ -500,7 +501,10 @@ The constraint engine therefore works on a grid:
 - The Sun and Moon positions themselves are computed once per hour and interpolated linearly between. The Moon moves about half a degree per hour, so the interpolation error is far below any limit, while the grid builds in less than 0.1 s.
 - For each task with `@target`, it computes the target's altitude, airmass and hour angle on the same grid. These values only change when the task is edited, apart from the precession to the date, which is negligible within a night.
 - For each task, it also records for every grid point the first point at or after it where a sky constraint fails, with the reason. An interval check is then a single lookup, and the search for the next start skips over a failing stretch in one step instead of testing every start time. The time windows are checked separately, because a nightly window does not depend on the grid.
-- Eligibility, the setting-soonest term and the night plan are lookups in these tables.
+- The table also records for every grid point the first passing point at or after it, so the search for the next start jumps over a whole failing stretch at once.
+- Eligibility, the setting-soonest term and the night plan are lookups in these tables. The time until the constraints of a task stop holding, which the setting-soonest term needs, is a single lookup too: for a task without a time window in the table of failing points, for a task with a window in a table of the first failing five-minute step at or after every grid point, which is built with the other tables.
+- The night plan remembers for every task the stretch of start times in which it was found unable to start, up to its next possible start, and its nested simulations share it, so a task is not searched again at every simulated decision. A task with a nightly window is searched every time, because its window may open at any minute. The search for the next start in the night plan ends at the end of the plan.
+- These shortcuts give exactly the same results as the step-by-step evaluation; the unit test `points_match_reference` in `test_agent_scheduler_sky` compares the next-start search and the time to set, windows included, with the step-by-step reference.
 
 The grid and the task tables are rebuilt when the site coordinates change and every hour. A task's tables are also rebuilt when it is edited.
 
@@ -524,7 +528,7 @@ The `STARTUP`, `SHUTDOWN` and `IDLE` hooks name stored tasks.
 - The `SHUTDOWN` hook runs once for every stop: `STOP` after the running task, `ABORT` after the running task or startup hook was aborted, and the automatic stop when all tasks finished. It does not run after a `STOP_TIMEOUT`, because the old sequence still occupies the Scripting Agent. When it cannot run because a sequence started by hand occupies the Scripting Agent or `Sequencer.js` is missing, the agent says so in a message and stops without it.
 - `START` while the `SHUTDOWN` hook runs cancels the stop: after the hook, the `STARTUP` hook runs again and scheduling continues.
 - A hook runs whatever the state of its task; an edit of a hook while it runs takes effect after it ends.
-- The `IDLE` hook runs once per idle period, `IDLE_PARK_AFTER` minutes after the scheduler last found nothing eligible. A task that starts begins a new idle period.
+- The `IDLE` hook runs once per idle period, `IDLE_PARK_AFTER` minutes after the scheduler last found nothing to start. Waiting for a [deferred](#deferral) task is idle time like waiting for a constraint. A task that starts begins a new idle period.
 - A hook that names no task, or a disabled task (`DISABLE` or `@enabled no`), is reported by a message (`The idle hook 'Park' is disabled, skipped`) and skipped, and scheduling continues as without that hook. The disabled hook is not planned in the night plan, and `ENABLE` makes it run again from the next occasion.
 
 The `STARTUP`, `SHUTDOWN` and `IDLE` hooks follow `START`, the stop and idle periods, not the night. The [night hooks](#night-hooks) run at the start and the end of every night.
@@ -603,11 +607,14 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
 
 ### Selection
 
+At every decision the agent goes through the following steps. The [night plan](#night-plan-preview) applies the same steps at every simulated decision, through the same functions in `indigo_agent_scheduler_plan.c`.
+
 1. **Delays.** RETRY and REPEAT tasks whose delay has elapsed return to QUEUED.
 2. **Expiry.** Tasks whose absolute `@window` end has passed become EXPIRED, also when some of their `@repeat` runs completed. The task list and the run history show how many runs succeeded.
-3. **Eligibility.** A QUEUED or WAITING task is eligible when all its constraints hold over the whole interval from now to now + `@duration`. The interval is sampled every five minutes and at its end. A task that is not eligible becomes WAITING.
-4. **Urgent tasks first.** Eligible urgent tasks run in the order they were submitted.
-5. **Score.** Other eligible tasks are ranked by:
+3. **Eligibility.** A QUEUED or WAITING task is eligible when all its constraints hold over the whole interval from now to now + `@duration`. The interval is sampled every five minutes and at its end. A task that is not eligible becomes WAITING. Eligibility alone decides whether a task can run; the score below only orders the eligible tasks.
+4. **Urgent tasks first.** Eligible urgent tasks run in the order they were submitted. They are never deferred.
+5. **Estimates.** While the duration of a task is still being estimated, no other task without urgency starts, because the waiting task may outrank it.
+6. **Score.** Other eligible tasks are ranked by:
 
    ```
    score = class_base + level + SETTING_WEIGHT * setting + ALTITUDE_WEIGHT * altitude
@@ -616,13 +623,84 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
    - `class_base` is 2000 for `high`, 1000 for `normal` and 0 for `low`. With weights of at most 4, the other terms add at most 900. Any high task therefore outranks any normal task.
    - `level` is the `@priority` level, 0–100.
    - `setting` is `100 * (1 − min(T, 12 h) / 12 h)`, where T is the time until the task's constraints stop holding. It favours tasks that become unobservable soonest.
-   - `altitude` is `100 * max(0, alt_now) / alt_transit`, clamped to 0–100, where `alt_now` is the target altitude at the current time and `alt_transit = 90 − |latitude − declination|` is its altitude at upper culmination. It is 100 at transit and lower on either side, so every target scores best near its own transit, whatever its declination. It is 0 without `@target` or when the target never rises. It adds no waiting: a lone task still starts as soon as it is eligible. A 0 only means no bonus: whether a task can run is decided by its constraints (eligibility), so an eligible task with a 0 altitude term, such as one without `@target`, still runs when it scores highest or is the only eligible task.
+   - `altitude` is `100 * max(0, alt_now) / alt_transit`, clamped to 0–100, where `alt_now` is the target altitude at the current time and `alt_transit = 90 − |latitude − declination|` is its altitude at upper culmination. It is 100 at transit and lower on either side, so every target scores best near its own transit, whatever its declination. It is 0 without `@target` or when the target never rises. A 0 only means no bonus: whether a task can run is decided by its constraints (eligibility), so an eligible task with a 0 altitude term, such as one without `@target`, still runs when it scores highest or is the only eligible task.
 
    Ties go to the task higher in the list.
-6. **Run.** The agent starts the best task and waits until it ends.
+7. **Deferral.** With `DEFER_GAIN` 0, the default, the best task starts. The selection is then greedy: it never leaves the equipment idle while a task is eligible, and the score only compares the tasks that are eligible at the same moment. A lone task starts as soon as it is eligible, however far it is from its culmination. With `DEFER_GAIN` above 0, the best tasks may be held back for a slot nearer their culmination, see [Deferral](#deferral). A held task stays QUEUED, and the next task in the ranking is considered.
+8. **Run.** The agent starts the selected task and waits until it ends.
    - Success: the run counter increases. The task becomes DONE or REPEAT.
    - Failure: the task becomes RETRY while retries remain, otherwise FAILED.
-7. **Nothing eligible.** The agent publishes `REASON`. After `IDLE_PARK_AFTER` minutes it runs the `IDLE` hook, for example to park the mount and close the dome, unless the equipment is already in [standby](#night-hooks).
+9. **Nothing to start.** When nothing is eligible, or every eligible task is deferred, the agent publishes `REASON`. After `IDLE_PARK_AFTER` minutes it runs the `IDLE` hook, for example to park the mount and close the dome, unless the equipment is already in [standby](#night-hooks).
+
+### Deferral
+
+**Motivation.** The greedy selection fills the night from dusk. When the queue is shorter than the night, every task still runs back to back from dusk, often hours before its culmination, and the equipment is idle for the rest of the night. `DEFER_GAIN` lets the scheduler wait, or run another task, when a clearly better slot remains tonight and waiting costs nothing.
+
+**Quality of a run.** The quality `q(X, s)` of task X started at time s is the mean relative altitude over the run: the mean of `100 * max(0, alt) / alt_transit`, each clamped to 0–100, over the grid points s, s + 5 min, … up to s + `@duration`. A task without `@target`, or with a target that never rises, has no quality and is never deferred.
+
+**Best start and release.** At a decision at time t, for a candidate X:
+
+- The best start `s*` is the start in [t, plan end) with the highest `q(X, s)` among the starts at which X is eligible for its whole duration, at t and at the grid steps after it. All constraints count, including `@window`, `@ha` and `@twilight`. Ties go to the earliest start. The plan end is the end of the [night plan](#night-plan-preview), so a task is never deferred into the next night.
+- The release `r` is the first eligible start in [t, s*] with `q(X, s*) − q(X, r) < DEFER_GAIN`. The task is held until r, not until s*.
+
+**Decision.** After the urgent tasks and the estimate rule, the eligible tasks without urgency are ranked by score. For each candidate X in that order, at most `SCHEDULER_MAX_DEFER_CANDIDATES` = 8 of them:
+
+1. If `DEFER_GAIN` is 0, or there is no s* later than t, or `q(X, s*) − q(X, t) < DEFER_GAIN`, X is selected.
+2. Otherwise the agent simulates the rest of the night twice from the current state, both times greedily (without deferral) and with the same night hooks:
+   - *baseline*: the state as it is, with the holds already decided at this decision;
+   - *held*: the same, with X not available before r.
+3. X is deferred when no task has fewer planned runs in *held* than in *baseline*, and the summed quality of the planned runs is higher in *held* than in *baseline*. The first condition keeps every run that the night can hold; the second keeps one hold from pushing other tasks to worse slots. Pending urgent tasks, repeats with their intervals and absolute `@window` ends take part in both simulations, so a hold that would make any of them miss a run is refused. Otherwise X is selected.
+4. A candidate after the eighth is selected without the look-ahead. When every candidate is deferred, nothing starts.
+
+**Holds in the plan and at run time.** In the night plan a hold lasts until the release or until the next run or hook starts, whichever comes first. When a run starts, every other held task becomes a candidate again, and the decision at the end of that run examines it anew, without the old hold. Only the next run of a task is held; each later run of a repeating task is decided again.
+
+The scheduler keeps no holds of its own. When every candidate waits, it keeps the plan that took this decision and follows it: it starts nothing until the first run of that plan, and then starts that run's task, provided it is still eligible. In between, the plan is not computed again, and `REASON` and the plan stay as they are. Any change discards this plan and the next decision is taken afresh on a new one: a task uploaded, edited, deleted, reset, enabled or disabled, an urgent submission, a change of `SETTINGS`, `HOOKS` or `NIGHT`, a new site, a task or hook that starts or ends, `START`, `STOP` and `ABORT`, and a RETRY or REPEAT delay that elapses. The hourly rebuild of the [ephemeris grid](#ephemeris-grid) and of the [nights](#night-hooks) does not discard it, because it changes only the time they were computed for. The run therefore starts at the time the plan shows, and a decision at the end of a run is the decision of a plan computed then; both are tested on random queues.
+
+**Cost.** One decision costs at most one baseline simulation and one simulation for each examined candidate whose gain reaches `DEFER_GAIN`. A candidate that is not deferred ends the decision. Because a run releases the holds, the plan decides again about the held tasks after every run, so a night plan needs a few nested simulations per planned run. The best start is found with running sums over the grid, linearly in its points.
+
+Measured on an Intel Core i5-9400 (2.9 GHz), the plan alone, without building the tables (about 0.1 ms per task); a Raspberry Pi 4 is about five to ten times slower:
+
+| Queue | `DEFER_GAIN` 0 | `DEFER_GAIN` 5 |
+|---|---|---|
+| The worked example below, 4 tasks | below 0.1 ms | below 0.1 ms |
+| 128 random tasks of 5–65 minutes with up to 3 repeats, which fill the night | about 0.03 ms | about 0.3 ms |
+| 128 random targets of 5 minutes, which leave idle time; about 40 of 105 runs held, the heaviest case found | about 0.1 ms | about 12 ms |
+| The same 128 targets, each with a nightly or an absolute time window | about 0.1 ms | about 20 ms |
+
+The unit tests measure the two heavy queues with their own build of the library at about 15 ms and 26 ms and require each to take less than 2 s.
+
+The plan is computed when something changes and every `IDLE_CHECK_INTERVAL` while a task runs or nothing waits. With `DEFER_GAIN` above 0 a decision computes the plan once and then decides on it, which adds at most nine nested simulations. While every candidate waits, the plan is not computed again until its first run or a change, see above, so a long wait costs one plan, not one per check. The hourly rebuild of the sky and of the nights does not count as a change.
+
+**Choosing the gain.** A small gain, such as 1–2, waits for almost the best start and leaves more idle time between runs; a large one, such as 20, defers only tasks that are far from their culmination. 5 gives most of the gain in the simulations below. A gain of 100 is never reached and behaves like 0.
+
+**Interactions.**
+
+- **Urgent tasks** are never deferred and run before the look-ahead. An urgent task submitted while the scheduler waits starts at once.
+- **Retries.** A task back from RETRY is a candidate like any other.
+- **`@ha`** stays the hard window of starts and limits s*; `DEFER_GAIN` is the soft preference within it.
+- **The `IDLE` hook and standby.** Waiting for a release is idle time. After `IDLE_PARK_AFTER` minutes the `IDLE` hook runs, and `RESUME` runs before the deferred task when it starts in standby.
+- **Night hooks.** `NIGHT_START` runs when the plan has work in the night, also when the first run is deferred. The nested simulations reserve the night hook runs, so a hold cannot push a run past `NIGHT_END` unnoticed.
+- **`STOP`, `ABORT` and the automatic stop** are unchanged. While the scheduler waits nothing runs, so `STOP` runs the `SHUTDOWN` hook at once. A deferred task is QUEUED, not finished, so it keeps the scheduler running.
+
+**What the user sees.**
+
+- `AGENT_SCHEDULER_CURRENT.REASON` while every eligible task is deferred names the first task run of the plan, which ends the wait, and its start: `<name> waits until HH:MM UTC, nearer its culmination` when that run is a deferred one, or `<name> starts at HH:MM UTC, the eligible tasks wait nearer their culmination` when a task that cannot start yet, for example one whose window opens then, comes first. It takes precedence over the reasons of the tasks that are not eligible, because it names the next start.
+- `AGENT_SCHEDULER_PLAN` lists a deferred run at its planned start, with the reason `deferred from HH:MM`, the time at which the run would have started without the hold. While the scheduler waits, that is the time of the decision that started the wait; the plan is kept until its first run or a change.
+- No message is sent per decision; it would repeat at every check.
+
+**Worked example.** Site 48.15° N, 17.11° E, 19 November 2026, four one-hour tasks with `@target`, `@altitude > 30` and `@twilight astronomical`, all `normal 50`, weights 1. Astronomical dusk is 17:00 UTC and dawn 04:20 UTC. Quality is in percent of the transit altitude.
+
+| Task | Transit (UTC) | `DEFER_GAIN` 0 | Quality | `DEFER_GAIN` 5 | Quality |
+|---|---|---|---|---|---|
+| M31 | 19:40 | 17:00–18:00 | 79 % | 18:20–19:20, deferred from 17:00 | 94 % |
+| M45 | 22:45 | 18:00–19:00 | 53 % | 21:10–22:10, deferred from 18:00 | 95 % |
+| M81 | 04:50 | 19:20–20:20 | 46 % | 02:20–03:20, deferred from 19:20 | 93 % |
+| M42 | 00:30 | 22:30–23:30 | 90 % | 23:00–00:00, deferred from 22:30 | 95 % |
+| Mean | | | 67 % | | 94 % |
+
+With the gain 0, M31 starts at dusk because it is the best eligible task. M45 follows at 18:00, almost five hours before its transit, and M81 at 19:20, near its lower culmination, because nothing else is eligible then. All the idle time falls after 23:30. With the gain 5, at 17:00 M31 is held until 18:20, where its run is within 5 points of its best; M45, M81 and M42 are not yet eligible, so the scheduler waits with `M31 waits until 18:20 UTC, nearer its culmination`. Each later task is held the same way, and the plan shows every run at its release with `deferred from`. Every task still runs once.
+
+In the simulations of the design, the deferral never placed fewer runs than the greedy selection and never lowered the mean quality. A queue that fills the night, such as seven targets of 90 minutes or four targets with `@repeat 5`, leaves no room for a hold and runs as with the gain 0. A crowded queue of eight targets between RA 3 h and 5 h keeps all its runs and gains a few points.
 
 ### Night plan preview
 
@@ -632,16 +710,16 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
 
 - At night, the night ends at the next sunrise. During the day, it ends at the sunrise that follows the next sunset, so that the plan shows the coming night. It ends 24 hours from now if the sun does not rise or set within the grid. When the scheduler's night for the [night hooks](#night-hooks) ends later, the plan lasts until its end.
 - The simulation starts with the running task or [hook](#hooks), assumed to end at its start time plus its [duration](#task-duration), but not earlier than one minute from now. The runs that follow are simulated from that end.
-- At each simulated time, the agent applies the [selection](#selection) rules exactly as at run time: delays, expiry, eligibility over the task duration, urgent tasks first, then score. A task queued again after a repeat or retry delay waits behind the urgent tasks queued before it.
+- At each simulated time, the agent applies the [selection](#selection) rules exactly as at run time: delays, expiry, eligibility over the task duration, urgent tasks first, then score and the [deferral](#deferral). A task queued again after a repeat or retry delay waits behind the urgent tasks queued before it. A deferred task is not available before its release in the rest of the simulation.
 - The selected task is assumed to run for its duration and succeed. Its simulated run counter increases, and `@repeat` intervals are applied.
-- When nothing is eligible, the simulation advances to the time the next task becomes eligible.
+- When nothing starts, the simulation advances to the time the next task becomes eligible, a deferred task is released or a hook is due.
 - A run that starts before the end of the night is planned even when it lasts beyond it.
 
 The simulation works on a copy of the runtime status and never changes the real task states. It uses only ephemeris arithmetic and runs on the agent's handler queue.
 
 **Items.** Each planned run is one item, in expected run order:
 
-- The label has six columns joined by ` | `: when (`YYYY-MM-DD HH:MM-HH:MM`, UTC), name, run, priority, state and reason, for example `2026-11-12 20:15-23:15 | M31 LRGB | run 1/1 | normal 50 | PLANNED | -`. A task that repeats appears once per planned run, with the run number. A hook has `-` as the run and `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume` as the priority.
+- The label has six columns joined by ` | `: when (`YYYY-MM-DD HH:MM-HH:MM`, UTC), name, run, priority, state and reason, for example `2026-11-12 20:15-23:15 | M31 LRGB | run 1/1 | normal 50 | PLANNED | -`. A task that repeats appears once per planned run, with the run number. The reason of a planned run is `-`, or `deferred from HH:MM` for a run held back by the [deferral](#deferral), where HH:MM (UTC) is the time at which it would have started without the hold. A hook has `-` as the run and `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume` as the priority.
 - The light is Busy for the running task or hook, with the state `RUNNING`, and Idle for future runs. A running hook is the first item and disappears when the hook ends. A running night hook replaces its planned item, so it is never listed twice.
 - Tasks that cannot run before the end of the night follow the planned runs as Alert items with `-` as the time, the state `NOT TONIGHT` and the reason, for example `- | M42 | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit`, with the reason `disabled`, `script error` or `no time left tonight`, the last for a task that could run but finds no room after the planned runs. DONE, FAILED and EXPIRED tasks are not listed.
 
@@ -652,7 +730,7 @@ The simulation works on a copy of the runtime status and never changes the real 
 - when a night hook starts or ends a night;
 - on `START`, `STOP` and `ABORT`;
 - when the site coordinates change;
-- every `IDLE_CHECK_INTERVAL`, so that the times follow the clock.
+- every `IDLE_CHECK_INTERVAL`, so that the times follow the clock, except during a [deferral](#deferral) wait, when the plan that decided the wait is kept until its first run or a change.
 
 It is also published while the scheduler is stopped, as the plan that `START` would follow.
 
@@ -662,7 +740,7 @@ It is also published while the scheduler is stopped, as the plan that `START` wo
 - The forecast assumes that the constraints and the site do not change.
 - Urgent preemption is not simulated: an urgent task that becomes eligible during a planned run is listed after that run, although it will preempt it.
 - A task whose duration is still being estimated is planned with the duration known so far, although the scheduler does not start it before the estimate is known.
-- While nothing runs, the first run starts now, so the labels change every minute and the property is redefined with them. INDIGO cannot change an item label with an update.
+- While nothing runs, the first run starts now, so the labels change every minute and the property is redefined with them. During a deferral wait the plan does not change. INDIGO cannot change an item label with an update.
 
 ### Run history
 
@@ -813,6 +891,7 @@ Phases 1, 2, 3 and 5 are implemented. Phases 4, 6 and 7 are planned.
 - Unit tests for the constraint engine use fixed dates and sites with known sun, moon and target positions, including the Lorentzian limit, a polar site and nightly windows across midnight.
 - Unit tests compare the per-task constraint tables with a direct evaluation of the constraints for random tasks and times, including the failure reasons.
 - Unit tests for the night plan simulation cover the score, the order and times, ties, urgent tasks first, the running task first, repeats with intervals, unschedulable tasks, windows, the end of the night and the run limit.
+- Unit tests of the [deferral](#deferral) (`test_agent_scheduler_plan`): the run quality; `DEFER_GAIN` 0 reproducing the greedy plan run for run, also with hooks and 128 random tasks; the worked example with 30, 60 and 120 minutes, each run at its release, the same number of runs and a mean quality of at least 90 %; the release at the first start within the gain of the best one, and a gain of 100 deferring nothing; crowded queues of 60 and 90 minutes and `@repeat 5` placing at least as many runs per task as greedy; `@repeat 3 every 60` holding only the next run; the quality guard refusing a hold that lowers the summed quality; a task without `@target` filling the gap; urgent tasks never deferred, and a pending urgent run that a hold would lose refusing it; an absolute `@window` end and `@ha` capping the search; night hooks kept in a deferred plan; the decision at t, t + 30 s, … matching the first run of the plan computed at the same time; on 60 random seeded queues, a plan computed again at the end of every planned run starting the same run at the same time as the first plan; the cap of eight candidates, where the ninth of ten targets that would each wait starts at once; and the 128-task plan with a gain of 5 and the heaviest deferral of 128 targets of 5 minutes, without and with time windows, each within two seconds. A unit test of the night computation checks that a rebuild with the same site, limit and offsets counts as no change, which keeps a deferral wait over the hourly rebuild.
 - The [night hooks](#night-hooks) are tested in three layers:
   - Unit tests of the night computation (`test_agent_scheduler_night`) on fixed dates and sites: night ends that lie on the civil, nautical and astronomical limits; the three limits nested; both offsets, negative and positive and clamped at ±240 minutes; offsets that leave no night and offsets that merge nights; a summer without astronomical night, polar day and polar night; and the lookups.
   - Unit tests of the hook decisions over synthetic nights: `NIGHT_START` and `NIGHT_END` once per night over three nights; `START` during the day and the night, and `STOP` and `START` within one night; night boundaries passing while a task runs, a task spanning the end of one night and the start of the next, and a task covering a whole night; a night without work; work that appears late; a night that loses its work; nights recomputed with moved ends or for a new site; the polar night; and three real nights with hourly recomputation, where every hook falls within a degree of the limit.
@@ -846,6 +925,7 @@ Phases 1, 2, 3 and 5 are implemented. Phases 4, 6 and 7 are planned.
   - `DELETE_ALL` rejected while a stop waits for the running task and while the shutdown hook runs, a hook name in a different case protecting its task, the deleted task's property removed, the history unchanged, and the name and slot free again;
   - eligibility end to end, each constraint with a task that waits with its reason and one that runs, and the waiting task starting by itself when the stand-in site is moved: `@altitude` and `@airmass` with targets placed at a computed altitude, `@ha` including a range wrapped across 12h, `@twilight` at noon and midnight, `@moon` with and without `width` and `@illumination` with the site under the moon, both ignored with the moon below the horizon, nightly windows outside, too short and across midnight, a `@duration` that does not fit before the target sets, an unknown site blocking only tasks with sky constraints, and `@enabled no` not overridden by `ENABLE`;
   - the score: a setting target overtaking a rising one of a higher level, the level deciding without the setting term, the list order deciding without both terms, and the altitude term preferring the target closer to its own culmination;
+  - the deferral, with a target two hours before its culmination: `DEFER_GAIN` 0 by default starting it at once; a gain of 5 keeping it QUEUED with the reason `… waits until HH:MM UTC, nearer its culmination` and the plan listing it at the release with `deferred from`, which keeps its time when the clock passes the next minute because the plan is not computed again during the wait; a gain set back to 0 starting it; the task starting when the site is moved to its culmination; the `IDLE` hook running during the wait and `RESUME` before the deferred task; a task without `@target` and an urgent task running during the wait; `STOP` during the wait running `SHUTDOWN`; and `DEFER_GAIN` across a restart;
   - the limits through the agent: a 16 KiB task text stored, restored and run, one byte more rejected, 128 tasks and the 129th upload and an urgent task rejected;
   - the pauses of `@repeat … every` and `@retry … after`, each start seen when it happens;
   - `START` right after uploads starting the task of the highest priority.

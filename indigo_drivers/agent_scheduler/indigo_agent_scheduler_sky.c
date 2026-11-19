@@ -342,18 +342,30 @@ void indigo_scheduler_points_build(const scheduler_sky_grid *sky, const schedule
 		return;
 	}
 	points->next_bad[SCHEDULER_GRID_POINTS] = SCHEDULER_GRID_POINTS;
+	points->next_good[SCHEDULER_GRID_POINTS] = SCHEDULER_GRID_POINTS;
 	for (int i = SCHEDULER_GRID_POINTS - 1; i >= 0; i--) {
 		const char *reason = NULL;
 		if (needs_sky(header) && !indigo_scheduler_sky_point_ok(sky, target, header, i, &reason)) {
 			points->next_bad[i] = i;
+			points->next_good[i] = points->next_good[i + 1];
 			points->reason[i] = reason;
 		} else {
 			points->next_bad[i] = points->next_bad[i + 1];
+			points->next_good[i] = i;
 			points->reason[i] = NULL;
 		}
 	}
 	points->start = sky->start;
 	points->valid = true;
+	// the steps of the time to set of a task with a window, the same checks as the step loop of indigo_scheduler_points_time_to_set()
+	points->next_bad_step[SCHEDULER_GRID_POINTS] = SCHEDULER_GRID_POINTS;
+	if (header->window_kind != SCHEDULER_WINDOW_NONE && needs_sky(header)) {
+		for (int k = SCHEDULER_GRID_POINTS - 1; k >= 0; k--) {
+			const char *reason;
+			time_t t = sky->start + (time_t)k * SCHEDULER_GRID_STEP;
+			points->next_bad_step[k] = indigo_scheduler_points_ok(sky, points, header, t, t + SCHEDULER_GRID_STEP, &reason) ? points->next_bad_step[k + 1] : k;
+		}
+	}
 }
 
 bool indigo_scheduler_points_ok(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, time_t to, const char **reason) {
@@ -409,7 +421,9 @@ time_t indigo_scheduler_points_next(const scheduler_sky_grid *sky, const schedul
 			int last = (int)((t + duration - sky->start + SCHEDULER_GRID_STEP - 1) / SCHEDULER_GRID_STEP);
 			int bad = first < SCHEDULER_GRID_POINTS ? points->next_bad[first] : SCHEDULER_GRID_POINTS;
 			if (bad <= last && bad < SCHEDULER_GRID_POINTS) {
-				time_t after = sky->start + (time_t)(bad + 1) * SCHEDULER_GRID_STEP;
+				// every start up to the next passing point contains a failing point
+				int good = points->next_good[bad];
+				time_t after = sky->start + (time_t)good * SCHEDULER_GRID_STEP;
 				if (after > next) {
 					next = after;
 				}
@@ -428,6 +442,27 @@ time_t indigo_scheduler_points_next(const scheduler_sky_grid *sky, const schedul
 
 int indigo_scheduler_points_time_to_set(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from) {
 	const char *reason;
+	// the same result in constant time when only the sky points can fail: the step from grid point k to k + 1 fails when point k or k + 1 fails
+	if (header->window_kind == SCHEDULER_WINDOW_NONE && needs_sky(header) && sky->valid && points->valid && points->start == sky->start && from >= sky->start && from < sky->start + (time_t)(SCHEDULER_GRID_POINTS - 1) * SCHEDULER_GRID_STEP) {
+		int first = (int)((from - sky->start) / SCHEDULER_GRID_STEP);
+		int bad = points->next_bad[first];
+		// without a failing point (bad is SCHEDULER_GRID_POINTS) the step from the last grid point fails, it leaves the grid
+		int failing = bad <= first + 1 ? first : bad - 1;
+		time_t fails_at = failing == first ? from : sky->start + (time_t)failing * SCHEDULER_GRID_STEP;
+		return fails_at - from < SCHEDULER_SETTING_HORIZON ? (int)(fails_at - from) : SCHEDULER_SETTING_HORIZON;
+	}
+	// with a window the steps from grid points are looked up: the first step from from to the next grid point is checked, the following ones start at grid points
+	if (header->window_kind != SCHEDULER_WINDOW_NONE && needs_sky(header) && sky->valid && points->valid && points->start == sky->start && from >= sky->start && from < sky->start + (time_t)(SCHEDULER_GRID_POINTS - 1) * SCHEDULER_GRID_STEP) {
+		time_t next = from - from % SCHEDULER_GRID_STEP + SCHEDULER_GRID_STEP;
+		if (!indigo_scheduler_points_ok(sky, points, header, from, next, &reason)) {
+			return 0;
+		}
+		int k = (int)((next - sky->start) / SCHEDULER_GRID_STEP);
+		int bad = points->next_bad_step[k];
+		// past the grid every step fails, beyond the forecast
+		time_t fails_at = sky->start + (time_t)bad * SCHEDULER_GRID_STEP;
+		return fails_at - from < SCHEDULER_SETTING_HORIZON ? (int)(fails_at - from) : SCHEDULER_SETTING_HORIZON;
+	}
 	time_t t = from;
 	while (t - from < SCHEDULER_SETTING_HORIZON) {
 		time_t next = t - t % SCHEDULER_GRID_STEP + SCHEDULER_GRID_STEP;

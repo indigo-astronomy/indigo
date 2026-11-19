@@ -98,6 +98,26 @@ static void test_ends_lie_on_the_limit(void) {
 	ASSERT_TRUE(night->end - night->start > 11 * 3600 && night->end - night->start < 13 * 3600);
 }
 
+// the hourly rebuild of the nights changes only the time they were built for; the scheduler keeps a deferral wait then, and drops it when an input changed
+static void test_changed_inputs(void) {
+	memset(&nights, 0, sizeof(nights));
+	ASSERT_TRUE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE, ELEVATION, -12, 0, 0));
+	build(T_NOVEMBER_NIGHT, LATITUDE, -12, -30, 45);
+	ASSERT_FALSE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE, ELEVATION, -12, -30, 45));
+	// an hour later the same inputs give the same answer
+	build(T_NOVEMBER_NIGHT + 3600, LATITUDE, -12, -30, 45);
+	ASSERT_FALSE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE, ELEVATION, -12, -30, 45));
+	ASSERT_TRUE(indigo_scheduler_nights_changed(&nights, LATITUDE + 1, LONGITUDE, ELEVATION, -12, -30, 45));
+	ASSERT_TRUE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE + 1, ELEVATION, -12, -30, 45));
+	ASSERT_TRUE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE, ELEVATION + 1, -12, -30, 45));
+	ASSERT_TRUE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE, ELEVATION, -18, -30, 45));
+	ASSERT_TRUE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE, ELEVATION, -12, -29, 45));
+	ASSERT_TRUE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE, ELEVATION, -12, -30, 44));
+	// offsets beyond the limit are clamped as in the build
+	build(T_NOVEMBER_NIGHT, LATITUDE, -12, -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT);
+	ASSERT_FALSE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE, ELEVATION, -12, -SCHEDULER_NIGHT_OFFSET_LIMIT - 10, SCHEDULER_NIGHT_OFFSET_LIMIT + 10));
+}
+
 static void test_limits_nest(void) {
 	build(T_NOVEMBER_NIGHT, LATITUDE, -6, 0, 0);
 	scheduler_night civil = *indigo_scheduler_night_at(&nights, T_NOVEMBER_NIGHT);
@@ -384,6 +404,7 @@ int main(void) {
 		{ "sun_altitude_uses_coordinates_of_date", test_sun_altitude_uses_coordinates_of_date },
 		{ "ends_lie_on_the_limit", test_ends_lie_on_the_limit },
 		{ "limits_nest", test_limits_nest },
+		{ "changed_inputs", test_changed_inputs },
 		{ "offsets_move_the_ends", test_offsets_move_the_ends },
 		{ "offsets_leave_no_time", test_offsets_leave_no_time },
 		{ "offsets_merge_nights", test_offsets_merge_nights },
