@@ -1499,7 +1499,7 @@ static void hooks_run_at_start_idle_and_stop(void) {
 	char future[32];
 	time_t now = time(NULL);
 	utc(now - now % 60 + 7200, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
@@ -1550,7 +1550,7 @@ static void disabled_idle_hook_is_skipped_and_reported_once(void) {
 	char future[32], text[256];
 	time_t now = time(NULL);
 	utc(now - now % 60 + 7200, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
@@ -1640,7 +1640,7 @@ static void night_hooks_run_at_dusk_and_dawn(void) {
 	char start[32], future[32], text[256];
 	utc(dusk, start);
 	utc(dusk + 2 * 86400, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
@@ -1712,7 +1712,7 @@ static int count_plan_items(const char *text) {
 }
 
 static void running_startup_hook_is_in_the_plan(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(5)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	REQUIRE(set_hooks("Prepare", "", ""));
@@ -1897,7 +1897,7 @@ static void resume_hook_after_idle(void) {
 	char start[32], future[32], text[256];
 	utc(later, start);
 	utc(later + 2 * 86400, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
@@ -1929,7 +1929,7 @@ static void idle_without_resume_behaves_as_before(void) {
 	char start[32], future[32], text[256];
 	utc(later, start);
 	utc(later + 2 * 86400, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), start);
@@ -1965,7 +1965,7 @@ static void failed_resume_runs_the_shutdown_hook(void) {
 	time_t later = minute_ahead(20);
 	char start[32], text[256];
 	utc(later, start);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Bad resume\nif (!scheduler_task.estimate) { throw new Error(\"stuck\"); }\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
@@ -2048,7 +2048,7 @@ static void stop_at_night_runs_only_the_shutdown_hook(void) {
 }
 
 static void failed_night_end_is_reported(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Bad morning\nif (!scheduler_task.estimate) { throw new Error(\"roof stuck\"); }\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(start_in_night("Bad morning", ""));
@@ -2069,7 +2069,7 @@ static void failed_night_end_is_reported(void) {
 static void resume_before_an_urgent_task(void) {
 	char future[32], text[256];
 	utc(time(NULL) + 2 * 86400, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
 	snprintf(text, sizeof(text), "// @task Far\n// @window %s ..\n" BODY_WAIT(1), future);
@@ -2158,7 +2158,7 @@ static void missing_idle_hook_task_is_reported_once(void) {
 	char future[32];
 	time_t now = time(NULL);
 	utc(now - now % 60 + 7200, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	char text[256];
 	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
@@ -2372,7 +2372,7 @@ static void reset_all_keeps_running_task_and_urgent_order(void) {
 static void hook_priority_class_keeps_a_task_from_running(void) {
 	char label[INDIGO_VALUE_SIZE];
 	indigo_property_state light;
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	// uploaded to a running idle scheduler, the task is not started as an ordinary one
 	REQUIRE(upload("// @task Park\n// @priority hook\n" BODY_WAIT(1)));
@@ -2966,7 +2966,7 @@ static void visibility_starts_at_the_planned_time(void) {
 }
 
 static void visibility_wait_runs_the_idle_hook(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
@@ -2988,7 +2988,7 @@ static void visibility_wait_runs_the_idle_hook(void) {
 }
 
 static void visibility_short_wait_keeps_the_idle_hook(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 1));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 1));
 	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(set_hooks("", "", "Park"));
@@ -3586,7 +3586,7 @@ static void shared_idle_and_shutdown_hook_runs_once(void) {
 	char future[32];
 	time_t now = time(NULL);
 	utc(now - now % 60 + 7200, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(6)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	char text[256];
@@ -3604,7 +3604,7 @@ static void shared_idle_and_shutdown_hook_runs_once(void) {
 }
 
 static void shutdown_hook_does_not_run_without_regular_tasks(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(6)));
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
 	// the scheduler does not stop when only hooks exist

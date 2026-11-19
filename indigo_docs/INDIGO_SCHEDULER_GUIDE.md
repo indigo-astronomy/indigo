@@ -237,7 +237,7 @@ Whenever nothing runs (when a task ends, after a change of the tasks and every `
 2. **Urgent tasks first.** An urgent task that can run starts before everything else, in the order the urgent tasks were submitted.
 3. **The best score wins.** The other tasks that can run are compared by their score: the class (`high`, `normal`, `low`), then the level plus the setting and altitude bonuses, see [Priorities](#priorities). The altitude bonus is 100 at the target's own culmination and 0 for a task without `@target`. A bonus of 0 never stops a task from running; it only makes it lose against tasks with a higher score.
 4. **Start now, or as planned.** With the default strategy `COMPACT` the best task starts at once. The scheduler is then *greedy*: it never leaves the equipment idle while some task can run, and it does not look ahead in the night. With a short queue this means that all tasks run one after another from dusk, even when a target would be much higher a few hours later. With the strategy `VISIBILITY` the scheduler plans the whole night first, never with fewer runs than `COMPACT` would make, and places the runs where their targets stand highest; it starts the first run of that plan at its planned time and may wait for it, see [Choosing a strategy](#choosing-a-strategy).
-5. **Nothing to start.** The scheduler shows the reason in `REASON` and checks again every `IDLE_CHECK_INTERVAL`. After `IDLE_PARK_AFTER` minutes the `IDLE` hook runs, see [Hooks](#hooks).
+5. **Nothing to start.** The scheduler shows the reason in `REASON` and checks again every `IDLE_CHECK_INTERVAL`. After `IDLE_HOOK_DELAY` minutes the `IDLE` hook runs, see [Hooks](#hooks).
 
 The night plan applies exactly the same rules to the rest of the night, so it shows the order and times the scheduler will follow, see [The night plan](#the-night-plan).
 
@@ -279,7 +279,7 @@ With `COMPACT` everything runs from dusk: Jellyfish more than three hours before
 - Hooks are not blocked: a hook due during a run runs after it, and a hook delays the next run by its duration.
 - Runs start on whole UTC minutes.
 - The plan is computed again after every run and after every change (an upload, an edit, an urgent task, a new setting, a new site, the night hooks); while nothing changes, the plan and its times stay. A failed run with `@retry` is planned again after its delay.
-- Waiting is idle time. The `IDLE` hook does not start while the next planned run starts within `IDLE_PARK_AFTER` minutes. When `IDLE_PARK_AFTER` minutes have passed and the next run is still further away, `IDLE` runs, and `RESUME` runs before the planned run. If your `IDLE` hook parks the mount or closes the dome, choose `IDLE_PARK_AFTER` so that a short wait does not park and unpark.
+- Waiting is idle time. The `IDLE` hook does not start while the next planned run starts within `IDLE_HOOK_DELAY` minutes. When `IDLE_HOOK_DELAY` minutes have passed and the next run is still further away, `IDLE` runs, and `RESUME` runs before the planned run. If your `IDLE` hook parks the mount or closes the dome, choose `IDLE_HOOK_DELAY` so that a short wait does not park and unpark.
 - With more than 64 runs in a night, or a plan that reaches more than 24 hours ahead, `VISIBILITY` uses the `COMPACT` plan and says so once a night.
 
 **What you see during a wait.** The tasks stay `QUEUED`. `REASON` names the next planned run, for example `Soul starts at 21:15 UTC, planned for better visibility`, and the night plan lists every run at its planned time, with the gaps as idle time.
@@ -602,9 +602,9 @@ Hooks are stored tasks that the scheduler runs at special moments, for example t
 |---|---|
 | `STARTUP` | On `START`, before the first task. If it fails, the scheduler stops with Alert |
 | `SHUTDOWN` | When the scheduler stops: on `STOP`, on `ABORT` and on the automatic stop. It does not run after a failed `STARTUP` hook or after a stop timeout, and it is skipped with a message when another sequence occupies the Scripting Agent |
-| `IDLE` | Once, after the scheduler has found nothing to run for `IDLE_PARK_AFTER` minutes, for example to park the mount while waiting for clouds, for a target to rise or for a run planned later by `VISIBILITY`. It does not run again while the equipment is in standby, see [Several nights](#several-nights) |
 | `NIGHT_START` | When a night with work starts, see [Several nights](#several-nights). If it fails, the `SHUTDOWN` hook runs and the scheduler stops with Alert |
 | `NIGHT_END` | When that night ends |
+| `IDLE` | Once, after the scheduler has found nothing to run for `IDLE_HOOK_DELAY` minutes, for example to park the mount while waiting for clouds, for a target to rise or for a run planned later by `VISIBILITY`. It does not run again while the equipment is in standby, see [Several nights](#several-nights) |
 | `RESUME` | Before a task that starts after the `IDLE` or `NIGHT_END` hook put the equipment away. If it fails, the `SHUTDOWN` hook runs and the scheduler stops with Alert |
 
 For example, save a park task as `park.task`:
@@ -635,12 +635,12 @@ indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=unpar
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.STARTUP=Unpark;SHUTDOWN=Park;IDLE=Park;RESUME=Unpark"
 ```
 
-The mount is unparked on `START`, parked when nothing can run for `IDLE_PARK_AFTER` minutes, unparked again before the next task, and parked when the scheduler stops.
+The mount is unparked on `START`, parked when nothing can run for `IDLE_HOOK_DELAY` minutes, unparked again before the next task, and parked when the scheduler stops.
 
 - Hooks name their tasks: renaming a hook task with an edit detaches it from the hook.
-- A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it with the state `HOOK` and its hook in the priority column: `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`, for example `Park | HOOK | hook shutdown | - | - | -`.
+- A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it with the state `HOOK` and its hook in the priority column: `hook startup`, `hook shutdown`, `hook night start`, `hook night end`, `hook idle` or `hook resume`, for example `Park | HOOK | hook shutdown | - | - | -`.
 - A hook task that you disable with `DISABLE` (or `@enabled no`) does not run: the scheduler sends a message such as `The idle hook 'Park' is disabled, skipped` and continues as it does for a hook that names no task, and the message is not repeated within one idle period. `ENABLE` makes it run again from the next occasion. The night plan does not include a disabled hook. The task list shows it with the state `DISABLED` and its hook in the priority column, for example `Park | DISABLED | hook idle | - | - | -`.
-- One task may serve several hooks, for example `Park` as `SHUTDOWN`, `IDLE` and `NIGHT_END`. The task list shows the first of them. When two hooks naming the same task are due one right after the other, such as `STARTUP` and `NIGHT_START` on `START` during the night, the task runs once.
+- One task may serve several hooks, for example `Park` as `SHUTDOWN`, `NIGHT_END` and `IDLE`. The task list shows the first of them in the order of the `AGENT_SCHEDULER_HOOKS` items. When two hooks naming the same task are due one right after the other, such as `STARTUP` and `NIGHT_START` on `START` during the night, the task runs once.
 - Hook runs appear in the history with `hook` in the kind column.
 - Hook runs are not labelled with the object name, the FITS keywords or a folder of their own, see [Where the data goes](#where-the-data-goes). Only `@folder <name>` gives a hook a folder.
 - A task with `@priority hook` is a hook only: it is never scheduled as an ordinary task, also while no hook names it. Upload the task with `@priority hook` first, so that it does not run at once on a running scheduler, then name it in `AGENT_SCHEDULER_HOOKS`; the header does not name the hook role. It has no level and is not in the night plan.
@@ -723,7 +723,7 @@ A night then runs like this:
 |---|---|
 | 30 minutes before nautical dusk | `Evening` cools the camera, opens the dome and unparks |
 | Nautical dusk and later | The tasks run as their constraints allow |
-| No task can run for `IDLE_PARK_AFTER` minutes | `Park` parks the mount; the camera stays cool and the dome open |
+| No task can run for `IDLE_HOOK_DELAY` minutes | `Park` parks the mount; the camera stays cool and the dome open |
 | A task can run again | `Evening` prepares again (it only unparks, the rest is already done), then the task runs |
 | Nautical dawn | `Morning` parks, closes the dome and turns the cooler off, after the running task has finished |
 | During the day | Nothing; the next evening starts again with `Evening`, if a task can run that night |
@@ -738,7 +738,7 @@ A night then runs like this:
 | Item | Unit | Default | Range | Meaning |
 |---|---|---|---|---|
 | `IDLE_CHECK_INTERVAL` | s | 30 | 1–3600 | How often the scheduler checks the constraints while it waits, and checks for urgent tasks while a task runs |
-| `IDLE_PARK_AFTER` | min | 30 | 0–1440 | Time without an eligible task before the `IDLE` hook runs |
+| `IDLE_HOOK_DELAY` | min | 30 | 0–1440 | Time without an eligible task before the `IDLE` hook runs |
 | `STOP_TIMEOUT` | s | 60 | 1–3600 | Time allowed for an aborted sequence and its agents to stop |
 | `START_TIMEOUT` | s | 10 | 1–600 | Time allowed for a started task's sequence to begin |
 | `SETTING_WEIGHT` | — | 1 | 0–4 | How strongly tasks whose constraints end soon are preferred within a priority class (`COMPACT`; under `VISIBILITY` only for the starting plan and fallbacks), see [Priorities](#priorities) |
@@ -749,7 +749,7 @@ A night then runs like this:
 | `NIGHT_END_OFFSET` | min | 0 | −240–240 | Shift of the night end for the night hooks; negative is earlier |
 
 ```
-indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.IDLE_CHECK_INTERVAL=10;IDLE_PARK_AFTER=20"
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.IDLE_CHECK_INTERVAL=10;IDLE_HOOK_DELAY=20"
 ```
 
 For a short queue that does not fill the night, let the targets wait for their culmination with the strategy `VISIBILITY` in `AGENT_SCHEDULER_STRATEGY`, see [Choosing a strategy](#choosing-a-strategy):
@@ -825,7 +825,7 @@ SN 2026abc | RUNNING | urgent | run 0/1 | retries left 0 | 0h30 set
 Park | HOOK | hook shutdown | - | - | -
 ```
 
-The priority is `urgent`, the class and level of the task such as `normal 60`, or for a task that serves as a hook `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`, and `hook` for a task with `@priority hook` that no hook names. The runs are `run <done>/<repeat>` and the retries `retries left <n>`, always shown. The duration is the hours and minutes followed by its source (`set`, `measured`, `estimated` or `default`). A hook has `-` for the runs, retries and duration.
+The priority is `urgent`, the class and level of the task such as `normal 60`, or for a task that serves as a hook `hook startup`, `hook shutdown`, `hook night start`, `hook night end`, `hook idle` or `hook resume`, and `hook` for a task with `@priority hook` that no hook names. The runs are `run <done>/<repeat>` and the retries `retries left <n>`, always shown. The duration is the hours and minutes followed by its source (`set`, `measured`, `estimated` or `default`). A hook has `-` for the runs, retries and duration.
 
 | State | Light | Meaning |
 |---|---|---|
@@ -858,7 +858,7 @@ The priority is `urgent`, the class and level of the task such as `normal 60`, o
 - Each run shows its expected UTC start and end, the task, the run number of a repeated task and the priority. The night hooks appear at their expected times with `-` as the run and `hook night start` or `hook night end` as the priority.
 - The state is `RUNNING` (Busy light) for the running task or hook and `PLANNED` (Idle light) for planned runs.
 - The reason of a planned run is `-`. A gap between runs is idle time: with `COMPACT` nothing can run then, with [`VISIBILITY`](#choosing-a-strategy) the plan waits for a better slot.
-- While a hook runs, whatever its kind (`hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`), it is the first item, for example `2026-11-20 19:58-20:03 | Evening | - | hook night start | RUNNING | -`. Its end is its start plus its duration, but not earlier than a minute from now, and the planned runs follow from that end. A running night hook replaces its planned item, and the item disappears when the hook ends. Only the night hooks are forecast; `STARTUP`, `SHUTDOWN`, `IDLE` and `RESUME` show up only while they run.
+- While a hook runs, whatever its kind (`hook startup`, `hook shutdown`, `hook night start`, `hook night end`, `hook idle` or `hook resume`), it is the first item, for example `2026-11-20 19:58-20:03 | Evening | - | hook night start | RUNNING | -`. Its end is its start plus its duration, but not earlier than a minute from now, and the planned runs follow from that end. A running night hook replaces its planned item, and the item disappears when the hook ends. Only the night hooks are forecast; `STARTUP`, `SHUTDOWN`, `IDLE` and `RESUME` show up only while they run.
 - After the runs come the tasks that will not run tonight, with an Alert light, `-` as the time, the state `NOT TONIGHT` and the reason. Typical reasons are a constraint that never holds tonight (see [Reasons](#reasons)), `disabled`, `script error`, or `no time left tonight` for a task that could run but finds no room after the others. A day without night, with night hooks set, adds the item `- | - | - | - | NOT TONIGHT | no night at the night limit within a day, the night hooks do not run`.
 - During the day the plan shows the coming night. When the night of the night hooks ends after sunrise, the plan lasts until it ends. It is shown also while the scheduler is stopped, as the plan that `START` would follow.
 
@@ -1043,7 +1043,7 @@ It puts the site on the equator and moves its longitude to choose the time of da
 | `status`, `plan`, `history` | The task list, the night plan and the history |
 | `wait 10`, `until TEXT 60` | Wait while new scheduler messages are printed, or until one contains `TEXT` |
 
-New messages of the scheduler are printed after every command. The server runs on a free port, not on 7624, and is announced on the network as "Scheduler Sandbox" (`--name` changes it, `--no-bonjour` turns it off), so clients that list INDIGO servers show it. At the start the tool prints the port and the address of the web control panel, both for this computer and for other computers on the network, where you can watch the same scheduler. Use `--port` to choose the port; a port already in use is refused. It starts with `IDLE_CHECK_INTERVAL` at 1 second and `IDLE_PARK_AFTER` at 0. Constraints are checked on a five-minute grid, so a task with `@twilight` starts up to five minutes after the twilight limit; tasks without constraints start at once.
+New messages of the scheduler are printed after every command. The server runs on a free port, not on 7624, and is announced on the network as "Scheduler Sandbox" (`--name` changes it, `--no-bonjour` turns it off), so clients that list INDIGO servers show it. At the start the tool prints the port and the address of the web control panel, both for this computer and for other computers on the network, where you can watch the same scheduler. Use `--port` to choose the port; a port already in use is refused. It starts with `IDLE_CHECK_INTERVAL` at 1 second and `IDLE_HOOK_DELAY` at 0. Constraints are checked on a five-minute grid, so a task with `@twilight` starts up to five minutes after the twilight limit; tasks without constraints start at once.
 
 A night with all the hooks takes about a minute, see `tools/scheduler_sandbox_night.txt`:
 
@@ -1098,7 +1098,7 @@ All properties belong to the device "Scheduler Agent". [PROPERTIES.md](PROPERTIE
 | `AGENT_SCHEDULER_SETTINGS` | number | see [Settings](#settings) | Settings |
 | `AGENT_SCHEDULER_DATA` | switch | `OBJECT`, `FITS`, `FOLDER` | What the scheduler sets on the Imager Agent for a run, see [Where the data goes](#where-the-data-goes) |
 | `AGENT_SCHEDULER_DATA_DIR` | text | `BASE` | Parent folder of the task folders, empty for the folder of the Imager Agent |
-| `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE`, `NIGHT_START`, `NIGHT_END`, `RESUME` | Hook task names |
+| `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `NIGHT_START`, `NIGHT_END`, `IDLE`, `RESUME` | Hook task names |
 | `AGENT_SCHEDULER_NIGHT` | switch | `CIVIL`, `NAUTICAL`, `ASTRONOMICAL` | The night limit of the night hooks |
 | `AGENT_SCHEDULER_STRATEGY` | switch | `COMPACT`, `VISIBILITY` | How the next task is chosen, see [Choosing a strategy](#choosing-a-strategy) |
 

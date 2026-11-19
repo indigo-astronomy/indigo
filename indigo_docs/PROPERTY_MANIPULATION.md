@@ -191,9 +191,9 @@ indigo@indigosky:~ $ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS
 ...
 Scheduler Agent.AGENT_SCHEDULER_HOOKS.STARTUP = ""
 Scheduler Agent.AGENT_SCHEDULER_HOOKS.SHUTDOWN = ""
-Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE = ""
 Scheduler Agent.AGENT_SCHEDULER_HOOKS.NIGHT_START = ""
 Scheduler Agent.AGENT_SCHEDULER_HOOKS.NIGHT_END = ""
+Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE = ""
 Scheduler Agent.AGENT_SCHEDULER_HOOKS.RESUME = ""
 ```
 
