@@ -1,7 +1,7 @@
 /*
  * The Moravian Instruments (MI) camera library.
  *
- * Copyright (c) 2016-2024, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
+ * Copyright (c) 2016-2026, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
  * All rights reserved.
  *
  * Redistribution.  Redistribution and use in binary form, without
@@ -281,6 +281,10 @@ enum
     GIP_MAX_FAN,              /* Maximal value for gxccd_set_fan() */
     GIP_MAX_GAIN,             /* Maximal value for gxccd_set_gain() */
     GIP_MAX_PIXEL_VALUE,      /* Maximal possible pixel value. May vary with read mode and binning,
+                                 read only after gxccd_set_read_mode() and gxccd_set_binning() calls */
+    GIP_LINE_TIME,            /* Time to digitize one line of rolling-shutter cameras
+                                 equipped with GPS receiver in picoseconds (ps)*/
+    GIP_BIAS_PIXEL_VALUE,     /* Minimum (bias) value of pixel. May vary with read mode and binning,
                                  read only after gxccd_set_read_mode() and gxccd_set_binning() calls */
     GIP_FIRMWARE_MAJOR = 128, /* Camera firmware version (optional) */
     GIP_FIRMWARE_MINOR,
@@ -572,6 +576,11 @@ int gxccd_get_gps_data(camera_t *camera, double *lat, double *lon, double *msl,
                        int *year, int *month, int *day, int *hour, int *minute,
                        double *second, unsigned int *satellites, bool *fix);
 
+int gxccd_get_gps_data2(camera_t *camera, double *lat, double *lon, double *msl,
+                        double *geoidsep, int *year, int *month, int *day,
+                        int *hour, int *minute, double *second,
+                        unsigned int *satellites, bool *fix);
+
 /*
  * If any call fails (returns -1), this function returns failure description
  * in parameter buf.
@@ -687,6 +696,13 @@ int gxfw_enumerate_filters(fwheel_t *wheel, int index, char *buf, size_t size, u
  * Sets the required filter.
  */
 int gxfw_set_filter(fwheel_t *wheel, int index);
+
+/*
+ * Sets the required filters in dual filter wheels.
+ * This method is only for special cases when two filters are needed over each
+ * other, otherwise gxfw_set_filter() should be used.
+ */
+int gxfw_set_filter2(fwheel_t *wheel, int index1, int index2);
 
 /*
  * Reinitializes the filter wheel.
