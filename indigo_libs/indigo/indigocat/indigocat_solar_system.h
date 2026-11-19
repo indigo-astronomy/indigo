@@ -57,9 +57,14 @@ INDIGO_EXTERN void indigocat_neptune_heliocentric_coords(double JD, heliocentric
 INDIGO_EXTERN void indigocat_pluto_equatorial_coords(double JD, equatorial_coords_s *position);
 INDIGO_EXTERN void indigocat_pluto_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
+/* Geocentric position of the Sun in J2000 like the planets, without nutation and aberration.
+ */
 INDIGO_EXTERN void indigocat_sun_equatorial_coords(double JD, equatorial_coords_s *position);
 INDIGO_EXTERN void indigocat_sun_geometric_coords(double JD, heliocentric_coords_s *position);
 
+/* Geocentric position of the Moon in J2000. JD is UT; it is converted to dynamical time with indigocat_jd_to_jde().
+ * indigocat_moon_geocentric_coords() and indigocat_moon_ecliptical_coords() take the dynamical time (JDE) directly.
+ */
 INDIGO_EXTERN void indigocat_moon_equatorial_coords(double JD, equatorial_coords_s *position);
 INDIGO_EXTERN void indigocat_moon_geocentric_coords(double JD, cartesian_coords_s *moon, double precision);
 INDIGO_EXTERN void indigocat_moon_equatorial_coords_prec(double JD, equatorial_coords_s *position, double precision);

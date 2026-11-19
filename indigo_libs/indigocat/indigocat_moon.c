@@ -23,6 +23,7 @@
 #include <indigo/indigocat/indigocat_solar_system.h>
 #include <indigo/indigocat/indigocat_vsop87.h>
 #include <indigo/indigocat/indigocat_transform.h>
+#include <indigo/indigocat/indigocat_dynamical_time.h>
 
 #if defined(INDIGO_WINDOWS)
 #pragma warning(disable:4305)
@@ -39130,7 +39131,8 @@ static double sum_series_elp36 (double *t, const double *pre)
 void indigocat_moon_equatorial_coords_prec(double JD, equatorial_coords_s * position, double precision) {
 	lonlat_coords_s ecl;
 
-	indigocat_moon_ecliptical_coords(JD, &ecl, precision);
+	/* JD is UT, ELP2000/82 is evaluated in dynamical time */
+	indigocat_moon_ecliptical_coords(indigocat_jd_to_jde(JD), &ecl, precision);
 	indigocat_ecliptical_to_equatorial_coords(&ecl, JD, position);
 }
 

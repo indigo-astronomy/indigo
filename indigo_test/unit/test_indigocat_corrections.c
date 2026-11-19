@@ -26,6 +26,7 @@
 /* Include the implementation to compare a changing-date call with a fresh cache. */
 #include "../../indigo_libs/indigocat/indigocat_nutation.c"
 #include "../../indigo_libs/indigocat/indigocat_sun.c"
+#include <indigo/indigocat/indigocat_dynamical_time.h>
 
 static void nutation_does_not_retain_previous_date_accumulators(void) {
 	const double dates[] = { 2451545.0, 2446895.5, 2460000.5 };
@@ -41,21 +42,101 @@ static void nutation_does_not_retain_previous_date_accumulators(void) {
 	}
 }
 
-static void sun_aberration_uses_degrees_at_reference_epochs(void) {
+static void sun_is_geometric_position_without_nutation_and_aberration(void) {
 	const double dates[] = { 2451545.0, 2448908.5, 2460000.5 };
 	for (unsigned i = 0; i < sizeof(dates) / sizeof(dates[0]); i++) {
 		heliocentric_coords_s geometric;
-		nutation_s nutation;
 		equatorial_coords_s actual, expected;
 		indigocat_sun_geometric_coords(dates[i], &geometric);
-		indigocat_get_nutation(dates[i], &nutation);
-		/* L is degrees; 20.4898 is arcseconds and R is astronomical units. */
-		lonlat_coords_s apparent = { geometric.L + nutation.longitude - 20.4898 / 3600.0 / geometric.R, geometric.B };
-		indigocat_ecliptical_to_equatorial_coords(&apparent, dates[i], &expected);
+		/* J2000 like the planets: the geometric longitude and latitude are used unchanged. */
+		lonlat_coords_s position = { geometric.L, geometric.B };
+		indigocat_ecliptical_to_equatorial_coords(&position, dates[i], &expected);
 		indigocat_sun_equatorial_coords(dates[i], &actual);
 		ASSERT_NEAR(expected.ra, actual.ra, 1e-10);
 		ASSERT_NEAR(expected.dec, actual.dec, 1e-10);
 	}
+}
+
+static double separation_arcsec(double ra1, double dec1, double ra2, double dec2) {
+	/* ra and dec are in degrees */
+	double d1 = dec1 * DEG2RAD, d2 = dec2 * DEG2RAD, dra = (ra1 - ra2) * DEG2RAD;
+	double c = sin(d1) * sin(d2) + cos(d1) * cos(d2) * cos(dra);
+	if (c > 1) {
+		c = 1;
+	}
+	return acos(c) * RAD2DEG * 3600.0;
+}
+
+/* Geocentric astrometric J2000 positions from JPL Horizons (DE441) at the given JD in UT. Before the fix the
+   Sun was 33 to 48 arcsec and the Moon 56 to 64 arcsec away from these positions. */
+static const double horizons_sun[][3] = {
+	/* JD (UT), ra, dec */
+	{ 2451099.473, 197.951349919, -7.611193352 },
+	{ 2452382.213, 25.515951278, 10.578453184 },
+	{ 2458154.543, 318.378999847, -16.06286587 },
+	{ 2460078.653, 50.39334765, 18.46788422 },
+	{ 2465850.983, 343.58849092, -6.982431926 },
+	{ 2472906.053, 94.804950678, 23.358400531 }
+};
+
+static const double horizons_moon[][3] = {
+	/* JD (UT), ra, dec */
+	{ 2450458.103, 296.392543675, -16.540944241 },
+	{ 2454947.693, 46.145801635, 22.378916976 },
+	{ 2457513.173, 13.727902769, 3.63166462 },
+	{ 2459437.283, 168.425621963, 10.392904444 },
+	{ 2462002.763, 131.775807799, 16.31181552 },
+	{ 2466492.353, 243.451598806, -22.258469867 }
+};
+
+static void sun_matches_horizons_j2000_within_30_arcsec(void) {
+	for (unsigned i = 0; i < sizeof(horizons_sun) / sizeof(horizons_sun[0]); i++) {
+		const double *r = horizons_sun[i];
+		equatorial_coords_s sun;
+		indigocat_sun_equatorial_coords(r[0], &sun);
+		double error = separation_arcsec(sun.ra, sun.dec, r[1], r[2]);
+		printf("Sun at JD %.3f: %.1f arcsec from Horizons\n", r[0], error);
+		ASSERT_TRUE(error < 30.0);
+	}
+}
+
+static void moon_matches_horizons_j2000_within_30_arcsec(void) {
+	for (unsigned i = 0; i < sizeof(horizons_moon) / sizeof(horizons_moon[0]); i++) {
+		const double *r = horizons_moon[i];
+		equatorial_coords_s full, coarse;
+		indigocat_moon_equatorial_coords(r[0], &full);
+		indigocat_moon_equatorial_coords_coarse(r[0], &coarse);
+		double full_error = separation_arcsec(full.ra, full.dec, r[1], r[2]);
+		double coarse_error = separation_arcsec(coarse.ra, coarse.dec, r[1], r[2]);
+		printf("Moon at JD %.3f: %.1f arcsec (coarse %.1f arcsec) from Horizons\n", r[0], full_error, coarse_error);
+		ASSERT_TRUE(full_error < 30.0);
+		ASSERT_TRUE(coarse_error < 30.0);
+	}
+}
+
+static void delta_t_matches_observed_values_and_stays_bounded(void) {
+	/* TT - UT1 on 1 January (IERS / USNO) */
+	const double observed[][2] = {
+		/* JD, Delta T */
+		{ 2455197.5, 66.07 },
+		{ 2457023.5, 67.64 },
+		{ 2457754.5, 68.59 },
+		{ 2458119.5, 68.97 },
+		{ 2458849.5, 69.36 },
+		{ 2460676.5, 69.14 }
+	};
+	for (unsigned i = 0; i < sizeof(observed) / sizeof(observed[0]); i++) {
+		ASSERT_NEAR(observed[i][1], indigocat_get_dynamical_time_diff(observed[i][0]), 1.0);
+	}
+	/* After the last observed year Delta T stays at the last value, near TT - UTC = 69.184 s. */
+	double last = indigocat_get_dynamical_time_diff(2461041.5);
+	for (double jd = 2461041.5; jd < 2488069.5; jd += 365.25) {
+		ASSERT_NEAR(last, indigocat_get_dynamical_time_diff(jd), 1e-12);
+	}
+	ASSERT_NEAR(69.184, last, 1.0);
+	/* No jump where the near past interpolation hands over to the observed values in 2000 or at 1600. */
+	ASSERT_NEAR(indigocat_get_dynamical_time_diff(2451544.5 - 1e-6), indigocat_get_dynamical_time_diff(2451544.5), 0.01);
+	ASSERT_NEAR(indigocat_get_dynamical_time_diff(2305447.5 - 1e-6), indigocat_get_dynamical_time_diff(2305447.5), 0.01);
 }
 
 static void coarse_moon_stays_within_5_arcsec_of_full_theory(void) {
@@ -83,13 +164,16 @@ static void coarse_moon_stays_within_5_arcsec_of_full_theory(void) {
 }
 
 /* Values captured from the build before the Moon cutoff and the nutation cache were made thread-safe;
-   the change must not alter single-threaded results by a single bit. */
+   the change must not alter single-threaded results by a single bit. Recaptured when the Sun became a J2000
+   position, Delta T after 2000 was replaced by observed values and the Moon started to convert UT to dynamical
+   time: the Moon and the Sun change at every date, nutation only in the last bits where Delta T changed (2000,
+   2023 and 2029, below 0.001 arcsec), and the 1993 nutation stays bit-identical. */
 static const double reference_values[][10] = {
 	/* JD, full Moon ra, dec, coarse Moon ra, dec, Sun ra, dec, nutation longitude, obliquity, ecliptic */
-	{ 0x1.2b42c8p+21, 0x1.bce508e18b342p+7, -0x1.5cce71309e9edp+3, 0x1.bce52c1a584fbp+7, -0x1.5cce534a1227dp+3, 0x1.194719afc6aafp+8, -0x1.708d5db07bf54p+4, -0x1.faed2369c48a9p-9, -0x1.a471c21fca6a2p-10, 0x1.7707561da8419p+4 },
-	{ 0x1.2af344p+21, 0x1.5986ed83f42c6p+7, -0x1.442a24c3b426cp+1, 0x1.5986e368b228p+7, -0x1.4433b2da044b3p+1, 0x1.26bb49e7002b6p+8, -0x1.57e5d25652b7p+4, 0x1.4823b09956fc3p-8, -0x1.0ee0c05c93041p-11, 0x1.770b0c0d336d6p+4 },
-	{ 0x1.2c4b04p+21, 0x1.1ee4c60452adp+5, 0x1.d046a2666a5dap+3, 0x1.1ee3ed996c1c9p+5, 0x1.d046307657dbdp+3, 0x1.51934feed2206p+8, -0x1.2c7f9f4cbf00fp+3, -0x1.51b5fb8edfc5p-9, 0x1.19af99994fe72p-9, 0x1.76fb016d0d273p+4 },
-	{ 0x1.2c9932p+21, 0x1.ce8574995b26bp+7, -0x1.5784986884c77p+4, 0x1.ce856516abd11p+7, -0x1.57849b9cddf91p+4, 0x1.18ccc8a93de1cp+8, -0x1.7115632987fdbp+4, 0x1.3cf1642d6603p-8, -0x1.879030e8a970ap-12, 0x1.76f75b7354d51p+4 }
+	{ 0x1.2b42c8p+21, 0x1.bce96be8c22ccp+7, -0x1.5ce4d315256dp+3, 0x1.bce98f213d695p+7, -0x1.5ce4b54155fb1p+3, 0x1.1949c73757b41p+8, -0x1.708a49b753d69p+4, -0x1.faed2369cc071p-9, -0x1.a471c21fa0ca3p-10, 0x1.7707561da841ap+4 },
+	{ 0x1.2af344p+21, 0x1.598b95d375a7p+7, -0x1.44a8e47881d7dp+1, 0x1.598b8bb83125dp+7, -0x1.44b2733d35955p+1, 0x1.26bb801155e94p+8, -0x1.57e54a3ca40f3p+4, 0x1.4823b09956fc3p-8, -0x1.0ee0c05c93041p-11, 0x1.770b0c0d336d6p+4 },
+	{ 0x1.2c4b04p+21, 0x1.1ef958199688fp+5, 0x1.d069e95fed82cp+3, 0x1.1ef87fc34d14cp+5, 0x1.d069778f754a7p+3, 0x1.51955256671bfp+8, -0x1.2c668a8f9b727p+3, -0x1.51b5a32c97e5p-9, 0x1.19afd0a4fd60ep-9, 0x1.76fb016d1f1f8p+4 },
+	{ 0x1.2c9932p+21, 0x1.ce8bca3a02714p+7, -0x1.578cd0bda6408p+4, 0x1.ce8bbab5027d1p+7, -0x1.578cd4192579bp+4, 0x1.18cd0c450f57ap+8, -0x1.711518c85a9bcp+4, 0x1.3cf0e6f6e850ap-8, -0x1.878d21e75b541p-12, 0x1.76f75b73698f6p+4 }
 };
 
 static void moon_sun_and_nutation_match_captured_values_bit_for_bit(void) {
@@ -208,7 +292,10 @@ static void concurrent_moon_sun_and_nutation_match_single_threaded_results(void)
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "nutation_does_not_retain_previous_date_accumulators", nutation_does_not_retain_previous_date_accumulators },
-		{ "sun_aberration_uses_degrees_at_reference_epochs", sun_aberration_uses_degrees_at_reference_epochs },
+		{ "sun_is_geometric_position_without_nutation_and_aberration", sun_is_geometric_position_without_nutation_and_aberration },
+		{ "sun_matches_horizons_j2000_within_30_arcsec", sun_matches_horizons_j2000_within_30_arcsec },
+		{ "moon_matches_horizons_j2000_within_30_arcsec", moon_matches_horizons_j2000_within_30_arcsec },
+		{ "delta_t_matches_observed_values_and_stays_bounded", delta_t_matches_observed_values_and_stays_bounded },
 		{ "coarse_moon_stays_within_5_arcsec_of_full_theory", coarse_moon_stays_within_5_arcsec_of_full_theory },
 		{ "moon_sun_and_nutation_match_captured_values_bit_for_bit", moon_sun_and_nutation_match_captured_values_bit_for_bit },
 		{ "concurrent_moon_sun_and_nutation_match_single_threaded_results", concurrent_moon_sun_and_nutation_match_single_threaded_results }

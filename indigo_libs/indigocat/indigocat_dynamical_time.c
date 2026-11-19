@@ -29,17 +29,17 @@ struct year_TD {
 /* Stephenson and Houlden  for years prior to 948 A.D.*/
 static double get_dynamical_diff_sh1(double JD);
 
-/* Stephenson and Houlden  for years between 948 A.D. and 1600 A.D.*/
+/* Stephenson and Houlden  for years between 948 A.D. and 1620 A.D.*/
 static double get_dynamical_diff_sh2(double JD);
 
 /* Table 9.a pg 72 for years 1620..1992.*/
 static double get_dynamical_diff_table(double JD);
 
-/* get the dynamical time diff in the near past / future 1992 .. 2010 */
+/* get the dynamical time diff in the near past 1992 .. 2000 */
 static double get_dynamical_diff_near(double JD);
 
-/* uses equation 9.1 pg 73 to calc JDE for othe JD values */
-static double get_dynamical_diff_other(double JD);
+/* observed values for 2000 .. 2026, held constant afterwards */
+static double get_dynamical_diff_observed(double JD);
 
 
 /* dynamical time in seconds for every second year from 1620 to 1992 */
@@ -132,7 +132,7 @@ static double get_dynamical_diff_table(double JD) {
     return TD;
 }
 
-/* get the dynamical time diff in the near past / future 1992 .. 2010 */
+/* get the dynamical time diff in the near past 1992 .. 2000 */
 static double get_dynamical_diff_near(double JD) {
     double TD = 0;
     /* TD for 1990, 2000, 2010 */
@@ -151,17 +151,27 @@ static double get_dynamical_diff_near(double JD) {
     return TD;
 }
 
-/* uses equation 9.1 pg 73 to calc JDE for other JD values */
-static double get_dynamical_diff_other(double JD) {
-    double TD;
-    double a;
+/* Observed TT - UT1 on 1 January of 2000 .. 2026 (IERS / USNO), in seconds.
+   The values for 2024 .. 2026 are derived from UT1 - UTC of IERS Bulletin A. */
+#define OBSERVED_TERMS 27
 
-    a = (JD - 2382148);
-    a *= a;
+static const double observed_delta_t[OBSERVED_TERMS] = {
+	63.83, 64.09, 64.30, 64.47, 64.57, 64.69, 64.85, 65.15, 65.46, 65.78,
+	66.07, 66.32, 66.60, 66.91, 67.28, 67.64, 68.10, 68.59, 68.97, 69.22,
+	69.36, 69.36, 69.29, 69.20, 69.18, 69.14, 69.10
+};
 
-    TD = -15 + a / 41048480;
-
-    return (TD);
+/* Linear interpolation of the observed yearly values from 2000 on. After the last
+   observed year the last value is held constant: TT - UTC stays 69.184 s until a new
+   leap second is announced, UTC is the time scale of the callers' clocks and the future
+   change of TT - UT1 cannot be predicted to better than a few seconds per decade. */
+static double get_dynamical_diff_observed(double JD) {
+	double year = (JD - 2451544.5) / 365.25;
+	int i = (int)year;
+	if (i >= OBSERVED_TERMS - 1) {
+		return observed_delta_t[OBSERVED_TERMS - 1];
+	}
+	return observed_delta_t[i] + (year - i) * (observed_delta_t[i + 1] - observed_delta_t[i]);
 }
 
 double indigocat_get_dynamical_time_diff(double JD) {
@@ -172,18 +182,18 @@ double indigocat_get_dynamical_time_diff(double JD) {
 	if (JD < 2067314.5)
 		/* Stephenson and Houlden */
 		TD = get_dynamical_diff_sh1 (JD);
-	else if (JD >= 2067314.5 && JD < 2305447.5)
-		/* check for date 948..1600 A.D. Stephenson and Houlden */
+	else if (JD < 2312752.5)
+		/* check for date 948..1620 A.D. Stephenson and Houlden, extended up to the start of the table */
 		TD = get_dynamical_diff_sh2 (JD);
-	else if (JD >= 2312752.5 && JD < 2448622.5)
+	else if (JD < 2448622.5)
 		/* check for value in table 1620..1992  interpolation of table */
 		TD = get_dynamical_diff_table (JD);
-	else if (JD >= 2448622.5 && JD <= 2455197.5)
-		/* check for near future 1992..2010 interpolation */
+	else if (JD < 2451544.5)
+		/* check for near past 1992..2000 interpolation */
 		TD = get_dynamical_diff_near (JD);
 	else
-		/* other time period outside */
-		TD = get_dynamical_diff_other (JD);
+		/* observed values from 2000, constant after the last observed year */
+		TD = get_dynamical_diff_observed (JD);
 
 	return TD;
 }
