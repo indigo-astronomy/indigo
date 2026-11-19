@@ -137,6 +137,7 @@ void indigo_scheduler_target_build(const scheduler_sky_grid *sky, const schedule
 	}
 	double ra = header->ra, dec = header->dec;
 	indigo_j2k_to_jnow(&ra, &dec);
+	target->transit_altitude = 90 - fabs(sky->latitude - dec);
 	for (int i = 0; i < SCHEDULER_GRID_POINTS; i++) {
 		time_t t = sky->start + (time_t)i * SCHEDULER_GRID_STEP;
 		double az;

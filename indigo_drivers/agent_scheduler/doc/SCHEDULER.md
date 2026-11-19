@@ -376,7 +376,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `STOP_TIMEOUT` | s | 60 | Time allowed for an aborted sequence and its agents to stop |
 | `START_TIMEOUT` | s | 10 | Time allowed for a started task's sequence to become Busy |
 | `SETTING_WEIGHT` | — | 1 | Weight of the setting-soonest score term, 0–4 |
-| `ALTITUDE_WEIGHT` | — | 1 | Weight of the altitude score term, 0–4 |
+| `ALTITUDE_WEIGHT` | — | 1 | Weight of the altitude score term (the altitude relative to the target's culmination), 0–4 |
 | `FRAME_OVERHEAD` | s | 10 | Time added per captured frame in the duration estimate |
 | `OPERATION_OVERHEAD` | s | 120 | Time added per slew, centering, focus, guiding start or similar step in the duration estimate |
 | `NIGHT_START_OFFSET` | min | 0 | Shift of the night start, −240 to 240, negative is earlier |
@@ -616,7 +616,7 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
    - `class_base` is 2000 for `high`, 1000 for `normal` and 0 for `low`. With weights of at most 4, the other terms add at most 900. Any high task therefore outranks any normal task.
    - `level` is the `@priority` level, 0–100.
    - `setting` is `100 * (1 − min(T, 12 h) / 12 h)`, where T is the time until the task's constraints stop holding. It favours tasks that become unobservable soonest.
-   - `altitude` is `100 * altitude / 90` at the current time, or 0 without `@target`.
+   - `altitude` is `100 * max(0, alt_now) / alt_transit`, clamped to 0–100, where `alt_now` is the target altitude at the current time and `alt_transit = 90 − |latitude − declination|` is its altitude at upper culmination. It is 100 at transit and lower on either side, so every target scores best near its own transit, whatever its declination. It is 0 without `@target` or when the target never rises. It adds no waiting: a lone task still starts as soon as it is eligible. A 0 only means no bonus: whether a task can run is decided by its constraints (eligibility), so an eligible task with a 0 altitude term, such as one without `@target`, still runs when it scores highest or is the only eligible task.
 
    Ties go to the task higher in the list.
 6. **Run.** The agent starts the best task and waits until it ends.
@@ -845,7 +845,7 @@ Phases 1, 2, 3 and 5 are implemented. Phases 4, 6 and 7 are planned.
   - `RESET_ALL` on finished work: repeat and retry counters cleared, a script error checked again, a disabled task kept disabled, the task name ignored, an empty list, and the work run again after `START`;
   - `DELETE_ALL` rejected while a stop waits for the running task and while the shutdown hook runs, a hook name in a different case protecting its task, the deleted task's property removed, the history unchanged, and the name and slot free again;
   - eligibility end to end, each constraint with a task that waits with its reason and one that runs, and the waiting task starting by itself when the stand-in site is moved: `@altitude` and `@airmass` with targets placed at a computed altitude, `@ha` including a range wrapped across 12h, `@twilight` at noon and midnight, `@moon` with and without `width` and `@illumination` with the site under the moon, both ignored with the moon below the horizon, nightly windows outside, too short and across midnight, a `@duration` that does not fit before the target sets, an unknown site blocking only tasks with sky constraints, and `@enabled no` not overridden by `ENABLE`;
-  - the score: a setting target overtaking a rising one of a higher level, the level deciding without the setting term, the list order deciding without both terms, and the altitude term preferring the higher target;
+  - the score: a setting target overtaking a rising one of a higher level, the level deciding without the setting term, the list order deciding without both terms, and the altitude term preferring the target closer to its own culmination;
   - the limits through the agent: a 16 KiB task text stored, restored and run, one byte more rejected, 128 tasks and the 129th upload and an urgent task rejected;
   - the pauses of `@repeat … every` and `@retry … after`, each start seen when it happens;
   - `START` right after uploads starting the task of the highest priority.

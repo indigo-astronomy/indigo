@@ -54,11 +54,12 @@ typedef struct {
 	double lst[SCHEDULER_GRID_POINTS];
 } scheduler_sky_grid;
 
-/** Target altitude, hour angle and moon separation on the points of a sky grid.
+/** Target altitude, hour angle and moon separation on the points of a sky grid, and the altitude at the upper culmination.
  */
 typedef struct {
 	bool valid;
 	time_t start;
+	double transit_altitude;
 	double altitude[SCHEDULER_GRID_POINTS];
 	double hour_angle[SCHEDULER_GRID_POINTS];
 	double moon_separation[SCHEDULER_GRID_POINTS];

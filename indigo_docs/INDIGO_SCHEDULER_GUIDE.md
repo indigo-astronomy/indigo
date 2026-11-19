@@ -213,7 +213,7 @@ The check is made when the task starts, with the expected duration, in five-minu
 - Within a class, the scheduler compares a score made of the level and two bonuses:
   - the level, 0–100;
   - a **setting** bonus of up to `100 × SETTING_WEIGHT`, largest for a task whose constraints stop holding soonest, for example a target that is setting or a window that is closing;
-  - an **altitude** bonus of up to `100 × ALTITUDE_WEIGHT`, largest for a target near the zenith. A task without `@target` gets none.
+  - an **altitude** bonus of up to `100 × ALTITUDE_WEIGHT`, largest for a target near its own culmination (highest point), where it reaches the full bonus. The altitude is taken relative to the highest altitude that target reaches at your latitude, so a southern target at transit scores the same as a northern one at transit, and tasks tend to run near their own culmination rather than all at dusk. A task without `@target` gets none. The scheduler never idles to wait for a better time: a lone task still starts as soon as it is eligible, and `@ha` remains the hard window. A 0 only means no bonus: whether a task can run is decided by its constraints (eligibility), so an eligible task with a 0 altitude bonus, such as one without `@target`, still runs when it scores highest or is the only eligible task.
 
   With the default weights of 1, the two bonuses together can add up to 200 points, more than the whole level range. A `normal 40` target that is high and about to set can therefore run before a `normal 60` target. To make the level decide strictly, set `SETTING_WEIGHT` and `ALTITUDE_WEIGHT` to 0 in [Settings](#settings); to make the sky position count more, raise them. The bonuses never cross a class: with the maximum weights of 4, the level and the bonuses together add at most 900 points, less than the 1000-point gap between classes.
 - When the scores are equal, the task higher in the task list wins. You can move tasks in the list, see [Changing the order](#changing-the-order).
@@ -680,7 +680,7 @@ A night then runs like this:
 | `STOP_TIMEOUT` | s | 60 | 1–3600 | Time allowed for an aborted sequence and its agents to stop |
 | `START_TIMEOUT` | s | 10 | 1–600 | Time allowed for a started task's sequence to begin |
 | `SETTING_WEIGHT` | — | 1 | 0–4 | How strongly tasks whose constraints end soon are preferred within a priority class, see [Priorities](#priorities) |
-| `ALTITUDE_WEIGHT` | — | 1 | 0–4 | How strongly high targets are preferred within a priority class |
+| `ALTITUDE_WEIGHT` | — | 1 | 0–4 | How strongly targets near their own culmination are preferred within a priority class |
 | `FRAME_OVERHEAD` | s | 10 | 0–600 | Time added per frame in the duration estimate (download, saving, dithering) |
 | `OPERATION_OVERHEAD` | s | 120 | 0–3600 | Time added per slew, centering, focus or guiding start in the duration estimate |
 | `NIGHT_START_OFFSET` | min | 0 | −240–240 | Shift of the night start for the night hooks; negative is earlier, see [Several nights](#several-nights) |

@@ -21,6 +21,7 @@
 // Task score and night plan simulation of the Scheduler Agent,
 // see indigo_drivers/agent_scheduler/doc/SCHEDULER.md "Night plan".
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -106,6 +107,110 @@ static void test_score(void) {
 	double high = indigo_scheduler_score(&sky, &targets[2], &points[2], &headers[2], t, 0, 0);
 	ASSERT_TRUE(low < normal && normal < high);
 	ASSERT_TRUE(low == 100 && normal == 1000 && high == 2010);
+}
+
+// the altitude term alone, in 0..100: class_base 1000 for a normal task and level 0 are subtracted
+static double altitude_term(int i, time_t t) {
+	return indigo_scheduler_score(&sky, &targets[i], &points[i], &headers[i], t, 0, 1) - 1000;
+}
+
+static void add_target_task(int i, const char *name, double ra, double dec, int minutes) {
+	add_task(i, name, SCHEDULER_PRIORITY_NORMAL, 0, minutes);
+	headers[i].has_target = true;
+	headers[i].ra = ra;
+	headers[i].dec = dec;
+	build_task(i);
+}
+
+static time_t grid_time(int index) {
+	return sky.start + (time_t)index * SCHEDULER_GRID_STEP;
+}
+
+// the grid point closest to the upper culmination of a target
+static int transit_index(int i) {
+	int best = 0;
+	for (int k = 0; k < SCHEDULER_GRID_POINTS; k++) {
+		if (targets[i].altitude[k] > targets[i].altitude[best]) {
+			best = k;
+		}
+	}
+	return best;
+}
+
+static void test_altitude_term(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	add_target_task(0, "target", 5, 20, 30);
+	ASSERT_NEAR(90 - fabs(LATITUDE - 20), targets[0].transit_altitude, 0.2);
+	int top = transit_index(0);
+	// at transit
+	ASSERT_NEAR(100, altitude_term(0, grid_time(top)), 0.5);
+	// at about half of the transit altitude
+	int half = top;
+	while (half > 0 && targets[0].altitude[half] > targets[0].transit_altitude / 2) {
+		half--;
+	}
+	ASSERT_TRUE(half > 0);
+	ASSERT_NEAR(50, altitude_term(0, grid_time(half)), 2);
+	// below the horizon
+	int low = 0;
+	for (int k = 0; k < SCHEDULER_GRID_POINTS; k++) {
+		if (targets[0].altitude[k] < targets[0].altitude[low]) {
+			low = k;
+		}
+	}
+	ASSERT_TRUE(targets[0].altitude[low] < 0);
+	ASSERT_EQ_INT(0, (int)altitude_term(0, grid_time(low)));
+	// without a target
+	add_task(1, "no target", SCHEDULER_PRIORITY_NORMAL, 0, 30);
+	build_task(1);
+	ASSERT_EQ_INT(0, (int)altitude_term(1, grid_time(top)));
+	// a target that never rises has no transit altitude
+	add_target_task(2, "never up", 5, -80, 30);
+	ASSERT_TRUE(targets[2].transit_altitude <= 0);
+	for (int k = 0; k < SCHEDULER_GRID_POINTS; k += 12) {
+		ASSERT_EQ_INT(0, (int)altitude_term(2, grid_time(k)));
+	}
+}
+
+static void test_altitude_term_is_relative(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	// a southern target at its transit against a northern one half a day away, at its lower culmination
+	add_target_task(0, "south", 5, -20, 30);
+	int top = transit_index(0);
+	add_target_task(1, "north", 17, 80, 30);
+	time_t t = grid_time(top);
+	ASSERT_TRUE(targets[1].altitude[top] > targets[0].altitude[top]);
+	ASSERT_NEAR(100, altitude_term(0, t), 0.5);
+	ASSERT_TRUE(altitude_term(0, t) > altitude_term(1, t) + 20);
+}
+
+// two targets with transits about eight hours apart: each one runs around its own transit instead of both at dusk
+static void test_runs_near_transit(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	time_t dark = dark_from(T_NOVEMBER_NOON);
+	int index = (int)((dark - sky.start) / SCHEDULER_GRID_STEP);
+	add_target_task(0, "early", sky.lst[index + 12], -10, 30);
+	add_target_task(1, "late", sky.lst[index + 12 + 96], 70, 30);
+	headers[0].repeat = headers[1].repeat = 8;
+	tasks[0].runs_left = tasks[1].runs_left = 8;
+	for (int i = 0; i < 2; i++) {
+		build_task(i);
+	}
+	int count = indigo_scheduler_plan(&sky, tasks, 2, T_NOVEMBER_NOON, indigo_scheduler_night_end(&sky, T_NOVEMBER_NOON), 0, 1, runs, 512);
+	ASSERT_TRUE(count >= 8);
+	double sum[2] = { 0, 0 };
+	int n[2] = { 0, 0 };
+	for (int r = 0; r < count; r++) {
+		sum[runs[r].task] += (double)(runs[r].start - dark);
+		n[runs[r].task]++;
+	}
+	ASSERT_TRUE(n[0] > 0 && n[1] > 0);
+	// the late target does not run at dusk: its runs start after the early one's mean
+	ASSERT_TRUE(sum[1] / n[1] > sum[0] / n[0]);
+	// the first run belongs to the target that is closer to its transit at dusk
+	ASSERT_EQ_INT(0, runs[0].task);
+	// the late target runs around its transit, hours after dusk
+	ASSERT_TRUE(sum[1] / n[1] > 3 * 3600);
 }
 
 static void test_order_and_times(void) {
@@ -432,6 +537,9 @@ static void test_running_hook_first(void) {
 int main(void) {
 	indigo_test_case cases[] = {
 		{ "score", test_score },
+		{ "altitude_term", test_altitude_term },
+		{ "altitude_term_is_relative", test_altitude_term_is_relative },
+		{ "runs_near_transit", test_runs_near_transit },
 		{ "order_and_times", test_order_and_times },
 		{ "ties_to_earlier_task", test_ties_to_earlier_task },
 		{ "urgent_first", test_urgent_first },

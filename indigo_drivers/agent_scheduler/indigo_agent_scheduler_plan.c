@@ -38,7 +38,10 @@ double indigo_scheduler_score(const scheduler_sky_grid *sky, const scheduler_tar
 	if (header->has_target && target != NULL && target->valid && indigo_scheduler_sky_covers(sky, t, t)) {
 		int index = (int)((t - sky->start) / SCHEDULER_GRID_STEP);
 		double altitude = target->altitude[index];
-		result += altitude_weight * 100 * (altitude > 0 ? altitude : 0) / 90;
+		if (altitude > 0 && target->transit_altitude > 0) {
+			double relative = 100 * altitude / target->transit_altitude;
+			result += altitude_weight * (relative < 100 ? relative : 100);
+		}
 	}
 	return result;
 }
