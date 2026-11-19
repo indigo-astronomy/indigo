@@ -134,9 +134,36 @@ static void delta_t_matches_observed_values_and_stays_bounded(void) {
 		ASSERT_NEAR(last, indigocat_get_dynamical_time_diff(jd), 1e-12);
 	}
 	ASSERT_NEAR(69.184, last, 1.0);
-	/* No jump where the near past interpolation hands over to the observed values in 2000 or at 1600. */
+	/* No jump where the near past interpolation hands over to the observed values in 2000. */
 	ASSERT_NEAR(indigocat_get_dynamical_time_diff(2451544.5 - 1e-6), indigocat_get_dynamical_time_diff(2451544.5), 0.01);
-	ASSERT_NEAR(indigocat_get_dynamical_time_diff(2305447.5 - 1e-6), indigocat_get_dynamical_time_diff(2305447.5), 0.01);
+	/* No jump where the 1620..1992 table hands over to the near past interpolation in 1992. */
+	ASSERT_NEAR(indigocat_get_dynamical_time_diff(2448622.5 - 1e-6), indigocat_get_dynamical_time_diff(2448622.5), 0.05);
+	/* At 1620 the Stephenson and Houlden parabola gives 119.0 s and the table starts at 124 s, so the step is
+	   bounded by that 5 s difference of the two sources. */
+	ASSERT_NEAR(indigocat_get_dynamical_time_diff(2312752.5 - 1e-6), indigocat_get_dynamical_time_diff(2312752.5), 5.1);
+}
+
+static void delta_t_table_is_interpolated_around_the_right_entries(void) {
+	/* Entries of the two year table from 1620 (Meeus, Astronomical Algorithms 1st ed., table 9.A), JD 2312752.5 + 730.5 * index */
+	const double entries[][2] = {
+		/* index, Delta T */
+		{ 0, 124.0 },
+		{ 1, 115.0 },
+		{ 40, 9.0 },
+		{ 90, 13.7 },
+		{ 140, -2.7 },
+		{ 165, 29.1 },
+		{ 184, 55.8 },
+		{ 185, 56.9 }
+	};
+	for (unsigned i = 0; i < sizeof(entries) / sizeof(entries[0]); i++) {
+		ASSERT_NEAR(entries[i][1], indigocat_get_dynamical_time_diff(2312752.5 + 730.5 * entries[i][0]), 1e-9);
+	}
+	/* Between two entries the value lies between them: 1621 between 124 s and 115 s, 1991 between 56.9 s and
+	   58.3 s (USNO: 57.57 s), 1951 between 29.1 s and 30.0 s. */
+	ASSERT_NEAR(119.5, indigocat_get_dynamical_time_diff(2312752.5 + 365.25), 0.5);
+	ASSERT_NEAR(57.57, indigocat_get_dynamical_time_diff(2312752.5 + 730.5 * 185.5), 0.1);
+	ASSERT_NEAR(29.55, indigocat_get_dynamical_time_diff(2312752.5 + 730.5 * 165.5), 0.45);
 }
 
 static void coarse_moon_stays_within_5_arcsec_of_full_theory(void) {
@@ -296,6 +323,7 @@ int main(void) {
 		{ "sun_matches_horizons_j2000_within_30_arcsec", sun_matches_horizons_j2000_within_30_arcsec },
 		{ "moon_matches_horizons_j2000_within_30_arcsec", moon_matches_horizons_j2000_within_30_arcsec },
 		{ "delta_t_matches_observed_values_and_stays_bounded", delta_t_matches_observed_values_and_stays_bounded },
+		{ "delta_t_table_is_interpolated_around_the_right_entries", delta_t_table_is_interpolated_around_the_right_entries },
 		{ "coarse_moon_stays_within_5_arcsec_of_full_theory", coarse_moon_stays_within_5_arcsec_of_full_theory },
 		{ "moon_sun_and_nutation_match_captured_values_bit_for_bit", moon_sun_and_nutation_match_captured_values_bit_for_bit },
 		{ "concurrent_moon_sun_and_nutation_match_single_threaded_results", concurrent_moon_sun_and_nutation_match_single_threaded_results }

@@ -19,7 +19,7 @@
 
 #include <indigo/indigocat/indigocat_dynamical_time.h>
 
-#define TERMS 192
+#define TERMS 187
 
 struct year_TD {
 	int year;
@@ -95,7 +95,7 @@ static double get_dynamical_diff_sh1(double JD) {
     return (TD);
 }
 
-/* Stephenson and Houlden for years between 948 A.D. and 1600 A.D.*/
+/* Stephenson and Houlden for years between 948 A.D. and 1620 A.D.*/
 static double get_dynamical_diff_sh2(double JD) {
     double TD,t;
 
@@ -106,7 +106,7 @@ static double get_dynamical_diff_sh2(double JD) {
     return TD;
 }
 
-/* Table 9.a pg 72 for years 1600..1992.*/
+/* Table 9.a pg 72 for years 1620..1992.*/
 /* uses interpolation formula 3.3 on pg 25 */
 static double get_dynamical_diff_table(double JD) {
     double TD = 0;
@@ -116,18 +116,20 @@ static double get_dynamical_diff_table(double JD) {
     /* get no days since 1620 and divide by 2 years */
     i = (int)((JD - 2312752.5) / 730.5);
 
-	/* get the base interpolation factor in the table */
-	if (i > (TERMS - 2)) {
+	/* the central entry delta_t[i] needs a neighbour on each side */
+	if (i < 1) {
+		i = 1;
+	} else if (i > (TERMS - 2)) {
 		i = TERMS - 2;
 	}
 
-	/* calc a,b,c,n */
-	a = delta_t[i+1] - delta_t[i];
-	b = delta_t[i+2] - delta_t[i+1];
-	c = a - b;
+	/* calc a,b,c and n, the interval in two year units from the epoch of the central entry */
+	a = delta_t[i] - delta_t[i-1];
+	b = delta_t[i+1] - delta_t[i];
+	c = b - a;
 	n = ((JD - (2312752.5 + (730.5 * i))) / 730.5);
 
-	TD = delta_t[i+1] + n / 2 * (a + b + n * c);
+	TD = delta_t[i] + n / 2 * (a + b + n * c);
 
     return TD;
 }
