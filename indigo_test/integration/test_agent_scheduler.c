@@ -1243,7 +1243,7 @@ static void persistence_across_restart(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME, 2.5));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME, -30));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, 45));
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME, 7));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 69));
 	REQUIRE(set_night_hooks("Evening", "Morning", "Resume"));
 	REQUIRE(set_night_limit(AGENT_SCHEDULER_NIGHT_ASTRONOMICAL_ITEM_NAME));
 	// the save is delayed, the shutdown right after the last change still writes it
@@ -1265,7 +1265,7 @@ static void persistence_across_restart(void) {
 	ASSERT_NEAR(2.5, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME)->number.value, 1e-9);
 	ASSERT_NEAR(-30, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME)->number.value, 1e-9);
 	ASSERT_NEAR(45, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME)->number.value, 1e-9);
-	ASSERT_NEAR(7, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME)->number.value, 1e-9);
+	ASSERT_NEAR(69, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME)->number.value, 1e-9);
 	indigo_release_property(settings);
 	indigo_property *hooks = snapshot(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME);
 	REQUIRE(hooks != NULL);
@@ -2867,9 +2867,9 @@ static bool wait_deferral(const char *name, int *release) {
 static void deferral_off_starts_at_once(void) {
 	indigo_property *settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
 	REQUIRE(settings != NULL);
-	indigo_item *gain = indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME);
-	REQUIRE(gain != NULL);
-	ASSERT_NEAR(0, gain->number.value, 1e-9);
+	indigo_item *strength = indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME);
+	REQUIRE(strength != NULL);
+	ASSERT_NEAR(0, strength->number.value, 1e-9);
 	indigo_release_property(settings);
 	REQUIRE(upload_before_culmination("Deferred"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
@@ -2878,12 +2878,12 @@ static void deferral_off_starts_at_once(void) {
 }
 
 static void deferral_waits_for_the_culmination(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME, 5));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
 	REQUIRE(upload_before_culmination("Deferred"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	int release;
 	ASSERT_TRUE(wait_deferral("Deferred", &release));
-	// the release is about 1.7 hours ahead, where the target stands within 5 percent of its transit altitude
+	// a strength of 79 waits for a gain of 5 quality points: the release is about 1.7 hours ahead, where the target stands within 5 percent of its transit altitude
 	time_t now = time(NULL);
 	int minutes = (int)((now % 86400) / 60);
 	ASSERT_TRUE(minutes_between(minutes, release) > 60 && minutes_between(minutes, release) < 120);
@@ -2920,12 +2920,55 @@ static void deferral_waits_for_the_culmination(void) {
 	ASSERT_EQ_INT(release, start);
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Deferred'"));
 	// without the deferral it starts at the next decision
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 0));
 	ASSERT_TRUE(wait_task_state("Deferred", "DONE", 15));
 }
 
+// waits until the deferral release of the task differs from previous and returns it in minutes of the day
+static bool wait_deferral_change(const char *name, int previous, int *release) {
+	for (double t = 0; t < 15; t += 0.1) {
+		if (wait_deferral(name, release) && *release != previous) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	fprintf(stderr, "Timeout waiting for a release of %s other than %02d:%02d\n", name, previous / 60, previous % 60);
+	return false;
+}
+
+static void deferral_strength_waits_longer_when_higher(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 1));
+	REQUIRE(upload_before_culmination("Deferred"));
+	int minutes = (int)((time(NULL) % 86400) / 60);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	// the target gains about 33 quality points until its transit two hours ahead, so every strength from 1 holds it; a higher strength waits for a release nearer the transit
+	int strengths[] = { 1, 50, 79, 100 };
+	int releases[4];
+	int previous = -1;
+	for (int i = 0; i < 4; i++) {
+		if (i > 0) {
+			REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, strengths[i]));
+		}
+		int release;
+		ASSERT_TRUE(wait_deferral_change("Deferred", previous, &release));
+		previous = release;
+		releases[i] = minutes_between(minutes, release);
+		printf("strength %d: release in %d min\n", strengths[i], releases[i]);
+	}
+	// strength 1 waits only for a gain of 20 points, the release is about 48 minutes ahead where the target is within 20 percent of its transit altitude
+	ASSERT_TRUE(releases[0] >= 35 && releases[0] <= 60);
+	// strength 100 waits for any gain of 1 point or more, the release is a few minutes before the transit
+	ASSERT_TRUE(releases[3] >= 105 && releases[3] <= 125);
+	// a higher strength never waits less, the reported symptom was that 100 did not wait at all
+	ASSERT_TRUE(releases[0] < releases[1]);
+	ASSERT_TRUE(releases[1] < releases[2]);
+	ASSERT_TRUE(releases[2] < releases[3]);
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Deferred'"));
+	ASSERT_TRUE(wait_task_state("Deferred", "QUEUED", 5));
+}
+
 static void deferral_releases_the_task_near_its_culmination(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME, 5));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
 	REQUIRE(upload_before_culmination("Deferred"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	int release;
@@ -2936,7 +2979,7 @@ static void deferral_releases_the_task_near_its_culmination(void) {
 
 static void deferral_wait_runs_the_idle_hook(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME, 5));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
 	REQUIRE(upload_before_culmination("Deferred"));
@@ -2957,7 +3000,7 @@ static void deferral_wait_runs_the_idle_hook(void) {
 }
 
 static void deferral_wait_lets_urgent_and_untargeted_tasks_run(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME, 5));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
 	REQUIRE(upload_before_culmination("Deferred"));
 	// a task without @target is never deferred, it runs while the other one waits
 	REQUIRE(upload("// @task Flats\n// @priority low\n// @duration 5\n" BODY_WAIT(1)));
@@ -2977,7 +3020,7 @@ static void deferral_wait_lets_urgent_and_untargeted_tasks_run(void) {
 }
 
 static void deferral_wait_stops_with_the_shutdown_hook(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME, 5));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
 	REQUIRE(upload_before_culmination("Deferred"));
 	REQUIRE(set_hooks("", "Close", ""));
@@ -4150,6 +4193,7 @@ static const indigo_test_case cases[] = {
 	{ "sky_bonuses_order_equal_priorities", sky_bonuses_order_equal_priorities },
 	{ "deferral_off_starts_at_once", deferral_off_starts_at_once },
 	{ "deferral_waits_for_the_culmination", deferral_waits_for_the_culmination },
+	{ "deferral_strength_waits_longer_when_higher", deferral_strength_waits_longer_when_higher },
 	{ "deferral_releases_the_task_near_its_culmination", deferral_releases_the_task_near_its_culmination },
 	{ "deferral_wait_runs_the_idle_hook", deferral_wait_runs_the_idle_hook },
 	{ "deferral_wait_lets_urgent_and_untargeted_tasks_run", deferral_wait_lets_urgent_and_untargeted_tasks_run },
