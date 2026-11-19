@@ -1209,7 +1209,10 @@ static void edit_of_running_task_is_deferred(void) {
 	char message[INDIGO_VALUE_SIZE];
 	REQUIRE(change_text("AGENT_SCHEDULER_TASK_0", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, "// @task Edited\n// @repeat 3\n" BODY_WAIT(1), INDIGO_BUSY_STATE, message));
 	ASSERT_TRUE(strstr(message, "after the task ends") != NULL);
+	unsigned deferred = revision("AGENT_SCHEDULER_TASK_0");
 	ASSERT_TRUE(wait_message("Task 'Edited' completed", 1, 10));
+	// the agent applies the edit after it announces the completion, TASK_0 returns to OK with the new text
+	ASSERT_TRUE(wait_property_state("AGENT_SCHEDULER_TASK_0", deferred, INDIGO_OK_STATE, NULL));
 	indigo_property *task = snapshot("AGENT_SCHEDULER_TASK_0");
 	REQUIRE(task != NULL);
 	ASSERT_TRUE(strstr(indigo_get_text_item_value(task->items), "@repeat 3") != NULL);
