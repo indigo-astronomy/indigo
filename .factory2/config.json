@@ -9,7 +9,7 @@
     "assignment_types": {
       "analysis": "strong",
       "planning": "strong",
-      "implementation": "balanced",
+      "implementation": "strong",
       "test_design": "balanced",
       "verification": "strong",
       "review": "strong",

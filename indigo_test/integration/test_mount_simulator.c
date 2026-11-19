@@ -521,11 +521,19 @@ static void mount_alignment_model_is_frozen_during_slew(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
 	SERIAL_CHECK_TRUE(unpark_mount());
+	// the unparked simulator rests at the pole at the current LST, where a sync is refused, so it slews away first
+	double pole_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double pole_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	unsigned int away_revision = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(fmod(pole_ra + 1, 24), pole_dec - 20));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, away_revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	unsigned int revision = property_revision(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
-	// the unparked simulator rests at the pole at the current LST, so the alignment point and the target are derived from
-	// where it is: a small sync offset and a slew away from the pole, long enough to send every request into it
+	// the alignment point and the target are derived from where the mount is: a small sync offset and a slew long
+	// enough to send every request into it
 	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
 	double target_ra = fmod(ra + 3, 24);

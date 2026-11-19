@@ -96,58 +96,96 @@ static void multi_point_translations_pass_coordinates_through(void) {
 	}
 }
 
-static int pole_warnings;
+static int pole_refusals;
 
-static indigo_result pole_warning_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (property == BUSY_PROPERTY && message != NULL && strstr(message, "celestial pole") != NULL) {
-		pole_warnings++;
+static indigo_result pole_refusal_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_ALERT_STATE && message != NULL && strstr(message, "celestial pole") != NULL) {
+		pole_refusals++;
 	}
 	return INDIGO_OK;
 }
 
-static indigo_client pole_warning_client = { .name = "Pole warning test client", .version = INDIGO_VERSION_CURRENT, .send_message = pole_warning_message };
+static indigo_result pole_refusal_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	return pole_refusal_message(client, device, property, message);
+}
 
-// A sync near the pole adds an alignment point whose RA offset is arbitrary there but shifts the targets it is used for, so it
-// is accepted with a warning; the warning looks at both the requested and the raw declination
-static void sync_near_the_pole_is_accepted_with_a_warning(void) {
+static indigo_client pole_refusal_client = { .name = "Pole refusal test client", .version = INDIGO_VERSION_CURRENT, .update_property = pole_refusal_update, .send_message = pole_refusal_message };
+
+// A sync near the pole would add an alignment point whose RA offset is arbitrary there but shifts the targets it is used for,
+// so it is refused with ALERT and a message: no point is added and the requested values are not adopted. The limit looks at
+// both the requested and the raw declination.
+static void sync_near_the_pole_is_refused(void) {
 	indigo_device storage = { .name = "Audit Pole Sync Test" };
 	indigo_device *device = &storage;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
-	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&pole_warning_client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&pole_refusal_client));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_mount_attach(device, "audit-test", 1));
 	indigo_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY, MOUNT_ON_COORDINATES_SET_SYNC_ITEM, true);
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->defined = true;
 	indigo_property *request = indigo_init_number_property(NULL, device->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 	indigo_init_number_item(request->items + 0, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 24, 0, 0);
 	indigo_init_number_item(request->items + 1, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, -90, 90, 0, 0);
-	const struct { double dec, raw_dec; bool warned; bool single; } cases[] = { { 90, 90, true, false }, { 6, 89.5, true, false }, { 86, 40, true, false }, { -89, -89, true, false }, { 60, 60, false, false }, { 85, 85, false, false }, { -85, -84, false, false }, { 90, 90, true, true }, { 60, 60, false, true } };
+	const struct { double dec, raw_dec; bool refused; bool single; } cases[] = { { 90, 90, true, false }, { 6, 89.5, true, false }, { 86, 40, true, false }, { -89, -89, true, false }, { 60, 60, false, false }, { 85, 85, false, false }, { -85, -84, false, false }, { 90, 90, true, true }, { 60, 60, false, true } };
 	int count = (int)(sizeof(cases) / sizeof(*cases));
-	int warned[sizeof(cases) / sizeof(*cases)];
+	int refused[sizeof(cases) / sizeof(*cases)];
 	int points[sizeof(cases) / sizeof(*cases)];
+	int expected_points[sizeof(cases) / sizeof(*cases)];
+	double ra[sizeof(cases) / sizeof(*cases)];
+	double dec[sizeof(cases) / sizeof(*cases)];
 	indigo_property_state states[sizeof(cases) / sizeof(*cases)];
+	int accepted = 0;
 	for (int i = 0; i < count; i++) {
 		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, cases[i].single ? MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM : MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_IDLE_STATE;
+		// the pointing the mount reports before the request
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = 1;
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = 2;
 		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = 0;
 		MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = cases[i].raw_dec;
 		request->items[0].number.value = request->items[0].number.target = 6;
 		request->items[1].number.value = request->items[1].number.target = cases[i].dec;
-		pole_warnings = 0;
+		pole_refusals = 0;
 		indigo_mount_change_property(device, NULL, request);
-		warned[i] = pole_warnings;
+		if (!cases[i].refused) {
+			accepted++;
+		}
+		refused[i] = pole_refusals;
 		points[i] = MOUNT_CONTEXT->alignment_point_count;
+		expected_points[i] = accepted;
+		ra[i] = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+		dec[i] = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		states[i] = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
 	}
+	// a request without the declination item is judged by the declination the property holds
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_IDLE_STATE;
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = 1;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = 88;
+	MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = 40;
+	request->count = 1;
+	pole_refusals = 0;
+	indigo_mount_change_property(device, NULL, request);
+	request->count = 2;
+	int partial_refusals = pole_refusals;
+	double partial_ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+	indigo_property_state partial_state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	int partial_points = MOUNT_CONTEXT->alignment_point_count;
 	indigo_release_property(request);
 	ASSERT_EQ_INT(INDIGO_OK, indigo_mount_detach(device));
-	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&pole_warning_client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&pole_refusal_client));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+	ASSERT_TRUE(accepted > 0 && accepted < count);
 	for (int i = 0; i < count; i++) {
-		ASSERT_EQ_INT(cases[i].warned ? 1 : 0, warned[i]);
-		// the warning does not refuse the sync, every request adds its point
-		ASSERT_EQ_INT(i + 1, points[i]);
-		ASSERT_EQ_INT(INDIGO_OK_STATE, states[i]);
+		ASSERT_EQ_INT(cases[i].refused ? 1 : 0, refused[i]);
+		// a refused request adds no point and leaves the reported pointing alone, an accepted one adds its point and is adopted
+		ASSERT_EQ_INT(expected_points[i], points[i]);
+		ASSERT_EQ_INT(cases[i].refused ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, states[i]);
+		ASSERT_TRUE(fabs(ra[i] - (cases[i].refused ? 1 : 6)) < 1e-9);
+		ASSERT_TRUE(fabs(dec[i] - (cases[i].refused ? 2 : cases[i].dec)) < 1e-9);
 	}
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, partial_state);
+	ASSERT_EQ_INT(1, partial_refusals);
+	ASSERT_TRUE(fabs(partial_ra - 1) < 1e-9);
+	ASSERT_EQ_INT(accepted, partial_points);
 }
 
 int main(void) {
@@ -157,7 +195,7 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "alignment_load_commits_complete_files_and_preserves_state_on_rejection", alignment_load_commits_complete_files_and_preserves_state_on_rejection },
 		{ "multi_point_translations_pass_coordinates_through", multi_point_translations_pass_coordinates_through },
-		{ "sync_near_the_pole_is_accepted_with_a_warning", sync_near_the_pole_is_accepted_with_a_warning }
+		{ "sync_near_the_pole_is_refused", sync_near_the_pole_is_refused }
 	};
 	int result = indigo_run_tests("Alignment file load", tests, sizeof(tests) / sizeof(*tests));
 	indigo_test_remove_private_home();
