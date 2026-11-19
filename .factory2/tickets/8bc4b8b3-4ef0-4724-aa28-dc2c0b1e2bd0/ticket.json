@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8bc4b8b3-4ef0-4724-aa28-dc2c0b1e2bd0",
+  "revision": 2,
+  "title": "indigo_agent_scheduler: make the hourly Sun and Moon grid rebuild cheaper, it takes about 100 ms (0.5-1 s on a Raspberry Pi)",
+  "description": "Performance follow-up from the scheduler performance study (scratchpad perf/, i5-9400, -O3; Raspberry Pi 4 about 5-10x slower).\n\nindigo_scheduler_sky_build() takes about 100 ms (about 0.5-1 s on a Pi), 99 % in the full ELP2000 Moon theory (indigocat_moon_equatorial_coords, precision 0) called 49 times, and runs every hour on the agent queue.\n\nTwo options, the owner chooses before implementation:\n1. Reuse Sun and Moon samples across the hourly rebuild: the grid start normally moves by exactly 3600 s, so 48 of 49 hourly samples are the same instants; keep them in the grid and look them up by exact time. Hourly rebuild 100 ms -> 2.3 ms; the first build and a delayed tick stay about 100 ms. Not bit-identical: up to 2e-6 deg Sun altitude and 1.5e-6 Moon illumination, because indigocat_get_nutation() keeps a process-global cache of the last epoch (LN_NUTATION_EPOCH_THRESHOLD 0.1 day, indigocat_nutation.c), so today's grid already depends on call history. Prototype: perf/proto_B_solar_cache.diff.\n2. Lower the Moon precision: indigocat_moon_equatorial_coords_prec(jd, &m, 0.0001) is 40x faster for every build, error <= 33 arcsec, far below the Moon parallax (up to 1 deg) the grid already ignores; a deliberate change of results.\n\nSide finding to check: the static nutation cache in indigocat_nutation.c is not synchronised across threads.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-19T06:07:14.434901Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "70a736b5-a36c-43d3-8a56-ea3092e8fa17",
+      "event": "ticket/created",
+      "at": "2026-11-19T06:07:14.435538Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "bf442387-2eab-433a-b1db-a57f83c6370c",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T06:11:06.419966Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "high",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T06:07:14.434901Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T06:11:06.419939Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "2133107212b8995324aac3c51c6385a72c7af9aba96dedd45978a7b748d982a7"
+  }
+}
