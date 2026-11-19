@@ -1,0 +1,550 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ad32f32a-7927-4b22-ba1c-f8a46553ed9b",
+  "revision": 27,
+  "title": "indigocat: make the Moon series cutoff and the nutation cache thread-safe",
+  "description": "Found in the review of 8bc4b8b3 (commit d3eb7f6bb) and in the scheduler performance study; the owner asked to fix it (2026-11-19). indigo_libs changes are approved by the owner for this ticket.\n\n1. indigo_libs/indigocat/indigocat_moon.c:187 'static double pre[3]' holds the per-term truncation cutoff of the ELP2000/82 series. indigocat_moon_geocentric_coords() rewrites it on every call and the sum_series_* functions read it. Since d3eb7f6bb the Scheduler Agent calls the coarse variant (precision 1e-6) on its queue while other code in the same process calls the full theory (precision 0, e.g. indigocat_ss.c reached from indigo_server.c), so one call can use the other's cutoff: a data race. Fix: pass the cutoffs to the series functions (e.g. a const double *pre parameter or a small struct) instead of the static; no change of results for single-threaded use (bit-identical).\n\n2. indigo_libs/indigocat/indigocat_nutation.c:174 keeps a process-global cache (c_JD, c_longitude, c_obliquity, c_ecliptic) reused while |JD - c_JD| <= LN_NUTATION_EPOCH_THRESHOLD (0.1 day). It is not synchronised: indigocat_get_nutation() sets c_JD first and zeroes c_longitude/c_obliquity before summing, so a concurrent caller can read the new c_JD with partial or zero nutation (up to about 17 arcsec in longitude), or torn long double values. It also makes results depend on call history. Fix with the smallest correct change; preferred order: (a) compute into locals and publish the cache under a mutex (pthread or the INDIGO portable mutex used in indigo_libs, Windows must keep working), or (b) drop the cache if measured cost is negligible for the callers (measure indigocat_get_nutation and a Moon/Sun position call before and after and record it). Do not use compiler-specific thread-local storage unless the codebase already does portably.\n\nAlso audit the other indigocat entry points reached by indigocat_sun_equatorial_coords, indigocat_moon_equatorial_coords(_prec/_coarse) and indigocat_ss for any other mutable static state used in calculations; list findings in a note (dso/star 'data_updated' tables are out of scope unless they are on these paths).\n\nTests (indigo_test/unit, existing test_indigocat_corrections.c or a fitting existing file): results bit-identical to before for fixed inputs (Moon at precision 0 and 1e-6, nutation); a multi-threaded test that runs full and coarse Moon calls and nutation at different epochs concurrently and checks every result equals the single-threaded reference. Run it under the existing sanitizer setup if the suite has one (ThreadSanitizer if available). Increment nothing else unless a driver behavior changes; no README changes.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T09:36:39.095457Z",
+  "status": "closed",
+  "branch": "ticket/ad32f32a-7927-4b22-ba1c-f8a46553ed9b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "8e4ceb00-a4e6-4d03-b6c9-a1ab870e8780",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T09:37:07.072166Z",
+          "last_activity_at": "2026-11-19T09:52:08.716156Z",
+          "ended_at": "2026-11-19T09:52:08.716156Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 901643.99,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T09:37:07.072166Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/ad32f32a-7927-4b22-ba1c-f8a46553ed9b"
+        },
+        {
+          "at": "2026-11-19T09:52:08.716156Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 901643.99,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "8fa1e53e-5489-4edf-a44b-3a206bcc8873",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "24fbf792-bb7f-4ca6-a516-9326a63c0b9e",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T09:52:08.716184Z",
+          "last_activity_at": "2026-11-19T09:53:40.340972Z",
+          "ended_at": "2026-11-19T09:53:40.340972Z",
+          "outcome": {
+            "summary": "Pass, no defects. indigocat_moon.c: static pre[3] removed; all 36 sum_series_elpN take const double *pre, and these are the only readers (grep: pre[] used only in the 36 cutoff comparisons and in indigocat_moon_geocentric_coords, where it is now a local filled at :39176-39178 before the series calls). Arithmetic is unchanged, calls stay on one line, no other mutable static in moon.c. indigocat_nutation.c:174-175: all four cache variables are static INDIGO_THREAD_LOCAL long double. indigo_uni_io.h holds only macros and declarations, so the include adds no link dependency. It is already included across indigo_libs, which uses INDIGO_THREAD_LOCAL in indigo_json.c, indigo_xml.c and indigo_timer.c. indigo.vcxproj defines INDIGO_WINDOWS, which gives __declspec(thread). Make and Xcode builds get __thread. The INDIGO_EXTERN redefinition in indigocat_nutation.h is token-identical. Within a thread the cache semantics are unchanged, as the header comment documents. Tests: the bit-for-bit reference uses exact hex values captured from the unmodified build, according to the ticket note. The concurrent case compares exactly and deterministically: reference dates are 1.37 d apart and all within-thread reuse is at the identical JD. Threads only count mismatches and the asserts run in main. Thread termination is bounded. pthread/-lpthread was already used by the unit build and by test_agent_platesolver_core.c. The unit suite is Make-only, not Windows. Recorded whitespace, unit and command-1 checks are on HEAD 5d20ecfb2 (tree 7ff2f96, no uncommitted changes). Reviewer reran build/unit/test_indigocat_corrections 20 times: 0 failures, about 0.7 s per run. Limits: no Windows or macOS build and no TSan run by the reviewer (TSan evidence comes from the ticket note). The indigo_ss_data[] result table is a known out-of-scope finding.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 91624.788,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T09:52:08.716184Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T09:53:40.340972Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass, no defects. indigocat_moon.c: static pre[3] removed; all 36 sum_series_elpN take const double *pre, and these are the only readers (grep: pre[] used only in the 36 cutoff comparisons and in indigocat_moon_geocentric_coords, where it is now a local filled at :39176-39178 before the series calls). Arithmetic is unchanged, calls stay on one line, no other mutable static in moon.c. indigocat_nutation.c:174-175: all four cache variables are static INDIGO_THREAD_LOCAL long double. indigo_uni_io.h holds only macros and declarations, so the include adds no link dependency. It is already included across indigo_libs, which uses INDIGO_THREAD_LOCAL in indigo_json.c, indigo_xml.c and indigo_timer.c. indigo.vcxproj defines INDIGO_WINDOWS, which gives __declspec(thread). Make and Xcode builds get __thread. The INDIGO_EXTERN redefinition in indigocat_nutation.h is token-identical. Within a thread the cache semantics are unchanged, as the header comment documents. Tests: the bit-for-bit reference uses exact hex values captured from the unmodified build, according to the ticket note. The concurrent case compares exactly and deterministically: reference dates are 1.37 d apart and all within-thread reuse is at the identical JD. Threads only count mismatches and the asserts run in main. Thread termination is bounded. pthread/-lpthread was already used by the unit build and by test_agent_platesolver_core.c. The unit suite is Make-only, not Windows. Recorded whitespace, unit and command-1 checks are on HEAD 5d20ecfb2 (tree 7ff2f96, no uncommitted changes). Reviewer reran build/unit/test_indigocat_corrections 20 times: 0 failures, about 0.7 s per run. Limits: no Windows or macOS build and no TSan run by the reviewer (TSan evidence comes from the ticket note). The indigo_ss_data[] result table is a known out-of-scope finding."
+        }
+      ],
+      "result": {
+        "summary": "Pass, no defects. indigocat_moon.c: static pre[3] removed; all 36 sum_series_elpN take const double *pre, and these are the only readers (grep: pre[] used only in the 36 cutoff comparisons and in indigocat_moon_geocentric_coords, where it is now a local filled at :39176-39178 before the series calls). Arithmetic is unchanged, calls stay on one line, no other mutable static in moon.c. indigocat_nutation.c:174-175: all four cache variables are static INDIGO_THREAD_LOCAL long double. indigo_uni_io.h holds only macros and declarations, so the include adds no link dependency. It is already included across indigo_libs, which uses INDIGO_THREAD_LOCAL in indigo_json.c, indigo_xml.c and indigo_timer.c. indigo.vcxproj defines INDIGO_WINDOWS, which gives __declspec(thread). Make and Xcode builds get __thread. The INDIGO_EXTERN redefinition in indigocat_nutation.h is token-identical. Within a thread the cache semantics are unchanged, as the header comment documents. Tests: the bit-for-bit reference uses exact hex values captured from the unmodified build, according to the ticket note. The concurrent case compares exactly and deterministically: reference dates are 1.37 d apart and all within-thread reuse is at the identical JD. Threads only count mismatches and the asserts run in main. Thread termination is bounded. pthread/-lpthread was already used by the unit build and by test_agent_platesolver_core.c. The unit suite is Make-only, not Windows. Recorded whitespace, unit and command-1 checks are on HEAD 5d20ecfb2 (tree 7ff2f96, no uncommitted changes). Reviewer reran build/unit/test_indigocat_corrections 20 times: 0 failures, about 0.7 s per run. Limits: no Windows or macOS build and no TSan run by the reviewer (TSan evidence comes from the ticket note). The indigo_ss_data[] result table is a known out-of-scope finding.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 91624.788,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "959386f0-7a9a-45b9-86e7-e14ceefb3886",
+      "event": "ticket/created",
+      "at": "2026-11-19T09:36:39.095905Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "029165fb-f2e8-46ff-9073-85bbb305dce0",
+      "event": "ticket/note",
+      "at": "2026-11-19T09:36:45.089304Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "indigo_libs/indigo/indigo_uni_io.h:58 defines a portable INDIGO_THREAD_LOCAL (__thread / Windows equivalent); a per-thread nutation cache using it is an acceptable option (c) alongside the mutex or removing the cache. Choose the simplest correct one and justify it.",
+      "tokens": null
+    },
+    {
+      "event_id": "f1b9877f-8d70-45a2-b0e0-1935e028db00",
+      "event": "task/progress",
+      "at": "2026-11-19T09:37:07.073111Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Implementation started on branch ticket/ad32f32a-7927-4b22-ba1c-f8a46553ed9b"
+    },
+    {
+      "event_id": "4bf75e34-ce0f-45eb-913b-c24e6d133af4",
+      "event": "ticket/started",
+      "at": "2026-11-19T09:37:07.075020Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/ad32f32a-7927-4b22-ba1c-f8a46553ed9b",
+      "base": "master"
+    },
+    {
+      "event_id": "f40f0f4e-cc41-486b-80f5-5ac3723cfbcf",
+      "event": "task/progress",
+      "at": "2026-11-19T09:37:23.877016Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Implementer launched",
+      "attempt_id": "8e4ceb00-a4e6-4d03-b6c9-a1ab870e8780",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "29981027-71cf-4caf-9812-ecfe35bbf7a4",
+      "event": "task/progress",
+      "at": "2026-11-19T09:38:26.082679Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Building the unmodified library to reproduce the races"
+    },
+    {
+      "event_id": "62e6b296-eb29-445f-a6a8-6061e7264919",
+      "event": "task/progress",
+      "at": "2026-11-19T09:40:45.310884Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Running the new indigocat tests on the unmodified library"
+    },
+    {
+      "event_id": "aa03fc14-f444-469c-8c47-be98f7f8eadc",
+      "event": "task/progress",
+      "at": "2026-11-19T09:44:36.549457Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bfa7cccc-f263-4d6d-84c0-aaee2dda9ebb",
+      "event": "task/progress",
+      "at": "2026-11-19T09:44:36.592821Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7fb800aa-794b-4a56-99fd-17aaed950589",
+      "event": "task/progress",
+      "at": "2026-11-19T09:44:36.598847Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "33d60521-4f50-4ecb-9e83-bb2814d4b338",
+      "event": "task/progress",
+      "at": "2026-11-19T09:45:40.116221Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "4f7eacf3-8356-4e62-902d-372e330c81a3",
+      "event": "check/passed",
+      "at": "2026-11-19T09:45:40.124094Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5d20ecfb2ae856db1bd8e5e7fe2440e8d6c383c6",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "74b6cd8d-bcdd-4795-b6ee-c67031d34d97",
+      "event": "task/progress",
+      "at": "2026-11-19T09:45:48.228271Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "1db97914-2d17-485d-91a0-204c8f63b073",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T09:45:57.773952Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "4aab0e5a-cc82-4d33-a658-d55a1116b432",
+      "event": "ticket/note",
+      "at": "2026-11-19T09:49:06.417374Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction (unmodified code, worktree base 0b6e7b6de): new unit case concurrent_moon_sun_and_nutation_match_single_threaded_results in indigo_test/unit/test_indigocat_corrections.c runs 6 threads (full Moon, coarse Moon x2, alternating full/coarse Moon, nutation+Sun x2) over 24 dates 1.37 days apart and compares every result exactly (==) with single-threaded references. On the unmodified library it failed in 3 of 3 runs with 585, 474 and 639 mismatching values (e.g. full Moon ra at JD 2449000.5 expected 0x1.5986ed83f42c6p+7, got 0x1.5986e798a7e98p+7; Sun ra off by ~0.3 arcmin). ThreadSanitizer build (test + indigocat sources, -fsanitize=thread) reported 237 data races: c_longitude 99, c_obliquity 101, c_JD 15, c_ecliptic 15, pre 7. With only the Moon fix (pre[] as parameter) the case still failed (1209 and 711 mismatches, nutation/Sun and Moon values via nutation), isolating the nutation cache race. With both fixes: 30 of 30 runs pass, TSan reports 0 races, case takes ~0.16 s wall.",
+      "tokens": null
+    },
+    {
+      "event_id": "20d4b12a-c78b-4a61-8dd2-e63a1a93f8e5",
+      "event": "ticket/note",
+      "at": "2026-11-19T09:49:06.483375Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Nutation choice: per-thread cache with the existing portable INDIGO_THREAD_LOCAL (indigo_libs/indigo/indigo_uni_io.h, already used in indigo_json.c inside libindigo/indigo.dll). One qualifier on the cache statics plus the header include; single-threaded behaviour (including the 0.1 day reuse) is unchanged, so results stay bit-identical. Rejected: removing the cache changes results for callers within 0.1 day (cache reuse is history dependent) and doubles the Sun cost; a mutex needs locals + locking on every call (contention among scheduler/server threads) for no benefit over TLS. Measurements (arm64, -O2, static libindigocat, 3 alternating runs before/after, us per call): nutation recompute 9.26-9.33 / 9.20-9.36; nutation cache hit 0.0177-0.0178 / 0.0177-0.0209; Sun equatorial (mostly hits) 13.7-14.0 / 13.7-16.1; Sun (every call misses) 28.6-28.8 / 28.6-30.8; coarse Moon 24.2-25.0 / 24.7-25.5; full Moon 1129-1143 / 1107-1137. No measurable change; removing the cache would raise a Sun call from ~14 to ~29 us.",
+      "tokens": null
+    },
+    {
+      "event_id": "ac08bcd2-aff4-46bc-ba3a-c6daa7ad266f",
+      "event": "ticket/note",
+      "at": "2026-11-19T09:49:06.547714Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Bit-identical evidence: a capture program printed (%a) full Moon, coarse Moon, Sun ra/dec and nutation longitude/obliquity/ecliptic at JD 2451545.0, 2449000.5, 2460000.5, 2462502.25 from the unmodified build; the fixed build prints identical lines (diff empty). The same values are now asserted exactly by moon_sun_and_nutation_match_captured_values_bit_for_bit.",
+      "tokens": null
+    },
+    {
+      "event_id": "89d2730a-16d5-46e0-b8ad-2816f5e0a628",
+      "event": "ticket/note",
+      "at": "2026-11-19T09:49:06.607948Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Audit of mutable static state on indigocat_sun_equatorial_coords, indigocat_moon_equatorial_coords(_prec/_coarse) and indigocat_ss paths (grep of non-const file-scope and function-scope statics/globals in indigo_libs/indigocat/*.c): only indigocat_moon.c pre[3] (fixed: now a local passed to the 36 sum_series_elpN functions) and indigocat_nutation.c c_JD/c_longitude/c_obliquity/c_ecliptic (fixed: INDIGO_THREAD_LOCAL). Planet (VSOP87, Pluto), precession, transform, dynamical time and sun files hold only const tables. Remaining finding, not a calculation input and left unchanged: indigocat_ss.c indigo_ss_data[] is a static result table that indigocat_get_ss_data() fills and returns by pointer; two concurrent callers would race on it. Its only caller is indigo_server.c (stars.json resource generation), so no current concurrent use; fixing it needs an API change and is out of scope. dso/star data_updated tables are not on these paths.",
+      "tokens": null
+    },
+    {
+      "event_id": "3e20f645-e247-48ba-a620-4b9ea30f18ec",
+      "event": "ticket/note",
+      "at": "2026-11-19T09:49:06.668522Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Test-to-requirement mapping: (1) Moon cutoff no longer shared -> concurrent_moon_sun_and_nutation_match_single_threaded_results (full/coarse/alternating Moon threads, exact compare) + TSan run; (2) nutation cache thread-safe -> same case (nutation+Sun threads at epochs 1.37 d apart concurrently with Moon threads) + TSan run; (3) bit-identical single-threaded results for Moon precision 0 and 1e-6, Sun and nutation -> moon_sun_and_nutation_match_captured_values_bit_for_bit (values captured from the unmodified build); existing nutation_does_not_retain_previous_date_accumulators, sun_aberration_uses_degrees_at_reference_epochs and coarse_moon_stays_within_5_arcsec_of_full_theory still pass. The suite has no ThreadSanitizer target (only ASan/UBSan); TSan was run by hand as recorded above.",
+      "tokens": null
+    },
+    {
+      "event_id": "780022f4-8605-4402-9847-56bb241fff13",
+      "event": "task/progress",
+      "at": "2026-11-19T09:51:21.719742Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "0059e37a-6570-4c74-bbf0-b8e2a04b987b",
+      "event": "check/passed",
+      "at": "2026-11-19T09:51:21.728409Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5d20ecfb2ae856db1bd8e5e7fe2440e8d6c383c6",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "f7d04fe4-60e4-41d7-adbf-93f0ce627bfa",
+      "event": "ticket/note",
+      "at": "2026-11-19T09:51:31.533420Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Checks on final tree 7ff2f9609f2c: whitespace passed; unit passed (549 PASS, 0 FAIL, 1 pre-existing SKIP parses_numbers_independently_of_locale for missing de_DE locale; indigocat suite 5/5); --command agent_scripting build + test-agent-scheduler passed (Scheduler Agent: 132 run, 132 passed, 0 failed, 333 s).",
+      "tokens": null
+    },
+    {
+      "event_id": "bd8b8a07-e012-4464-874f-2cedc5bacbe8",
+      "event": "task/progress",
+      "at": "2026-11-19T09:52:08.649184Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ba21e2aa-7c4f-4b1a-9b70-e55fe9af855a",
+      "text": "Reviewer launched",
+      "attempt_id": "8e4ceb00-a4e6-4d03-b6c9-a1ab870e8780",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "eb3edf1f-13bf-4b5a-b040-bf5280bfcbad",
+      "event": "task/progress",
+      "at": "2026-11-19T09:52:08.716222Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8fa1e53e-5489-4edf-a44b-3a206bcc8873",
+      "text": "Review started"
+    },
+    {
+      "event_id": "039d3d0b-f735-4e41-a905-59a1f8ddfeec",
+      "event": "review/started",
+      "at": "2026-11-19T09:52:08.716489Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "96621d94-ed20-483b-992e-d59b10896859",
+      "event": "task/progress",
+      "at": "2026-11-19T09:53:04.932443Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8fa1e53e-5489-4edf-a44b-3a206bcc8873",
+      "text": "Rerunning test_indigocat_corrections 10 times for flakiness"
+    },
+    {
+      "event_id": "d0ad2f0a-b739-4376-8570-5580a311b20c",
+      "event": "task/progress",
+      "at": "2026-11-19T09:53:40.341046Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8fa1e53e-5489-4edf-a44b-3a206bcc8873",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d82e68b8-427e-4233-8d55-7006dac87443",
+      "event": "review/passed",
+      "at": "2026-11-19T09:53:40.341454Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8fa1e53e-5489-4edf-a44b-3a206bcc8873",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5d20ecfb2ae856db1bd8e5e7fe2440e8d6c383c6"
+    },
+    {
+      "event_id": "c70eb3a3-34e8-40c0-a1dc-72c84cb9f4fa",
+      "event": "ticket/closed",
+      "at": "2026-11-19T09:57:08.824785Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T09:57:08.824756Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "4c65d0cdb1beb72bc39ef49c0efac2483310a858"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5d20ecfb2ae856db1bd8e5e7fe2440e8d6c383c6",
+        "tree": "7ff2f9609f2ce73d79ea77c725c8c8d4ed2b4fbd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T09:44:36.592235Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ad32f32a-7927-4b22-ba1c-f8a46553ed9b/7ff2f9609f2c-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "5d20ecfb2ae856db1bd8e5e7fe2440e8d6c383c6",
+        "tree": "7ff2f9609f2ce73d79ea77c725c8c8d4ed2b4fbd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T09:45:40.114361Z",
+        "duration_s": 63.5,
+        "log": "/tmp/factory-flow/ad32f32a-7927-4b22-ba1c-f8a46553ed9b/7ff2f9609f2c-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "5d20ecfb2ae856db1bd8e5e7fe2440e8d6c383c6",
+        "tree": "7ff2f9609f2ce73d79ea77c725c8c8d4ed2b4fbd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T09:51:21.717062Z",
+        "duration_s": 333.5,
+        "log": "/tmp/factory-flow/ad32f32a-7927-4b22-ba1c-f8a46553ed9b/7ff2f9609f2c-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass, no defects. indigocat_moon.c: static pre[3] removed; all 36 sum_series_elpN take const double *pre, and these are the only readers (grep: pre[] used only in the 36 cutoff comparisons and in indigocat_moon_geocentric_coords, where it is now a local filled at :39176-39178 before the series calls). Arithmetic is unchanged, calls stay on one line, no other mutable static in moon.c. indigocat_nutation.c:174-175: all four cache variables are static INDIGO_THREAD_LOCAL long double. indigo_uni_io.h holds only macros and declarations, so the include adds no link dependency. It is already included across indigo_libs, which uses INDIGO_THREAD_LOCAL in indigo_json.c, indigo_xml.c and indigo_timer.c. indigo.vcxproj defines INDIGO_WINDOWS, which gives __declspec(thread). Make and Xcode builds get __thread. The INDIGO_EXTERN redefinition in indigocat_nutation.h is token-identical. Within a thread the cache semantics are unchanged, as the header comment documents. Tests: the bit-for-bit reference uses exact hex values captured from the unmodified build, according to the ticket note. The concurrent case compares exactly and deterministically: reference dates are 1.37 d apart and all within-thread reuse is at the identical JD. Threads only count mismatches and the asserts run in main. Thread termination is bounded. pthread/-lpthread was already used by the unit build and by test_agent_platesolver_core.c. The unit suite is Make-only, not Windows. Recorded whitespace, unit and command-1 checks are on HEAD 5d20ecfb2 (tree 7ff2f96, no uncommitted changes). Reviewer reran build/unit/test_indigocat_corrections 20 times: 0 failures, about 0.7 s per run. Limits: no Windows or macOS build and no TSan run by the reviewer (TSan evidence comes from the ticket note). The indigo_ss_data[] result table is a known out-of-scope finding.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "5d20ecfb2ae856db1bd8e5e7fe2440e8d6c383c6",
+        "tree": "7ff2f9609f2ce73d79ea77c725c8c8d4ed2b4fbd",
+        "at": "2026-11-19T09:53:40.340845Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T09:36:45.089042Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "indigo_libs/indigo/indigo_uni_io.h:58 defines a portable INDIGO_THREAD_LOCAL (__thread / Windows equivalent); a per-thread nutation cache using it is an acceptable option (c) alongside the mutex or removing the cache. Choose the simplest correct one and justify it.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T09:49:06.416965Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction (unmodified code, worktree base 0b6e7b6de): new unit case concurrent_moon_sun_and_nutation_match_single_threaded_results in indigo_test/unit/test_indigocat_corrections.c runs 6 threads (full Moon, coarse Moon x2, alternating full/coarse Moon, nutation+Sun x2) over 24 dates 1.37 days apart and compares every result exactly (==) with single-threaded references. On the unmodified library it failed in 3 of 3 runs with 585, 474 and 639 mismatching values (e.g. full Moon ra at JD 2449000.5 expected 0x1.5986ed83f42c6p+7, got 0x1.5986e798a7e98p+7; Sun ra off by ~0.3 arcmin). ThreadSanitizer build (test + indigocat sources, -fsanitize=thread) reported 237 data races: c_longitude 99, c_obliquity 101, c_JD 15, c_ecliptic 15, pre 7. With only the Moon fix (pre[] as parameter) the case still failed (1209 and 711 mismatches, nutation/Sun and Moon values via nutation), isolating the nutation cache race. With both fixes: 30 of 30 runs pass, TSan reports 0 races, case takes ~0.16 s wall.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T09:49:06.483156Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Nutation choice: per-thread cache with the existing portable INDIGO_THREAD_LOCAL (indigo_libs/indigo/indigo_uni_io.h, already used in indigo_json.c inside libindigo/indigo.dll). One qualifier on the cache statics plus the header include; single-threaded behaviour (including the 0.1 day reuse) is unchanged, so results stay bit-identical. Rejected: removing the cache changes results for callers within 0.1 day (cache reuse is history dependent) and doubles the Sun cost; a mutex needs locals + locking on every call (contention among scheduler/server threads) for no benefit over TLS. Measurements (arm64, -O2, static libindigocat, 3 alternating runs before/after, us per call): nutation recompute 9.26-9.33 / 9.20-9.36; nutation cache hit 0.0177-0.0178 / 0.0177-0.0209; Sun equatorial (mostly hits) 13.7-14.0 / 13.7-16.1; Sun (every call misses) 28.6-28.8 / 28.6-30.8; coarse Moon 24.2-25.0 / 24.7-25.5; full Moon 1129-1143 / 1107-1137. No measurable change; removing the cache would raise a Sun call from ~14 to ~29 us.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T09:49:06.547415Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Bit-identical evidence: a capture program printed (%a) full Moon, coarse Moon, Sun ra/dec and nutation longitude/obliquity/ecliptic at JD 2451545.0, 2449000.5, 2460000.5, 2462502.25 from the unmodified build; the fixed build prints identical lines (diff empty). The same values are now asserted exactly by moon_sun_and_nutation_match_captured_values_bit_for_bit.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T09:49:06.607678Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Audit of mutable static state on indigocat_sun_equatorial_coords, indigocat_moon_equatorial_coords(_prec/_coarse) and indigocat_ss paths (grep of non-const file-scope and function-scope statics/globals in indigo_libs/indigocat/*.c): only indigocat_moon.c pre[3] (fixed: now a local passed to the 36 sum_series_elpN functions) and indigocat_nutation.c c_JD/c_longitude/c_obliquity/c_ecliptic (fixed: INDIGO_THREAD_LOCAL). Planet (VSOP87, Pluto), precession, transform, dynamical time and sun files hold only const tables. Remaining finding, not a calculation input and left unchanged: indigocat_ss.c indigo_ss_data[] is a static result table that indigocat_get_ss_data() fills and returns by pointer; two concurrent callers would race on it. Its only caller is indigo_server.c (stars.json resource generation), so no current concurrent use; fixing it needs an API change and is out of scope. dso/star data_updated tables are not on these paths.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T09:49:06.668256Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Test-to-requirement mapping: (1) Moon cutoff no longer shared -> concurrent_moon_sun_and_nutation_match_single_threaded_results (full/coarse/alternating Moon threads, exact compare) + TSan run; (2) nutation cache thread-safe -> same case (nutation+Sun threads at epochs 1.37 d apart concurrently with Moon threads) + TSan run; (3) bit-identical single-threaded results for Moon precision 0 and 1e-6, Sun and nutation -> moon_sun_and_nutation_match_captured_values_bit_for_bit (values captured from the unmodified build); existing nutation_does_not_retain_previous_date_accumulators, sun_aberration_uses_degrees_at_reference_epochs and coarse_moon_stays_within_5_arcsec_of_full_theory still pass. The suite has no ThreadSanitizer target (only ASan/UBSan); TSan was run by hand as recorded above.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T09:51:31.532986Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Checks on final tree 7ff2f9609f2c: whitespace passed; unit passed (549 PASS, 0 FAIL, 1 pre-existing SKIP parses_numbers_independently_of_locale for missing de_DE locale; indigocat suite 5/5); --command agent_scripting build + test-agent-scheduler passed (Scheduler Agent: 132 run, 132 passed, 0 failed, 333 s).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "4c65d0cdb1beb72bc39ef49c0efac2483310a858",
+      "tree": "7ff2f9609f2ce73d79ea77c725c8c8d4ed2b4fbd",
+      "base": "master",
+      "at": "2026-11-19T09:57:08.729913Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-19T09:36:39.095457Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T09:45:57.773895Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 993268.778,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 33,
+    "sha256": "5a2d91d39891208dd3b4e8c0d177b2d5e1a09d9903dc9dab59747d8d364633b4"
+  }
+}
