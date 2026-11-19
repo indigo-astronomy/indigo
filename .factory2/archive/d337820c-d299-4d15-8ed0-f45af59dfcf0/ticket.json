@@ -1,0 +1,449 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d337820c-d299-4d15-8ed0-f45af59dfcf0",
+  "revision": 21,
+  "title": "indigo_test: fix the intermittent failure of the scripting test on-unload execution",
+  "description": "Observed 2026-11-19 in ticket f44484e4: the integration case 'on-unload execution' in indigo_test/integration/test_agent_scripting.c failed once (has_message(\"unload-ran\") at line ~595) during a full test-agent-scripting run on unmodified code, and passed in the next run. Unrelated to that ticket's change.\nWork: reproduce with repeated runs of the case alone and in the full suite, find the race (likely the test checks for the message before the unload script's message has been delivered, or the script runs asynchronously after the unload acknowledgement), fix the test synchronisation (wait for the message with a bounded timeout) or the agent if its order is actually wrong. Verify with many repeated runs plus the full scripting suite.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T11:35:59.544195Z",
+  "status": "closed",
+  "branch": "ticket/d337820c-d299-4d15-8ed0-f45af59dfcf0",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c05f4f3f-99d2-4780-9c1e-4279f76497b9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T11:36:56.491093Z",
+          "last_activity_at": "2026-11-19T11:48:40.369914Z",
+          "ended_at": "2026-11-19T11:48:40.369914Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 703878.821,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T11:36:56.491093Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/d337820c-d299-4d15-8ed0-f45af59dfcf0"
+        },
+        {
+          "at": "2026-11-19T11:48:40.369914Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 703878.821,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "22a41316-c6f5-47eb-a0a0-7b5203126fe3",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "ba25e9fa-12ba-4888-b649-404768883f86",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T11:48:40.369948Z",
+          "last_activity_at": "2026-11-19T11:51:55.801807Z",
+          "ended_at": "2026-11-19T11:51:55.801807Z",
+          "outcome": {
+            "summary": "Pass at 241ee4aa8 (base = master 3d1f8e18f). No blocking defects. Verified: indigo_queue_drain (indigo_timer.c:1118) exists, waits without deadline until no pending/running task, returns false on the queue's own thread; detach path holds no bus_mutex (indigo_bus.c:934-944 unlocks before device->detach), no PRIVATE_DATA->mutex (execute_script unlocks) and no DEVICE_CONTEXT->device_mutex (task mutex) while draining; server unload runs on drivers_queue, not under bus_mutex. Drain precedes duk_destroy_heap, property releases, indigo_device_detach queue delete and private_data free, so drained handlers (snapshots, agent_client, agent_device, Duktape via agent_define_property for to_client replies) use live resources; previously such handlers could also race with heap destruction. Timers are cancelled synchronously before and run on the timer scheduler, not this queue, so drain does not wait on them. Device is removed from the bus list under bus_mutex before detach and agent_client is detached first, so no external producers remain; only the agent's own handlers can re-enqueue. on_load_finalizer re-enqueue edge is bounded by the config restore deadline (indigo_driver.c start_config_restore, 120 s; in practice immediate since the device is off the bus). agent_client free moved after device detach: no UAF (queue deleted inside device detach), no leak, detach order unchanged; INIT/INFO paths unaffected. Evidence: rebuilt the case with master's agent source in scratch, 16-way x 100 runs: master 897/1600 failed at test_agent_scripting.c:595, branch 0/1600; full suite 24 runs under 8-way load all 39/39. DRIVER_VERSION 0x03000014 -> 0x03000015, no collision; diff --check clean; test unchanged; checks recorded at HEAD. Non-blocking note: indigo_detach_device broadcasts delete-all for the agent before calling detach (indigo_bus.c:940-942), so on-unload definitions of agent-owned properties now reach clients after that delete and remain defined there; the guide row is literally acc",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 195431.859,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T11:48:40.369948Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T11:51:55.801807Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass at 241ee4aa8 (base = master 3d1f8e18f). No blocking defects. Verified: indigo_queue_drain (indigo_timer.c:1118) exists, waits without deadline until no pending/running task, returns false on the queue's own thread; detach path holds no bus_mutex (indigo_bus.c:934-944 unlocks before device->detach), no PRIVATE_DATA->mutex (execute_script unlocks) and no DEVICE_CONTEXT->device_mutex (task mutex) while draining; server unload runs on drivers_queue, not under bus_mutex. Drain precedes duk_destroy_heap, property releases, indigo_device_detach queue delete and private_data free, so drained handlers (snapshots, agent_client, agent_device, Duktape via agent_define_property for to_client replies) use live resources; previously such handlers could also race with heap destruction. Timers are cancelled synchronously before and run on the timer scheduler, not this queue, so drain does not wait on them. Device is removed from the bus list under bus_mutex before detach and agent_client is detached first, so no external producers remain; only the agent's own handlers can re-enqueue. on_load_finalizer re-enqueue edge is bounded by the config restore deadline (indigo_driver.c start_config_restore, 120 s; in practice immediate since the device is off the bus). agent_client free moved after device detach: no UAF (queue deleted inside device detach), no leak, detach order unchanged; INIT/INFO paths unaffected. Evidence: rebuilt the case with master's agent source in scratch, 16-way x 100 runs: master 897/1600 failed at test_agent_scripting.c:595, branch 0/1600; full suite 24 runs under 8-way load all 39/39. DRIVER_VERSION 0x03000014 -> 0x03000015, no collision; diff --check clean; test unchanged; checks recorded at HEAD. Non-blocking note: indigo_detach_device broadcasts delete-all for the agent before calling detach (indigo_bus.c:940-942), so on-unload definitions of agent-owned properties now reach clients after that delete and remain defined there; the guide row is literally acc"
+        }
+      ],
+      "result": {
+        "summary": "Pass at 241ee4aa8 (base = master 3d1f8e18f). No blocking defects. Verified: indigo_queue_drain (indigo_timer.c:1118) exists, waits without deadline until no pending/running task, returns false on the queue's own thread; detach path holds no bus_mutex (indigo_bus.c:934-944 unlocks before device->detach), no PRIVATE_DATA->mutex (execute_script unlocks) and no DEVICE_CONTEXT->device_mutex (task mutex) while draining; server unload runs on drivers_queue, not under bus_mutex. Drain precedes duk_destroy_heap, property releases, indigo_device_detach queue delete and private_data free, so drained handlers (snapshots, agent_client, agent_device, Duktape via agent_define_property for to_client replies) use live resources; previously such handlers could also race with heap destruction. Timers are cancelled synchronously before and run on the timer scheduler, not this queue, so drain does not wait on them. Device is removed from the bus list under bus_mutex before detach and agent_client is detached first, so no external producers remain; only the agent's own handlers can re-enqueue. on_load_finalizer re-enqueue edge is bounded by the config restore deadline (indigo_driver.c start_config_restore, 120 s; in practice immediate since the device is off the bus). agent_client free moved after device detach: no UAF (queue deleted inside device detach), no leak, detach order unchanged; INIT/INFO paths unaffected. Evidence: rebuilt the case with master's agent source in scratch, 16-way x 100 runs: master 897/1600 failed at test_agent_scripting.c:595, branch 0/1600; full suite 24 runs under 8-way load all 39/39. DRIVER_VERSION 0x03000014 -> 0x03000015, no collision; diff --check clean; test unchanged; checks recorded at HEAD. Non-blocking note: indigo_detach_device broadcasts delete-all for the agent before calling detach (indigo_bus.c:940-942), so on-unload definitions of agent-owned properties now reach clients after that delete and remain defined there; the guide row is literally acc",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 195431.859,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "eeec752a-d1fd-4808-9397-bcad031e15b1",
+      "event": "ticket/created",
+      "at": "2026-11-19T11:35:59.544639Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "9d66efaf-9bbd-4ca4-a611-9f02236266f1",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T11:36:46.227775Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "b06a602a-f14f-422e-ae9c-a0127e0c10f6",
+      "event": "task/progress",
+      "at": "2026-11-19T11:36:56.495523Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Implementation started on branch ticket/d337820c-d299-4d15-8ed0-f45af59dfcf0"
+    },
+    {
+      "event_id": "65b401b5-89f7-4d68-8d5a-75b519f30f58",
+      "event": "ticket/started",
+      "at": "2026-11-19T11:36:56.501834Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/d337820c-d299-4d15-8ed0-f45af59dfcf0",
+      "base": "master"
+    },
+    {
+      "event_id": "a0dba78e-988d-46e0-b87c-c635633b350d",
+      "event": "task/progress",
+      "at": "2026-11-19T11:37:11.776089Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Implementer launched",
+      "attempt_id": "c05f4f3f-99d2-4780-9c1e-4279f76497b9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a87c605b-6d7c-4d62-82d8-30775a3e193a",
+      "event": "task/progress",
+      "at": "2026-11-19T11:38:45.267413Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Building libindigo and the scripting integration test"
+    },
+    {
+      "event_id": "d1d664a1-e1c5-4002-b5ff-203b662b5cf4",
+      "event": "task/progress",
+      "at": "2026-11-19T11:39:38.179169Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Reproducing: 200 runs of the on-unload execution case alone"
+    },
+    {
+      "event_id": "291fcf21-c4a8-4621-b926-0d72743a4444",
+      "event": "task/progress",
+      "at": "2026-11-19T11:41:34.638020Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Post-fix: rebuilding and repeating 640 parallel on-unload runs"
+    },
+    {
+      "event_id": "d38d518f-6d96-4123-8ef1-5e2bdab0a5e9",
+      "event": "task/progress",
+      "at": "2026-11-19T11:41:47.936752Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Post-fix: 10 serial and 24 parallel full scripting suite runs"
+    },
+    {
+      "event_id": "95168a3a-ecbd-4685-ab06-82c4b3f6b526",
+      "event": "task/progress",
+      "at": "2026-11-19T11:42:29.048970Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "7b8048d0-7ee8-4c8f-9ea7-5b5d7b45b07c",
+      "event": "task/progress",
+      "at": "2026-11-19T11:42:29.060540Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "391d4caa-3893-4da1-81ba-e0f5b160bafe",
+      "event": "check/passed",
+      "at": "2026-11-19T11:42:29.065025Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "241ee4aa86352cd9df4658e02f438f6fd952c4b8",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "bc28d8b8-1d67-4020-a347-e2948a2a52fa",
+      "event": "task/progress",
+      "at": "2026-11-19T11:42:33.600948Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "99590b79-0ce9-4311-adbc-f549d1169478",
+      "event": "task/progress",
+      "at": "2026-11-19T11:47:56.623446Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "faa59bbc-a9ec-4c53-91c0-92901563e4f8",
+      "event": "check/passed",
+      "at": "2026-11-19T11:47:56.636480Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "241ee4aa86352cd9df4658e02f438f6fd952c4b8",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "a1420f9d-e023-4249-9e96-2598816b8b33",
+      "event": "ticket/note",
+      "at": "2026-11-19T11:48:09.438263Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: 'on-unload execution' alone passed 300/300 on an idle machine; under load (16 parallel loops x 40 runs, 4 CPUs) it failed 332/640 with test_agent_scripting.c:595 has_message(\"unload-ran\"). Note: this suite filters by argv[1] (./test_agent_scripting 'on-unload execution'); INDIGO_TEST_CASE_FILTER makes every forked case SKIP and fail, a separate pre-existing harness quirk not changed here.\nRoot cause (agent defect, not test sync): the JS bindings (indigo_send_message, define/update/delete property, change/enumerate) queue their effects on the agent device queue. agent_device_detach() runs on-unload scripts and then calls indigo_device_detach(), whose indigo_queue_delete() drops every pending task. Whether the queued 'unload-ran' message is delivered depends on the queue thread winning the race, so on-unload effects were lost nondeterministically; the test waits correctly because the contract says the scripts run before detach.\nFix: agent_device_detach() calls indigo_queue_drain(DEVICE_CONTEXT->queue) after executing on-unload scripts (JS timers are already cancelled; the device is already off the bus device list so no new external changes route to it). INDIGO_DRIVER_SHUTDOWN now frees agent_client only after the device detach, because drained change/enumerate handlers still pass agent_client to the bus (previously a use-after-free whenever such a handler won the race). DRIVER_VERSION 0x03000014 -> 0x03000015. INDIGO_SCRIPT_GUIDE.md states that on-unload script effects are delivered before detach. Test unchanged.\nPost-fix: same load test 0/640 failures; full scripting suite 0/10 serial and 0/24 under 8-way parallel load; flow check whitespace passed; flow check --command (lib build + test-agent-scripting 39/39 + test-agent-scripting-sequencer 68/68) passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "09007229-4b21-45ac-b6d3-69babc6037ba",
+      "event": "task/progress",
+      "at": "2026-11-19T11:48:40.294956Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "10adb449-a22c-4d90-8aac-dc4a55e701d0",
+      "text": "Reviewer launched",
+      "attempt_id": "c05f4f3f-99d2-4780-9c1e-4279f76497b9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "4c4a0ca4-3768-406d-a654-94a69beb24a7",
+      "event": "task/progress",
+      "at": "2026-11-19T11:48:40.370001Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22a41316-c6f5-47eb-a0a0-7b5203126fe3",
+      "text": "Review started"
+    },
+    {
+      "event_id": "2a9e4e98-7cd7-4850-9285-856835fb4188",
+      "event": "review/started",
+      "at": "2026-11-19T11:48:40.370351Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "0f8c5b88-63f2-400c-87a2-c2070bdd99c9",
+      "event": "task/progress",
+      "at": "2026-11-19T11:50:40.652518Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22a41316-c6f5-47eb-a0a0-7b5203126fe3",
+      "text": "Rebuilding and running on-unload execution under 16-way parallel load"
+    },
+    {
+      "event_id": "c9a3fc8b-7496-448a-ae75-10157d2ecc68",
+      "event": "task/progress",
+      "at": "2026-11-19T11:51:55.801915Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22a41316-c6f5-47eb-a0a0-7b5203126fe3",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "46b0b062-e479-4d96-a280-0e03b5c52a0c",
+      "event": "review/passed",
+      "at": "2026-11-19T11:51:55.802393Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22a41316-c6f5-47eb-a0a0-7b5203126fe3",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "241ee4aa86352cd9df4658e02f438f6fd952c4b8"
+    },
+    {
+      "event_id": "258f1ad3-1bfa-4d3e-a339-f768d99ac710",
+      "event": "ticket/closed",
+      "at": "2026-11-19T11:57:36.898041Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T11:57:36.898021Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "f53b093bdea92dbfb05c811ba9c00de58a7121e7"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "241ee4aa86352cd9df4658e02f438f6fd952c4b8",
+        "tree": "5b8456e44d5c60aeca8dd0d4626f5348c9a3cc7d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T11:42:29.060168Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d337820c-d299-4d15-8ed0-f45af59dfcf0/5b8456e44d5c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting test-agent-scripting-sequencer",
+        "commit": "241ee4aa86352cd9df4658e02f438f6fd952c4b8",
+        "tree": "5b8456e44d5c60aeca8dd0d4626f5348c9a3cc7d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T11:47:56.619221Z",
+        "duration_s": 323.0,
+        "log": "/tmp/factory-flow/d337820c-d299-4d15-8ed0-f45af59dfcf0/5b8456e44d5c-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass at 241ee4aa8 (base = master 3d1f8e18f). No blocking defects. Verified: indigo_queue_drain (indigo_timer.c:1118) exists, waits without deadline until no pending/running task, returns false on the queue's own thread; detach path holds no bus_mutex (indigo_bus.c:934-944 unlocks before device->detach), no PRIVATE_DATA->mutex (execute_script unlocks) and no DEVICE_CONTEXT->device_mutex (task mutex) while draining; server unload runs on drivers_queue, not under bus_mutex. Drain precedes duk_destroy_heap, property releases, indigo_device_detach queue delete and private_data free, so drained handlers (snapshots, agent_client, agent_device, Duktape via agent_define_property for to_client replies) use live resources; previously such handlers could also race with heap destruction. Timers are cancelled synchronously before and run on the timer scheduler, not this queue, so drain does not wait on them. Device is removed from the bus list under bus_mutex before detach and agent_client is detached first, so no external producers remain; only the agent's own handlers can re-enqueue. on_load_finalizer re-enqueue edge is bounded by the config restore deadline (indigo_driver.c start_config_restore, 120 s; in practice immediate since the device is off the bus). agent_client free moved after device detach: no UAF (queue deleted inside device detach), no leak, detach order unchanged; INIT/INFO paths unaffected. Evidence: rebuilt the case with master's agent source in scratch, 16-way x 100 runs: master 897/1600 failed at test_agent_scripting.c:595, branch 0/1600; full suite 24 runs under 8-way load all 39/39. DRIVER_VERSION 0x03000014 -> 0x03000015, no collision; diff --check clean; test unchanged; checks recorded at HEAD. Non-blocking note: indigo_detach_device broadcasts delete-all for the agent before calling detach (indigo_bus.c:940-942), so on-unload definitions of agent-owned properties now reach clients after that delete and remain defined there; the guide row is literally accurate but this case is not called out. Pre-existing and out of scope: timers created by on-unload scripts after the cancel loop are not cancelled before duk_destroy_heap.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "241ee4aa86352cd9df4658e02f438f6fd952c4b8",
+        "tree": "5b8456e44d5c60aeca8dd0d4626f5348c9a3cc7d",
+        "at": "2026-11-19T11:51:55.801723Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T11:48:09.437988Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: 'on-unload execution' alone passed 300/300 on an idle machine; under load (16 parallel loops x 40 runs, 4 CPUs) it failed 332/640 with test_agent_scripting.c:595 has_message(\"unload-ran\"). Note: this suite filters by argv[1] (./test_agent_scripting 'on-unload execution'); INDIGO_TEST_CASE_FILTER makes every forked case SKIP and fail, a separate pre-existing harness quirk not changed here.\nRoot cause (agent defect, not test sync): the JS bindings (indigo_send_message, define/update/delete property, change/enumerate) queue their effects on the agent device queue. agent_device_detach() runs on-unload scripts and then calls indigo_device_detach(), whose indigo_queue_delete() drops every pending task. Whether the queued 'unload-ran' message is delivered depends on the queue thread winning the race, so on-unload effects were lost nondeterministically; the test waits correctly because the contract says the scripts run before detach.\nFix: agent_device_detach() calls indigo_queue_drain(DEVICE_CONTEXT->queue) after executing on-unload scripts (JS timers are already cancelled; the device is already off the bus device list so no new external changes route to it). INDIGO_DRIVER_SHUTDOWN now frees agent_client only after the device detach, because drained change/enumerate handlers still pass agent_client to the bus (previously a use-after-free whenever such a handler won the race). DRIVER_VERSION 0x03000014 -> 0x03000015. INDIGO_SCRIPT_GUIDE.md states that on-unload script effects are delivered before detach. Test unchanged.\nPost-fix: same load test 0/640 failures; full scripting suite 0/10 serial and 0/24 under 8-way parallel load; flow check whitespace passed; flow check --command (lib build + test-agent-scripting 39/39 + test-agent-scripting-sequencer 68/68) passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "f53b093bdea92dbfb05c811ba9c00de58a7121e7",
+      "tree": "5b8456e44d5c60aeca8dd0d4626f5348c9a3cc7d",
+      "base": "master",
+      "at": "2026-11-19T11:57:36.820171Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T11:35:59.544195Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T11:36:46.227452Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 899310.68,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 27,
+    "sha256": "5b6844884976afe5fe0262bec557b42e10dd7ec4b85e2234d9eaa5fc51d9eb69"
+  }
+}
