@@ -1,0 +1,522 @@
+{
+  "schema_version": 1,
+  "ticket_id": "885c8a5b-a308-4507-8553-28cdac8700df",
+  "revision": 25,
+  "title": "indigocat: return the Sun in the J2000 frame like the planets, fix Delta T after 2010 and apply it to the Moon",
+  "description": "Found 2026-11-19 comparing indigocat with JPL Horizons (40 dates 1990-2060, astrometric geocentric J2000; scripts and data in the coordinator scratchpad ssacc/). indigo_libs changes approved by the owner.\n1. indigocat_sun_equatorial_coords() (indigo_libs/indigocat/indigocat_sun.c) adds nutation and aberration, so it is partly an apparent position, while the planets and every caller (scheduler sky/night grids, Scripting Agent, indigo_server stars.json) treat the result as J2000. Owner's decision: change the existing call (no new call) to return the J2000 position like the planets: drop the nutation and aberration terms. Measured: 26\" mean / 48\" max -> 9\" mean / 27\" max vs Horizons; runtime unchanged. Rewrite the unit test sun_aberration_uses_degrees_at_reference_epochs (indigo_test/unit/test_indigocat_corrections.c) for the new contract and add reference checks against Horizons values (embed constants). Update the header comment.\n2. indigocat_get_dynamical_time_diff() (indigocat_dynamical_time.c) is wrong after 2010 (get_dynamical_diff_other): it returns 121.6 s for 2015, 135 s for 2025, 188 s for 2060; real Delta T is about 67.6 s (2015) and 69.2 s (2025). Fix: observed yearly values 2010-2026 (IERS/USNO) and a bounded, documented extrapolation beyond (e.g. Espenak-Meeus polynomial adjusted to be continuous with the last observed value, or a slow linear trend). Also check the uncovered gap 2305447.5 <= JD < 2312752.5 in the dispatcher (TD possibly uninitialised) and fix it minimally. Only indigocat_get_nutation() currently uses jd_to_jde; its results change negligibly.\n3. The Moon (indigocat_moon_equatorial_coords_prec(), used by the full and coarse calls) takes UT but evaluates ELP2000 as if it were TT; ~35\" error from Delta T. Convert JD with indigocat_jd_to_jde() inside indigocat_moon_equatorial_coords_prec() (after the Delta T fix; with the old Delta T this makes it worse). Measured with correct Delta T: 38\" mean / 64\" max -> 16\" mean / 27\" max. Planets unchanged (Delta T has no measurable effect there).\nTests: Delta T at known years (within 1 s for 2010-2026); Sun and Moon against embedded Horizons references within the stated bounds; existing bit-for-bit captured values in test_indigocat_corrections.c (moon_sun_and_nutation_match_captured_values_bit_for_bit) must be recaptured for the intended changes with a note why; the concurrent test stays. Run the scheduler unit and integration suites (they consume Sun and Moon) and adjust tolerances only with evidence. Remeasure against the Horizons data and record before/after per object in a note.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T10:47:15.724731Z",
+  "status": "closed",
+  "branch": "ticket/885c8a5b-a308-4507-8553-28cdac8700df",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "01a08325-0793-4932-b830-7bf13c261e5f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T10:47:46.765146Z",
+          "last_activity_at": "2026-11-19T11:01:27.340073Z",
+          "ended_at": "2026-11-19T11:01:27.340073Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 820574.927,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T10:47:46.765146Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/885c8a5b-a308-4507-8553-28cdac8700df"
+        },
+        {
+          "at": "2026-11-19T11:01:27.340073Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 820574.927,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "2b0a125b-7d95-4ff6-9afc-bd44780a4882",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "f6434219-71c1-4516-bbc9-d98483564c48",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T11:01:27.340105Z",
+          "last_activity_at": "2026-11-19T11:02:51.000584Z",
+          "ended_at": "2026-11-19T11:02:51.000584Z",
+          "outcome": {
+            "summary": "Pass, no blocking defects. Reviewed diff master...HEAD at e1d596415 (5 files). Sun (indigocat_sun.c:37-46): nutation and aberration removed. The geometric VSOP L/B now goes through indigocat_ecliptical_to_equatorial_coords like the planets. Callers: scheduler night.c:42-50 and sky.c:82-97 precess J2000->date; indigocat_ss.c:86/103 stores ra/dec as J2000 and applies j2k_to_jnow; agent_scripting solar_altitude precesses on master (4c19c5be9, after this branch's base b826a4e40, different file, no conflict). Its 0.02 deg integration tolerance covers the Sun change of at most 48 arcsec. No caller relied on the apparent position. The header comment is accurate. Delta T (indigocat_dynamical_time.c): the 2000-2023 table matches USNO deltat.data 1 January values to 0.01 s, and 2024-2026 are plausible. Interpolation: i=(int)((JD-2451544.5)/365.25) is >=0 because the dispatcher sends only JD>=2451544.5 there; i>=26 returns the last value, so there is no out-of-bounds read at 2026 or beyond. Continuity: near() gives 63.83 at n=0, equal to table[0]. sh2 now covers 1600-1620 continuously and replaces eq. 9.1 there. get_dynamical_diff_other is unreachable and removed. Changing 2000-2010 is sound and minimal: the old 'near' quadratic was anchored on a predicted 70.0 s at 2010, and ending it at 2010 would leave a 3.9 s jump. Moon: indigocat_jd_to_jde is applied exactly once (moon.c:39135). The UT JD goes to ecliptical_to_equatorial, whose nutation/obliquity call does its own jd_to_jde, so ELP and nutation are both evaluated in TT with no double application. The coarse and full calls both go through _prec. No repository caller uses the low-level geocentric/ecliptical calls, and the header note about JDE is accurate. Tests: the reviewer rebuilt and ran build/unit/test_indigocat_corrections: 8/8 PASS (Sun at most 26.0 arcsec, Moon at most 26.0 full / 26.5 coarse, Delta T, bit-for-bit, concurrent). The old library would fail the 30 arcsec bounds (old errors 33-64 arcsec) and the Delta T",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 83660.479,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T11:01:27.340105Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T11:02:51.000584Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass, no blocking defects. Reviewed diff master...HEAD at e1d596415 (5 files). Sun (indigocat_sun.c:37-46): nutation and aberration removed. The geometric VSOP L/B now goes through indigocat_ecliptical_to_equatorial_coords like the planets. Callers: scheduler night.c:42-50 and sky.c:82-97 precess J2000->date; indigocat_ss.c:86/103 stores ra/dec as J2000 and applies j2k_to_jnow; agent_scripting solar_altitude precesses on master (4c19c5be9, after this branch's base b826a4e40, different file, no conflict). Its 0.02 deg integration tolerance covers the Sun change of at most 48 arcsec. No caller relied on the apparent position. The header comment is accurate. Delta T (indigocat_dynamical_time.c): the 2000-2023 table matches USNO deltat.data 1 January values to 0.01 s, and 2024-2026 are plausible. Interpolation: i=(int)((JD-2451544.5)/365.25) is >=0 because the dispatcher sends only JD>=2451544.5 there; i>=26 returns the last value, so there is no out-of-bounds read at 2026 or beyond. Continuity: near() gives 63.83 at n=0, equal to table[0]. sh2 now covers 1600-1620 continuously and replaces eq. 9.1 there. get_dynamical_diff_other is unreachable and removed. Changing 2000-2010 is sound and minimal: the old 'near' quadratic was anchored on a predicted 70.0 s at 2010, and ending it at 2010 would leave a 3.9 s jump. Moon: indigocat_jd_to_jde is applied exactly once (moon.c:39135). The UT JD goes to ecliptical_to_equatorial, whose nutation/obliquity call does its own jd_to_jde, so ELP and nutation are both evaluated in TT with no double application. The coarse and full calls both go through _prec. No repository caller uses the low-level geocentric/ecliptical calls, and the header note about JDE is accurate. Tests: the reviewer rebuilt and ran build/unit/test_indigocat_corrections: 8/8 PASS (Sun at most 26.0 arcsec, Moon at most 26.0 full / 26.5 coarse, Delta T, bit-for-bit, concurrent). The old library would fail the 30 arcsec bounds (old errors 33-64 arcsec) and the Delta T"
+        }
+      ],
+      "result": {
+        "summary": "Pass, no blocking defects. Reviewed diff master...HEAD at e1d596415 (5 files). Sun (indigocat_sun.c:37-46): nutation and aberration removed. The geometric VSOP L/B now goes through indigocat_ecliptical_to_equatorial_coords like the planets. Callers: scheduler night.c:42-50 and sky.c:82-97 precess J2000->date; indigocat_ss.c:86/103 stores ra/dec as J2000 and applies j2k_to_jnow; agent_scripting solar_altitude precesses on master (4c19c5be9, after this branch's base b826a4e40, different file, no conflict). Its 0.02 deg integration tolerance covers the Sun change of at most 48 arcsec. No caller relied on the apparent position. The header comment is accurate. Delta T (indigocat_dynamical_time.c): the 2000-2023 table matches USNO deltat.data 1 January values to 0.01 s, and 2024-2026 are plausible. Interpolation: i=(int)((JD-2451544.5)/365.25) is >=0 because the dispatcher sends only JD>=2451544.5 there; i>=26 returns the last value, so there is no out-of-bounds read at 2026 or beyond. Continuity: near() gives 63.83 at n=0, equal to table[0]. sh2 now covers 1600-1620 continuously and replaces eq. 9.1 there. get_dynamical_diff_other is unreachable and removed. Changing 2000-2010 is sound and minimal: the old 'near' quadratic was anchored on a predicted 70.0 s at 2010, and ending it at 2010 would leave a 3.9 s jump. Moon: indigocat_jd_to_jde is applied exactly once (moon.c:39135). The UT JD goes to ecliptical_to_equatorial, whose nutation/obliquity call does its own jd_to_jde, so ELP and nutation are both evaluated in TT with no double application. The coarse and full calls both go through _prec. No repository caller uses the low-level geocentric/ecliptical calls, and the header note about JDE is accurate. Tests: the reviewer rebuilt and ran build/unit/test_indigocat_corrections: 8/8 PASS (Sun at most 26.0 arcsec, Moon at most 26.0 full / 26.5 coarse, Delta T, bit-for-bit, concurrent). The old library would fail the 30 arcsec bounds (old errors 33-64 arcsec) and the Delta T",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 83660.479,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "730bc5e8-9f34-4ea5-a37e-1c77b7f7d9cb",
+      "event": "ticket/created",
+      "at": "2026-11-19T10:47:15.725027Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "730f96ea-80e0-451f-88b9-69258f456c2e",
+      "event": "task/progress",
+      "at": "2026-11-19T10:47:46.769518Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Implementation started on branch ticket/885c8a5b-a308-4507-8553-28cdac8700df"
+    },
+    {
+      "event_id": "47cfe636-bfc5-471e-a75d-0515530e420f",
+      "event": "ticket/started",
+      "at": "2026-11-19T10:47:46.775927Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/885c8a5b-a308-4507-8553-28cdac8700df",
+      "base": "master"
+    },
+    {
+      "event_id": "08781c37-f796-4ccf-86fd-5f9b44281d4f",
+      "event": "task/progress",
+      "at": "2026-11-19T10:48:16.685229Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Implementer launched",
+      "attempt_id": "01a08325-0793-4932-b830-7bf13c261e5f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "314adafa-b34b-4b53-95f1-e7eb064ab6e5",
+      "event": "task/progress",
+      "at": "2026-11-19T10:49:11.160310Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Building baseline libindigo to reproduce Delta T, Sun and Moon errors"
+    },
+    {
+      "event_id": "649a2526-8016-43a5-be8f-10282508e9b1",
+      "event": "task/progress",
+      "at": "2026-11-19T10:53:19.436097Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Running test_indigocat_corrections locally"
+    },
+    {
+      "event_id": "94220b43-3757-476f-b487-ab88630a3e4a",
+      "event": "task/progress",
+      "at": "2026-11-19T10:53:53.985322Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ad4e6387-7d2a-468f-a75e-bd9076420acf",
+      "event": "task/progress",
+      "at": "2026-11-19T10:53:54.056166Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c28d4ead-6ff6-4743-8c56-195fcb8a251d",
+      "event": "task/progress",
+      "at": "2026-11-19T10:53:54.060896Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "bc0911e8-7a3f-4152-ac0a-43ea36a8f4a5",
+      "event": "task/progress",
+      "at": "2026-11-19T10:55:01.568102Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "f899f5d4-78c0-45ed-8c69-dd733a520f6d",
+      "event": "check/passed",
+      "at": "2026-11-19T10:55:01.583849Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e1d59641566aa64dd6d2352573374d673b0a9090",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "d686bffd-fda9-4dac-ad28-e263a755b8b9",
+      "event": "task/progress",
+      "at": "2026-11-19T10:55:07.920976Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "a5d10898-f432-4a2e-80b0-0757955e9ac2",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:58:26.578799Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction (implementer, worktree build before the change, 40 dates JD 2447892.623 + i*641.37, 1990-2060, vs JPL Horizons geocentric astrometric J2000, Horizons 'UT' rows): indigocat_get_dynamical_time_diff() returned 63.8 s (2000), 67.0 (2005), 70.0 (2010), 121.6 (2015), 128.3 (2020), 135.2 (2025), 142.3 (2030), 172.2 (2050), 188.1 (2060); observed values are 64.69 (2005), 66.07 (2010), 67.64 (2015), 69.36 (2020), 69.14 (2025). The 1992-2010 quadratic used a predicted 70.0 s for 2010, so 2000-2010 was also up to 3.6 s high, and after 2010 eq. 9.1 took over with a 51 s jump. Sun: 26.1\" mean / 28.6 median / 48.3\" max (UT) because nutation and aberration were added. Moon: 38.2\" mean / 64.1\" max when given UT, but 15.7\" / 26.5\" when Horizons TT rows are compared, i.e. ELP2000 treated the UT input as TT. Horizons UT vs TT Moon rows imply a Horizons TT-UT of 32.184 s + leap seconds (57.18 s in 1990 ... 69.18 s from 2017), held constant at 69.18 s through 2060 (Horizons 'UT' is UTC). The 1600-1620 gap (2305447.5 <= JD < 2312752.5) was not uninitialised: it fell into the else branch and used eq. 9.1 (140.6 s at the end of the Stephenson-Houlden range, 128.3 s just after it).",
+      "tokens": null
+    },
+    {
+      "event_id": "c32b8269-b140-47f6-8efa-e1198bd126c7",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:58:26.667901Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Delta T change (indigocat_dynamical_time.c): from 2000.0 a table of observed TT-UT1 on 1 January 2000..2026, linearly interpolated: 63.83 64.09 64.30 64.47 64.57 64.69 64.85 65.15 65.46 65.78 66.07 66.32 66.60 66.91 67.28 67.64 68.10 68.59 68.97 69.22 69.36 69.36 69.29 69.20 69.18 69.14 69.10. Source: USNO/IERS deltat.data yearly values (Jan 1) for 2000-2023; 2024-2026 derived as 32.184 + 37 - (UT1-UTC) from IERS Bulletin A UT1-UTC (approximate, +-0.05 s). Note: the yearly figure for 2017 is 68.59 s (1 Jan 2017); 68.97 s is 1 Jan 2018. After 2026 the last value (69.10 s) is held constant: bounded, within 0.1 s of TT-UTC = 69.184 s which stays fixed until a new leap second (none announced; leap seconds are to be discontinued by 2035), the callers pass UTC-based JDs (UT2JD(time())), and Horizons does the same. The old eq. 9.1 (get_dynamical_diff_other) is no longer reachable and was removed. The 1992-2000 interpolation is unchanged (it meets the table at 63.83 s in 2000). The 1600-1620 gap now uses the Stephenson-Houlden 948.. formula extended to the table start (continuous at 1600, 119.0 s at 1620 vs table 115 s) instead of eq. 9.1. Before 1992 nothing else changed. Observed pre-existing oddity outside scope (not changed): the 1620-1992 table interpolation returns 51.5 s at 1991.0 between 46-58 s neighbours and 110.5 s at 1621 after 119 s at 1620; reported to the coordinator rather than fixed.",
+      "tokens": null
+    },
+    {
+      "event_id": "8b6a4182-826f-416f-8537-c9cc3d64ff2a",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:58:35.168907Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Correction to the previous note's out-of-scope observation: the 1620-1992 table interpolation (unchanged) returns 58.0 s at 1990.0 (table: 56.9), 51.5 s at 1991.0 (expected about 57.6) and 58.3 s at 1992.0, and 110.5 s at 1621 after 119.0 s at 1620; it appears to center on delta_t[i+1] while measuring n from entry i. Not fixed here (pre-1992 Delta T is outside the ticket); proposed to the coordinator as a possible separate ticket.",
+      "tokens": null
+    },
+    {
+      "event_id": "3d958dc9-e903-4aa7-94ea-7f1184103d71",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:58:53.310133Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Before/after vs JPL Horizons astrometric geocentric J2000 at the 40 dates (UT input; arcsec mean/median/max): mercury 15.7/10.8/59.2 -> unchanged; venus 19.0/9.4/140.7 -> unchanged; mars 11.9/5.4/88.3 -> unchanged; jupiter 3.0/2.0/10.6 -> unchanged; saturn 1.6/1.1/5.5 -> unchanged; uranus 1.2/1.1/3.0 -> unchanged; neptune 1.4/1.4/2.9 -> unchanged; pluto 0.7/0.6/2.0 -> unchanged (planet outputs identical to 1e-9 deg); sun 26.1/28.6/48.3 -> 8.8/5.8/26.6; moon 38.2/40.8/64.1 -> 15.7/17.0/26.5; moon_coarse 38.4/41.6/64.7 -> 16.0/17.4/26.7. Matches the ticket's estimates (Sun 9/27, Moon 16/27). Tools: scratchpad impl885/ (calc.c, cmp.py, perdate.py) linked against the worktree build/lib.",
+      "tokens": null
+    },
+    {
+      "event_id": "439a0786-0343-4b7c-be9b-43bf4b30809b",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:58:53.374989Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Tests (indigo_test/unit/test_indigocat_corrections.c): sun_aberration_uses_degrees_at_reference_epochs replaced by sun_is_geometric_position_without_nutation_and_aberration (new contract: equatorial = ecliptical_to_equatorial of the geometric L/B). Added sun_matches_horizons_j2000_within_30_arcsec and moon_matches_horizons_j2000_within_30_arcsec (6 embedded Horizons positions each, full and coarse Moon; chosen at dates where the old code was 33-48\" (Sun) and 56-64\" (Moon) off; now at most 26.0\" Sun, 26.0\" full / 26.5\" coarse Moon) and delta_t_matches_observed_values_and_stays_bounded (2010, 2015, 2017, 2018, 2020, 2025 within 1 s; constant after 2026 through 2100 and within 1 s of 69.184 s; no jump at 2000.0 and 1600.0). Against the unchanged library 5 of 8 tests fail (the 4 new/rewritten ones and the bit-for-bit one); with the change all pass. Bit-for-bit reference_values recaptured with the new build: Moon and Sun columns change at all four dates (intended: J2000 Sun, Moon UT->TT); nutation changes only in the last bits at 2000.0, 2023 and 2029 where Delta T changed (largest difference about 4e-5 arcsec), the 1993 row's nutation is bit-identical (1992-2000 Delta T unchanged). The concurrent test is unchanged and passes.",
+      "tokens": null
+    },
+    {
+      "event_id": "a0237ca7-144a-4e2c-9fea-dc3c7f0bb038",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T10:59:14.162641Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "e1996665-b03c-450a-bde4-6d3c1948c6eb",
+      "event": "task/progress",
+      "at": "2026-11-19T11:00:29.976492Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "6bef4006-f164-4e00-8a36-c08cf8a182bb",
+      "event": "check/passed",
+      "at": "2026-11-19T11:00:29.986229Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e1d59641566aa64dd6d2352573374d673b0a9090",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "726818cc-8b28-498f-8337-c296d16eafc6",
+      "event": "task/progress",
+      "at": "2026-11-19T11:01:27.263241Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d023ebbd-206a-4ee2-bbd2-733a56d48e50",
+      "text": "Reviewer launched",
+      "attempt_id": "01a08325-0793-4932-b830-7bf13c261e5f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b0268971-6be9-4622-ab48-3290b4732b77",
+      "event": "task/progress",
+      "at": "2026-11-19T11:01:27.340157Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b0a125b-7d95-4ff6-9afc-bd44780a4882",
+      "text": "Review started"
+    },
+    {
+      "event_id": "50a3c055-568f-4d9e-9a10-74f99c5912fd",
+      "event": "review/started",
+      "at": "2026-11-19T11:01:27.340516Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "4d879315-be5b-492d-97aa-a6b7ea0495a7",
+      "event": "task/progress",
+      "at": "2026-11-19T11:02:24.922725Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b0a125b-7d95-4ff6-9afc-bd44780a4882",
+      "text": "Rebuilding and running test_indigocat_corrections in the worktree"
+    },
+    {
+      "event_id": "e42c961e-9bc3-4890-ac21-2cb5e8820968",
+      "event": "task/progress",
+      "at": "2026-11-19T11:02:51.000643Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b0a125b-7d95-4ff6-9afc-bd44780a4882",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "982b45c2-de70-4ce5-8e24-40d8f7af0b41",
+      "event": "review/passed",
+      "at": "2026-11-19T11:02:51.000981Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b0a125b-7d95-4ff6-9afc-bd44780a4882",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "e1d59641566aa64dd6d2352573374d673b0a9090"
+    },
+    {
+      "event_id": "12f7a1e3-451d-4ff1-a91e-27938bb1370a",
+      "event": "ticket/closed",
+      "at": "2026-11-19T11:18:05.406121Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T11:18:05.406085Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "5dfdc1ac53855b976bd31f8d4abbff9ec21a6445"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e1d59641566aa64dd6d2352573374d673b0a9090",
+        "tree": "5757654ec261ec0b8a785ed816b0885007f89917",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T10:53:54.055709Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/885c8a5b-a308-4507-8553-28cdac8700df/5757654ec261-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "e1d59641566aa64dd6d2352573374d673b0a9090",
+        "tree": "5757654ec261ec0b8a785ed816b0885007f89917",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T10:55:01.565649Z",
+        "duration_s": 67.5,
+        "log": "/tmp/factory-flow/885c8a5b-a308-4507-8553-28cdac8700df/5757654ec261-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "e1d59641566aa64dd6d2352573374d673b0a9090",
+        "tree": "5757654ec261ec0b8a785ed816b0885007f89917",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T11:00:29.971314Z",
+        "duration_s": 322.1,
+        "log": "/tmp/factory-flow/885c8a5b-a308-4507-8553-28cdac8700df/5757654ec261-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass, no blocking defects. Reviewed diff master...HEAD at e1d596415 (5 files). Sun (indigocat_sun.c:37-46): nutation and aberration removed. The geometric VSOP L/B now goes through indigocat_ecliptical_to_equatorial_coords like the planets. Callers: scheduler night.c:42-50 and sky.c:82-97 precess J2000->date; indigocat_ss.c:86/103 stores ra/dec as J2000 and applies j2k_to_jnow; agent_scripting solar_altitude precesses on master (4c19c5be9, after this branch's base b826a4e40, different file, no conflict). Its 0.02 deg integration tolerance covers the Sun change of at most 48 arcsec. No caller relied on the apparent position. The header comment is accurate. Delta T (indigocat_dynamical_time.c): the 2000-2023 table matches USNO deltat.data 1 January values to 0.01 s, and 2024-2026 are plausible. Interpolation: i=(int)((JD-2451544.5)/365.25) is >=0 because the dispatcher sends only JD>=2451544.5 there; i>=26 returns the last value, so there is no out-of-bounds read at 2026 or beyond. Continuity: near() gives 63.83 at n=0, equal to table[0]. sh2 now covers 1600-1620 continuously and replaces eq. 9.1 there. get_dynamical_diff_other is unreachable and removed. Changing 2000-2010 is sound and minimal: the old 'near' quadratic was anchored on a predicted 70.0 s at 2010, and ending it at 2010 would leave a 3.9 s jump. Moon: indigocat_jd_to_jde is applied exactly once (moon.c:39135). The UT JD goes to ecliptical_to_equatorial, whose nutation/obliquity call does its own jd_to_jde, so ELP and nutation are both evaluated in TT with no double application. The coarse and full calls both go through _prec. No repository caller uses the low-level geocentric/ecliptical calls, and the header note about JDE is accurate. Tests: the reviewer rebuilt and ran build/unit/test_indigocat_corrections: 8/8 PASS (Sun at most 26.0 arcsec, Moon at most 26.0 full / 26.5 coarse, Delta T, bit-for-bit, concurrent). The old library would fail the 30 arcsec bounds (old errors 33-64 arcsec) and the Delta T 1 s check (old 70.0 s at 2010). The bit-for-bit recapture changes nutation only in the last bits, and the 1993 row is bit-identical. git diff --check is clean, the worktree is clean, and the recorded checks are on HEAD e1d596415. Nits (non-blocking): dynamical_time.c:98 definition comment of get_dynamical_diff_sh2 still says 948-1600 A.D. (forward declaration updated to 1620). The '1600.0 no jump' assertion in the test compares two points inside the same sh2 branch, so it is trivially true and does not exercise a branch boundary. Limits: no independent Horizons query; scheduler unit/integration suites not rerun by the reviewer (recorded checks); no Windows/macOS build.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "e1d59641566aa64dd6d2352573374d673b0a9090",
+        "tree": "5757654ec261ec0b8a785ed816b0885007f89917",
+        "at": "2026-11-19T11:02:51.000529Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T10:58:26.578549Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction (implementer, worktree build before the change, 40 dates JD 2447892.623 + i*641.37, 1990-2060, vs JPL Horizons geocentric astrometric J2000, Horizons 'UT' rows): indigocat_get_dynamical_time_diff() returned 63.8 s (2000), 67.0 (2005), 70.0 (2010), 121.6 (2015), 128.3 (2020), 135.2 (2025), 142.3 (2030), 172.2 (2050), 188.1 (2060); observed values are 64.69 (2005), 66.07 (2010), 67.64 (2015), 69.36 (2020), 69.14 (2025). The 1992-2010 quadratic used a predicted 70.0 s for 2010, so 2000-2010 was also up to 3.6 s high, and after 2010 eq. 9.1 took over with a 51 s jump. Sun: 26.1\" mean / 28.6 median / 48.3\" max (UT) because nutation and aberration were added. Moon: 38.2\" mean / 64.1\" max when given UT, but 15.7\" / 26.5\" when Horizons TT rows are compared, i.e. ELP2000 treated the UT input as TT. Horizons UT vs TT Moon rows imply a Horizons TT-UT of 32.184 s + leap seconds (57.18 s in 1990 ... 69.18 s from 2017), held constant at 69.18 s through 2060 (Horizons 'UT' is UTC). The 1600-1620 gap (2305447.5 <= JD < 2312752.5) was not uninitialised: it fell into the else branch and used eq. 9.1 (140.6 s at the end of the Stephenson-Houlden range, 128.3 s just after it).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T10:58:26.667652Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Delta T change (indigocat_dynamical_time.c): from 2000.0 a table of observed TT-UT1 on 1 January 2000..2026, linearly interpolated: 63.83 64.09 64.30 64.47 64.57 64.69 64.85 65.15 65.46 65.78 66.07 66.32 66.60 66.91 67.28 67.64 68.10 68.59 68.97 69.22 69.36 69.36 69.29 69.20 69.18 69.14 69.10. Source: USNO/IERS deltat.data yearly values (Jan 1) for 2000-2023; 2024-2026 derived as 32.184 + 37 - (UT1-UTC) from IERS Bulletin A UT1-UTC (approximate, +-0.05 s). Note: the yearly figure for 2017 is 68.59 s (1 Jan 2017); 68.97 s is 1 Jan 2018. After 2026 the last value (69.10 s) is held constant: bounded, within 0.1 s of TT-UTC = 69.184 s which stays fixed until a new leap second (none announced; leap seconds are to be discontinued by 2035), the callers pass UTC-based JDs (UT2JD(time())), and Horizons does the same. The old eq. 9.1 (get_dynamical_diff_other) is no longer reachable and was removed. The 1992-2000 interpolation is unchanged (it meets the table at 63.83 s in 2000). The 1600-1620 gap now uses the Stephenson-Houlden 948.. formula extended to the table start (continuous at 1600, 119.0 s at 1620 vs table 115 s) instead of eq. 9.1. Before 1992 nothing else changed. Observed pre-existing oddity outside scope (not changed): the 1620-1992 table interpolation returns 51.5 s at 1991.0 between 46-58 s neighbours and 110.5 s at 1621 after 119 s at 1620; reported to the coordinator rather than fixed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T10:58:35.168579Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Correction to the previous note's out-of-scope observation: the 1620-1992 table interpolation (unchanged) returns 58.0 s at 1990.0 (table: 56.9), 51.5 s at 1991.0 (expected about 57.6) and 58.3 s at 1992.0, and 110.5 s at 1621 after 119.0 s at 1620; it appears to center on delta_t[i+1] while measuring n from entry i. Not fixed here (pre-1992 Delta T is outside the ticket); proposed to the coordinator as a possible separate ticket.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T10:58:53.309852Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Before/after vs JPL Horizons astrometric geocentric J2000 at the 40 dates (UT input; arcsec mean/median/max): mercury 15.7/10.8/59.2 -> unchanged; venus 19.0/9.4/140.7 -> unchanged; mars 11.9/5.4/88.3 -> unchanged; jupiter 3.0/2.0/10.6 -> unchanged; saturn 1.6/1.1/5.5 -> unchanged; uranus 1.2/1.1/3.0 -> unchanged; neptune 1.4/1.4/2.9 -> unchanged; pluto 0.7/0.6/2.0 -> unchanged (planet outputs identical to 1e-9 deg); sun 26.1/28.6/48.3 -> 8.8/5.8/26.6; moon 38.2/40.8/64.1 -> 15.7/17.0/26.5; moon_coarse 38.4/41.6/64.7 -> 16.0/17.4/26.7. Matches the ticket's estimates (Sun 9/27, Moon 16/27). Tools: scratchpad impl885/ (calc.c, cmp.py, perdate.py) linked against the worktree build/lib.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T10:58:53.374755Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Tests (indigo_test/unit/test_indigocat_corrections.c): sun_aberration_uses_degrees_at_reference_epochs replaced by sun_is_geometric_position_without_nutation_and_aberration (new contract: equatorial = ecliptical_to_equatorial of the geometric L/B). Added sun_matches_horizons_j2000_within_30_arcsec and moon_matches_horizons_j2000_within_30_arcsec (6 embedded Horizons positions each, full and coarse Moon; chosen at dates where the old code was 33-48\" (Sun) and 56-64\" (Moon) off; now at most 26.0\" Sun, 26.0\" full / 26.5\" coarse Moon) and delta_t_matches_observed_values_and_stays_bounded (2010, 2015, 2017, 2018, 2020, 2025 within 1 s; constant after 2026 through 2100 and within 1 s of 69.184 s; no jump at 2000.0 and 1600.0). Against the unchanged library 5 of 8 tests fail (the 4 new/rewritten ones and the bit-for-bit one); with the change all pass. Bit-for-bit reference_values recaptured with the new build: Moon and Sun columns change at all four dates (intended: J2000 Sun, Moon UT->TT); nutation changes only in the last bits at 2000.0, 2023 and 2029 where Delta T changed (largest difference about 4e-5 arcsec), the 1993 row's nutation is bit-identical (1992-2000 Delta T unchanged). The concurrent test is unchanged and passes.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "5dfdc1ac53855b976bd31f8d4abbff9ec21a6445",
+      "tree": "5757654ec261ec0b8a785ed816b0885007f89917",
+      "base": "master",
+      "at": "2026-11-19T11:18:05.317254Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T10:47:15.724731Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T10:59:14.162608Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 904235.406,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 31,
+    "sha256": "d98f9ad0bb4f5b44489ff4ca1dbb36f3cce67e199e545b8fac8b59215cbf9446"
+  }
+}
