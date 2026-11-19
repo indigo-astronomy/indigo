@@ -56,10 +56,35 @@ static void sun_aberration_uses_degrees_at_reference_epochs(void) {
 	}
 }
 
+static void coarse_moon_stays_within_5_arcsec_of_full_theory(void) {
+	/* 300 dates from 1993 to 2037, on both sides of J2000, with a step that samples all lunar phases. */
+	double max_error = 0;
+	for (int i = 0; i < 300; i++) {
+		double jd = 2449000.5 + i * 53.37;
+		equatorial_coords_s full, coarse;
+		indigocat_moon_equatorial_coords(jd, &full);
+		indigocat_moon_equatorial_coords_coarse(jd, &coarse);
+		/* ra and dec are in degrees */
+		double d1 = full.dec * DEG2RAD, d2 = coarse.dec * DEG2RAD, dra = (full.ra - coarse.ra) * DEG2RAD;
+		double c = sin(d1) * sin(d2) + cos(d1) * cos(d2) * cos(dra);
+		if (c > 1) {
+			c = 1;
+		}
+		double error = acos(c) * RAD2DEG * 3600.0;
+		if (error > max_error) {
+			max_error = error;
+		}
+		ASSERT_TRUE(error < 5.0);
+	}
+	printf("coarse Moon: max separation from the full theory %.2f arcsec\n", max_error);
+	ASSERT_TRUE(max_error > 0);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "nutation_does_not_retain_previous_date_accumulators", nutation_does_not_retain_previous_date_accumulators },
-		{ "sun_aberration_uses_degrees_at_reference_epochs", sun_aberration_uses_degrees_at_reference_epochs }
+		{ "sun_aberration_uses_degrees_at_reference_epochs", sun_aberration_uses_degrees_at_reference_epochs },
+		{ "coarse_moon_stays_within_5_arcsec_of_full_theory", coarse_moon_stays_within_5_arcsec_of_full_theory }
 	};
 	return indigo_run_tests("indigocat correction regressions", tests, sizeof(tests) / sizeof(tests[0]));
 }

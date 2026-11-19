@@ -39152,6 +39152,10 @@ void indigocat_moon_equatorial_coords(double JD, equatorial_coords_s * position)
 	indigocat_moon_equatorial_coords_prec (JD, position, 0);
 }
 
+void indigocat_moon_equatorial_coords_coarse(double JD, equatorial_coords_s * position) {
+	indigocat_moon_equatorial_coords_prec(JD, position, 0.000001);
+}
+
 void indigocat_moon_geocentric_coords(double JD, cartesian_coords_s * moon, double precision) {
 	double t[5];
 	double elp[36];

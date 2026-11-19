@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300001B
+#define DRIVER_VERSION 0x0300001C
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>

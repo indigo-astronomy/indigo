@@ -83,7 +83,8 @@ static void solar_system(time_t t, double *sun_ra, double *sun_dec, double *moon
 	double jd = UT2JD(t);
 	equatorial_coords_s sun, moon;
 	indigocat_sun_equatorial_coords(jd, &sun);
-	indigocat_moon_equatorial_coords(jd, &moon);
+	// the full ELP2000/82 theory dominates the grid build; the coarse call is within about 3.5 arcsec and about 50x faster
+	indigocat_moon_equatorial_coords_coarse(jd, &moon);
 	// indigocat returns J2000 coordinates, indigo_radec_to_altaz() needs coordinates of date
 	double eq = indigo_eq_of_date(jd);
 	indigo_spherical_point_t sun_j2000 = { sun.ra * DEG2RAD, sun.dec * DEG2RAD, 1 };

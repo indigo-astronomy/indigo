@@ -74,7 +74,7 @@ The scheduler is a separate C agent rather than a JavaScript library, for these 
   - `indigo_j2k_to_jnow()` converts the J2000 `@target` to the equinox of date;
   - `indigo_radec_to_altaz()` and `indigo_airmass()` give the altitude and airmass;
   - `indigo_raise_set()` gives the rise, transit and set times;
-  - `indigocat_sun_equatorial_coords()` and `indigocat_moon_equatorial_coords()` (`indigocat/indigocat_solar_system.h`) give the Sun and Moon positions in J2000, which the agent precesses to the equinox of the evaluated time with `indigo_precess()`.
+  - `indigocat_sun_equatorial_coords()` and `indigocat_moon_equatorial_coords_coarse()` (`indigocat/indigocat_solar_system.h`) give the Sun and Moon positions in J2000, which the agent precesses to the equinox of the evaluated time with `indigo_precess()`. The coarse Moon call truncates the ELP2000/82 series at 1e-6 rad per term; it stays within about 3.5 arcsec of the full theory and is about 50 times faster.
 
   No moon phase helper exists yet. The moon illumination and the number of days from full moon are derived from the Sun–Moon elongation. The elongation does not distinguish a waxing from a waning moon, which the constraints do not need, because the Lorentzian limit is symmetric about full moon.
 - Any client can submit an urgent task with a single property change. This includes AIN, the web UI, MCP clients and a future GCN/VOEvent bridge.
@@ -498,7 +498,7 @@ Eligibility checks over whole task durations, the setting-soonest score and the 
 The constraint engine therefore works on a grid:
 
 - At every refresh, it computes the Sun and Moon altitudes, the moon illumination and the local sidereal time for the next 48 hours at 5-minute steps (577 points). The 48 hours cover a 24-hour task duration and the 12-hour look-ahead of the score.
-- The Sun and Moon positions themselves are computed once per hour and interpolated linearly between. The Moon moves about half a degree per hour, so the interpolation error is far below any limit, while the grid builds in less than 0.1 s.
+- The Sun and Moon positions themselves are computed once per hour and interpolated linearly between. The Moon moves about half a degree per hour, so the interpolation error is far below any limit. The Moon position comes from the coarse ELP2000/82 call, so the Sun and Moon samples take a few milliseconds per refresh instead of most of the build time.
 - For each task with `@target`, it computes the target's altitude, airmass and hour angle on the same grid. These values only change when the task is edited, apart from the precession to the date, which is negligible within a night.
 - For each task, it also records for every grid point the first point at or after it where a sky constraint fails, with the reason. An interval check is then a single lookup, and the search for the next start skips over a failing stretch in one step instead of testing every start time. The time windows are checked separately, because a nightly window does not depend on the grid.
 - The table also records for every grid point the first passing point at or after it, so the search for the next start jumps over a whole failing stretch at once.
