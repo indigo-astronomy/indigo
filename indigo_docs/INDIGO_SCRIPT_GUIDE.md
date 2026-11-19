@@ -447,7 +447,7 @@ The Scripting Agent manages the whole lifecycle of scripts - creating, running, 
 | `AGENT_SCRIPTING_EXECUTE_SCRIPT` | switch (`ONE_OF_MANY`) | RW | one per stored script | Turning an item on runs the corresponding stored script once. |
 | `AGENT_SCRIPTING_DELETE_SCRIPT` | text | RW | `NAME` | Deletes the stored script whose name matches `NAME`. |
 | `AGENT_SCRIPTING_ON_LOAD_SCRIPT` | switch (`ANY_OF_MANY`) | RW | one per stored script | Scripts whose item is `true` run automatically whenever the agent's configuration is (re-)loaded - normally exactly once, when the hosting server/application starts. |
-| `AGENT_SCRIPTING_ON_UNLOAD_SCRIPT` | switch (`ANY_OF_MANY`) | RW | one per stored script | Scripts whose item is `true` run automatically right before the agent is detached - normally when the hosting server/application shuts down. |
+| `AGENT_SCRIPTING_ON_UNLOAD_SCRIPT` | switch (`ANY_OF_MANY`) | RW | one per stored script | Scripts whose item is `true` run automatically right before the agent is detached - normally when the hosting server/application shuts down. Messages, property definitions/updates/deletions and change requests issued by these scripts are delivered before the agent is detached. |
 | `AGENT_SCRIPTING_SCRIPT_<n>` | text | RW | `NAME`, `SCRIPT` | One instance per stored script (`<n>` is an internal slot number assigned when the script is created and stable for its lifetime). Holds the script's persisted source code; the property label is always kept equal to the current `NAME`. |
 
 A few implementation details worth knowing when scripting against these properties directly:

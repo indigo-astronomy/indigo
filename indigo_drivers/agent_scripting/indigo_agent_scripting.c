@@ -25,7 +25,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x03000014
+#define DRIVER_VERSION 0x03000015
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -1564,6 +1564,9 @@ static indigo_result agent_device_detach(indigo_device *device) {
 				}
 			}
 		}
+		// The bindings queue their effects (messages, property definitions and updates, change requests) on the
+		// device queue, and indigo_device_detach() drops pending tasks, so let them run before the queue goes away.
+		indigo_queue_drain(DEVICE_CONTEXT->queue);
 		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, result ? NULL : "On-unload script execution failed");
 		duk_destroy_heap(PRIVATE_DATA->ctx);
@@ -1730,13 +1733,16 @@ indigo_result indigo_agent_scripting(indigo_driver_action action, indigo_driver_
 			last_action = action;
 			if (agent_client != NULL) {
 				indigo_detach_client(agent_client);
-				free(agent_client);
-				agent_client = NULL;
 			}
 			if (agent_device != NULL) {
 				indigo_detach_device(agent_device);
 				free(agent_device);
 				agent_device = NULL;
+			}
+			// on-unload change and enumeration requests still use the detached client while the device detaches
+			if (agent_client != NULL) {
+				free(agent_client);
+				agent_client = NULL;
 			}
 			if (private_data != NULL) {
 				free(private_data);
