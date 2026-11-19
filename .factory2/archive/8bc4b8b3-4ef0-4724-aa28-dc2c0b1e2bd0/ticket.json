@@ -1,0 +1,482 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8bc4b8b3-4ef0-4724-aa28-dc2c0b1e2bd0",
+  "revision": 22,
+  "title": "indigo_agent_scheduler: make the Sun and Moon grid build cheaper with a new coarse Moon position call in indigocat",
+  "description": "Performance follow-up from the scheduler performance study. indigo_scheduler_sky_build() (indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c) takes about 75 ms here (about 0.5-1 s on a Raspberry Pi), almost all of it in the full ELP2000/82 Moon theory (indigocat_moon_equatorial_coords(), precision 0, every term summed) called 49 times per build; it runs at start, on a site change and every hour on the agent queue.\n\nOwner's decision (2026-11-19): lower the Moon precision, through a new public indigocat call; the owner explicitly approved this indigo_libs change.\n- Add to indigo_libs/indigocat/indigocat_moon.c and declare with INDIGO_EXTERN in indigo_libs/indigo/indigocat/indigocat_solar_system.h a new call for a coarse Moon position: indigocat_moon_equatorial_coords_coarse(double JD, equatorial_coords_s *position), equivalent to indigocat_moon_equatorial_coords_prec(JD, position, 0.000001). Document in the header that it truncates the ELP2000/82 series at 1e-6 rad per term, stays within about 3.5 arcsec of the full theory and is about 50x faster, for planning use. Existing calls are unchanged.\n- Use it in solar_system() in indigo_agent_scheduler_sky.c instead of indigocat_moon_equatorial_coords(); comment why.\n- Measured on ARM64 (owner's benchmark, 200 dates): precision 1e-6 rad -> max 3.4 arcsec from the full theory, 1.3 ms per 49-sample build instead of 71-76 ms (about 55x). Any precision > 0 gives about the same speed; the precision is a per-term cutoff, the summed error is larger than the cutoff.\n- Tests: a unit test (indigo_test/unit) that the coarse call stays within 5 arcsec of indigocat_moon_equatorial_coords() over a range of dates; check that existing scheduler sky/plan unit tests and the scheduler integration tests still pass (adjust a tolerance only with evidence that the change is within the stated error).\n- Option 2 of the earlier description (reusing the hourly samples) is not done. The thread-safety of the static nutation cache in indigocat_nutation.c is not part of this ticket.\n- Update doc/SCHEDULER.md if it states the Moon precision; increment the scheduler agent DRIVER_VERSION. If the indigo_libs change needs a CHANGELOG or PROPERTIES entry by repository convention, follow it.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-19T06:07:14.434901Z",
+  "status": "closed",
+  "branch": "ticket/8bc4b8b3-4ef0-4724-aa28-dc2c0b1e2bd0",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "7b233101-2a4f-4ae4-bdff-03ad512ab04f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T09:15:38.719338Z",
+          "last_activity_at": "2026-11-19T09:25:20.023387Z",
+          "ended_at": "2026-11-19T09:25:20.023387Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 581304.049,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T09:15:38.719338Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/8bc4b8b3-4ef0-4724-aa28-dc2c0b1e2bd0"
+        },
+        {
+          "at": "2026-11-19T09:25:20.023387Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 581304.049,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "1dce0abd-5a7a-4de7-bb65-d19e84050768",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "b270da24-14d2-4906-87e0-aecd9cece26a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T09:25:20.023448Z",
+          "last_activity_at": "2026-11-19T09:26:21.456721Z",
+          "ended_at": "2026-11-19T09:26:21.456721Z",
+          "outcome": {
+            "summary": "Reviewed diff master...HEAD at 5be12bb7e8 (6 files). New call indigocat_moon_equatorial_coords_coarse(double JD, equatorial_coords_s *position) is defined in indigo_libs/indigocat/indigocat_moon.c:39155 as indigocat_moon_equatorial_coords_prec(JD, position, 0.000001) and declared with INDIGO_EXTERN inside the extern \"C\" block of indigo_libs/indigo/indigocat/indigocat_solar_system.h:71; existing moon calls unchanged. Windows: indigocat_moon.c is already compiled into indigo.vcxproj (line 336) and indigo.def lists no exports, so the dllexport macro covers it. Scheduler uses it only in solar_system() (indigo_agent_scheduler_sky.c:87, comment present); DRIVER_VERSION 0x0300001B -> 0x0300001C. Unit test (test_indigocat_corrections.c): ra/dec degrees converted with DEG2RAD, spherical-law-of-cosines separation with clamp is accurate far below the 5 arcsec bound, fixed dates (deterministic), asserts max_error > 0 so the truncated path is exercised; binary is in UNIT_TESTS of indigo_test/Makefile and depends on libindigocat.a. I re-ran the built binary: 3 PASS, max 3.57 arcsec. 'about 3.5 arcsec' (header:69, SCHEDULER.md:77, sky.c:86) is accurate for 3.4-3.57 measured; not a defect. SCHEDULER.md lines 77 and 501 are accurate. Recorded checks whitespace/unit/command-1 are on HEAD 5be12bb7e8; worktree clean. No blocking defects. Advisory for the owner (not required by this ticket): indigocat_moon.c:187 'static double pre[3]' is process-global and rewritten by every indigocat_moon_geocentric_coords() call (moon.c ~39177). Before this change every in-tree caller wrote 0, so concurrent calls were benign; now the scheduler's coarse call (agent queue) can run concurrently with full-theory callers in the same process (indigocat_ss.c:89 via indigo_server.c:617), so either call may sum with the other's cutoff (error bounded by about the coarse error, a few arcsec; formally a data race). Possible fix: pass the cutoffs to the sum_series_* functions instead of a static, or register a sep",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 61433.273,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T09:25:20.023448Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T09:26:21.456721Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Reviewed diff master...HEAD at 5be12bb7e8 (6 files). New call indigocat_moon_equatorial_coords_coarse(double JD, equatorial_coords_s *position) is defined in indigo_libs/indigocat/indigocat_moon.c:39155 as indigocat_moon_equatorial_coords_prec(JD, position, 0.000001) and declared with INDIGO_EXTERN inside the extern \"C\" block of indigo_libs/indigo/indigocat/indigocat_solar_system.h:71; existing moon calls unchanged. Windows: indigocat_moon.c is already compiled into indigo.vcxproj (line 336) and indigo.def lists no exports, so the dllexport macro covers it. Scheduler uses it only in solar_system() (indigo_agent_scheduler_sky.c:87, comment present); DRIVER_VERSION 0x0300001B -> 0x0300001C. Unit test (test_indigocat_corrections.c): ra/dec degrees converted with DEG2RAD, spherical-law-of-cosines separation with clamp is accurate far below the 5 arcsec bound, fixed dates (deterministic), asserts max_error > 0 so the truncated path is exercised; binary is in UNIT_TESTS of indigo_test/Makefile and depends on libindigocat.a. I re-ran the built binary: 3 PASS, max 3.57 arcsec. 'about 3.5 arcsec' (header:69, SCHEDULER.md:77, sky.c:86) is accurate for 3.4-3.57 measured; not a defect. SCHEDULER.md lines 77 and 501 are accurate. Recorded checks whitespace/unit/command-1 are on HEAD 5be12bb7e8; worktree clean. No blocking defects. Advisory for the owner (not required by this ticket): indigocat_moon.c:187 'static double pre[3]' is process-global and rewritten by every indigocat_moon_geocentric_coords() call (moon.c ~39177). Before this change every in-tree caller wrote 0, so concurrent calls were benign; now the scheduler's coarse call (agent queue) can run concurrently with full-theory callers in the same process (indigocat_ss.c:89 via indigo_server.c:617), so either call may sum with the other's cutoff (error bounded by about the coarse error, a few arcsec; formally a data race). Possible fix: pass the cutoffs to the sum_series_* functions instead of a static, or register a sep"
+        }
+      ],
+      "result": {
+        "summary": "Reviewed diff master...HEAD at 5be12bb7e8 (6 files). New call indigocat_moon_equatorial_coords_coarse(double JD, equatorial_coords_s *position) is defined in indigo_libs/indigocat/indigocat_moon.c:39155 as indigocat_moon_equatorial_coords_prec(JD, position, 0.000001) and declared with INDIGO_EXTERN inside the extern \"C\" block of indigo_libs/indigo/indigocat/indigocat_solar_system.h:71; existing moon calls unchanged. Windows: indigocat_moon.c is already compiled into indigo.vcxproj (line 336) and indigo.def lists no exports, so the dllexport macro covers it. Scheduler uses it only in solar_system() (indigo_agent_scheduler_sky.c:87, comment present); DRIVER_VERSION 0x0300001B -> 0x0300001C. Unit test (test_indigocat_corrections.c): ra/dec degrees converted with DEG2RAD, spherical-law-of-cosines separation with clamp is accurate far below the 5 arcsec bound, fixed dates (deterministic), asserts max_error > 0 so the truncated path is exercised; binary is in UNIT_TESTS of indigo_test/Makefile and depends on libindigocat.a. I re-ran the built binary: 3 PASS, max 3.57 arcsec. 'about 3.5 arcsec' (header:69, SCHEDULER.md:77, sky.c:86) is accurate for 3.4-3.57 measured; not a defect. SCHEDULER.md lines 77 and 501 are accurate. Recorded checks whitespace/unit/command-1 are on HEAD 5be12bb7e8; worktree clean. No blocking defects. Advisory for the owner (not required by this ticket): indigocat_moon.c:187 'static double pre[3]' is process-global and rewritten by every indigocat_moon_geocentric_coords() call (moon.c ~39177). Before this change every in-tree caller wrote 0, so concurrent calls were benign; now the scheduler's coarse call (agent queue) can run concurrently with full-theory callers in the same process (indigocat_ss.c:89 via indigo_server.c:617), so either call may sum with the other's cutoff (error bounded by about the coarse error, a few arcsec; formally a data race). Possible fix: pass the cutoffs to the sum_series_* functions instead of a static, or register a sep",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 61433.273,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "70a736b5-a36c-43d3-8a56-ea3092e8fa17",
+      "event": "ticket/created",
+      "at": "2026-11-19T06:07:14.435538Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "bf442387-2eab-433a-b1db-a57f83c6370c",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T06:11:06.419966Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "deac7957-dcda-499a-85cc-0131f0b2f4e0",
+      "event": "ticket/title_changed",
+      "at": "2026-11-19T09:15:12.362826Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: make the hourly Sun and Moon grid rebuild cheaper, it takes about 100 ms (0.5-1 s on a Raspberry Pi)",
+      "title": "indigo_agent_scheduler: make the Sun and Moon grid build cheaper with a new coarse Moon position call in indigocat"
+    },
+    {
+      "event_id": "7ffcba1c-ca22-451a-8ade-c9f478d7f049",
+      "event": "ticket/description_changed",
+      "at": "2026-11-19T09:15:12.362858Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_description": "Performance follow-up from the scheduler performance study (scratchpad perf/, i5-9400, -O3; Raspberry Pi 4 about 5-10x slower).\n\nindigo_scheduler_sky_build() takes about 100 ms (about 0.5-1 s on a Pi), 99 % in the full ELP2000 Moon theory (indigocat_moon_equatorial_coords, precision 0) called 49 times, and runs every hour on the agent queue.\n\nTwo options, the owner chooses before implementation:\n1. Reuse Sun and Moon samples across the hourly rebuild: the grid start normally moves by exactly 3600 s, so 48 of 49 hourly samples are the same instants; keep them in the grid and look them up by exact time. Hourly rebuild 100 ms -> 2.3 ms; the first build and a delayed tick stay about 100 ms. Not bit-identical: up to 2e-6 deg Sun altitude and 1.5e-6 Moon illumination, because indigocat_get_nutation() keeps a process-global cache of the last epoch (LN_NUTATION_EPOCH_THRESHOLD 0.1 day, indigocat_nutation.c), so today's grid already depends on call history. Prototype: perf/proto_B_solar_cache.diff.\n2. Lower the Moon precision: indigocat_moon_equatorial_coords_prec(jd, &m, 0.0001) is 40x faster for every build, error <= 33 arcsec, far below the Moon parallax (up to 1 deg) the grid already ignores; a deliberate change of results.\n\nSide finding to check: the static nutation cache in indigocat_nutation.c is not synchronised across threads.",
+      "description": "Performance follow-up from the scheduler performance study. indigo_scheduler_sky_build() (indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c) takes about 75 ms here (about 0.5-1 s on a Raspberry Pi), almost all of it in the full ELP2000/82 Moon theory (indigocat_moon_equatorial_coords(), precision 0, every term summed) called 49 times per build; it runs at start, on a site change and every hour on the agent queue.\n\nOwner's decision (2026-11-19): lower the Moon precision, through a new public indigocat call; the owner explicitly approved this indigo_libs change.\n- Add to indigo_libs/indigocat/indigocat_moon.c and declare with INDIGO_EXTERN in indigo_libs/indigo/indigocat/indigocat_solar_system.h a new call for a coarse Moon position: indigocat_moon_equatorial_coords_coarse(double JD, equatorial_coords_s *position), equivalent to indigocat_moon_equatorial_coords_prec(JD, position, 0.000001). Document in the header that it truncates the ELP2000/82 series at 1e-6 rad per term, stays within about 3.5 arcsec of the full theory and is about 50x faster, for planning use. Existing calls are unchanged.\n- Use it in solar_system() in indigo_agent_scheduler_sky.c instead of indigocat_moon_equatorial_coords(); comment why.\n- Measured on ARM64 (owner's benchmark, 200 dates): precision 1e-6 rad -> max 3.4 arcsec from the full theory, 1.3 ms per 49-sample build instead of 71-76 ms (about 55x). Any precision > 0 gives about the same speed; the precision is a per-term cutoff, the summed error is larger than the cutoff.\n- Tests: a unit test (indigo_test/unit) that the coarse call stays within 5 arcsec of indigocat_moon_equatorial_coords() over a range of dates; check that existing scheduler sky/plan unit tests and the scheduler integration tests still pass (adjust a tolerance only with evidence that the change is within the stated error).\n- Option 2 of the earlier description (reusing the hourly samples) is not done. The thread-safety of the static nutation cache in indigocat_nutation.c is not part of this ticket.\n- Update doc/SCHEDULER.md if it states the Moon precision; increment the scheduler agent DRIVER_VERSION. If the indigo_libs change needs a CHANGELOG or PROPERTIES entry by repository convention, follow it."
+    },
+    {
+      "event_id": "23ba977d-0041-43df-b013-d69bafec710d",
+      "event": "task/progress",
+      "at": "2026-11-19T09:15:38.723426Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Implementation started on branch ticket/8bc4b8b3-4ef0-4724-aa28-dc2c0b1e2bd0"
+    },
+    {
+      "event_id": "b782a400-33b4-4b27-a332-9590d146d692",
+      "event": "ticket/started",
+      "at": "2026-11-19T09:15:38.725015Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/8bc4b8b3-4ef0-4724-aa28-dc2c0b1e2bd0",
+      "base": "master"
+    },
+    {
+      "event_id": "3a2aba22-2e2e-47c4-8301-28ca10ed107e",
+      "event": "task/progress",
+      "at": "2026-11-19T09:15:56.909426Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Implementer launched",
+      "attempt_id": "7b233101-2a4f-4ae4-bdff-03ad512ab04f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "1d4f0944-a92b-467c-ab06-074b1d43530e",
+      "event": "task/progress",
+      "at": "2026-11-19T09:16:52.461193Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Running flow check (whitespace + unit) on the coarse Moon change"
+    },
+    {
+      "event_id": "33af2229-966b-41fc-a71f-5b46f8349ec6",
+      "event": "task/progress",
+      "at": "2026-11-19T09:16:52.649625Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "78c6a942-fc8d-49ac-83d7-6109f3de3922",
+      "event": "task/progress",
+      "at": "2026-11-19T09:16:52.690477Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "75e17dfd-644a-43a2-b780-17bc40652c27",
+      "event": "task/progress",
+      "at": "2026-11-19T09:16:52.694938Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a06b23cc-f897-4a25-8d5d-95e4d99fca9c",
+      "event": "task/progress",
+      "at": "2026-11-19T09:18:29.851589Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "52eaf9fa-77fd-49c7-a467-d70654c22b9a",
+      "event": "check/passed",
+      "at": "2026-11-19T09:18:29.858879Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5be12bb7e82f31e0bab69d23e58ccd497d483c20",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "5383f181-ce8e-4a60-b6ca-e8e427db0cf0",
+      "event": "task/progress",
+      "at": "2026-11-19T09:19:05.911863Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Running scheduler integration test through flow check --command"
+    },
+    {
+      "event_id": "108786bd-d3c6-4078-b03a-9f9b44c4998a",
+      "event": "task/progress",
+      "at": "2026-11-19T09:19:06.081662Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "d8ab66a7-5cb7-4eb1-8516-4b53a32375c4",
+      "event": "task/progress",
+      "at": "2026-11-19T09:24:33.142453Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "496ec30a-2b89-4f72-bd5b-6f409e292823",
+      "event": "check/passed",
+      "at": "2026-11-19T09:24:33.152314Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5be12bb7e82f31e0bab69d23e58ccd497d483c20",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "a584be54-20a8-4e36-8b73-096be0e9735f",
+      "event": "ticket/note",
+      "at": "2026-11-19T09:24:48.281489Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementation evidence. Timings (ARM64, scratch program not committed, 20 builds of indigo_scheduler_sky_build() linked against the worktree libindigocat/libindigo): before (master sky.c, full ELP2000/82 Moon) mean 71.41 ms, min 69.79 ms; after (coarse call) mean 2.43 ms, min 2.28 ms (about 29x for the whole build, the 49 Moon samples alone about 55x per the owner's benchmark). Max error measured by the unit test: 3.57 arcsec over 300 dates JD 2449000.5 + i*53.37 (1993-2037, both sides of J2000). Test-to-requirement mapping: new call within 5 arcsec of indigocat_moon_equatorial_coords() over a range of dates -> indigo_test/unit/test_indigocat_corrections.c coarse_moon_stays_within_5_arcsec_of_full_theory (also asserts a nonzero difference, so the coarse path is really exercised); existing calls unchanged -> sun/nutation cases in the same file plus unchanged code; scheduler still correct with the coarse Moon -> unit test_agent_scheduler_sky/plan/night (pass, no tolerance changed) and integration make -C indigo_test test-agent-scheduler: 132 run, 132 passed, 0 failed. Unit suite: 547 PASS, 0 FAIL, 1 SKIP (pre-existing). Windows: indigocat is built into indigo.dll (indigo.vcxproj) and exports come from INDIGO_EXTERN __declspec(dllexport); indigo.def lists no symbols, so no .def/vcxproj change is needed. No property change (PROPERTIES.md untouched); CHANGELOG entries are written at release time per AGENTS.md.",
+      "tokens": null
+    },
+    {
+      "event_id": "75f64768-9348-4fdd-95a8-99f3a7627fc4",
+      "event": "task/progress",
+      "at": "2026-11-19T09:25:19.939335Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3bad3488-6379-42e4-933d-f47f4942162c",
+      "text": "Reviewer launched",
+      "attempt_id": "7b233101-2a4f-4ae4-bdff-03ad512ab04f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "db8de079-c9ba-4ebb-9418-93793789be9d",
+      "event": "task/progress",
+      "at": "2026-11-19T09:25:20.023597Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dce0abd-5a7a-4de7-bb65-d19e84050768",
+      "text": "Review started"
+    },
+    {
+      "event_id": "161523b3-b1de-4fe0-9597-d4c8b33bd0db",
+      "event": "review/started",
+      "at": "2026-11-19T09:25:20.024092Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "8ea76943-25f9-4367-828a-4dbb08c53196",
+      "event": "task/progress",
+      "at": "2026-11-19T09:26:03.259516Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dce0abd-5a7a-4de7-bb65-d19e84050768",
+      "text": "Running the built test_indigocat_corrections binary"
+    },
+    {
+      "event_id": "f40bcf79-37a7-4599-86d2-446d6ae82283",
+      "event": "task/progress",
+      "at": "2026-11-19T09:26:21.456777Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dce0abd-5a7a-4de7-bb65-d19e84050768",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "611cc69d-4819-48e6-bf95-1f57485afe67",
+      "event": "review/passed",
+      "at": "2026-11-19T09:26:21.457112Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dce0abd-5a7a-4de7-bb65-d19e84050768",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5be12bb7e82f31e0bab69d23e58ccd497d483c20"
+    },
+    {
+      "event_id": "1e1ea186-3b68-445f-9117-46d94f637162",
+      "event": "ticket/closed",
+      "at": "2026-11-19T09:36:18.785121Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T09:36:18.785098Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "d3eb7f6bb13882823e0469fe610950dee5113aa0"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "high",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5be12bb7e82f31e0bab69d23e58ccd497d483c20",
+        "tree": "7eed8bb30788e93831eadcb31fc25f99155860d0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T09:16:52.690104Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/8bc4b8b3-4ef0-4724-aa28-dc2c0b1e2bd0/7eed8bb30788-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "5be12bb7e82f31e0bab69d23e58ccd497d483c20",
+        "tree": "7eed8bb30788e93831eadcb31fc25f99155860d0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T09:18:29.849526Z",
+        "duration_s": 97.2,
+        "log": "/tmp/factory-flow/8bc4b8b3-4ef0-4724-aa28-dc2c0b1e2bd0/7eed8bb30788-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "5be12bb7e82f31e0bab69d23e58ccd497d483c20",
+        "tree": "7eed8bb30788e93831eadcb31fc25f99155860d0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T09:24:33.135678Z",
+        "duration_s": 327.1,
+        "log": "/tmp/factory-flow/8bc4b8b3-4ef0-4724-aa28-dc2c0b1e2bd0/7eed8bb30788-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed diff master...HEAD at 5be12bb7e8 (6 files). New call indigocat_moon_equatorial_coords_coarse(double JD, equatorial_coords_s *position) is defined in indigo_libs/indigocat/indigocat_moon.c:39155 as indigocat_moon_equatorial_coords_prec(JD, position, 0.000001) and declared with INDIGO_EXTERN inside the extern \"C\" block of indigo_libs/indigo/indigocat/indigocat_solar_system.h:71; existing moon calls unchanged. Windows: indigocat_moon.c is already compiled into indigo.vcxproj (line 336) and indigo.def lists no exports, so the dllexport macro covers it. Scheduler uses it only in solar_system() (indigo_agent_scheduler_sky.c:87, comment present); DRIVER_VERSION 0x0300001B -> 0x0300001C. Unit test (test_indigocat_corrections.c): ra/dec degrees converted with DEG2RAD, spherical-law-of-cosines separation with clamp is accurate far below the 5 arcsec bound, fixed dates (deterministic), asserts max_error > 0 so the truncated path is exercised; binary is in UNIT_TESTS of indigo_test/Makefile and depends on libindigocat.a. I re-ran the built binary: 3 PASS, max 3.57 arcsec. 'about 3.5 arcsec' (header:69, SCHEDULER.md:77, sky.c:86) is accurate for 3.4-3.57 measured; not a defect. SCHEDULER.md lines 77 and 501 are accurate. Recorded checks whitespace/unit/command-1 are on HEAD 5be12bb7e8; worktree clean. No blocking defects. Advisory for the owner (not required by this ticket): indigocat_moon.c:187 'static double pre[3]' is process-global and rewritten by every indigocat_moon_geocentric_coords() call (moon.c ~39177). Before this change every in-tree caller wrote 0, so concurrent calls were benign; now the scheduler's coarse call (agent queue) can run concurrently with full-theory callers in the same process (indigocat_ss.c:89 via indigo_server.c:617), so either call may sum with the other's cutoff (error bounded by about the coarse error, a few arcsec; formally a data race). Possible fix: pass the cutoffs to the sum_series_* functions instead of a static, or register a separate ticket alongside the nutation-cache thread-safety work. Coverage limits: no rebuild or integration rerun by the reviewer; Windows build not verified; no timing re-measurement.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "5be12bb7e82f31e0bab69d23e58ccd497d483c20",
+        "tree": "7eed8bb30788e93831eadcb31fc25f99155860d0",
+        "at": "2026-11-19T09:26:21.456686Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T09:24:48.281135Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementation evidence. Timings (ARM64, scratch program not committed, 20 builds of indigo_scheduler_sky_build() linked against the worktree libindigocat/libindigo): before (master sky.c, full ELP2000/82 Moon) mean 71.41 ms, min 69.79 ms; after (coarse call) mean 2.43 ms, min 2.28 ms (about 29x for the whole build, the 49 Moon samples alone about 55x per the owner's benchmark). Max error measured by the unit test: 3.57 arcsec over 300 dates JD 2449000.5 + i*53.37 (1993-2037, both sides of J2000). Test-to-requirement mapping: new call within 5 arcsec of indigocat_moon_equatorial_coords() over a range of dates -> indigo_test/unit/test_indigocat_corrections.c coarse_moon_stays_within_5_arcsec_of_full_theory (also asserts a nonzero difference, so the coarse path is really exercised); existing calls unchanged -> sun/nutation cases in the same file plus unchanged code; scheduler still correct with the coarse Moon -> unit test_agent_scheduler_sky/plan/night (pass, no tolerance changed) and integration make -C indigo_test test-agent-scheduler: 132 run, 132 passed, 0 failed. Unit suite: 547 PASS, 0 FAIL, 1 SKIP (pre-existing). Windows: indigocat is built into indigo.dll (indigo.vcxproj) and exports come from INDIGO_EXTERN __declspec(dllexport); indigo.def lists no symbols, so no .def/vcxproj change is needed. No property change (PROPERTIES.md untouched); CHANGELOG entries are written at release time per AGENTS.md.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "d3eb7f6bb13882823e0469fe610950dee5113aa0",
+      "tree": "7eed8bb30788e93831eadcb31fc25f99155860d0",
+      "base": "master",
+      "at": "2026-11-19T09:36:18.677616Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T06:07:14.434901Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T06:11:06.419939Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 642737.322,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 29,
+    "sha256": "fe1786f3d2649e771226a63a9d53a7e3644b4d0af5e027adda8ea2d1121f9d6a"
+  }
+}
