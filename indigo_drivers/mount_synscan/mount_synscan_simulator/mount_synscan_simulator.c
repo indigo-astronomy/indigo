@@ -108,6 +108,7 @@ typedef struct {
 	int stop_lag;
 	double home_start_degrees;
 	double ppec_training_seconds;
+	int encoder_counts;
 } simulator_options;
 
 static simulator_options options = {
@@ -125,7 +126,8 @@ static simulator_options options = {
 	.dec_features = FEATURES,
 	.ready_file = NULL,
 	.stop_lag = 0,
-	.ppec_training_seconds = 0
+	.ppec_training_seconds = 0,
+	.encoder_counts = 0
 };
 
 static const char *simulator_name = "mount_synscan";
@@ -144,6 +146,8 @@ static void usage(const char *name) {
 	printf("  --stop-lag <n>          Report an axis as still running for n status queries after a stop\n");
 	printf("  --ppec-training-seconds <s>  End PPEC training by itself s seconds after it started, as the\n");
 	printf("                          mount does after one worm revolution (default: never)\n");
+	printf("  --encoder-counts <n>    Count the :d encoder reading n times per axis revolution instead of in steps\n");
+	printf("                          (an AZ-GTi counts 1068 against 2073600 steps; default: in steps)\n");
 	printf("  The tests inject refused commands through <ready-file>.fault, \"<prefix> <reply> <count>\"\n");
 	printf("  --model-code <hex>      Motor controller model code for :e replies\n");
 	printf("  --ra-features <hex>     Override RA axis feature bits for :q1000100 replies\n");
@@ -257,6 +261,18 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ppec_training_seconds = value;
+		} else if (!strcmp(argv[i], "--encoder-counts")) {
+			if (++i == argc) {
+				fprintf(stderr, "--encoder-counts requires a value\n");
+				return false;
+			}
+			char *end = NULL;
+			long value = strtol(argv[i], &end, 10);
+			if (end == argv[i] || *end != 0 || value < 1 || value > STEPS_PER_REVOLUTION) {
+				fprintf(stderr, "--encoder-counts requires a count between 1 and %d\n", STEPS_PER_REVOLUTION);
+				return false;
+			}
+			options.encoder_counts = (int)value;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -317,6 +333,17 @@ static int32_t axis_home_index[2] = { 0, 0 };
 // Monotonic time PPEC training started on each axis, for --ppec-training-seconds.
 static double axis_ppec_training_started[2] = { 0, 0 };
 static bool axis_home_index_hit[2] = { false, false };
+
+// The :d reading of an axis: the step counter plus an offset, or with --encoder-counts the encoder ticks of the axis
+// turn from the step zero 0x800000 (rounded down) plus the same offset in ticks, around the same 0x800000.
+static uint32_t encoder_reading(int axis) {
+	if (options.encoder_counts == 0) {
+		return axis_position[axis] + axis_aux_position_offset[axis];
+	}
+	int64_t ticks = (int64_t)(int32_t)(axis_position[axis] - 0x800000) * options.encoder_counts;
+	int64_t counts = ticks >= 0 ? ticks / STEPS_PER_REVOLUTION : -((-ticks + STEPS_PER_REVOLUTION - 1) / STEPS_PER_REVOLUTION);
+	return (uint32_t)(0x800000 + counts + axis_aux_position_offset[axis]) & 0xFFFFFF;
+}
 
 static void initialize_state(void) {
 	axis_abs_position[0] = axis_abs_position[1] = (int32_t)(options.home_start_degrees / 360.0 * STEPS_PER_REVOLUTION);
@@ -444,7 +471,7 @@ static char *process_command(char *buffer) {
 		case 'D':
 			return reply_24(100);
 		case 'd':
-			return reply_24(axis_position[axis] + axis_aux_position_offset[axis]);
+			return reply_24(encoder_reading(axis));
 		case 'E':
 			axis_position[axis] = parse_24(buffer + 3);
 			return "=";
