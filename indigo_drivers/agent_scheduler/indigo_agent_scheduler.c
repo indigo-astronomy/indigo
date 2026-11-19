@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000018
+#define DRIVER_VERSION 0x0300001A
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -118,6 +118,7 @@
 #define SETTINGS_OPERATION_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 7)
 #define SETTINGS_NIGHT_START_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 8)
 #define SETTINGS_NIGHT_END_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 9)
+#define SETTINGS_DEFER_GAIN_ITEM	(SETTINGS_PROPERTY->items + 10)
 #define DATA_PROPERTY							(PRIVATE_DATA->data_property)
 #define DATA_OBJECT_ITEM					(DATA_PROPERTY->items + 0)
 #define DATA_FITS_ITEM						(DATA_PROPERTY->items + 1)
@@ -336,6 +337,10 @@ typedef struct {
 	bool chain_ok;
 	// start of the first task run of the last plan, 0 if none
 	time_t plan_first_run;
+	// a deferral wait follows the plan that decided it while nothing changes: nothing starts before defer_wait_until, then the plan's first run, of the task in slot defer_start_slot; defer_wait_until is 0 when no wait is planned
+	time_t defer_wait_until;
+	int defer_start_slot;
+	char defer_reason[INDIGO_VALUE_SIZE];
 	run_phase phase;
 	run_kind kind;
 	time_t run_start;
@@ -376,6 +381,7 @@ static indigo_client *agent_client = NULL;
 
 static void process(indigo_device *device);
 static void update_plan(indigo_device *device, time_t now);
+static int select_deferred(indigo_device *device, time_t now, const bool *candidates, int best);
 
 // -------------------------------------------------------------------------------- Helpers
 
@@ -1532,11 +1538,17 @@ static void refresh_sky(indigo_device *device, time_t now) {
 	if (sky->valid && sky->latitude == latitude && sky->longitude == longitude && sky->elevation == elevation && now - sky->start < SKY_REFRESH_INTERVAL) {
 		return;
 	}
+	// a new site changes the plan; the hourly rebuild only moves the grid, so it keeps a deferral wait that follows the plan, see select_deferred()
+	bool moved = !sky->valid || sky->latitude != latitude || sky->longitude != longitude || sky->elevation != elevation;
+	bool plan_dirty = PRIVATE_DATA->plan_dirty;
 	indigo_scheduler_sky_build(sky, now, latitude, longitude, elevation);
 	for (int i = 0; i < MAX_TASKS; i++) {
 		if (PRIVATE_DATA->tasks[i].used) {
 			build_target(device, PRIVATE_DATA->tasks + i);
 		}
+	}
+	if (!moved && PRIVATE_DATA->defer_wait_until > 0) {
+		PRIVATE_DATA->plan_dirty = plan_dirty;
 	}
 }
 
@@ -1603,6 +1615,8 @@ static int select_task(indigo_device *device, time_t now) {
 	double best_score = 0;
 	const char *first_reason = NULL;
 	bool estimating = false;
+	// the eligible tasks without urgency, by slot, among which the deferral chooses
+	bool candidates[MAX_TASKS] = { false };
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
 		int slot = PRIVATE_DATA->order[i];
 		scheduler_task *task = PRIVATE_DATA->tasks + slot;
@@ -1629,6 +1643,7 @@ static int select_task(indigo_device *device, time_t now) {
 		if (best >= 0 && is_urgent(PRIVATE_DATA->tasks + best)) {
 			continue;
 		}
+		candidates[slot] = true;
 		double value = score(device, task, now);
 		if (best < 0 || value > best_score) {
 			best = slot;
@@ -1639,6 +1654,14 @@ static int select_task(indigo_device *device, time_t now) {
 	if (estimating && best >= 0 && !is_urgent(PRIVATE_DATA->tasks + best)) {
 		best = -1;
 		first_reason = "estimating the task duration";
+	}
+	// urgent tasks are never deferred
+	if (best >= 0 && !is_urgent(PRIVATE_DATA->tasks + best) && SETTINGS_DEFER_GAIN_ITEM->number.value > 0) {
+		best = select_deferred(device, now, candidates, best);
+		if (best < 0) {
+			// the reason names the deferred task and its release
+			return -1;
+		}
 	}
 	if (best >= 0) {
 		set_reason(device, "");
@@ -1822,11 +1845,15 @@ static void refresh_nights(indigo_device *device, time_t now) {
 	}
 	double limit = night_limit(device);
 	int start_offset = (int)SETTINGS_NIGHT_START_OFFSET_ITEM->number.value, end_offset = (int)SETTINGS_NIGHT_END_OFFSET_ITEM->number.value;
-	if (nights->valid && nights->latitude == latitude && nights->longitude == longitude && nights->elevation == elevation && nights->limit == limit && nights->start_offset == start_offset && nights->end_offset == end_offset && now - nights->built < SKY_REFRESH_INTERVAL) {
+	// a new site, limit or offset changes the plan; the hourly rebuild only moves the time, so it keeps a deferral wait that follows the plan, see select_deferred()
+	bool changed = indigo_scheduler_nights_changed(nights, latitude, longitude, elevation, limit, start_offset, end_offset);
+	if (!changed && now - nights->built < SKY_REFRESH_INTERVAL) {
 		return;
 	}
 	indigo_scheduler_nights_build(nights, now, latitude, longitude, elevation, limit, start_offset, end_offset);
-	PRIVATE_DATA->plan_dirty = true;
+	if (changed || PRIVATE_DATA->defer_wait_until == 0) {
+		PRIVATE_DATA->plan_dirty = true;
+	}
 }
 
 // tells once when the coming day has no night or the night does not end, on START and when it changes
@@ -2129,6 +2156,11 @@ static scheduler_plan_task plan_tasks[MAX_TASKS];
 static int plan_slots[MAX_TASKS];
 static scheduler_plan_run plan_runs[MAX_PLAN_RUNS];
 static scheduler_plan_hook plan_hooks[3];
+// the inputs of the last plan, which the deferral at a decision shares
+static int plan_task_count;
+static int plan_hook_count;
+static int plan_run_count;
+static time_t plan_end;
 static int plan_hook_slots[3];
 static const char *plan_hook_names[3];
 
@@ -2194,7 +2226,14 @@ static void plan_run_label(indigo_device *device, scheduler_plan_run *run, char 
 	char when[48], runs[32], priority[48];
 	time_range(run->start, run->end, when, sizeof(when));
 	snprintf(runs, sizeof(runs), "run %d/%d", run->run, task->header.repeat);
-	const char *columns[] = { when, task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), run->running ? "RUNNING" : "PLANNED", "-" };
+	// a run held back for a slot nearer the culmination names the time it would have started
+	char reason[32] = "-";
+	if (run->deferred_from != 0) {
+		struct tm from;
+		indigo_gmtime(&run->deferred_from, &from);
+		snprintf(reason, sizeof(reason), "deferred from %02d:%02d", from.tm_hour, from.tm_min);
+	}
+	const char *columns[] = { when, task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), run->running ? "RUNNING" : "PLANNED", reason };
 	join_label(label, size, 6, columns);
 }
 
@@ -2241,6 +2280,8 @@ static void update_plan(indigo_device *device, time_t now) {
 	static char labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
 	static indigo_property_state states[MAX_PLAN_ITEMS];
 	int count = 0;
+	// a new plan takes a new decision
+	PRIVATE_DATA->defer_wait_until = 0;
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
 		int slot = PRIVATE_DATA->order[i];
 		scheduler_task *task = PRIVATE_DATA->tasks + slot;
@@ -2275,7 +2316,7 @@ static void update_plan(indigo_device *device, time_t now) {
 	if (night != NULL && night->end_known && night->end > end) {
 		end = night->end;
 	}
-	double setting_weight = SETTINGS_SETTING_WEIGHT_ITEM->number.value, altitude_weight = SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value;
+	double setting_weight = SETTINGS_SETTING_WEIGHT_ITEM->number.value, altitude_weight = SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value, defer_gain = SETTINGS_DEFER_GAIN_ITEM->number.value;
 	// a running hook starts the plan, the runs after it are simulated from its end
 	int hook_count = 0;
 	if (PRIVATE_DATA->phase != RUN_IDLE && PRIVATE_DATA->kind != RUN_TASK && PRIVATE_DATA->current >= 0) {
@@ -2287,7 +2328,7 @@ static void update_plan(indigo_device *device, time_t now) {
 		hook_count = 1;
 	}
 	int running_hooks = hook_count;
-	int runs = indigo_scheduler_plan_with_hooks(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, setting_weight, altitude_weight, plan_runs, MAX_PLAN_RUNS);
+	int runs = indigo_scheduler_plan_with_deferral(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, setting_weight, altitude_weight, defer_gain, plan_runs, MAX_PLAN_RUNS);
 	PRIVATE_DATA->plan_first_run = 0;
 	for (int i = 0; i < runs; i++) {
 		if (!plan_runs[i].running) {
@@ -2317,9 +2358,13 @@ static void update_plan(indigo_device *device, time_t now) {
 			}
 		}
 	}
+	plan_task_count = count;
+	plan_hook_count = hook_count;
+	plan_end = end;
 	if (hook_count > running_hooks) {
-		runs = indigo_scheduler_plan_with_hooks(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, setting_weight, altitude_weight, plan_runs, MAX_PLAN_RUNS);
+		runs = indigo_scheduler_plan_with_deferral(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, setting_weight, altitude_weight, defer_gain, plan_runs, MAX_PLAN_RUNS);
 	}
+	plan_run_count = runs;
 	bool planned[MAX_TASKS] = { false };
 	int items = 0;
 	for (int i = 0; i < runs && items < MAX_PLAN_ITEMS; i++) {
@@ -2362,6 +2407,79 @@ static void update_plan(indigo_device *device, time_t now) {
 	update_current(device);
 }
 
+// DEFER_GAIN at a decision: the plan's decision whether the best tasks wait for a slot nearer their culmination, taken on the inputs of a fresh plan; returns the slot to start, or -1 with the reason when every candidate waits
+static int select_deferred(indigo_device *device, time_t now, const bool *candidates, int best) {
+	// while nothing changes, the scheduler follows the plan that decided the wait: the plan holds the deferred tasks as the decisions at later times would, and it is not computed again at every check
+	if (!PRIVATE_DATA->plan_dirty && PRIVATE_DATA->defer_wait_until > 0) {
+		if (now < PRIVATE_DATA->defer_wait_until) {
+			set_reason(device, PRIVATE_DATA->defer_reason);
+			return -1;
+		}
+		int slot = PRIVATE_DATA->defer_start_slot;
+		PRIVATE_DATA->defer_wait_until = 0;
+		if (slot >= 0 && candidates[slot]) {
+			return slot;
+		}
+	}
+	update_plan(device, now);
+	PRIVATE_DATA->plan_dirty = false;
+	PRIVATE_DATA->plan_due = indigo_monotonic_time() + SETTINGS_IDLE_CHECK_ITEM->number.value;
+	// the candidates by score, best first, ties to the earlier task as in select_task()
+	int ranked[MAX_TASKS];
+	double scores[MAX_TASKS];
+	int ranked_count = 0;
+	for (int i = 0; i < plan_task_count; i++) {
+		int slot = plan_slots[i];
+		if (!candidates[slot]) {
+			continue;
+		}
+		double value = score(device, PRIVATE_DATA->tasks + slot, now);
+		int k = ranked_count++;
+		while (k > 0 && scores[k - 1] < value) {
+			ranked[k] = ranked[k - 1];
+			scores[k] = scores[k - 1];
+			k--;
+		}
+		ranked[k] = i;
+		scores[k] = value;
+	}
+	if (ranked_count == 0) {
+		return best;
+	}
+	int waiting;
+	time_t release;
+	int result = indigo_scheduler_plan_decide(&PRIVATE_DATA->sky, plan_tasks, plan_task_count, plan_hooks, plan_hook_count, now, plan_end, SETTINGS_SETTING_WEIGHT_ITEM->number.value, SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value, SETTINGS_DEFER_GAIN_ITEM->number.value, ranked, ranked_count, &waiting, &release);
+	if (result >= 0) {
+		return plan_slots[result];
+	}
+	// the wait ends with the first planned task run, which the reason names; without one, with the held task released first
+	time_t start = release;
+	int slot = plan_slots[waiting];
+	bool deferred = true;
+	PRIVATE_DATA->defer_start_slot = -1;
+	for (int i = 0; i < plan_run_count; i++) {
+		if (!plan_runs[i].running && plan_runs[i].task >= 0) {
+			start = plan_runs[i].start;
+			slot = PRIVATE_DATA->defer_start_slot = plan_slots[plan_runs[i].task];
+			deferred = plan_runs[i].deferred_from != 0;
+			break;
+		}
+	}
+	PRIVATE_DATA->defer_wait_until = start;
+	char reason[INDIGO_VALUE_SIZE];
+	struct tm until;
+	indigo_gmtime(&start, &until);
+	if (deferred) {
+		snprintf(reason, sizeof(reason), "%s waits until %02d:%02d UTC, nearer its culmination", PRIVATE_DATA->tasks[slot].header.name, until.tm_hour, until.tm_min);
+	} else {
+		// a task that cannot start yet comes first, the eligible ones wait for later slots
+		snprintf(reason, sizeof(reason), "%s starts at %02d:%02d UTC, the eligible tasks wait nearer their culmination", PRIVATE_DATA->tasks[slot].header.name, until.tm_hour, until.tm_min);
+	}
+	set_reason(device, reason);
+	INDIGO_COPY_VALUE(PRIVATE_DATA->defer_reason, reason);
+	return -1;
+}
+
 static void process(indigo_device *device) {
 	time_t now = time(NULL);
 	bool plan = PRIVATE_DATA->plan_dirty || indigo_monotonic_time() >= PRIVATE_DATA->plan_due;
@@ -2392,7 +2510,9 @@ static void process(indigo_device *device) {
 		process_idle(device, now);
 	}
 	refresh(device);
-	if (plan || PRIVATE_DATA->plan_dirty) {
+	// during a deferral wait the plan that decided it stays until its first run or a change, see select_deferred()
+	bool waiting = !PRIVATE_DATA->plan_dirty && PRIVATE_DATA->phase == RUN_IDLE && now < PRIVATE_DATA->defer_wait_until;
+	if ((plan && !waiting) || PRIVATE_DATA->plan_dirty) {
 		update_plan(device, now);
 		PRIVATE_DATA->plan_dirty = false;
 		PRIVATE_DATA->plan_due = indigo_monotonic_time() + SETTINGS_IDLE_CHECK_ITEM->number.value;
@@ -2903,7 +3023,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_text_item(CURRENT_CURRENT_ITEM, AGENT_SCHEDULER_CURRENT_CURRENT_ITEM_NAME, "Running task", "");
 		indigo_init_text_item(CURRENT_REASON_ITEM, AGENT_SCHEDULER_CURRENT_REASON_ITEM_NAME, "Waiting because", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_SETTINGS
-		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
+		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 11);
 		if (SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2917,6 +3037,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(SETTINGS_OPERATION_OVERHEAD_ITEM, AGENT_SCHEDULER_SETTINGS_OPERATION_OVERHEAD_ITEM_NAME, "Estimate overhead per operation (s)", 0, 3600, 1, 120);
 		indigo_init_number_item(SETTINGS_NIGHT_START_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME, "Night start offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
 		indigo_init_number_item(SETTINGS_NIGHT_END_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, "Night end offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
+		indigo_init_number_item(SETTINGS_DEFER_GAIN_ITEM, AGENT_SCHEDULER_SETTINGS_DEFER_GAIN_ITEM_NAME, "Defer for altitude gain (%)", 0, 100, 1, 0);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_DATA
 		DATA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_DATA_PROPERTY_NAME, SCHEDULER_GROUP, "Observation data", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
 		if (DATA_PROPERTY == NULL) {

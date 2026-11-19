@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1fb22c77-776f-4ea9-aa9b-eb2752232c0b",
+  "revision": 2,
+  "title": "indigo_test: INDIGO_TEST_CASE_FILTER with the parallel case runner reports every non-matching case as FAIL",
+  "description": "Found in review of ticket 3002bd75 (2026-11-17). Running indigo_test/build/integration/test_agent_scheduler with INDIGO_TEST_CASE_FILTER set (e.g. INDIGO_TEST_CASE_FILTER=running_) runs the matching cases correctly, but every case that does not match is reported as FAIL and the process exits 1, so a filtered run cannot pass.\n\nLikely cause (source inspection, to confirm): test_agent_scheduler.c uses indigo_test/integration/parallel_case_runner.h with its own filter (argv[1] or SCHEDULER_TEST_FILTER, see main() at the end of the file). Each forked child apparently still applies the generic INDIGO_TEST_CASE_FILTER of indigo_test/test_runner.h (indigo_run_tests), which returns INDIGO_TEST_SKIP (77) with \"SKIP ...: no test cases matched the filter\" for a non-matching case; parallel_case_runner.h counts any nonzero child exit status as a failure (~line 289).\n\nExpected: INDIGO_TEST_CASE_FILTER selects cases in the parallel runner like in other suites (non-matching cases are not run and not counted), or a child exit 77 is counted as skipped, not failed; a run whose selected cases all pass exits 0, and a filter matching nothing does not report success. Check the other users of parallel_case_runner.h (test_dome_nexdome3_simulator.c, test_system_alpaca_omnisim.c, test_system_alpaca_simulator.c) and tools/run_driver_test.py / the recording contract (indigo_test/AGENTS.md, test_harness_verdicts.py, test_custom_harness_integrity.py) so verdict recording stays correct. Reproduce first; add a harness test (indigo_test/unit/test_harness_verdicts.py or similar) for a filtered parallel-runner suite.",
+  "type": "bug",
+  "discovered_at": "2026-11-17T12:00:00Z",
+  "created_at": "2026-11-17T02:10:31.140704Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ba547062-8841-486e-a241-4ed22a0775e0",
+      "event": "ticket/created",
+      "at": "2026-11-17T02:10:31.141372Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "4d0d65f9-f009-4a1f-a195-60c0d574e289",
+      "event": "ticket/confirmed",
+      "at": "2026-11-17T02:11:01.902433Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-17T02:10:31.140704Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-17T02:11:01.902404Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "7e1ba0e94f28bd53ec8f55f97b5a61a63ab78741b719ffafe697c1de0f152143"
+  }
+}

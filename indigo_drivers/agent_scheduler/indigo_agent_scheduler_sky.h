@@ -54,11 +54,12 @@ typedef struct {
 	double lst[SCHEDULER_GRID_POINTS];
 } scheduler_sky_grid;
 
-/** Target altitude, hour angle and moon separation on the points of a sky grid.
+/** Target altitude, hour angle and moon separation on the points of a sky grid, and the altitude at the upper culmination.
  */
 typedef struct {
 	bool valid;
 	time_t start;
+	double transit_altitude;
 	double altitude[SCHEDULER_GRID_POINTS];
 	double hour_angle[SCHEDULER_GRID_POINTS];
 	double moon_separation[SCHEDULER_GRID_POINTS];
@@ -70,7 +71,11 @@ typedef struct {
 	bool valid;
 	time_t start;
 	int next_bad[SCHEDULER_GRID_POINTS + 1];
+	// the first passing point at or after i, SCHEDULER_GRID_POINTS when none
+	int next_good[SCHEDULER_GRID_POINTS + 1];
 	const char *reason[SCHEDULER_GRID_POINTS];
+	// with a time window: the first grid step k' at or after k (from point k' to k' + 1) over which the constraints fail, SCHEDULER_GRID_POINTS when none
+	int next_bad_step[SCHEDULER_GRID_POINTS + 1];
 } scheduler_task_points;
 
 /** Build the sky grid starting at the grid step at or before start.

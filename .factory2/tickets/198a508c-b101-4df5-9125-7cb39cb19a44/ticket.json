@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "ticket_id": "198a508c-b101-4df5-9125-7cb39cb19a44",
+  "revision": 2,
+  "title": "indigo_agent_scheduler: compute only the first run of the plan without night hooks, every plan was computed twice when night hooks are named",
+  "description": "Performance follow-up from the scheduler performance study (scratchpad perf/, i5-9400, -O3; Raspberry Pi 4 about 5-10x slower).\n\nWhen night hooks are named, update_plan() computes two full night plans at every recomputation (each decision and every IDLE_CHECK_INTERVAL while a task runs): plan #1 without night hooks and plan #2 with them. Plan #1 is used only for plan_first_run and, before the night starts, for `work`; both need only the first non-running run. With DEFER_GAIN > 0 a decision followed by start_task() computes 4 full plans (select_deferred -> update_plan, then process() after plan_dirty), about 240 ms on the heavy queue (1.2-2.4 s on a Pi).\n\nProposal (exact): when hooks will be added, call plan #1 with max_runs = number of running entries + 1; if that first run starts before `from` (rare), fall back to the full plan. Measured: the first-run-only plan 0.007-0.11 ms vs 17-62 ms for the full plan, same first run. Halves every plan computation when night hooks are configured. Also consider not recomputing after start_task() when the decision's plan already covers it, if it can be kept exact (careful input key: release_holds leaves deferred_from labels, `now` enters init_state).\n\nTests: integration tests with night hooks named showing identical plans and decisions; a unit or timing check. Results must not change.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-19T06:07:14.309013Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f9c8583c-63e5-4188-aa49-3f738c9f2cbe",
+      "event": "ticket/created",
+      "at": "2026-11-19T06:07:14.309660Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "5dd21fde-78af-4b2d-b52c-71c1398924ca",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T06:11:06.290209Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T06:07:14.309013Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T06:11:06.290180Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "86ac20e000dc53ab34fe10b775b68ba7bb79bd1b5fdb300f398871656514a6c1"
+  }
+}

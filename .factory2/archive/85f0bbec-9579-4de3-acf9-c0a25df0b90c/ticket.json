@@ -1,0 +1,506 @@
+{
+  "schema_version": 1,
+  "ticket_id": "85f0bbec-9579-4de3-acf9-c0a25df0b90c",
+  "revision": 23,
+  "title": "indigo_agent_scheduler: score the altitude relative to the target's culmination, tasks ran at dusk instead of near their transit",
+  "description": "Owner observation: with several tasks the scheduler runs them all from the beginning of the night instead of close to their culmination.\n\nCause: the altitude score term is absolute (`altitude = 100 * altitude / 90` at the current time, SCHEDULER.md \"Selection\"). It does not tell a rising target from one at transit, and a high-declination target always outranks a southern one even at that one's best time. Other dispatch schedulers (ACP Scheduler efficiency index, Liverpool/ANU 2.3 m/Palomar 60\" merit functions) rank by how close a target is to its own best position (hour angle or airmass relative to transit), which spreads runs around each target's culmination.\n\nChange: the altitude term becomes relative to the target's own upper culmination:\n  altitude = 100 * max(0, alt_now) / alt_transit, where alt_transit = 90 - |latitude - declination| (the target's altitude at upper culmination; use the same coordinates/epoch handling as the existing altitude computation)\n- 0 without `@target`, as today; clamp to 0..100.\n- ALTITUDE_WEIGHT keeps its name, range and default and now weights the relative term.\n- The night plan simulation uses the same score, so the plan shows the new order.\n- No new waiting behaviour: the scheduler still never idles while a task is eligible (a lone task still starts at dusk; `@ha` remains the per-task hard window).\n\nTests: unit tests for the score term (target at transit = 100, half its transit altitude = 50, below horizon = 0, no target = 0, a southern target at transit outranks a higher northern target far from transit) and plan/selection tests showing two targets with different transit times each run near its own transit instead of both at dusk. Update existing tests that assumed the absolute term.\nDocs: SCHEDULER.md (Selection, settings table ALTITUDE_WEIGHT, survey if relevant), INDIGO_SCHEDULER_GUIDE.md (score explanation, ALTITUDE_WEIGHT), PROPERTIES.md (AGENT_SCHEDULER_SETTINGS ALTITUDE_WEIGHT description). Bump DRIVER_VERSION.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-18T23:30:20.873521Z",
+  "status": "closed",
+  "branch": "ticket/85f0bbec-9579-4de3-acf9-c0a25df0b90c",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "7f36d708-56b9-434c-9b94-2288948ce91e",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T23:30:30.259466Z",
+          "last_activity_at": "2026-11-18T23:41:32.550982Z",
+          "ended_at": "2026-11-18T23:41:32.550982Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 662291.516,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T23:30:30.259466Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/85f0bbec-9579-4de3-acf9-c0a25df0b90c"
+        },
+        {
+          "at": "2026-11-18T23:41:32.550982Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 662291.516,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "4d432b58-8080-40d2-b712-11f26f8da536",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a85f6f0c-d7e2-46ea-8823-9561f1e2f2dc",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T23:41:32.551031Z",
+          "last_activity_at": "2026-11-18T23:46:04.604792Z",
+          "ended_at": "2026-11-18T23:46:04.604792Z",
+          "outcome": {
+            "summary": "Pass. Astronomy: alt_transit = 90 - |lat - dec| equals asin(cos(lat - dec)), the HA=0 altitude, for every lat/dec incl. southern, circumpolar (upper culmination) and never-rising (<=0 -> term 0); computed from the JNow dec right after indigo_j2k_to_jnow in indigo_scheduler_target_build (sky.c:140), same coords as the geometric (no refraction) altitude grid; relative term clamped to 100 and alt<=0 gives 0 (plan.c:41-44). Selection (scheduler.c:1549) and plan (plan.c:140) both call indigo_scheduler_score. transit_altitude is set in target_build together with altitude[], so it is rebuilt by every existing path (task change build_target, site/grid rebuild at scheduler.c:1532-1539). Docs consistent across SCHEDULER.md, guide and PROPERTIES.md; DRIVER_VERSION 0x03000018 -> 0x03000019; git diff --check clean. Tests: altitude_term covers transit=100, half=50, below horizon=0, no target=0, never rises; altitude_term_is_relative covers south-at-transit vs higher north; runs_near_transit uses a fixed UTC timestamp, fixed site and sky.lst-derived RAs (no local time), and would fail under the old absolute term (late dec 70 target is ~32.6 deg vs ~30.4 deg at dusk, so it would run first). Minor, non-blocking: the integration case sky_bonuses_order_equal_priorities (test_agent_scheduler.c:2827) uses two dec-0 targets at latitude 0, equal transit altitudes, so it does not exercise the relative behaviour the SCHEDULER.md survey line now names (unit tests do); no reproduction note recorded in the ticket per the bugfixes rule. Ran: test_agent_scheduler_plan 19/19 PASS, test_agent_scheduler 81/81 PASS.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 272053.761,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T23:41:32.551031Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-18T23:46:04.604792Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Astronomy: alt_transit = 90 - |lat - dec| equals asin(cos(lat - dec)), the HA=0 altitude, for every lat/dec incl. southern, circumpolar (upper culmination) and never-rising (<=0 -> term 0); computed from the JNow dec right after indigo_j2k_to_jnow in indigo_scheduler_target_build (sky.c:140), same coords as the geometric (no refraction) altitude grid; relative term clamped to 100 and alt<=0 gives 0 (plan.c:41-44). Selection (scheduler.c:1549) and plan (plan.c:140) both call indigo_scheduler_score. transit_altitude is set in target_build together with altitude[], so it is rebuilt by every existing path (task change build_target, site/grid rebuild at scheduler.c:1532-1539). Docs consistent across SCHEDULER.md, guide and PROPERTIES.md; DRIVER_VERSION 0x03000018 -> 0x03000019; git diff --check clean. Tests: altitude_term covers transit=100, half=50, below horizon=0, no target=0, never rises; altitude_term_is_relative covers south-at-transit vs higher north; runs_near_transit uses a fixed UTC timestamp, fixed site and sky.lst-derived RAs (no local time), and would fail under the old absolute term (late dec 70 target is ~32.6 deg vs ~30.4 deg at dusk, so it would run first). Minor, non-blocking: the integration case sky_bonuses_order_equal_priorities (test_agent_scheduler.c:2827) uses two dec-0 targets at latitude 0, equal transit altitudes, so it does not exercise the relative behaviour the SCHEDULER.md survey line now names (unit tests do); no reproduction note recorded in the ticket per the bugfixes rule. Ran: test_agent_scheduler_plan 19/19 PASS, test_agent_scheduler 81/81 PASS."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Astronomy: alt_transit = 90 - |lat - dec| equals asin(cos(lat - dec)), the HA=0 altitude, for every lat/dec incl. southern, circumpolar (upper culmination) and never-rising (<=0 -> term 0); computed from the JNow dec right after indigo_j2k_to_jnow in indigo_scheduler_target_build (sky.c:140), same coords as the geometric (no refraction) altitude grid; relative term clamped to 100 and alt<=0 gives 0 (plan.c:41-44). Selection (scheduler.c:1549) and plan (plan.c:140) both call indigo_scheduler_score. transit_altitude is set in target_build together with altitude[], so it is rebuilt by every existing path (task change build_target, site/grid rebuild at scheduler.c:1532-1539). Docs consistent across SCHEDULER.md, guide and PROPERTIES.md; DRIVER_VERSION 0x03000018 -> 0x03000019; git diff --check clean. Tests: altitude_term covers transit=100, half=50, below horizon=0, no target=0, never rises; altitude_term_is_relative covers south-at-transit vs higher north; runs_near_transit uses a fixed UTC timestamp, fixed site and sky.lst-derived RAs (no local time), and would fail under the old absolute term (late dec 70 target is ~32.6 deg vs ~30.4 deg at dusk, so it would run first). Minor, non-blocking: the integration case sky_bonuses_order_equal_priorities (test_agent_scheduler.c:2827) uses two dec-0 targets at latitude 0, equal transit altitudes, so it does not exercise the relative behaviour the SCHEDULER.md survey line now names (unit tests do); no reproduction note recorded in the ticket per the bugfixes rule. Ran: test_agent_scheduler_plan 19/19 PASS, test_agent_scheduler 81/81 PASS.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 272053.761,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "222e74ff-ccab-4957-b7b1-6dc8fa7878a6",
+      "event": "ticket/created",
+      "at": "2026-11-18T23:30:20.874251Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "3b9d0c94-53ff-41d0-b601-e0b2e724e201",
+      "event": "ticket/confirmed",
+      "at": "2026-11-18T23:30:20.997705Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "f9bd485c-a63c-41cc-988f-93fb506545c4",
+      "event": "task/progress",
+      "at": "2026-11-18T23:30:30.259560Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Implementation started on branch ticket/85f0bbec-9579-4de3-acf9-c0a25df0b90c"
+    },
+    {
+      "event_id": "7cd3cf6f-553c-4021-a736-79a92488a178",
+      "event": "ticket/started",
+      "at": "2026-11-18T23:30:30.260335Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/85f0bbec-9579-4de3-acf9-c0a25df0b90c",
+      "base": "master"
+    },
+    {
+      "event_id": "6132b06a-1350-4eb3-a4e8-2de5ae79a81a",
+      "event": "task/progress",
+      "at": "2026-11-18T23:30:42.735140Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Implementer launched",
+      "attempt_id": "7f36d708-56b9-434c-9b94-2288948ce91e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "57b49fa2-e96b-4806-92f3-72f0be445595",
+      "event": "task/progress",
+      "at": "2026-11-18T23:31:45.893182Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Building and running scheduler unit tests"
+    },
+    {
+      "event_id": "c9c40b56-a8f6-4b77-bdfa-e5d6f1dc2f13",
+      "event": "task/progress",
+      "at": "2026-11-18T23:33:43.043679Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "cb6671e4-a8ca-4169-a878-5aaff708229d",
+      "event": "task/progress",
+      "at": "2026-11-18T23:33:43.065058Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c3bc66b0-e7fd-4b7c-8e90-89dde5c93272",
+      "event": "task/progress",
+      "at": "2026-11-18T23:33:43.069789Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "d4303a28-ac88-4475-96fd-3479548baaac",
+      "event": "task/progress",
+      "at": "2026-11-18T23:35:26.487862Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "faae46d0-c248-47ea-8018-9c44aed19b71",
+      "event": "check/passed",
+      "at": "2026-11-18T23:35:26.493371Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "4d4c31c33ba6885e183ad8f6178097e99bd83579",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "4283a16b-430a-48be-b6f9-f398da27dd10",
+      "event": "task/progress",
+      "at": "2026-11-18T23:35:29.964654Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Running test_agent_scheduler integration suite"
+    },
+    {
+      "event_id": "883cdf62-a32a-48b1-b9c2-97e15b536e67",
+      "event": "task/progress",
+      "at": "2026-11-18T23:39:54.866919Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "79807705-e817-43c2-9e54-3461be39bb56",
+      "event": "task/progress",
+      "at": "2026-11-18T23:39:54.888219Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "8e244a1b-1865-4664-bc09-2d14f361df1c",
+      "event": "task/progress",
+      "at": "2026-11-18T23:39:54.892875Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "29be0f3d-7982-4f33-81aa-98d961235640",
+      "event": "task/progress",
+      "at": "2026-11-18T23:41:19.580093Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e0d83b2d-c2ae-4caf-8533-9dcca29ef84d",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "a720cc8b-f3b1-469a-b6bf-d9f10e68dadc",
+      "event": "check/passed",
+      "at": "2026-11-18T23:41:19.595432Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "01b680acca722f62744aa58aa03a8eb1f9a429b2",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "6b2793c2-132d-44b9-bf7b-9c0f0fde0e82",
+      "event": "task/progress",
+      "at": "2026-11-18T23:41:32.551101Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4d432b58-8080-40d2-b712-11f26f8da536",
+      "text": "Review started"
+    },
+    {
+      "event_id": "fe3474d8-a63a-43a5-8f39-01a145423436",
+      "event": "review/started",
+      "at": "2026-11-18T23:41:32.551694Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "ecd8e52c-dcd3-45a0-ae9e-448e4533b398",
+      "event": "task/progress",
+      "at": "2026-11-18T23:41:35.805869Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4d432b58-8080-40d2-b712-11f26f8da536",
+      "text": "Reviewer launched",
+      "attempt_id": "a85f6f0c-d7e2-46ea-8823-9561f1e2f2dc",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "215d634d-aceb-43fc-90fa-ea889ade2d53",
+      "event": "task/progress",
+      "at": "2026-11-18T23:42:21.170563Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4d432b58-8080-40d2-b712-11f26f8da536",
+      "text": "Running test_agent_scheduler_plan and test_agent_scheduler"
+    },
+    {
+      "event_id": "ff95ff9a-ef51-4575-97fd-b61ae8af80ed",
+      "event": "task/progress",
+      "at": "2026-11-18T23:46:04.604869Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4d432b58-8080-40d2-b712-11f26f8da536",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "bbef7dee-5a23-457d-a7f0-c98ad7d937ee",
+      "event": "review/passed",
+      "at": "2026-11-18T23:46:04.605507Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4d432b58-8080-40d2-b712-11f26f8da536",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "01b680acca722f62744aa58aa03a8eb1f9a429b2"
+    },
+    {
+      "event_id": "c72884e2-54a5-42d3-a574-1e4078deb558",
+      "event": "ticket/note",
+      "at": "2026-11-18T23:49:52.127112Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: unit test runs_near_transit (indigo_test/unit/test_agent_scheduler_plan.c) fails on the old absolute altitude term - at dusk the dec 70 target (32.6 deg) outranks the early-transit target (30.4 deg) and runs first; altitude_term and altitude_term_is_relative also fail on the old code. All pass after the change. Coordinator rerun of the full test_agent_scheduler suite: 125 run, 125 passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "718e9062-138d-4fd3-875a-4bae41f62d89",
+      "event": "ticket/closed",
+      "at": "2026-11-19T00:12:04.062282Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T00:12:04.062251Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "908d1c935f262fa9989852abb4ea46c58abecaae"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "4d4c31c33ba6885e183ad8f6178097e99bd83579",
+        "tree": "f98f5e0b03a964db030692ef01ef8e107b054092",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T23:33:43.064374Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/85f0bbec-9579-4de3-acf9-c0a25df0b90c/f98f5e0b03a9-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "4d4c31c33ba6885e183ad8f6178097e99bd83579",
+        "tree": "f98f5e0b03a964db030692ef01ef8e107b054092",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T23:35:26.487200Z",
+        "duration_s": 103.4,
+        "log": "/tmp/factory-flow/85f0bbec-9579-4de3-acf9-c0a25df0b90c/f98f5e0b03a9-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "01b680acca722f62744aa58aa03a8eb1f9a429b2",
+        "tree": "eb34eb92e4126debbbf77f0a2fcd42a00d7aa0a3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T23:39:54.887469Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/85f0bbec-9579-4de3-acf9-c0a25df0b90c/eb34eb92e412-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "01b680acca722f62744aa58aa03a8eb1f9a429b2",
+        "tree": "eb34eb92e4126debbbf77f0a2fcd42a00d7aa0a3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T23:41:19.576491Z",
+        "duration_s": 84.7,
+        "log": "/tmp/factory-flow/85f0bbec-9579-4de3-acf9-c0a25df0b90c/eb34eb92e412-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Astronomy: alt_transit = 90 - |lat - dec| equals asin(cos(lat - dec)), the HA=0 altitude, for every lat/dec incl. southern, circumpolar (upper culmination) and never-rising (<=0 -> term 0); computed from the JNow dec right after indigo_j2k_to_jnow in indigo_scheduler_target_build (sky.c:140), same coords as the geometric (no refraction) altitude grid; relative term clamped to 100 and alt<=0 gives 0 (plan.c:41-44). Selection (scheduler.c:1549) and plan (plan.c:140) both call indigo_scheduler_score. transit_altitude is set in target_build together with altitude[], so it is rebuilt by every existing path (task change build_target, site/grid rebuild at scheduler.c:1532-1539). Docs consistent across SCHEDULER.md, guide and PROPERTIES.md; DRIVER_VERSION 0x03000018 -> 0x03000019; git diff --check clean. Tests: altitude_term covers transit=100, half=50, below horizon=0, no target=0, never rises; altitude_term_is_relative covers south-at-transit vs higher north; runs_near_transit uses a fixed UTC timestamp, fixed site and sky.lst-derived RAs (no local time), and would fail under the old absolute term (late dec 70 target is ~32.6 deg vs ~30.4 deg at dusk, so it would run first). Minor, non-blocking: the integration case sky_bonuses_order_equal_priorities (test_agent_scheduler.c:2827) uses two dec-0 targets at latitude 0, equal transit altitudes, so it does not exercise the relative behaviour the SCHEDULER.md survey line now names (unit tests do); no reproduction note recorded in the ticket per the bugfixes rule. Ran: test_agent_scheduler_plan 19/19 PASS, test_agent_scheduler 81/81 PASS.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "01b680acca722f62744aa58aa03a8eb1f9a429b2",
+        "tree": "eb34eb92e4126debbbf77f0a2fcd42a00d7aa0a3",
+        "at": "2026-11-18T23:46:04.604766Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-18T23:49:52.125040Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: unit test runs_near_transit (indigo_test/unit/test_agent_scheduler_plan.c) fails on the old absolute altitude term - at dusk the dec 70 target (32.6 deg) outranks the early-transit target (30.4 deg) and runs first; altitude_term and altitude_term_is_relative also fail on the old code. All pass after the change. Coordinator rerun of the full test_agent_scheduler suite: 125 run, 125 passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "908d1c935f262fa9989852abb4ea46c58abecaae",
+      "tree": "eb34eb92e4126debbbf77f0a2fcd42a00d7aa0a3",
+      "base": "master",
+      "at": "2026-11-19T00:12:03.864746Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-18T23:30:20.873521Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-18T23:30:20.997673Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 934345.277,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 29,
+    "sha256": "3ce9c47e4f1eeb554c4f2d2b3fa903e9312385c534899b27a34a695cf6523a53"
+  }
+}

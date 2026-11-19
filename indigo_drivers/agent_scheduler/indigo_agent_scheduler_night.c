@@ -99,6 +99,12 @@ static void add_night(scheduler_nights *nights, scheduler_night night) {
 	}
 }
 
+bool indigo_scheduler_nights_changed(const scheduler_nights *nights, double latitude, double longitude, double elevation, double limit, int start_offset, int end_offset) {
+	start_offset = start_offset < -SCHEDULER_NIGHT_OFFSET_LIMIT ? -SCHEDULER_NIGHT_OFFSET_LIMIT : start_offset > SCHEDULER_NIGHT_OFFSET_LIMIT ? SCHEDULER_NIGHT_OFFSET_LIMIT : start_offset;
+	end_offset = end_offset < -SCHEDULER_NIGHT_OFFSET_LIMIT ? -SCHEDULER_NIGHT_OFFSET_LIMIT : end_offset > SCHEDULER_NIGHT_OFFSET_LIMIT ? SCHEDULER_NIGHT_OFFSET_LIMIT : end_offset;
+	return !nights->valid || nights->latitude != latitude || nights->longitude != longitude || nights->elevation != elevation || nights->limit != limit || nights->start_offset != start_offset || nights->end_offset != end_offset;
+}
+
 void indigo_scheduler_nights_build(scheduler_nights *nights, time_t now, double latitude, double longitude, double elevation, double limit, int start_offset, int end_offset) {
 	// allocated per call, the function is called from the agent and from clients of the module
 	double *altitude = indigo_safe_malloc(NIGHT_POINTS * sizeof(double));

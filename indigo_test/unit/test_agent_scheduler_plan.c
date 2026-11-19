@@ -21,6 +21,7 @@
 // Task score and night plan simulation of the Scheduler Agent,
 // see indigo_drivers/agent_scheduler/doc/SCHEDULER.md "Night plan".
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -106,6 +107,110 @@ static void test_score(void) {
 	double high = indigo_scheduler_score(&sky, &targets[2], &points[2], &headers[2], t, 0, 0);
 	ASSERT_TRUE(low < normal && normal < high);
 	ASSERT_TRUE(low == 100 && normal == 1000 && high == 2010);
+}
+
+// the altitude term alone, in 0..100: class_base 1000 for a normal task and level 0 are subtracted
+static double altitude_term(int i, time_t t) {
+	return indigo_scheduler_score(&sky, &targets[i], &points[i], &headers[i], t, 0, 1) - 1000;
+}
+
+static void add_target_task(int i, const char *name, double ra, double dec, int minutes) {
+	add_task(i, name, SCHEDULER_PRIORITY_NORMAL, 0, minutes);
+	headers[i].has_target = true;
+	headers[i].ra = ra;
+	headers[i].dec = dec;
+	build_task(i);
+}
+
+static time_t grid_time(int index) {
+	return sky.start + (time_t)index * SCHEDULER_GRID_STEP;
+}
+
+// the grid point closest to the upper culmination of a target
+static int transit_index(int i) {
+	int best = 0;
+	for (int k = 0; k < SCHEDULER_GRID_POINTS; k++) {
+		if (targets[i].altitude[k] > targets[i].altitude[best]) {
+			best = k;
+		}
+	}
+	return best;
+}
+
+static void test_altitude_term(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	add_target_task(0, "target", 5, 20, 30);
+	ASSERT_NEAR(90 - fabs(LATITUDE - 20), targets[0].transit_altitude, 0.2);
+	int top = transit_index(0);
+	// at transit
+	ASSERT_NEAR(100, altitude_term(0, grid_time(top)), 0.5);
+	// at about half of the transit altitude
+	int half = top;
+	while (half > 0 && targets[0].altitude[half] > targets[0].transit_altitude / 2) {
+		half--;
+	}
+	ASSERT_TRUE(half > 0);
+	ASSERT_NEAR(50, altitude_term(0, grid_time(half)), 2);
+	// below the horizon
+	int low = 0;
+	for (int k = 0; k < SCHEDULER_GRID_POINTS; k++) {
+		if (targets[0].altitude[k] < targets[0].altitude[low]) {
+			low = k;
+		}
+	}
+	ASSERT_TRUE(targets[0].altitude[low] < 0);
+	ASSERT_EQ_INT(0, (int)altitude_term(0, grid_time(low)));
+	// without a target
+	add_task(1, "no target", SCHEDULER_PRIORITY_NORMAL, 0, 30);
+	build_task(1);
+	ASSERT_EQ_INT(0, (int)altitude_term(1, grid_time(top)));
+	// a target that never rises has no transit altitude
+	add_target_task(2, "never up", 5, -80, 30);
+	ASSERT_TRUE(targets[2].transit_altitude <= 0);
+	for (int k = 0; k < SCHEDULER_GRID_POINTS; k += 12) {
+		ASSERT_EQ_INT(0, (int)altitude_term(2, grid_time(k)));
+	}
+}
+
+static void test_altitude_term_is_relative(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	// a southern target at its transit against a northern one half a day away, at its lower culmination
+	add_target_task(0, "south", 5, -20, 30);
+	int top = transit_index(0);
+	add_target_task(1, "north", 17, 80, 30);
+	time_t t = grid_time(top);
+	ASSERT_TRUE(targets[1].altitude[top] > targets[0].altitude[top]);
+	ASSERT_NEAR(100, altitude_term(0, t), 0.5);
+	ASSERT_TRUE(altitude_term(0, t) > altitude_term(1, t) + 20);
+}
+
+// two targets with transits about eight hours apart: each one runs around its own transit instead of both at dusk
+static void test_runs_near_transit(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	time_t dark = dark_from(T_NOVEMBER_NOON);
+	int index = (int)((dark - sky.start) / SCHEDULER_GRID_STEP);
+	add_target_task(0, "early", sky.lst[index + 12], -10, 30);
+	add_target_task(1, "late", sky.lst[index + 12 + 96], 70, 30);
+	headers[0].repeat = headers[1].repeat = 8;
+	tasks[0].runs_left = tasks[1].runs_left = 8;
+	for (int i = 0; i < 2; i++) {
+		build_task(i);
+	}
+	int count = indigo_scheduler_plan(&sky, tasks, 2, T_NOVEMBER_NOON, indigo_scheduler_night_end(&sky, T_NOVEMBER_NOON), 0, 1, runs, 512);
+	ASSERT_TRUE(count >= 8);
+	double sum[2] = { 0, 0 };
+	int n[2] = { 0, 0 };
+	for (int r = 0; r < count; r++) {
+		sum[runs[r].task] += (double)(runs[r].start - dark);
+		n[runs[r].task]++;
+	}
+	ASSERT_TRUE(n[0] > 0 && n[1] > 0);
+	// the late target does not run at dusk: its runs start after the early one's mean
+	ASSERT_TRUE(sum[1] / n[1] > sum[0] / n[0]);
+	// the first run belongs to the target that is closer to its transit at dusk
+	ASSERT_EQ_INT(0, runs[0].task);
+	// the late target runs around its transit, hours after dusk
+	ASSERT_TRUE(sum[1] / n[1] > 3 * 3600);
 }
 
 static void test_order_and_times(void) {
@@ -429,9 +534,723 @@ static void test_running_hook_first(void) {
 	ASSERT_EQ_INT((int)(dark + 60), (int)runs[1].start);
 }
 
+// -------------------------------------------------------------------------------- deferral
+
+#define T_DEFER_NOON		1795089600	// 2026-11-19 12:00 UTC
+#define DEFER_GAIN			5
+
+static const struct {
+	const char *name;
+	double ra, dec;
+} messier[] = {
+	{ "M81", 9.9259, 69.065 },
+	{ "M42", 5.5881, -5.391 },
+	{ "M31", 0.7123, 41.269 },
+	{ "M45", 3.7833, 24.117 }
+};
+
+static scheduler_plan_run greedy_runs[512];
+
+// a target task as in the ticket: @altitude > 30, astronomical twilight, normal priority level 50
+static void add_defer_task(int i, const char *name, double ra, double dec, int minutes) {
+	add_task(i, name, SCHEDULER_PRIORITY_NORMAL, 50, minutes);
+	headers[i].has_target = true;
+	headers[i].ra = ra;
+	headers[i].dec = dec;
+	headers[i].has_min_altitude = true;
+	headers[i].min_altitude = 30;
+}
+
+static void add_messier(int minutes) {
+	for (int i = 0; i < 4; i++) {
+		add_defer_task(i, messier[i].name, messier[i].ra, messier[i].dec, minutes);
+	}
+}
+
+static int defer_plan(int count, time_t now, double gain, scheduler_plan_run *result) {
+	for (int i = 0; i < count; i++) {
+		build_task(i);
+	}
+	return indigo_scheduler_plan_with_deferral(&sky, tasks, count, NULL, 0, now, indigo_scheduler_night_end(&sky, now), 1, 1, gain, result, 512);
+}
+
+static double run_quality(const scheduler_plan_run *run) {
+	return indigo_scheduler_run_quality(&sky, &targets[run->task], &headers[run->task], run->start, tasks[run->task].duration);
+}
+
+static double mean_quality(const scheduler_plan_run *result, int count) {
+	double sum = 0;
+	int n = 0;
+	for (int r = 0; r < count; r++) {
+		if (result[r].task >= 0 && run_quality(result + r) >= 0) {
+			sum += run_quality(result + r);
+			n++;
+		}
+	}
+	return n > 0 ? sum / n : 0;
+}
+
+static void count_runs(const scheduler_plan_run *result, int count, int *counts, int tasks_count) {
+	for (int i = 0; i < tasks_count; i++) {
+		counts[i] = 0;
+	}
+	for (int r = 0; r < count; r++) {
+		if (result[r].task >= 0) {
+			counts[result[r].task]++;
+		}
+	}
+}
+
+static int find_run(const scheduler_plan_run *result, int count, int task) {
+	for (int r = 0; r < count; r++) {
+		if (result[r].task == task) {
+			return r;
+		}
+	}
+	return -1;
+}
+
+static void print_plan(const char *title, const scheduler_plan_run *result, int count) {
+	printf("    %s:", title);
+	for (int r = 0; r < count; r++) {
+		if (result[r].task < 0) {
+			continue;
+		}
+		struct tm tm;
+		time_t start = result[r].start;
+		gmtime_r(&start, &tm);
+		printf(" %s %02d:%02d", headers[result[r].task].name, tm.tm_hour, tm.tm_min);
+		if (result[r].deferred_from != 0) {
+			time_t from = result[r].deferred_from;
+			gmtime_r(&from, &tm);
+			printf(" (deferred from %02d:%02d)", tm.tm_hour, tm.tm_min);
+		}
+		printf(" %.0f%%", run_quality(result + r));
+	}
+	printf(", mean %.0f%%\n", mean_quality(result, count));
+}
+
+static bool same_runs(const scheduler_plan_run *a, int a_count, const scheduler_plan_run *b, int b_count) {
+	if (a_count != b_count) {
+		return false;
+	}
+	for (int r = 0; r < a_count; r++) {
+		if (a[r].task != b[r].task || a[r].hook != b[r].hook || a[r].run != b[r].run || a[r].start != b[r].start || a[r].end != b[r].end || a[r].running != b[r].running || a[r].deferred_from != b[r].deferred_from) {
+			return false;
+		}
+	}
+	return true;
+}
+
+// the best start of a task at or after from, by run quality, as the deferral searches it
+static time_t best_start(int i, time_t from, time_t end, double *quality) {
+	time_t best = 0;
+	*quality = -1;
+	for (time_t s = from; s < end; s = s - s % SCHEDULER_GRID_STEP + SCHEDULER_GRID_STEP) {
+		const char *reason;
+		if (!indigo_scheduler_points_ok(&sky, &points[i], &headers[i], s, s + tasks[i].duration, &reason)) {
+			continue;
+		}
+		double q = indigo_scheduler_run_quality(&sky, &targets[i], &headers[i], s, tasks[i].duration);
+		if (q > *quality + 1e-6) {
+			*quality = q;
+			best = s;
+		}
+	}
+	return best;
+}
+
+static void test_run_quality(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	add_defer_task(0, "M45", messier[3].ra, messier[3].dec, 60);
+	build_task(0);
+	int top = transit_index(0);
+	// at the transit the mean over an hour is close to 100, below the horizon it is 0
+	ASSERT_TRUE(indigo_scheduler_run_quality(&sky, &targets[0], &headers[0], grid_time(top) - 1800, 3600) > 98);
+	ASSERT_TRUE(indigo_scheduler_run_quality(&sky, &targets[0], &headers[0], grid_time(top) + 12 * 3600, 3600) == 0);
+	// the mean of the grid points start, start + 5 min, ... start + duration
+	double sum = 0;
+	for (int k = 0; k <= 12; k++) {
+		sum += 100 * targets[0].altitude[top + k] / targets[0].transit_altitude;
+	}
+	ASSERT_NEAR(sum / 13, indigo_scheduler_run_quality(&sky, &targets[0], &headers[0], grid_time(top), 3600), 1e-9);
+	// no target, a target that never rises or a run beyond the grid have no quality
+	add_task(1, "no target", SCHEDULER_PRIORITY_NORMAL, 0, 60);
+	build_task(1);
+	ASSERT_TRUE(indigo_scheduler_run_quality(&sky, &targets[1], &headers[1], grid_time(top), 3600) < 0);
+	add_target_task(2, "never up", 5, -80, 60);
+	ASSERT_TRUE(indigo_scheduler_run_quality(&sky, &targets[2], &headers[2], grid_time(top), 3600) < 0);
+	ASSERT_TRUE(indigo_scheduler_run_quality(&sky, &targets[0], &headers[0], grid_time(SCHEDULER_GRID_POINTS - 2), 3600) < 0);
+}
+
+// DEFER_GAIN 0 is the greedy plan of indigo_scheduler_plan_with_hooks(), run for run
+static void test_defer_gain_zero_unchanged(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	add_messier(60);
+	int greedy = 0;
+	for (int i = 0; i < 4; i++) {
+		build_task(i);
+	}
+	time_t end = indigo_scheduler_night_end(&sky, T_DEFER_NOON);
+	greedy = indigo_scheduler_plan_with_hooks(&sky, tasks, 4, NULL, 0, T_DEFER_NOON, end, 1, 1, greedy_runs, 512);
+	int count = defer_plan(4, T_DEFER_NOON, 0, runs);
+	ASSERT_TRUE(same_runs(greedy_runs, greedy, runs, count));
+	print_plan("greedy", runs, count);
+	// the ticket's greedy night: M31 17:00, M45 18:05, M81 19:20, M42 22:30 UTC, all from dusk
+	ASSERT_EQ_INT(4, count);
+	ASSERT_EQ_INT(2, runs[0].task);
+	ASSERT_EQ_INT(3, runs[1].task);
+	ASSERT_EQ_INT(0, runs[2].task);
+	ASSERT_EQ_INT(1, runs[3].task);
+	for (int r = 0; r < count; r++) {
+		ASSERT_EQ_INT(0, (int)runs[r].deferred_from);
+	}
+	ASSERT_TRUE(mean_quality(runs, count) < 70);
+	// the same with hooks and with the random queue of the performance test
+	time_t dark = dark_from(T_DEFER_NOON);
+	scheduler_plan_hook hooks[] = { { dark, 600 }, { end, 900 } };
+	greedy = indigo_scheduler_plan_with_hooks(&sky, tasks, 4, hooks, 2, T_DEFER_NOON, end, 1, 1, greedy_runs, 512);
+	count = indigo_scheduler_plan_with_deferral(&sky, tasks, 4, hooks, 2, T_DEFER_NOON, end, 1, 1, 0, runs, 512);
+	ASSERT_TRUE(same_runs(greedy_runs, greedy, runs, count));
+	random_state = 20261119;
+	for (int i = 0; i < MAX_TASKS; i++) {
+		add_task(i, "random", (scheduler_priority_class)(int)(random_unit() * 4), (int)(random_unit() * 100), 5 + (int)(random_unit() * 60));
+		headers[i].has_target = true;
+		headers[i].ra = random_unit() * 24;
+		headers[i].dec = random_unit() * 150 - 60;
+		headers[i].has_min_altitude = true;
+		headers[i].min_altitude = 20 + random_unit() * 20;
+		build_task(i);
+	}
+	greedy = indigo_scheduler_plan_with_hooks(&sky, tasks, MAX_TASKS, hooks, 2, T_DEFER_NOON, end, 1, 1, greedy_runs, 512);
+	count = indigo_scheduler_plan_with_deferral(&sky, tasks, MAX_TASKS, hooks, 2, T_DEFER_NOON, end, 1, 1, 0, runs, 512);
+	ASSERT_TRUE(greedy > 0);
+	ASSERT_TRUE(same_runs(greedy_runs, greedy, runs, count));
+}
+
+// the ticket's case: four one-hour tasks in a long night run near their culminations instead of from dusk
+static void test_defer_short_queue(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	for (int minutes = 30; minutes <= 120; minutes *= 2) {
+		add_messier(minutes);
+		int greedy = defer_plan(4, T_DEFER_NOON, 0, greedy_runs);
+		int count = defer_plan(4, T_DEFER_NOON, DEFER_GAIN, runs);
+		print_plan(minutes == 30 ? "30 min, gain 5" : minutes == 60 ? "60 min, gain 5" : "120 min, gain 5", runs, count);
+		ASSERT_EQ_INT(greedy, count);
+		ASSERT_EQ_INT(4, count);
+		ASSERT_TRUE(mean_quality(runs, count) >= 90);
+		ASSERT_TRUE(mean_quality(runs, count) > mean_quality(greedy_runs, greedy) + 10);
+		// the runs follow each other and never overlap; a held run names the time it would have started
+		for (int r = 0; r < count; r++) {
+			if (r > 0) {
+				ASSERT_TRUE(runs[r].start >= runs[r - 1].end);
+			}
+			if (runs[r].deferred_from != 0) {
+				ASSERT_TRUE(runs[r].deferred_from < runs[r].start);
+			}
+		}
+	}
+	// 60 min: M45 waits for the hours around its 22:45 transit, M81 for the morning
+	add_messier(60);
+	int count = defer_plan(4, T_DEFER_NOON, DEFER_GAIN, runs);
+	int m45 = find_run(runs, count, 3), m81 = find_run(runs, count, 0);
+	ASSERT_TRUE(m45 >= 0 && m81 >= 0);
+	ASSERT_TRUE(runs[m45].deferred_from != 0);
+	ASSERT_TRUE(runs[m45].start >= T_DEFER_NOON + 8 * 3600 && runs[m45].start <= T_DEFER_NOON + 11 * 3600);
+	ASSERT_TRUE(runs[m81].start >= T_DEFER_NOON + 13 * 3600);
+}
+
+// a held run starts at its release, the first eligible start within the gain of its best start, not at the best start itself
+static void test_defer_release_rule(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	add_messier(60);
+	time_t end = indigo_scheduler_night_end(&sky, T_DEFER_NOON);
+	int count = defer_plan(4, T_DEFER_NOON, DEFER_GAIN, runs);
+	int held = 0;
+	for (int r = 0; r < count; r++) {
+		if (runs[r].deferred_from == 0) {
+			continue;
+		}
+		held++;
+		int i = runs[r].task;
+		double best_quality;
+		time_t best = best_start(i, runs[r].deferred_from, end, &best_quality);
+		ASSERT_TRUE(best >= runs[r].start);
+		ASSERT_TRUE(best_quality - run_quality(runs + r) < DEFER_GAIN);
+		// one grid step earlier the start was not close enough yet, so the hold ended at the first good start
+		time_t before = runs[r].start - SCHEDULER_GRID_STEP;
+		if (before > runs[r].deferred_from) {
+			ASSERT_TRUE(best_quality - indigo_scheduler_run_quality(&sky, &targets[i], &headers[i], before, tasks[i].duration) >= DEFER_GAIN);
+		}
+	}
+	ASSERT_TRUE(held >= 2);
+	// a gain of 100 points is never reached, nothing is held
+	int greedy = defer_plan(4, T_DEFER_NOON, 0, greedy_runs);
+	count = defer_plan(4, T_DEFER_NOON, 100, runs);
+	ASSERT_TRUE(same_runs(greedy_runs, greedy, runs, count));
+}
+
+// a crowded or repeating queue keeps every run of the greedy plan
+static void test_defer_no_loss(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	int counts[MAX_TASKS], greedy_counts[MAX_TASKS];
+	// eight targets between RA 3 h and 5 h, 60 and 90 min
+	for (int minutes = 60; minutes <= 90; minutes += 30) {
+		for (int i = 0; i < 8; i++) {
+			char name[16];
+			snprintf(name, sizeof(name), "crowd %d", i);
+			add_defer_task(i, name, 3 + i * 2.0 / 7, 10 + i * 5, minutes);
+		}
+		int greedy = defer_plan(8, T_DEFER_NOON, 0, greedy_runs);
+		int count = defer_plan(8, T_DEFER_NOON, DEFER_GAIN, runs);
+		print_plan(minutes == 60 ? "crowded 60 min, gain 5" : "crowded 90 min, gain 5", runs, count);
+		count_runs(greedy_runs, greedy, greedy_counts, 8);
+		count_runs(runs, count, counts, 8);
+		for (int i = 0; i < 8; i++) {
+			ASSERT_TRUE(counts[i] >= greedy_counts[i]);
+		}
+		ASSERT_TRUE(mean_quality(runs, count) >= mean_quality(greedy_runs, greedy) - 1e-6);
+	}
+	// @repeat 5 fills the night: as many runs as greedy
+	add_messier(60);
+	for (int i = 0; i < 4; i++) {
+		headers[i].repeat = 5;
+		tasks[i].runs_left = 5;
+	}
+	int greedy = defer_plan(4, T_DEFER_NOON, 0, greedy_runs);
+	int count = defer_plan(4, T_DEFER_NOON, DEFER_GAIN, runs);
+	count_runs(greedy_runs, greedy, greedy_counts, 4);
+	count_runs(runs, count, counts, 4);
+	for (int i = 0; i < 4; i++) {
+		ASSERT_TRUE(counts[i] >= greedy_counts[i]);
+	}
+}
+
+// @repeat 3 every 60: only the next run is held, each later run is decided again; no run is lost
+static void test_defer_repeat_every(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	add_messier(60);
+	for (int i = 0; i < 4; i++) {
+		headers[i].repeat = 3;
+		headers[i].repeat_every = 60;
+		tasks[i].runs_left = 3;
+	}
+	int counts[4], greedy_counts[4];
+	int greedy = defer_plan(4, T_DEFER_NOON, 0, greedy_runs);
+	int count = defer_plan(4, T_DEFER_NOON, DEFER_GAIN, runs);
+	print_plan("repeat 3 every 60, gain 5", runs, count);
+	count_runs(greedy_runs, greedy, greedy_counts, 4);
+	count_runs(runs, count, counts, 4);
+	for (int i = 0; i < 4; i++) {
+		ASSERT_TRUE(counts[i] >= greedy_counts[i]);
+	}
+	// a held run is the next one of its task, the runs of a task keep their order
+	for (int r = 0; r < count; r++) {
+		int previous = -1;
+		for (int k = 0; k < r; k++) {
+			if (runs[k].task == runs[r].task) {
+				previous = k;
+			}
+		}
+		ASSERT_EQ_INT(previous < 0 ? 1 : runs[previous].run + 1, runs[r].run);
+		if (previous >= 0) {
+			ASSERT_TRUE(runs[r].start >= runs[previous].end + 60 * 60);
+		}
+	}
+}
+
+// a hold that would lower the summed quality of the night is refused: holding M31 would leave it behind a long high priority task
+static void test_defer_quality_guard(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	add_defer_task(0, "M31", messier[2].ra, messier[2].dec, 60);
+	int count = defer_plan(1, T_DEFER_NOON, DEFER_GAIN, runs);
+	ASSERT_EQ_INT(1, count);
+	ASSERT_TRUE(runs[0].deferred_from != 0);
+	time_t dusk = runs[0].deferred_from, release = runs[0].start;
+	double dusk_quality = indigo_scheduler_run_quality(&sky, &targets[0], &headers[0], dusk, 3600);
+	// a high priority task without a target can start only from half an hour before the release and lasts until M31 is lower than at dusk
+	add_task(1, "long", SCHEDULER_PRIORITY_HIGH, 0, 0);
+	headers[1].window_kind = SCHEDULER_WINDOW_ABSOLUTE;
+	headers[1].has_window_start = true;
+	headers[1].window_start = release - 1800;
+	time_t late = release;
+	while (indigo_scheduler_run_quality(&sky, &targets[0], &headers[0], late, 3600) >= dusk_quality) {
+		late += SCHEDULER_GRID_STEP;
+	}
+	tasks[1].duration = (int)(late - headers[1].window_start);
+	// M31 can still run after it, so holding loses no run, but its run would be worse than at dusk
+	const char *reason;
+	ASSERT_TRUE(indigo_scheduler_points_ok(&sky, &points[0], &headers[0], late, late + 3600, &reason));
+	count = defer_plan(2, T_DEFER_NOON, DEFER_GAIN, runs);
+	ASSERT_EQ_INT(2, count);
+	ASSERT_EQ_INT(0, runs[0].task);
+	ASSERT_EQ_INT((int)dusk, (int)runs[0].start);
+	ASSERT_EQ_INT(0, (int)runs[0].deferred_from);
+}
+
+// a task without @target is never held and fills the gap before a held one
+static void test_defer_no_target_fills_gap(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	add_defer_task(0, "M45", messier[3].ra, messier[3].dec, 60);
+	add_task(1, "flats", SCHEDULER_PRIORITY_LOW, 0, 60);
+	int count = defer_plan(2, T_DEFER_NOON, DEFER_GAIN, runs);
+	ASSERT_EQ_INT(2, count);
+	time_t dark = dark_from(T_DEFER_NOON);
+	ASSERT_EQ_INT(1, runs[0].task);
+	ASSERT_EQ_INT((int)dark, (int)runs[0].start);
+	ASSERT_EQ_INT(0, (int)runs[0].deferred_from);
+	// M45 rises above 30 degrees while the flats run, it is held from the end of the flats
+	ASSERT_EQ_INT(0, runs[1].task);
+	ASSERT_EQ_INT((int)runs[0].end, (int)runs[1].deferred_from);
+	ASSERT_TRUE(runs[1].start > runs[0].end);
+}
+
+// urgent tasks are never held; a pending urgent run that a hold would lose keeps the hold from happening
+static void test_defer_urgent(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	time_t dark = dark_from(T_DEFER_NOON);
+	add_messier(60);
+	headers[2].priority_class = SCHEDULER_PRIORITY_URGENT;
+	tasks[2].urgent_order = 1;
+	headers[3].priority_class = SCHEDULER_PRIORITY_URGENT;
+	tasks[3].urgent_order = 2;
+	int count = defer_plan(4, T_DEFER_NOON, DEFER_GAIN, runs);
+	// the urgent M31 and M45 run first from dusk in their order, without a hold; M45 rises above 30 degrees during M31
+	ASSERT_EQ_INT(2, runs[0].task);
+	ASSERT_EQ_INT((int)dark, (int)runs[0].start);
+	ASSERT_EQ_INT(3, runs[1].task);
+	ASSERT_EQ_INT((int)runs[0].end, (int)runs[1].start);
+	for (int r = 0; r < count; r++) {
+		if (headers[runs[r].task].priority_class == SCHEDULER_PRIORITY_URGENT) {
+			ASSERT_EQ_INT(0, (int)runs[r].deferred_from);
+		}
+	}
+	// M31 alone is held to its release...
+	add_defer_task(0, "M31", messier[2].ra, messier[2].dec, 60);
+	count = defer_plan(1, T_DEFER_NOON, DEFER_GAIN, runs);
+	ASSERT_TRUE(runs[0].deferred_from != 0);
+	time_t release = runs[0].start;
+	// ...but not when an urgent task due within its run at the release would miss its window
+	add_task(1, "urgent", SCHEDULER_PRIORITY_URGENT, 0, 20);
+	tasks[1].urgent_order = 1;
+	headers[1].window_kind = SCHEDULER_WINDOW_ABSOLUTE;
+	headers[1].has_window_start = headers[1].has_window_end = true;
+	headers[1].window_start = release + 10 * 60;
+	headers[1].window_end = release + 40 * 60;
+	count = defer_plan(2, T_DEFER_NOON, DEFER_GAIN, runs);
+	ASSERT_EQ_INT(2, count);
+	ASSERT_EQ_INT(0, runs[0].task);
+	ASSERT_EQ_INT((int)dark, (int)runs[0].start);
+	ASSERT_EQ_INT(1, runs[1].task);
+}
+
+// an absolute @window end or an @ha limit before the culmination caps the search for the better start
+static void test_defer_window_and_ha(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	add_defer_task(0, "M45", messier[3].ra, messier[3].dec, 60);
+	build_task(0);
+	time_t transit = grid_time(transit_index(0));
+	time_t window_end = transit - 2 * 3600;
+	headers[0].window_kind = SCHEDULER_WINDOW_ABSOLUTE;
+	headers[0].has_window_end = true;
+	headers[0].window_end = window_end;
+	int count = defer_plan(1, T_DEFER_NOON, DEFER_GAIN, runs);
+	ASSERT_EQ_INT(1, count);
+	ASSERT_TRUE(runs[0].end <= window_end);
+	double best_quality;
+	time_t best = best_start(0, runs[0].deferred_from ? runs[0].deferred_from : runs[0].start, T_DEFER_NOON + 24 * 3600, &best_quality);
+	ASSERT_TRUE(best + 3600 <= window_end);
+	ASSERT_TRUE(best_quality - run_quality(runs) < DEFER_GAIN);
+	// @ha -4 .. -2: the run starts at least two hours before the transit
+	headers[0].window_kind = SCHEDULER_WINDOW_NONE;
+	headers[0].has_window_end = false;
+	headers[0].has_ha = true;
+	headers[0].ha_from = -4;
+	headers[0].ha_to = -2;
+	count = defer_plan(1, T_DEFER_NOON, DEFER_GAIN, runs);
+	ASSERT_EQ_INT(1, count);
+	ASSERT_TRUE(runs[0].end <= transit - 2 * 3600 + SCHEDULER_GRID_STEP);
+}
+
+// the night hooks stay in a deferred plan and their time counts in the no-loss comparison
+static void test_defer_with_hooks(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	add_messier(60);
+	for (int i = 0; i < 4; i++) {
+		build_task(i);
+	}
+	time_t dark = dark_from(T_DEFER_NOON);
+	time_t end = indigo_scheduler_night_end(&sky, T_DEFER_NOON);
+	scheduler_plan_hook hooks[] = { { dark, 600 }, { end - 3600, 900 } };
+	int greedy = indigo_scheduler_plan_with_hooks(&sky, tasks, 4, hooks, 2, T_DEFER_NOON, end, 1, 1, greedy_runs, 512);
+	int count = indigo_scheduler_plan_with_deferral(&sky, tasks, 4, hooks, 2, T_DEFER_NOON, end, 1, 1, DEFER_GAIN, runs, 512);
+	ASSERT_EQ_INT(greedy, count);
+	ASSERT_EQ_INT(-1, runs[0].task);
+	ASSERT_EQ_INT(0, runs[0].hook);
+	ASSERT_EQ_INT((int)dark, (int)runs[0].start);
+	int night_end = -1;
+	for (int r = 0; r < count; r++) {
+		if (runs[r].hook == 1) {
+			night_end = r;
+		}
+		if (r > 0) {
+			ASSERT_TRUE(runs[r].start >= runs[r - 1].end);
+		}
+	}
+	ASSERT_TRUE(night_end > 0);
+	ASSERT_TRUE(mean_quality(runs, count) > mean_quality(greedy_runs, greedy) + 10);
+}
+
+// the eligible tasks without urgency at t ranked as the scheduler ranks them
+static int rank_candidates(int count, time_t t, int *ranked) {
+	int ranked_count = 0;
+	double scores[MAX_TASKS];
+	for (int i = 0; i < count; i++) {
+		const char *reason;
+		if (tasks[i].runs_left <= 0 || headers[i].priority_class == SCHEDULER_PRIORITY_URGENT || !indigo_scheduler_points_ok(&sky, &points[i], &headers[i], t, t + tasks[i].duration, &reason)) {
+			continue;
+		}
+		double value = indigo_scheduler_score(&sky, &targets[i], &points[i], &headers[i], t, 1, 1);
+		int k = ranked_count++;
+		while (k > 0 && scores[k - 1] < value) {
+			ranked[k] = ranked[k - 1];
+			scores[k] = scores[k - 1];
+			k--;
+		}
+		ranked[k] = i;
+		scores[k] = value;
+	}
+	return ranked_count;
+}
+
+// the decision taken by the scheduler at t, t + 30 s, ... is the first run of the plan computed at the same time
+static void test_defer_decision_matches_plan(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	add_messier(60);
+	for (int i = 0; i < 4; i++) {
+		build_task(i);
+	}
+	time_t end = indigo_scheduler_night_end(&sky, T_DEFER_NOON);
+	time_t dark = dark_from(T_DEFER_NOON);
+	int checked = 0, waited = 0;
+	time_t first_release = 0;
+	for (time_t t = dark; t < dark + 2 * 3600; t += 30) {
+		int ranked[MAX_TASKS];
+		int ranked_count = rank_candidates(4, t, ranked);
+		if (ranked_count == 0) {
+			continue;
+		}
+		int waiting;
+		time_t release;
+		int decision = indigo_scheduler_plan_decide(&sky, tasks, 4, NULL, 0, t, end, 1, 1, DEFER_GAIN, ranked, ranked_count, &waiting, &release);
+		int count = indigo_scheduler_plan_with_deferral(&sky, tasks, 4, NULL, 0, t, end, 1, 1, DEFER_GAIN, runs, 512);
+		ASSERT_TRUE(count > 0);
+		checked++;
+		if (decision >= 0) {
+			ASSERT_EQ_INT(decision, runs[0].task);
+			ASSERT_EQ_INT((int)t, (int)runs[0].start);
+			ASSERT_EQ_INT(-1, waiting);
+			// once the first task starts, the scenario has moved on
+			break;
+		}
+		waited++;
+		ASSERT_TRUE(waiting >= 0);
+		ASSERT_TRUE(release > t);
+		// the release stays the same while the scheduler waits, and the plan starts nothing before it
+		if (first_release == 0) {
+			first_release = release;
+		}
+		ASSERT_EQ_INT((int)first_release, (int)release);
+		ASSERT_TRUE(runs[0].start > t && runs[0].start <= release);
+	}
+	ASSERT_TRUE(checked > 0);
+	// at the release the held task is the decision
+	int ranked[MAX_TASKS];
+	int ranked_count = rank_candidates(4, first_release, ranked);
+	int waiting;
+	time_t release;
+	ASSERT_TRUE(waited > 0 && ranked_count > 0);
+	int decision = indigo_scheduler_plan_decide(&sky, tasks, 4, NULL, 0, first_release, end, 1, 1, DEFER_GAIN, ranked, ranked_count, &waiting, &release);
+	ASSERT_TRUE(decision >= 0);
+	int count = indigo_scheduler_plan_with_deferral(&sky, tasks, 4, NULL, 0, first_release, end, 1, 1, DEFER_GAIN, runs, 512);
+	ASSERT_TRUE(count > 0);
+	ASSERT_EQ_INT(decision, runs[0].task);
+	ASSERT_EQ_INT((int)first_release, (int)runs[0].start);
+	// without a gain the decision is the best candidate
+	ASSERT_EQ_INT(ranked[0], indigo_scheduler_plan_decide(&sky, tasks, 4, NULL, 0, dark, end, 1, 1, 0, ranked, ranked_count, &waiting, &release));
+}
+
+static scheduler_plan_run replan_runs[512];
+
+// the scheduler keeps no holds when a run ends: a plan computed again then starts the same run at the same time as the first plan
+static void test_defer_replan_follows_the_plan(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	time_t end = indigo_scheduler_night_end(&sky, T_DEFER_NOON);
+	int replans = 0, holds = 0;
+	for (int seed = 1; seed <= 60; seed++) {
+		int count = 3 + seed % 14;
+		int minutes = (int[]){ 15, 30, 45, 60, 90 }[seed % 5];
+		random_state = 777 + seed;
+		for (int i = 0; i < count; i++) {
+			add_defer_task(i, "random", random_unit() * 24, random_unit() * 90 - 10, minutes);
+			headers[i].level = (int)(random_unit() * 100);
+			build_task(i);
+		}
+		int planned = indigo_scheduler_plan_with_deferral(&sky, tasks, count, NULL, 0, T_DEFER_NOON, end, 1, 1, DEFER_GAIN, runs, 512);
+		for (int r = 0; r < planned; r++) {
+			holds += runs[r].deferred_from != 0;
+		}
+		for (int k = 1; k < planned; k++) {
+			// runs 0 .. k - 1 are done
+			for (int i = 0; i < count; i++) {
+				tasks[i].runs_left = 1;
+			}
+			for (int r = 0; r < k; r++) {
+				tasks[runs[r].task].runs_left = 0;
+			}
+			// when the previous run ends, the scheduler decides again; during a wait it follows the plan, see select_deferred() in the agent
+			{
+				time_t now = runs[k - 1].end;
+				int replanned = indigo_scheduler_plan_with_deferral(&sky, tasks, count, NULL, 0, now, end, 1, 1, DEFER_GAIN, replan_runs, 512);
+				replans++;
+				ASSERT_EQ_INT(planned - k, replanned);
+				ASSERT_EQ_INT(runs[k].task, replan_runs[0].task);
+				ASSERT_EQ_INT((int)runs[k].start, (int)replan_runs[0].start);
+			}
+		}
+	}
+	printf("    %d plans computed again, %d held runs\n", replans, holds);
+	ASSERT_TRUE(holds > 50);
+}
+
+// at most SCHEDULER_MAX_DEFER_CANDIDATES candidates are examined: of ten targets that each would wait, the ninth starts at once
+static void test_defer_candidate_cap(void) {
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	time_t dark = dark_from(T_DEFER_NOON);
+	int index = (int)((dark - sky.start) / SCHEDULER_GRID_STEP);
+	// circumpolar targets that culminate 3 to 7.5 hours after dusk, without an altitude limit, ranked by their level
+	for (int i = 0; i < 10; i++) {
+		add_defer_task(i, "rising", fmod(sky.lst[index] + 3 + i * 0.5, 24), 50, 5);
+		headers[i].has_min_altitude = false;
+		headers[i].level = 90 - i;
+	}
+	// each one alone waits for its culmination
+	for (int i = 0; i < 10; i++) {
+		scheduler_plan_task alone = tasks[i];
+		build_task(i);
+		ASSERT_EQ_INT(1, indigo_scheduler_plan_with_deferral(&sky, &alone, 1, NULL, 0, dark, indigo_scheduler_night_end(&sky, dark), 1, 1, DEFER_GAIN, runs, 512));
+		ASSERT_TRUE(runs[0].deferred_from == dark);
+	}
+	int count = defer_plan(10, dark, DEFER_GAIN, runs);
+	ASSERT_EQ_INT(10, count);
+	ASSERT_EQ_INT(SCHEDULER_MAX_DEFER_CANDIDATES, runs[0].task);
+	ASSERT_EQ_INT((int)dark, (int)runs[0].start);
+	ASSERT_EQ_INT(0, (int)runs[0].deferred_from);
+	int ranked[MAX_TASKS], waiting;
+	time_t release;
+	int ranked_count = rank_candidates(10, dark, ranked);
+	ASSERT_EQ_INT(10, ranked_count);
+	ASSERT_EQ_INT(SCHEDULER_MAX_DEFER_CANDIDATES, indigo_scheduler_plan_decide(&sky, tasks, 10, NULL, 0, dark, indigo_scheduler_night_end(&sky, dark), 1, 1, DEFER_GAIN, ranked, ranked_count, &waiting, &release));
+	ASSERT_EQ_INT(0, waiting);
+}
+
+static void test_defer_performance(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	random_state = 20261113;
+	for (int i = 0; i < MAX_TASKS; i++) {
+		char name[16];
+		snprintf(name, sizeof(name), "task %d", i);
+		add_task(i, name, (scheduler_priority_class)(int)(random_unit() * 3), (int)(random_unit() * 100), 5 + (int)(random_unit() * 60));
+		headers[i].has_target = true;
+		headers[i].ra = random_unit() * 24;
+		headers[i].dec = random_unit() * 150 - 60;
+		headers[i].has_min_altitude = true;
+		headers[i].min_altitude = 20 + random_unit() * 20;
+		headers[i].has_moon = random_unit() < 0.5;
+		headers[i].moon_separation = 30;
+		headers[i].moon_width = 7;
+		headers[i].repeat = 1 + (int)(random_unit() * 3);
+		tasks[i].runs_left = headers[i].repeat;
+	}
+	for (int i = 0; i < MAX_TASKS; i++) {
+		build_task(i);
+	}
+	time_t end = indigo_scheduler_night_end(&sky, T_NOVEMBER_NOON);
+	struct timespec begin, finish;
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+	int count = indigo_scheduler_plan_with_deferral(&sky, tasks, MAX_TASKS, NULL, 0, T_NOVEMBER_NOON, end, 1, 1, DEFER_GAIN, runs, 256);
+	clock_gettime(CLOCK_MONOTONIC, &finish);
+	double elapsed = seconds(&begin, &finish);
+	printf("    %d runs of %d tasks planned with gain 5 in %.3f s\n", count, MAX_TASKS, elapsed);
+	ASSERT_TRUE(count > 0);
+	ASSERT_TRUE(elapsed < 2.0);
+	for (int i = 1; i < count; i++) {
+		ASSERT_TRUE(runs[i].start >= runs[i - 1].end);
+	}
+	// the heaviest deferral measured: 128 targets of 5 minutes all over the sky, which leave idle time and hold about 40 runs
+	indigo_scheduler_sky_build(&sky, T_DEFER_NOON, LATITUDE, LONGITUDE, 140);
+	random_state = 12345 + MAX_TASKS;
+	for (int i = 0; i < MAX_TASKS; i++) {
+		add_defer_task(i, "heavy", random_unit() * 24, random_unit() * 90 - 10, 5);
+		headers[i].level = (int)(random_unit() * 100);
+		build_task(i);
+	}
+	end = indigo_scheduler_night_end(&sky, T_DEFER_NOON);
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+	count = indigo_scheduler_plan_with_deferral(&sky, tasks, MAX_TASKS, NULL, 0, T_DEFER_NOON, end, 1, 1, DEFER_GAIN, runs, 512);
+	clock_gettime(CLOCK_MONOTONIC, &finish);
+	elapsed = seconds(&begin, &finish);
+	int held = 0;
+	for (int r = 0; r < count; r++) {
+		held += runs[r].deferred_from != 0;
+	}
+	printf("    %d runs of %d tasks of 5 min, %d held, planned with gain 5 in %.3f s\n", count, MAX_TASKS, held, elapsed);
+	ASSERT_TRUE(held > 20);
+	// a Raspberry Pi 4 is up to ten times slower than the reference machine (Intel Core i5-9400), where this takes about 0.01 s
+	ASSERT_TRUE(elapsed < 2.0);
+	// the same queue with a time window on every task, nightly 17:00-05:00 UTC or absolute from 16:00 UTC tonight, which the cheap lookups of the constraint tables do not cover alone
+	for (int i = 0; i < MAX_TASKS; i++) {
+		if (i % 2) {
+			headers[i].window_kind = SCHEDULER_WINDOW_NIGHTLY;
+			headers[i].has_window_start = headers[i].has_window_end = true;
+			headers[i].window_start_minute = 17 * 60 + i % 7;
+			headers[i].window_end_minute = 5 * 60;
+		} else {
+			headers[i].window_kind = SCHEDULER_WINDOW_ABSOLUTE;
+			headers[i].has_window_start = headers[i].has_window_end = true;
+			headers[i].window_start = T_DEFER_NOON + 4 * 3600 + i * 60;
+			headers[i].window_end = T_DEFER_NOON + 17 * 3600;
+		}
+		build_task(i);
+	}
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+	count = indigo_scheduler_plan_with_deferral(&sky, tasks, MAX_TASKS, NULL, 0, T_DEFER_NOON, end, 1, 1, DEFER_GAIN, runs, 512);
+	clock_gettime(CLOCK_MONOTONIC, &finish);
+	elapsed = seconds(&begin, &finish);
+	held = 0;
+	for (int r = 0; r < count; r++) {
+		held += runs[r].deferred_from != 0;
+	}
+	printf("    %d runs of %d tasks of 5 min with windows, %d held, planned with gain 5 in %.3f s\n", count, MAX_TASKS, held, elapsed);
+	ASSERT_TRUE(held > 20);
+	// about 0.02 s on the reference machine
+	ASSERT_TRUE(elapsed < 2.0);
+	// a short queue holds tasks, which costs nested simulations of the whole night
+	add_messier(30);
+	clock_gettime(CLOCK_MONOTONIC, &begin);
+	count = defer_plan(4, T_DEFER_NOON, DEFER_GAIN, runs);
+	clock_gettime(CLOCK_MONOTONIC, &finish);
+	elapsed = seconds(&begin, &finish);
+	printf("    %d runs of 4 tasks planned with gain 5 in %.3f s\n", count, elapsed);
+	ASSERT_TRUE(elapsed < 2.0);
+}
+
 int main(void) {
 	indigo_test_case cases[] = {
 		{ "score", test_score },
+		{ "altitude_term", test_altitude_term },
+		{ "altitude_term_is_relative", test_altitude_term_is_relative },
+		{ "runs_near_transit", test_runs_near_transit },
 		{ "order_and_times", test_order_and_times },
 		{ "ties_to_earlier_task", test_ties_to_earlier_task },
 		{ "urgent_first", test_urgent_first },
@@ -447,6 +1266,21 @@ int main(void) {
 		{ "next_start_search_cost", test_next_start_search_cost },
 		{ "hooks_reserve_time", test_hooks_reserve_time },
 		{ "running_hook_first", test_running_hook_first },
+		{ "run_quality", test_run_quality },
+		{ "defer_gain_zero_unchanged", test_defer_gain_zero_unchanged },
+		{ "defer_short_queue", test_defer_short_queue },
+		{ "defer_release_rule", test_defer_release_rule },
+		{ "defer_no_loss", test_defer_no_loss },
+		{ "defer_repeat_every", test_defer_repeat_every },
+		{ "defer_quality_guard", test_defer_quality_guard },
+		{ "defer_no_target_fills_gap", test_defer_no_target_fills_gap },
+		{ "defer_urgent", test_defer_urgent },
+		{ "defer_window_and_ha", test_defer_window_and_ha },
+		{ "defer_with_hooks", test_defer_with_hooks },
+		{ "defer_decision_matches_plan", test_defer_decision_matches_plan },
+		{ "defer_replan_follows_the_plan", test_defer_replan_follows_the_plan },
+		{ "defer_candidate_cap", test_defer_candidate_cap },
+		{ "defer_performance", test_defer_performance },
 	};
 	return indigo_run_tests("test_agent_scheduler_plan", cases, sizeof(cases) / sizeof(cases[0]));
 }
