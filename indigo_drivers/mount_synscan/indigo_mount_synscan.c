@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000016
+#define DRIVER_VERSION       0x03000017
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -88,6 +88,9 @@
 #define MOUNT_OPERATING_MODE_PROPERTY_NAME "X_MOUNT_OPERATING_MODE"
 #define POLAR_MODE_ITEM_NAME "POLAR"
 #define ALTAZ_MODE_ITEM_NAME "ALTAZ"
+#define MOUNT_ENCODER_POSITION_PROPERTY_NAME "X_ENCODER_POSITION"
+#define MOUNT_ENCODER_POSITION_RA_ITEM_NAME "RA"
+#define MOUNT_ENCODER_POSITION_DEC_ITEM_NAME "DEC"
 
 typedef enum {
 	SYNSCAN_AXIS_RA = '1',
@@ -212,6 +215,10 @@ enum {
 #define POLAR_MODE_ITEM                (MOUNT_OPERATING_MODE_PROPERTY->items + 0)
 #define ALTAZ_MODE_ITEM                (MOUNT_OPERATING_MODE_PROPERTY->items + 1)
 
+#define MOUNT_ENCODER_POSITION_PROPERTY (PRIVATE_DATA->mount_encoder_position_property)
+#define MOUNT_ENCODER_POSITION_RA_ITEM  (MOUNT_ENCODER_POSITION_PROPERTY->items + 0)
+#define MOUNT_ENCODER_POSITION_DEC_ITEM (MOUNT_ENCODER_POSITION_PROPERTY->items + 1)
+
 #define CCD_ABORT_EXPOSURE_PROPERTY    (PRIVATE_DATA->ccd_abort_exposure_property)
 #define CCD_ABORT_EXPOSURE_ITEM        (CCD_ABORT_EXPOSURE_PROPERTY->items + 0)
 
@@ -228,6 +235,7 @@ typedef struct {
 	indigo_property *mount_autohome_property;
 	indigo_property *mount_autohome_settings_property;
 	indigo_property *mount_operating_mode_property;
+	indigo_property *mount_encoder_position_property;
 	indigo_property *ccd_abort_exposure_property;
 	indigo_property *ccd_exposure_property;
 	//+ data
@@ -273,6 +281,8 @@ typedef struct {
 	long dec_zero_position;
 	long ra_axis_position;
 	long dec_axis_position;
+	bool ra_axis_position_from_encoder;
+	bool dec_axis_position_from_encoder;
 	bool ra_axis_config_valid;
 	bool dec_axis_config_valid;
 	int ra_axis_config_mode;
@@ -839,8 +849,11 @@ static long synscan_low_speed_goto_margin(indigo_device *device, synscan_axis ax
 
 static bool synscan_update_axis_positions(indigo_device *device) {
 	bool ok = true;
-	ok = ok && synscan_axis_long_query(device, (MOUNT_USE_DEC_ENCODER_ITEM->sw.value && (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER)) ? 'd' : 'j', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_axis_position);
-	ok = ok && synscan_axis_long_query(device, (MOUNT_USE_RA_ENCODER_ITEM->sw.value && (PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER)) ? 'd' : 'j', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_axis_position);
+	// which of the two counters each axis was read from, X_ENCODER_POSITION reuses an encoder reading
+	PRIVATE_DATA->dec_axis_position_from_encoder = MOUNT_USE_DEC_ENCODER_ITEM->sw.value && (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER);
+	PRIVATE_DATA->ra_axis_position_from_encoder = MOUNT_USE_RA_ENCODER_ITEM->sw.value && (PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER);
+	ok = ok && synscan_axis_long_query(device, PRIVATE_DATA->dec_axis_position_from_encoder ? 'd' : 'j', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_axis_position);
+	ok = ok && synscan_axis_long_query(device, PRIVATE_DATA->ra_axis_position_from_encoder ? 'd' : 'j', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_axis_position);
 	if (PRIVATE_DATA->ra_total_steps > 0) {
 		PRIVATE_DATA->ra_position = (double)(PRIVATE_DATA->ra_axis_position - PRIVATE_DATA->ra_zero_position) / (double)PRIVATE_DATA->ra_total_steps;
 	}
@@ -1059,6 +1072,48 @@ static bool synscan_update_mount_coordinates(indigo_device *device) {
 	}
 	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 	return true;
+}
+
+// X_ENCODER_POSITION: the signed count of the encoder of each axis exactly as ':d' reports it (the 24-bit reply minus
+// 0x800000), without scaling or a zero position; the resolution is model dependent, so the driver does not interpret
+// it. An axis without an encoder shows 0. An axis that synscan_update_axis_positions() just read from its encoder,
+// because X_MOUNT_USE_ENCODERS selects it, is not queried again.
+static bool synscan_read_encoder_position(indigo_device *device) {
+	long ra_count = 0x800000;
+	long dec_count = 0x800000;
+	if (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER) {
+		if (PRIVATE_DATA->dec_axis_position_from_encoder) {
+			dec_count = PRIVATE_DATA->dec_axis_position;
+		} else if (!synscan_axis_long_query(device, 'd', SYNSCAN_AXIS_DEC, &dec_count)) {
+			return false;
+		}
+	}
+	if (PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER) {
+		if (PRIVATE_DATA->ra_axis_position_from_encoder) {
+			ra_count = PRIVATE_DATA->ra_axis_position;
+		} else if (!synscan_axis_long_query(device, 'd', SYNSCAN_AXIS_RA, &ra_count)) {
+			return false;
+		}
+	}
+	MOUNT_ENCODER_POSITION_RA_ITEM->number.value = ra_count - 0x800000;
+	MOUNT_ENCODER_POSITION_DEC_ITEM->number.value = dec_count - 0x800000;
+	return true;
+}
+
+// Called by the poll after a successful synscan_update_mount_coordinates(); a failed query keeps the last values
+// with ALERT, the next good poll restores OK. The bus publishes the property only when its values or state change.
+static void synscan_update_encoder_position(indigo_device *device) {
+	if (MOUNT_ENCODER_POSITION_PROPERTY->hidden) {
+		return;
+	}
+	if (synscan_read_encoder_position(device)) {
+		MOUNT_ENCODER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (PRIVATE_DATA->handle != NULL && IS_CONNECTED) {
+		MOUNT_ENCODER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		return;
+	}
+	indigo_update_property(device, MOUNT_ENCODER_POSITION_PROPERTY, NULL);
 }
 
 // The sign of a DEC axis rate that moves north. The axis counts declination the other way on the other side of the
@@ -1365,6 +1420,7 @@ static bool synscan_configure(indigo_device *device) {
 	}
 	MOUNT_OPERATING_MODE_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_AZEQ) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_AZEQ));
 	MOUNT_USE_ENCODERS_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER));
+	MOUNT_ENCODER_POSITION_PROPERTY->hidden = MOUNT_USE_ENCODERS_PROPERTY->hidden;
 	MOUNT_PEC_PROPERTY->hidden = MOUNT_PEC_TRAINING_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_PPEC) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_PPEC));
 	MOUNT_AUTOHOME_PROPERTY->hidden = MOUNT_AUTOHOME_SETTINGS_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_HOME_INDEXER) && (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_HOME_INDEXER));
 	// The probe sets the brightness, the property shows the value the LED now has
@@ -1408,11 +1464,19 @@ static bool synscan_configure(indigo_device *device) {
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 	// A bad first reading marks only the coordinates, the first poll reads them again; a lost port fails the connection
-	if (!synscan_read_mount_coordinates(device)) {
+	bool coordinates_read = synscan_read_mount_coordinates(device);
+	if (!coordinates_read) {
 		if (PRIVATE_DATA->handle == NULL) {
 			return false;
 		}
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	// The encoder position is defined OK only with a reading of this session, otherwise with ALERT
+	if (!MOUNT_ENCODER_POSITION_PROPERTY->hidden) {
+		MOUNT_ENCODER_POSITION_PROPERTY->state = coordinates_read && synscan_read_encoder_position(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		if (PRIVATE_DATA->handle == NULL) {
+			return false;
+		}
 	}
 	return true;
 }
@@ -1996,9 +2060,14 @@ static void mount_timer_callback(indigo_device *device) {
 		return;
 	}
 	// A failed reading keeps the last valid coordinates with ALERT, the next good poll restores the state
-	if (!synscan_update_mount_coordinates(device) && PRIVATE_DATA->handle != NULL && IS_CONNECTED) {
+	if (synscan_update_mount_coordinates(device)) {
+		synscan_update_encoder_position(device);
+	} else if (PRIVATE_DATA->handle != NULL && IS_CONNECTED) {
 		synscan_set_coordinate_state(device, INDIGO_ALERT_STATE);
 		synscan_update_mount_state(device);
+		if (!MOUNT_ENCODER_POSITION_PROPERTY->hidden) {
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_ENCODER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		}
 	}
 	indigo_execute_handler_in(device, PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE ? 1 : 0.5, mount_timer_callback);
 	//- mount.on_timer
@@ -2025,6 +2094,7 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_ENCODER_POSITION_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -2096,6 +2166,7 @@ static void mount_connection_handler(indigo_device *device) {
 			MOUNT_AUTOHOME_PROPERTY,
 			MOUNT_AUTOHOME_SETTINGS_PROPERTY,
 			MOUNT_OPERATING_MODE_PROPERTY,
+			MOUNT_ENCODER_POSITION_PROPERTY,
 		};
 		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
 			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
@@ -2107,6 +2178,7 @@ static void mount_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 		indigo_delete_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
 		indigo_delete_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_ENCODER_POSITION_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
 			synscan_close(device);
 		}
@@ -2652,6 +2724,15 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(POLAR_MODE_ITEM, POLAR_MODE_ITEM_NAME, "Polar mode", true);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 		MOUNT_OPERATING_MODE_PROPERTY->hidden = true;
+		MOUNT_ENCODER_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_ENCODER_POSITION_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Encoder position", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		if (MOUNT_ENCODER_POSITION_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(MOUNT_ENCODER_POSITION_RA_ITEM, MOUNT_ENCODER_POSITION_RA_ITEM_NAME, "RA encoder (counts)", -8388608, 8388607, 1, 0);
+		strcpy(MOUNT_ENCODER_POSITION_RA_ITEM->number.format, "%.0f");
+		indigo_init_number_item(MOUNT_ENCODER_POSITION_DEC_ITEM, MOUNT_ENCODER_POSITION_DEC_ITEM_NAME, "Dec encoder (counts)", -8388608, 8388607, 1, 0);
+		strcpy(MOUNT_ENCODER_POSITION_DEC_ITEM->number.format, "%.0f");
+		MOUNT_ENCODER_POSITION_PROPERTY->hidden = true;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mount_enumerate_properties(device, NULL, NULL);
 	}
@@ -2665,6 +2746,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_AUTOHOME_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_AUTOHOME_SETTINGS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_OPERATING_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_ENCODER_POSITION_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }
@@ -2763,6 +2845,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_AUTOHOME_PROPERTY);
 	indigo_release_property(MOUNT_AUTOHOME_SETTINGS_PROPERTY);
 	indigo_release_property(MOUNT_OPERATING_MODE_PROPERTY);
+	indigo_release_property(MOUNT_ENCODER_POSITION_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }

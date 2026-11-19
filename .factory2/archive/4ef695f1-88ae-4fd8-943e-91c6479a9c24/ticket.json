@@ -1,0 +1,770 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4ef695f1-88ae-4fd8-943e-91c6479a9c24",
+  "revision": 43,
+  "title": "indigo_mount_synscan: X_ENCODER_POSITION property with the raw encoder counts of the RA and DEC axes",
+  "description": "Owner request (2026-11-18): show the value read from the encoders, for example as X_ENCODER_COORDINATES with HA and DEC items. The property is visible only when the mount has encoders, and it belongs to the alignment group.\n\nBackground: since 3.0.0.22 MOUNT_RAW_COORDINATES is precessed to J2000 and is no longer a direct image of the axes (in the home position 3.0.0.21 published raw HA +6 h / Dec +90, 3.0.0.22 publishes about HA +1.1 h / Dec +89.85), and no property carries the mechanical position of the axes. That made the pole sync problem of ticket 37fc5504-1588-420f-9da1-0f15ba5d6f3f hard to see from a client.\n\nChange (indigo_drivers/mount_synscan/indigo_mount_synscan.driver, regenerated outputs, driver version incremented):\n- New read-only number property X_ENCODER_COORDINATES in the alignment group (MOUNT_ALIGNMENT_GROUP) of the mount device, items HA (hours) and DEC (degrees), sexagesimal like the other coordinate properties.\n- The values are the mechanical hour angle and declination of the axes of the date as read from the encoders, without the alignment model and without precession.\n- The property is defined only when the mount has encoders (the SYNSCAN_FEATURE_ENCODER feature bit, the condition that already shows X_MOUNT_USE_ENCODERS) and hidden otherwise.\n- It is updated with the position poll and never changes any other property or the pointing.\n- The name starts with X_ as required for driver-specific properties; indigo_docs/PROPERTIES.md is updated in the same change.\n\nAssumptions to confirm with the owner before implementation (they are my reading of the request, not his words):\n- the values come from the encoder query (:d) of each axis that has an encoder, whether or not X_MOUNT_USE_ENCODERS selects the encoders for the coordinates; an axis without an encoder on a mount with one encoder shows the value of its step counter;\n- HA is in the range -12..12 h and DEC -90..90 degrees for the current side of the pier, as synscan_encoder_to_eq returns them; the side of the pier stays in MOUNT_SIDE_OF_PIER.\n\nTests: simulator suite (indigo_test/integration/test_mount_synscan_simulator.c): the property is absent without the encoder feature and defined with it, shows HA +/-6 h and Dec +/-90 in the home position of both hemispheres, follows a GoTo to the mechanical hour angle and declination of the date on both sides of the pier, stays unchanged by a sync, and is published read-only. Hardware: the AZ-GTi reports encoders (firmware 3.16), so a hardware case reads the property in the home position and after a GoTo. Recorded runs with tools/run_driver_test.py mount_synscan and --hw; MIGRATION_STATUS.md counts updated.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-18T21:24:32.692409Z",
+  "status": "closed",
+  "branch": "ticket/4ef695f1-88ae-4fd8-943e-91c6479a9c24",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "9c6433d9-c233-47f8-b141-51ba3eee480c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T21:32:20.638621Z",
+          "last_activity_at": "2026-11-19T06:52:20.003421Z",
+          "ended_at": "2026-11-19T06:52:20.003421Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 33599364.8,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ce954f2b-de4f-4f1f-a6b3-dd8fdc8fb265",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T07:11:38.554186Z",
+          "last_activity_at": "2026-11-19T07:37:28.123308Z",
+          "ended_at": "2026-11-19T07:37:28.123308Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1549569.122,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T21:32:20.638621Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/4ef695f1-88ae-4fd8-943e-91c6479a9c24"
+        },
+        {
+          "at": "2026-11-19T06:52:20.003421Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-19T07:11:38.554186Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-19T07:37:28.123308Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 35148933.922,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "6304c641-ebcd-40e0-b494-7d8f08a74703",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c4926791-e9c3-489a-9e77-7cf417f55908",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-19T06:52:20.003565Z",
+          "last_activity_at": "2026-11-19T07:11:38.554094Z",
+          "ended_at": "2026-11-19T07:11:38.554094Z",
+          "outcome": {
+            "summary": "Review of X_ENCODER_POSITION (raw counts, owner note 2026-11-19), git diff master...HEAD at facdbd077, worktree clean.\n\nVerified: the driver logic is correct. The property is defined under the same condition as X_MOUNT_USE_ENCODERS. Connect reads it after a good coordinate read (ALERT otherwise, port loss still fails the connect). The poll reads it only after a successful synscan_update_mount_coordinates(). An already-read ':d' is reused through flags set in synscan_update_axis_positions() just before, on the same queue. A failed query keeps the last values with ALERT, and the next good poll restores OK. An axis without an encoder shows 0. X_MOUNT_USE_ENCODERS behaviour is unchanged (pure refactor of the two queries). There are no HA/DEC leftovers. The X_ prefix, RO perm, alignment group and integer format are correct, and formatting follows the rules. Version 22 -> 23 / 0x03000017. The .driver regenerated with build/bin/indigo_generator into a temp dir is byte-identical to the checked-in .c/.h/_main.c. PROPERTIES.md is accurate. MIGRATION_STATUS 103/21 matches the case lists (103 sim, 21 hw). No new files, so no Xcode change is needed. README/TEST_SUMMARY hold only run_driver_test.py records. I ran the simulator suite: 103/103 PASS (16 min), then cleaned with test-clean.\n\nBlocking:\n1. indigo_test/hardware/test_mount_synscan_hw.c:1091-1093: synscan_reports_encoder_position ASSERTs that X_MOUNT_USE_ENCODERS and X_ENCODER_POSITION are defined. This suite is also run against mounts without encoders (AstroEQ 8.25 is a recorded target in TEST_SUMMARY), so such a run now fails. The suite treats absent features as not applicable (synscan_runs_autohome, synscan_controls_snap_port, polarscope). Required fix: when X_MOUNT_USE_ENCODERS is not defined, assert that X_ENCODER_POSITION is not defined either, print 'not applicable' and return.\n2. indigo_test/hardware/test_mount_synscan_hw.c:1136: the owner note asks that the counts change on both axes 'in proportion consistent betw",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1158550.529,
+          "tokens": null
+        },
+        {
+          "attempt_id": "f0c2be5c-e34f-4699-99af-a72aa1f77ea0",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T07:37:28.123437Z",
+          "last_activity_at": "2026-11-19T07:37:53.769957Z",
+          "ended_at": "2026-11-19T07:37:53.769957Z",
+          "outcome": {
+            "summary": "Second round, diff facdbd077..9f8645366 (worktree clean). Both blocking points fixed:\n1. test_mount_synscan_hw.c synscan_reports_encoder_position: when X_MOUNT_USE_ENCODERS is undefined it asserts that X_ENCODER_POSITION is undefined too, prints 'not applicable' and returns before touching the mount, matching the autohome and snap-port convention.\n2. It now asserts that RA and DEC counts per degree of the step counters are finite (moves over 1 deg) and agree within 15 % of the larger. No absolute resolution is assumed. The new AZ-GTi run printed 2.9667 vs 3.0000 counts/deg and passed.\nBoth non-blocking remarks are fixed:\n- follows_a_goto asserts a non-zero RA step counter and values that differ from step + offset on both axes, so raw RA counts are proven.\n- The reports_raw_counts comment states that it proves DEC only.\n- The PROPERTIES.md Source line names only the .driver.\nDriver, generated output and simulator are unchanged since round 1, so the round-1 verification stands (regenerated output identical, 103/103 simulator run). README and TEST_SUMMARY changes are only run_driver_test.py records: sim 08:13 103/103 OK, AZGTi 08:29 21/21 OK; MIGRATION_STATUS 103/21 is still correct. Both test binaries compile without warnings or errors, cleaned with test-clean. git diff --check is clean. No remaining findings.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 25646.52,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T06:52:20.003565Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T07:11:38.554094Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review of X_ENCODER_POSITION (raw counts, owner note 2026-11-19), git diff master...HEAD at facdbd077, worktree clean.\n\nVerified: the driver logic is correct. The property is defined under the same condition as X_MOUNT_USE_ENCODERS. Connect reads it after a good coordinate read (ALERT otherwise, port loss still fails the connect). The poll reads it only after a successful synscan_update_mount_coordinates(). An already-read ':d' is reused through flags set in synscan_update_axis_positions() just before, on the same queue. A failed query keeps the last values with ALERT, and the next good poll restores OK. An axis without an encoder shows 0. X_MOUNT_USE_ENCODERS behaviour is unchanged (pure refactor of the two queries). There are no HA/DEC leftovers. The X_ prefix, RO perm, alignment group and integer format are correct, and formatting follows the rules. Version 22 -> 23 / 0x03000017. The .driver regenerated with build/bin/indigo_generator into a temp dir is byte-identical to the checked-in .c/.h/_main.c. PROPERTIES.md is accurate. MIGRATION_STATUS 103/21 matches the case lists (103 sim, 21 hw). No new files, so no Xcode change is needed. README/TEST_SUMMARY hold only run_driver_test.py records. I ran the simulator suite: 103/103 PASS (16 min), then cleaned with test-clean.\n\nBlocking:\n1. indigo_test/hardware/test_mount_synscan_hw.c:1091-1093: synscan_reports_encoder_position ASSERTs that X_MOUNT_USE_ENCODERS and X_ENCODER_POSITION are defined. This suite is also run against mounts without encoders (AstroEQ 8.25 is a recorded target in TEST_SUMMARY), so such a run now fails. The suite treats absent features as not applicable (synscan_runs_autohome, synscan_controls_snap_port, polarscope). Required fix: when X_MOUNT_USE_ENCODERS is not defined, assert that X_ENCODER_POSITION is not defined either, print 'not applicable' and return.\n2. indigo_test/hardware/test_mount_synscan_hw.c:1136: the owner note asks that the counts change on both axes 'in proportion consistent betw"
+        },
+        {
+          "at": "2026-11-19T07:37:28.123437Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T07:37:53.769957Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Second round, diff facdbd077..9f8645366 (worktree clean). Both blocking points fixed:\n1. test_mount_synscan_hw.c synscan_reports_encoder_position: when X_MOUNT_USE_ENCODERS is undefined it asserts that X_ENCODER_POSITION is undefined too, prints 'not applicable' and returns before touching the mount, matching the autohome and snap-port convention.\n2. It now asserts that RA and DEC counts per degree of the step counters are finite (moves over 1 deg) and agree within 15 % of the larger. No absolute resolution is assumed. The new AZ-GTi run printed 2.9667 vs 3.0000 counts/deg and passed.\nBoth non-blocking remarks are fixed:\n- follows_a_goto asserts a non-zero RA step counter and values that differ from step + offset on both axes, so raw RA counts are proven.\n- The reports_raw_counts comment states that it proves DEC only.\n- The PROPERTIES.md Source line names only the .driver.\nDriver, generated output and simulator are unchanged since round 1, so the round-1 verification stands (regenerated output identical, 103/103 simulator run). README and TEST_SUMMARY changes are only run_driver_test.py records: sim 08:13 103/103 OK, AZGTi 08:29 21/21 OK; MIGRATION_STATUS 103/21 is still correct. Both test binaries compile without warnings or errors, cleaned with test-clean. git diff --check is clean. No remaining findings."
+        }
+      ],
+      "result": {
+        "summary": "Second round, diff facdbd077..9f8645366 (worktree clean). Both blocking points fixed:\n1. test_mount_synscan_hw.c synscan_reports_encoder_position: when X_MOUNT_USE_ENCODERS is undefined it asserts that X_ENCODER_POSITION is undefined too, prints 'not applicable' and returns before touching the mount, matching the autohome and snap-port convention.\n2. It now asserts that RA and DEC counts per degree of the step counters are finite (moves over 1 deg) and agree within 15 % of the larger. No absolute resolution is assumed. The new AZ-GTi run printed 2.9667 vs 3.0000 counts/deg and passed.\nBoth non-blocking remarks are fixed:\n- follows_a_goto asserts a non-zero RA step counter and values that differ from step + offset on both axes, so raw RA counts are proven.\n- The reports_raw_counts comment states that it proves DEC only.\n- The PROPERTIES.md Source line names only the .driver.\nDriver, generated output and simulator are unchanged since round 1, so the round-1 verification stands (regenerated output identical, 103/103 simulator run). README and TEST_SUMMARY changes are only run_driver_test.py records: sim 08:13 103/103 OK, AZGTi 08:29 21/21 OK; MIGRATION_STATUS 103/21 is still correct. Both test binaries compile without warnings or errors, cleaned with test-clean. git diff --check is clean. No remaining findings.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1184197.049,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "cf4e8454-7229-4ca7-8f50-b4e88ab7e4ef",
+      "event": "ticket/created",
+      "at": "2026-11-18T21:24:32.693261Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "883f6d6d-090e-42b4-ae42-f0c9b1df154c",
+      "event": "ticket/confirmed",
+      "at": "2026-11-18T21:25:15.648276Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "84b7c047-9900-4375-8a21-8ece1f44fec3",
+      "event": "ticket/note",
+      "at": "2026-11-18T21:32:15.128350Z",
+      "actor": "human/owner",
+      "text": "Owner (2026-11-18) was shown the two assumptions of the description and told to confirm and start without changing them, so they stand: values from the encoder query of each axis that has an encoder regardless of X_MOUNT_USE_ENCODERS (an axis without an encoder shows its step counter); HA -12..12 h and DEC -90..90 degrees for the current side of the pier. Ticket 37fc5504 is closed (f814a8858): a sync within 5 degrees of the pole is refused by the base mount driver, tests that sync must leave the pole first. Non-interactive recorded runs: simulator and AZ-GTi on the network (synscan://192.168.111.139, firmware 3.16, no telescope mounted, free to move, no hot-plug; a first discovery attempt may fail, retry once).",
+      "tokens": null
+    },
+    {
+      "event_id": "fa3bedff-f8e9-4da4-8ce4-3619c53d1321",
+      "event": "task/progress",
+      "at": "2026-11-18T21:32:20.639011Z",
+      "actor": "human/owner",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Implementation started on branch ticket/4ef695f1-88ae-4fd8-943e-91c6479a9c24"
+    },
+    {
+      "event_id": "b2a95cf8-7c4b-46f5-8ca7-25e4436057c7",
+      "event": "ticket/started",
+      "at": "2026-11-18T21:32:20.640744Z",
+      "actor": "human/owner",
+      "branch": "ticket/4ef695f1-88ae-4fd8-943e-91c6479a9c24",
+      "base": "master"
+    },
+    {
+      "event_id": "04820c37-baef-4a8b-a070-fa424c917227",
+      "event": "task/progress",
+      "at": "2026-11-18T21:32:53.340144Z",
+      "actor": "human/owner",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Implementer launched",
+      "attempt_id": "9c6433d9-c233-47f8-b141-51ba3eee480c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "9d42515d-6f5a-4c20-840c-6fec0f864765",
+      "event": "task/progress",
+      "at": "2026-11-18T21:38:02.157980Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Editing the .driver: X_ENCODER_COORDINATES property, poll and connect reading"
+    },
+    {
+      "event_id": "df5517f6-4083-4f02-af85-bb6ce4b10c55",
+      "event": "task/progress",
+      "at": "2026-11-18T21:44:55.649760Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Building the SynScan simulator test with the new X_ENCODER_COORDINATES cases"
+    },
+    {
+      "event_id": "50f76d12-2952-48cf-80e5-b7ea9e53ca36",
+      "event": "task/progress",
+      "at": "2026-11-18T21:45:12.649637Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Running the new and touched simulator cases one by one with INDIGO_TEST_FILTER"
+    },
+    {
+      "event_id": "cc7b6619-2a2e-472c-a101-c949c3a3d6e9",
+      "event": "task/progress",
+      "at": "2026-11-18T21:51:23.575014Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Recorded simulator run: tools/run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "8853ca71-46a6-4b28-bf69-d09fadd428a4",
+      "event": "task/progress",
+      "at": "2026-11-18T22:08:21.431326Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Simulator run 102/102 OK; recorded hardware run: run_driver_test.py mount_synscan --hw (AZ-GTi)"
+    },
+    {
+      "event_id": "3ef81608-d381-4e14-b3dd-75ed34270bcf",
+      "event": "task/progress",
+      "at": "2026-11-18T22:16:37.601075Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Hardware run 21/20 Failed: AZ-GTi :d readings do not follow the axes in step units; running flow check"
+    },
+    {
+      "event_id": "c16dcdf7-7fe1-4992-ba3f-25c95353be10",
+      "event": "task/progress",
+      "at": "2026-11-18T22:16:37.867616Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f0313e79-0862-44ff-86cc-b463d90f7786",
+      "event": "task/progress",
+      "at": "2026-11-18T22:16:37.894330Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "8e8e3d44-cf3b-4f9a-aa32-4fca11f3a972",
+      "event": "check/passed",
+      "at": "2026-11-18T22:16:37.896038Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "5a8f24137801deaf24525062d2382085ff2afce6",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "fc8f77e0-a9d9-47f6-869e-e1bd38c54989",
+      "event": "ticket/note",
+      "at": "2026-11-18T22:17:12.314367Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementation (indigo_mount_synscan 3.0.0.23, .driver version 22 -> 23, outputs regenerated with the unchanged indigo_generator; the generator reproduces the checked-in 3.0.0.22 outputs byte for byte from the HEAD .driver, and every difference of the new .c is the .driver edit: name macros, property pointer/macros, two data flags, the two new helpers, configure/on_timer edits, generated define/delete/enumerate/attach/release lines; .h and _main.c unchanged).\nProperty: X_ENCODER_COORDINATES, number, MOUNT_ALIGNMENT_GROUP, read-only, items HA (-12..12 h) and DEC (-90..90 deg), format %12.9m, hidden unless ra_features or dec_features has SYNSCAN_FEATURE_ENCODER (same condition as X_MOUNT_USE_ENCODERS). Values: synscan_encoder_to_eq() of ((position - zero) / total_steps) per axis, no alignment model, no precession. Source per axis: the :d reading of an axis with an encoder (reused when synscan_update_axis_positions just read :d because X_MOUNT_USE_ENCODERS selects it), the step counter :j of an axis without an encoder. Read at connect (state OK, or ALERT if the reading fails) and in the poll (on_timer) after a successful synscan_update_mount_coordinates(); a failed :d query or a failed position query publishes ALERT with the last values, the next good poll restores OK. Extra traffic per poll: one :d per axis that has an encoder and is not selected in X_MOUNT_USE_ENCODERS (default simulator and AZ-GTi: :d2 + :d1 per poll, plus the same two at connect); zero when both encoders are selected. Not queried in finalizers or stop-wait loops. The bus publishes it only when values or state change.\nScenario -> test (indigo_test/integration/test_mount_synscan_simulator.c): absent without encoder feature, defined with it -> synscan_mount_defines_options_from_feature_bits (extended); defined in the completeness list -> synscan_mount_passes_serial_compliance_checks (extended); connect traffic :d2 :d1 after :j2 :j1 pinned -> synscan_mount_reports_identity_and_handshake (extended); rea",
+      "tokens": null
+    },
+    {
+      "event_id": "67ef3253-4204-4b5f-849d-0272b01b5238",
+      "event": "ticket/note",
+      "at": "2026-11-18T22:28:07.810867Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Coordinator findings on the AZ-GTi (2026-11-18/19, firmware 3.16, CPR :a1 = :a2 = 2073600, extended status =098000 on both axes), read with direct :j/:d queries over UDP. (1) The auxiliary encoder reply :d is not in step units: with the dual encoders enabled (:W1040000, :W2040000) d follows j as d = j / 1941.57, i.e. the encoders count 1068 ticks per revolution (a quarter turn of the DEC axis, j2 = 518400, reads d2 = 267), about 0.337 degrees per tick; the bundled protocol document names :d 'Inquire Tele. Axis Position' and documents no encoder resolution or inquiry for it. (2) With the dual encoders disabled (the driver default) d still counts the axis in the same ticks but j is independent of it, so the implemented X_ENCODER_COORDINATES, which treats :d as steps, shows about HA -6.01 h / Dec +0.05 whatever the pointing. (3) Enabling the dual encoders re-bases the step counter from the encoder at once (j1 jumped from -66767 to -2576467 = d1 x 1941.57 with the mount standing), so X_MOUNT_USE_ENCODERS on this mount both shifts the driver's axis reference and then feeds :d into synscan_update_axis_positions as if it were steps; the existing property therefore gives wrong coordinates on the AZ-GTi (not tested through the driver, derived from these readings). Side effect of this experiment: the encoders were disabled again, the DEC counter was put back to its value from before the experiment (686012), but the RA axis reference of the mount is no longer the one from before (the counter was re-based and the mount moved); the mount has to be power-cycled in its home position before coordinates mean anything. State of the ticket: implementation and simulator run 102/102 are in the worktree, the hardware run is 21/20 Failed (the new case), nothing is reviewed or closed.",
+      "tokens": null
+    },
+    {
+      "event_id": "c12bf74a-056e-4471-ab44-36bfb387174e",
+      "event": "question/asked",
+      "at": "2026-11-18T22:28:07.895491Z",
+      "actor": "human/Peter Polakovic",
+      "text": "X_ENCODER_COORDINATES shows no usable position on the AZ-GTi: its :d encoder reply counts 1068 ticks per revolution (0.337 degrees), not motor steps, and the protocol document gives no way to inquire that resolution. Choose: (a) scale :d by an encoder resolution kept per model (AZ-GTi 1068 known; other models unknown until measured) and show HA/DEC at encoder resolution; (b) publish the raw encoder counts instead of HA/DEC; (c) define the property only for mounts whose encoders are known to count in steps and leave it out on the AZ-GTi; (d) drop the ticket. The same unit problem affects the existing X_MOUNT_USE_ENCODERS on this mount and needs its own ticket whichever way this goes."
+    },
+    {
+      "event_id": "1caec1e0-b31a-4599-a737-438bf815b795",
+      "event": "question/answered",
+      "at": "2026-11-19T06:07:10.989076Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner decision: publish the raw encoder counts as reported by the controller instead of HA/DEC derived from them."
+    },
+    {
+      "event_id": "2546a6a4-c1cb-48c8-81cf-0a716bf64662",
+      "event": "ticket/note",
+      "at": "2026-11-19T06:08:12.289367Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Rework after the owner's decision (raw counts). Replace X_ENCODER_COORDINATES (HA/DEC) by a read-only number property X_ENCODER_POSITION in the alignment group with the items RA and DEC holding the raw signed encoder counts exactly as the controller reports them with ':d<axis>' (24-bit value minus 0x800000), no scaling, no zero position, no conversion to angles; integer format. Defined only when the mount reports an encoder on at least one axis (same condition as X_MOUNT_USE_ENCODERS); an axis without an encoder publishes 0. Polled with the position poll, independent of X_MOUNT_USE_ENCODERS, published only on change or state change; a failed query keeps the last values with ALERT. Measured on the AZ-GTi (fw 3.16) with dual encoders disabled: ':d' follows the axis (DEC axis moved 178671 steps, ':d2' went 353 -> 445 -> 353), 1068 counts per revolution versus 2073600 steps, so the resolution is model dependent and the driver must not interpret the counts. Do not change the X_MOUNT_USE_ENCODERS behaviour in this ticket. Hardware case: do not enable X_MOUNT_USE_ENCODERS (it re-bases the step counter on the AZ-GTi); check the property is defined, RO, in the alignment group, OK, stable while the axes stand, changes on both axes after a GoTo, in proportion consistent between the two readings of the same move (no absolute resolution assumed), unchanged by a sync, and returns to the start values (within 2 counts) after slewing back. The mount's RA axis reference may be off from an earlier experiment, so do not assert absolute pointing in the new case.",
+      "tokens": null
+    },
+    {
+      "event_id": "b712667a-a659-40f2-93b7-5be834c792e9",
+      "event": "task/progress",
+      "at": "2026-11-19T06:08:50.904317Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Implementer launched (rework to raw counts)",
+      "attempt_id": "9c6433d9-c233-47f8-b141-51ba3eee480c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6f8603b0-8213-49f5-b8b4-b6399517be76",
+      "event": "task/progress",
+      "at": "2026-11-19T06:10:26.881949Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Reworking the .driver to X_ENCODER_POSITION with raw counts"
+    },
+    {
+      "event_id": "9530b3c0-d5cf-4002-a111-cc5bcee079ce",
+      "event": "task/progress",
+      "at": "2026-11-19T06:15:02.278929Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Building driver and running the new simulator cases (intermediate)"
+    },
+    {
+      "event_id": "7d3838b1-42e0-4bc0-b275-bbed955f1509",
+      "event": "task/progress",
+      "at": "2026-11-19T06:18:55.114910Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Intermediate hw run of synscan_reports_encoder_position on the AZ-GTi"
+    },
+    {
+      "event_id": "886b6e0f-06a7-466f-8712-2edc4707e672",
+      "event": "task/progress",
+      "at": "2026-11-19T06:27:53.121618Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Recorded simulator run: tools/run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "f874fce9-df24-4da1-9c29-8826ae422934",
+      "event": "task/progress",
+      "at": "2026-11-19T06:44:14.590493Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Recorded hardware run: tools/run_driver_test.py mount_synscan --hw (AZ-GTi)"
+    },
+    {
+      "event_id": "07db2ca7-2eda-4700-bdf1-93ee5234d079",
+      "event": "task/progress",
+      "at": "2026-11-19T06:51:41.819968Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3b91fb90-5726-452d-93bb-cc4caeab4643",
+      "event": "task/progress",
+      "at": "2026-11-19T06:51:41.846982Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "364ae2c6-38e0-49f3-a7ad-c3278b2a1bd7",
+      "event": "check/passed",
+      "at": "2026-11-19T06:51:41.848974Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "facdbd077cf3cd33af05096be1de8003d412db74",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "d8385416-2af1-4e46-b9d3-fb4ca53a8163",
+      "event": "task/progress",
+      "at": "2026-11-19T06:51:46.691380Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Rework done: sim 103/103 OK, AZ-GTi 21/21 OK, flow check passed"
+    },
+    {
+      "event_id": "b26ea076-07b7-4a98-8713-116f98d9a6f0",
+      "event": "task/progress",
+      "at": "2026-11-19T06:52:20.003629Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6304c641-ebcd-40e0-b494-7d8f08a74703",
+      "text": "Review started"
+    },
+    {
+      "event_id": "291749db-a476-48d4-9665-6151c9a9b6f8",
+      "event": "review/started",
+      "at": "2026-11-19T06:52:20.004803Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "f534ff9c-a029-47d5-9b95-ecb336657509",
+      "event": "task/progress",
+      "at": "2026-11-19T06:54:27.902304Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6304c641-ebcd-40e0-b494-7d8f08a74703",
+      "text": "Reviewing diff; regenerated driver matches; building mount_synscan simulator tests",
+      "attempt_id": "c4926791-e9c3-489a-9e77-7cf417f55908",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5c1a1a78-d0bd-45de-8eb3-e2c04e736880",
+      "event": "task/progress",
+      "at": "2026-11-19T07:11:38.554182Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6304c641-ebcd-40e0-b494-7d8f08a74703",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "48d910de-6bb9-4255-af96-37810f8cc452",
+      "event": "task/progress",
+      "at": "2026-11-19T07:11:38.554206Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "9144361f-9c00-4489-b279-6667d6e76251",
+      "event": "review/changes_requested",
+      "at": "2026-11-19T07:11:38.556748Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6304c641-ebcd-40e0-b494-7d8f08a74703",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "facdbd077cf3cd33af05096be1de8003d412db74"
+    },
+    {
+      "event_id": "9ffd1825-6ffa-4306-bc85-fd23c5b08747",
+      "event": "task/progress",
+      "at": "2026-11-19T07:12:09.873142Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Addressing review: encoder-less mounts, RA/DEC proportion, sim RA, Source line"
+    },
+    {
+      "event_id": "8af7cf65-66db-4637-8a50-33588a78d401",
+      "event": "task/progress",
+      "at": "2026-11-19T07:13:25.131530Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Recorded runs after review fixes: simulator, then --hw"
+    },
+    {
+      "event_id": "ec919e50-a97f-4e99-879d-adf2174ef897",
+      "event": "task/progress",
+      "at": "2026-11-19T07:37:05.364989Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1ca38545-2735-4735-a20e-5537995eee9e",
+      "event": "task/progress",
+      "at": "2026-11-19T07:37:05.393153Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "633ee453-a47c-4531-ba95-d51eaf0350d1",
+      "event": "check/passed",
+      "at": "2026-11-19T07:37:05.395153Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "9f8645366c7361fa7b92e990455cadea0ab787f6",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a1c5de8e-5e34-4898-b4af-baabd608025d",
+      "event": "task/progress",
+      "at": "2026-11-19T07:37:05.573728Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f8c44e8d-492b-4fbe-8eca-59df37b3e793",
+      "text": "Review fixes done: sim 103/103 OK, AZ-GTi 21/21 OK, flow check passed"
+    },
+    {
+      "event_id": "599a742c-9873-44af-89bb-be61339e0962",
+      "event": "task/progress",
+      "at": "2026-11-19T07:37:28.123513Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6304c641-ebcd-40e0-b494-7d8f08a74703",
+      "text": "Review started"
+    },
+    {
+      "event_id": "15ebf234-7415-4d65-b2e8-02609ba15312",
+      "event": "review/started",
+      "at": "2026-11-19T07:37:28.124802Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "fedc1737-4540-4ff5-8174-af61e034d636",
+      "event": "task/progress",
+      "at": "2026-11-19T07:37:53.770045Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6304c641-ebcd-40e0-b494-7d8f08a74703",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "be7c83d7-f9ef-424e-a4e7-b291e1cfdfb8",
+      "event": "review/passed",
+      "at": "2026-11-19T07:37:53.771476Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6304c641-ebcd-40e0-b494-7d8f08a74703",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "9f8645366c7361fa7b92e990455cadea0ab787f6"
+    },
+    {
+      "event_id": "ed8db4d0-291d-4173-914a-5a0564867d29",
+      "event": "ticket/title_changed",
+      "at": "2026-11-19T07:38:07.637547Z",
+      "actor": "human/Peter Polakovic",
+      "previous_title": "indigo_mount_synscan: X_ENCODER_COORDINATES property with the hour angle and declination read from the encoders",
+      "title": "indigo_mount_synscan: X_ENCODER_POSITION property with the raw encoder counts of the RA and DEC axes"
+    },
+    {
+      "event_id": "216aca1b-662d-4caf-824b-bd50d9c2101a",
+      "event": "ticket/closed",
+      "at": "2026-11-19T07:38:11.699568Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-19T07:38:11.699547Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "2f68b2e1209a3ffa9078b68e54c39bdd4d1e984d"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5a8f24137801deaf24525062d2382085ff2afce6",
+        "tree": "c2919b068ee26edf16b78d94be61a41812f5bcbe",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T22:16:37.893605Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4ef695f1-88ae-4fd8-943e-91c6479a9c24/c2919b068ee2-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "facdbd077cf3cd33af05096be1de8003d412db74",
+        "tree": "93a45b52a47c76adf30786ac389df7f7229af19f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T06:51:41.846133Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4ef695f1-88ae-4fd8-943e-91c6479a9c24/93a45b52a47c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9f8645366c7361fa7b92e990455cadea0ab787f6",
+        "tree": "cc0029376418cb91da8ea0b9f7423e837f157d24",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T07:37:05.392266Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4ef695f1-88ae-4fd8-943e-91c6479a9c24/cc0029376418-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Review of X_ENCODER_POSITION (raw counts, owner note 2026-11-19), git diff master...HEAD at facdbd077, worktree clean.\n\nVerified: the driver logic is correct. The property is defined under the same condition as X_MOUNT_USE_ENCODERS. Connect reads it after a good coordinate read (ALERT otherwise, port loss still fails the connect). The poll reads it only after a successful synscan_update_mount_coordinates(). An already-read ':d' is reused through flags set in synscan_update_axis_positions() just before, on the same queue. A failed query keeps the last values with ALERT, and the next good poll restores OK. An axis without an encoder shows 0. X_MOUNT_USE_ENCODERS behaviour is unchanged (pure refactor of the two queries). There are no HA/DEC leftovers. The X_ prefix, RO perm, alignment group and integer format are correct, and formatting follows the rules. Version 22 -> 23 / 0x03000017. The .driver regenerated with build/bin/indigo_generator into a temp dir is byte-identical to the checked-in .c/.h/_main.c. PROPERTIES.md is accurate. MIGRATION_STATUS 103/21 matches the case lists (103 sim, 21 hw). No new files, so no Xcode change is needed. README/TEST_SUMMARY hold only run_driver_test.py records. I ran the simulator suite: 103/103 PASS (16 min), then cleaned with test-clean.\n\nBlocking:\n1. indigo_test/hardware/test_mount_synscan_hw.c:1091-1093: synscan_reports_encoder_position ASSERTs that X_MOUNT_USE_ENCODERS and X_ENCODER_POSITION are defined. This suite is also run against mounts without encoders (AstroEQ 8.25 is a recorded target in TEST_SUMMARY), so such a run now fails. The suite treats absent features as not applicable (synscan_runs_autohome, synscan_controls_snap_port, polarscope). Required fix: when X_MOUNT_USE_ENCODERS is not defined, assert that X_ENCODER_POSITION is not defined either, print 'not applicable' and return.\n2. indigo_test/hardware/test_mount_synscan_hw.c:1136: the owner note asks that the counts change on both axes 'in proportion consistent between the two readings of the same move'. The case asserts only a change of at least 3 counts per axis; the proportion is printed but not asserted. Required fix: assert that the counts per degree of the step counters agree between RA and DEC within a tolerance covering +/-1 count of quantisation, without assuming an absolute resolution. Example: |dRA_count/dRA_deg| vs |dDEC_count/dDEC_deg| within 15%. The recorded run would pass this (89/29.999 = 2.967 vs 45/15.000 = 3.000 counts/deg). After both fixes, a new recorded run is needed: tools/run_driver_test.py mount_synscan --hw.\n\nNon-blocking:\n- test_mount_synscan_simulator.c:3636: at the start position the RA step counter is 0, so the RA half of synscan_mount_encoder_position_reports_raw_counts is vacuous (512 = 0 + offset). RA verbatim ticks are proven by follows_a_goto (667/356 against step counters +/-126000), so coverage exists. The name or comment of reports_raw_counts could say it proves DEC only.\n- PROPERTIES.md Source line: other sections name only the .driver file; the added 'generated output in ...' clause is harmless.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "facdbd077cf3cd33af05096be1de8003d412db74",
+        "tree": "93a45b52a47c76adf30786ac389df7f7229af19f",
+        "at": "2026-11-19T07:11:38.553937Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Second round, diff facdbd077..9f8645366 (worktree clean). Both blocking points fixed:\n1. test_mount_synscan_hw.c synscan_reports_encoder_position: when X_MOUNT_USE_ENCODERS is undefined it asserts that X_ENCODER_POSITION is undefined too, prints 'not applicable' and returns before touching the mount, matching the autohome and snap-port convention.\n2. It now asserts that RA and DEC counts per degree of the step counters are finite (moves over 1 deg) and agree within 15 % of the larger. No absolute resolution is assumed. The new AZ-GTi run printed 2.9667 vs 3.0000 counts/deg and passed.\nBoth non-blocking remarks are fixed:\n- follows_a_goto asserts a non-zero RA step counter and values that differ from step + offset on both axes, so raw RA counts are proven.\n- The reports_raw_counts comment states that it proves DEC only.\n- The PROPERTIES.md Source line names only the .driver.\nDriver, generated output and simulator are unchanged since round 1, so the round-1 verification stands (regenerated output identical, 103/103 simulator run). README and TEST_SUMMARY changes are only run_driver_test.py records: sim 08:13 103/103 OK, AZGTi 08:29 21/21 OK; MIGRATION_STATUS 103/21 is still correct. Both test binaries compile without warnings or errors, cleaned with test-clean. git diff --check is clean. No remaining findings.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "9f8645366c7361fa7b92e990455cadea0ab787f6",
+        "tree": "cc0029376418cb91da8ea0b9f7423e837f157d24",
+        "at": "2026-11-19T07:37:53.769792Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-18T21:32:15.126800Z",
+        "actor": "human/owner",
+        "text": "Owner (2026-11-18) was shown the two assumptions of the description and told to confirm and start without changing them, so they stand: values from the encoder query of each axis that has an encoder regardless of X_MOUNT_USE_ENCODERS (an axis without an encoder shows its step counter); HA -12..12 h and DEC -90..90 degrees for the current side of the pier. Ticket 37fc5504 is closed (f814a8858): a sync within 5 degrees of the pole is refused by the base mount driver, tests that sync must leave the pole first. Non-interactive recorded runs: simulator and AZ-GTi on the network (synscan://192.168.111.139, firmware 3.16, no telescope mounted, free to move, no hot-plug; a first discovery attempt may fail, retry once).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-18T22:17:12.313118Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementation (indigo_mount_synscan 3.0.0.23, .driver version 22 -> 23, outputs regenerated with the unchanged indigo_generator; the generator reproduces the checked-in 3.0.0.22 outputs byte for byte from the HEAD .driver, and every difference of the new .c is the .driver edit: name macros, property pointer/macros, two data flags, the two new helpers, configure/on_timer edits, generated define/delete/enumerate/attach/release lines; .h and _main.c unchanged).\nProperty: X_ENCODER_COORDINATES, number, MOUNT_ALIGNMENT_GROUP, read-only, items HA (-12..12 h) and DEC (-90..90 deg), format %12.9m, hidden unless ra_features or dec_features has SYNSCAN_FEATURE_ENCODER (same condition as X_MOUNT_USE_ENCODERS). Values: synscan_encoder_to_eq() of ((position - zero) / total_steps) per axis, no alignment model, no precession. Source per axis: the :d reading of an axis with an encoder (reused when synscan_update_axis_positions just read :d because X_MOUNT_USE_ENCODERS selects it), the step counter :j of an axis without an encoder. Read at connect (state OK, or ALERT if the reading fails) and in the poll (on_timer) after a successful synscan_update_mount_coordinates(); a failed :d query or a failed position query publishes ALERT with the last values, the next good poll restores OK. Extra traffic per poll: one :d per axis that has an encoder and is not selected in X_MOUNT_USE_ENCODERS (default simulator and AZ-GTi: :d2 + :d1 per poll, plus the same two at connect); zero when both encoders are selected. Not queried in finalizers or stop-wait loops. The bus publishes it only when values or state change.\nScenario -> test (indigo_test/integration/test_mount_synscan_simulator.c): absent without encoder feature, defined with it -> synscan_mount_defines_options_from_feature_bits (extended); defined in the completeness list -> synscan_mount_passes_serial_compliance_checks (extended); connect traffic :d2 :d1 after :j2 :j1 pinned -> synscan_mount_reports_identity_and_handshake (extended); read-only, alignment group, items/ranges/format, one encoder per axis (axis without encoder shows its counter, never gets :d), write request changes nothing -> synscan_mount_encoder_coordinates_with_one_encoder; home position +6 h/+90 north and -6 h/-90 south (plus the simulator's 512/1024-step encoder offset), one :d per axis per poll and none extra with X_MOUNT_USE_ENCODERS -> synscan_mount_encoder_coordinates_show_the_home_position; GoTo on both pier sides in both hemispheres = date pointing of the counters + encoder offset with the hemisphere/pier-side sign, equal to the coordinates with X_MOUNT_USE_ENCODERS -> synscan_mount_encoder_coordinates_follow_a_goto_on_both_pier_sides; sync (5 deg from target, away from the pole) moves the coordinates, encoder values unchanged exactly -> synscan_mount_encoder_coordinates_ignore_a_sync; refused :d at connect defines ALERT (coordinates OK), refused :d1 / malformed :d2 / refused :j1 in the poll publish ALERT with the previous values, only :j1 also marks the coordinates, next poll OK, connection kept -> synscan_mount_encoder_coordinates_alert_on_a_failed_query. Hardware (indigo_test/hardware/test_mount_synscan_hw.c): synscan_reports_encoder_coordinates (defined, RO, alignment group; home: HA 6 h, DEC 90; GoTo HA +1 h DEC 60 of the date: agrees with the raw date pointing and the target; sync leaves it unchanged; mount restored before the asserts).\nRecorded runs: simulator 2026-11-18 22:51 3.0.0.23 mac arm64 simulator 102/102 OK. Hardware 2026-11-18 23:08 3.0.0.23 mac arm64 AZGTi (synscan:// autodetection, firmware as detected by the suite, no telescope, no hot-plug) 21/20 Failed: only synscan_reports_encoder_coordinates failed; the other 20 cases passed, mount restored to the starting pointing.\nHardware finding (not fixed, needs an owner decision): the AZ-GTi :d replies are not in step-counter units around the step-counter zero. With X_MOUNT_USE_ENCODERS off the property showed HA -6.01463 h DEC +0.04601 deg at the home position (counters HA +6 h DEC +90) and HA -6.01725 h DEC +0.06146 deg after a GoTo to HA +1 h DEC +60 (raw date pointing HA +1.00006 h DEC +60.00000). Both encoder readings stay near 0x800000 and move about 1/1900 of the axis motion (RA 75 deg of axis -> 0.039 deg, DEC 30 deg -> 0.015 deg), so the existing conversion (and, by the same arithmetic, X_MOUNT_USE_ENCODERS on this mount) does not give mechanical coordinates. The encoder resolution and zero are not known from the protocol material at hand (the bundled PDF could not be rendered here), so neither the driver nor the simulator models them. The simulator models encoders in step units with a 512/1024-step offset; it does not reproduce this AZ-GTi behaviour, so the hardware observation is not covered hardware-free.\nOther: PROPERTIES.md SynScan section updated (custom property list, description, source note now names the .driver). MIGRATION_STATUS.md counts 97/20 -> 102/21 (Comment untouched). README.md and TEST_SUMMARY.md changed only by run_driver_test.py. flow check (whitespace) passed on the final tree; make -C indigo_test test-clean done.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-18T22:28:07.809115Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Coordinator findings on the AZ-GTi (2026-11-18/19, firmware 3.16, CPR :a1 = :a2 = 2073600, extended status =098000 on both axes), read with direct :j/:d queries over UDP. (1) The auxiliary encoder reply :d is not in step units: with the dual encoders enabled (:W1040000, :W2040000) d follows j as d = j / 1941.57, i.e. the encoders count 1068 ticks per revolution (a quarter turn of the DEC axis, j2 = 518400, reads d2 = 267), about 0.337 degrees per tick; the bundled protocol document names :d 'Inquire Tele. Axis Position' and documents no encoder resolution or inquiry for it. (2) With the dual encoders disabled (the driver default) d still counts the axis in the same ticks but j is independent of it, so the implemented X_ENCODER_COORDINATES, which treats :d as steps, shows about HA -6.01 h / Dec +0.05 whatever the pointing. (3) Enabling the dual encoders re-bases the step counter from the encoder at once (j1 jumped from -66767 to -2576467 = d1 x 1941.57 with the mount standing), so X_MOUNT_USE_ENCODERS on this mount both shifts the driver's axis reference and then feeds :d into synscan_update_axis_positions as if it were steps; the existing property therefore gives wrong coordinates on the AZ-GTi (not tested through the driver, derived from these readings). Side effect of this experiment: the encoders were disabled again, the DEC counter was put back to its value from before the experiment (686012), but the RA axis reference of the mount is no longer the one from before (the counter was re-based and the mount moved); the mount has to be power-cycled in its home position before coordinates mean anything. State of the ticket: implementation and simulator run 102/102 are in the worktree, the hardware run is 21/20 Failed (the new case), nothing is reviewed or closed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T06:08:12.287894Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Rework after the owner's decision (raw counts). Replace X_ENCODER_COORDINATES (HA/DEC) by a read-only number property X_ENCODER_POSITION in the alignment group with the items RA and DEC holding the raw signed encoder counts exactly as the controller reports them with ':d<axis>' (24-bit value minus 0x800000), no scaling, no zero position, no conversion to angles; integer format. Defined only when the mount reports an encoder on at least one axis (same condition as X_MOUNT_USE_ENCODERS); an axis without an encoder publishes 0. Polled with the position poll, independent of X_MOUNT_USE_ENCODERS, published only on change or state change; a failed query keeps the last values with ALERT. Measured on the AZ-GTi (fw 3.16) with dual encoders disabled: ':d' follows the axis (DEC axis moved 178671 steps, ':d2' went 353 -> 445 -> 353), 1068 counts per revolution versus 2073600 steps, so the resolution is model dependent and the driver must not interpret the counts. Do not change the X_MOUNT_USE_ENCODERS behaviour in this ticket. Hardware case: do not enable X_MOUNT_USE_ENCODERS (it re-bases the step counter on the AZ-GTi); check the property is defined, RO, in the alignment group, OK, stable while the axes stand, changes on both axes after a GoTo, in proportion consistent between the two readings of the same move (no absolute resolution assumed), unchanged by a sync, and returns to the start values (within 2 counts) after slewing back. The mount's RA axis reference may be off from an earlier experiment, so do not assert absolute pointing in the new case.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "X_ENCODER_COORDINATES shows no usable position on the AZ-GTi: its :d encoder reply counts 1068 ticks per revolution (0.337 degrees), not motor steps, and the protocol document gives no way to inquire that resolution. Choose: (a) scale :d by an encoder resolution kept per model (AZ-GTi 1068 known; other models unknown until measured) and show HA/DEC at encoder resolution; (b) publish the raw encoder counts instead of HA/DEC; (c) define the property only for mounts whose encoders are known to count in steps and leave it out on the AZ-GTi; (d) drop the ticket. The same unit problem affects the existing X_MOUNT_USE_ENCODERS on this mount and needs its own ticket whichever way this goes.",
+        "at": "2026-11-18T22:28:07.894338Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner decision: publish the raw encoder counts as reported by the controller instead of HA/DEC derived from them.",
+        "answered_at": "2026-11-19T06:07:10.987353Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "2f68b2e1209a3ffa9078b68e54c39bdd4d1e984d",
+      "tree": "cc0029376418cb91da8ea0b9f7423e837f157d24",
+      "base": "master",
+      "at": "2026-11-19T07:38:11.622568Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-18T21:24:32.692409Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-18T21:25:15.648113Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 36333130.971,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 56,
+    "sha256": "5d930400b0038f101396b45371adb0b651d6e5b82ddcb14d8a50431daa406499"
+  }
+}

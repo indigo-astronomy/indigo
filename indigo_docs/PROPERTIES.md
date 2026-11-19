@@ -1541,11 +1541,13 @@ Source: `indigo_drivers/mount_starbook/indigo_mount_starbook.driver`.
 
 ### mount_synscan
 
-Custom properties: `X_MOUNT_AUTOHOME`, `X_MOUNT_AUTOHOME_SETTINGS`, `X_MOUNT_OPERATING_MODE`, `X_MOUNT_USE_ENCODERS`, `X_POLARSCOPE`.
+Custom properties: `X_ENCODER_POSITION`, `X_MOUNT_AUTOHOME`, `X_MOUNT_AUTOHOME_SETTINGS`, `X_MOUNT_OPERATING_MODE`, `X_MOUNT_USE_ENCODERS`, `X_POLARSCOPE`.
 
 Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_EXPOSURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `GUIDER_RATE`, `MOUNT_ABORT_MOTION`, `MOUNT_ALIGNMENT_DELETE_POINTS`, `MOUNT_ALIGNMENT_MODE`, `MOUNT_ALIGNMENT_SELECT_POINTS`, `MOUNT_EPOCH`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_POSITION`, `MOUNT_HOME_SET`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `MOUNT_RAW_COORDINATES`, `MOUNT_SIDE_OF_PIER`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`.
 
-Source: `indigo_drivers/mount_synscan/indigo_mount_synscan.c`.
+`X_ENCODER_POSITION` is a read-only number property in the alignment group with the items `RA` and `DEC`: the signed counts of the encoders of the axes exactly as the motor controller reports them with `:d1` and `:d2` (the 24-bit reply minus 0x800000), without scaling, zero position or conversion to angles. Their resolution depends on the mount model (an AZ-GTi counts 1068 per revolution against 2073600 motor steps), so the driver does not interpret them. The position poll reads them whether or not `X_MOUNT_USE_ENCODERS` selects the encoders for the coordinates. It is defined only when the mount reports an encoder on at least one axis, the condition that also defines `X_MOUNT_USE_ENCODERS`; an axis without an encoder shows 0, and a failed reading publishes ALERT with the last values.
+
+Source: `indigo_drivers/mount_synscan/indigo_mount_synscan.driver`.
 
 ### mount_temma
 
