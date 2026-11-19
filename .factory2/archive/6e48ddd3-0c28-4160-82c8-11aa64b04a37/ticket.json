@@ -1,0 +1,441 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6e48ddd3-0c28-4160-82c8-11aa64b04a37",
+  "revision": 20,
+  "title": "indigo_test: fix the intermittent failure of the scheduler test edit_of_running_task_is_deferred",
+  "description": "The integration case `edit_of_running_task_is_deferred` in indigo_test/integration/test_agent_scheduler.c fails intermittently: about 1 in 6 runs when run alone (observed 2026-11-19 during ticket cc3c31d5; the full suite then passed on rerun). Two independent observations of the likely cause, not yet confirmed:\n- the scheduler sends \"Task completed\" before it applies the pending edit, and the test reads TASK_0 right after that message;\n- the task body takes about 2 s and can finish before the edit arrives, so the edit is not applied as a deferred edit.\nThe failure is not related to DEFER_GAIN (that path is not reached with the default 0).\n\nWork: reproduce with repeated runs (argv filter, not INDIGO_TEST_CASE_FILTER), find the race, and fix the test synchronisation (wait for the state the assertion needs instead of a message that precedes it), or the agent if the order of its updates is actually wrong. Verify with many repeated runs.",
+  "type": "change",
+  "discovered_at": "2026-11-19T00:00:00Z",
+  "created_at": "2026-11-19T06:30:14.275848Z",
+  "status": "closed",
+  "branch": "ticket/6e48ddd3-0c28-4160-82c8-11aa64b04a37",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "489b685d-b622-4521-b1bb-ccfb342f467e",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T09:58:58.565304Z",
+          "last_activity_at": "2026-11-19T10:12:10.336340Z",
+          "ended_at": "2026-11-19T10:12:10.336340Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 791771.036,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T09:58:58.565304Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/6e48ddd3-0c28-4160-82c8-11aa64b04a37"
+        },
+        {
+          "at": "2026-11-19T10:12:10.336340Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 791771.036,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "5ad775e1-f4da-4bc5-882c-a540c2504f1e",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "bc1dd8e6-359e-4495-ba67-c88e193bc890",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T10:12:10.336359Z",
+          "last_activity_at": "2026-11-19T10:14:59.820916Z",
+          "ended_at": "2026-11-19T10:14:59.820916Z",
+          "outcome": {
+            "summary": "No defects found. Root cause confirmed: finish_task() (indigo_agent_scheduler.c:1355-1357) sends 'Task ... completed' and only afterwards calls apply_pending_edit() (1373) -> replace_text() (1049-1075), which sets TASK_n OK and updates it; the old test snapshotted TASK_0 right after the message. Snapshot timing is correct: change_text() (test:337-343) returns only after wait_property_state() saw a TASK_0 update with revision > pre-request revision in BUSY state (the deferred update from edit_task():2610-2611), so revision() at test:1212 is >= the BUSY revision and the upload/define or any earlier OK update cannot satisfy the new wait (requires revision > deferred and OK). Same task name, so replace_text takes the update path, not delete/define. replace_text is the only OK-setting update of TASK_n in this flow. Wait is bounded (1000 x 10 ms in wait_property_state, test:265). Assertions unchanged; the '@repeat 3' check is retained. Residual theoretical case: if the OK update arrived within change_text's <=0.5 s message wait the snapshot would already include it and the wait would time out (false failure, not false pass); unreachable in practice since the 2 s body is mid-run and the message follows the BUSY update immediately. Second hypothesis (body finishing before the edit) would fail at the BUSY REQUIRE, unchanged by this ticket. Keeping the agent order is sound (completion message names the old run; a pending edit may rename). Recorded checks whitespace and command-1 (132/132) are at f048e6fde = current HEAD, tree 386448bb. Reviewer ran the worktree binary (newer than source) for the case 40 times: 40/40 passed.'",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 169484.557,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T10:12:10.336359Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T10:14:59.820916Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "No defects found. Root cause confirmed: finish_task() (indigo_agent_scheduler.c:1355-1357) sends 'Task ... completed' and only afterwards calls apply_pending_edit() (1373) -> replace_text() (1049-1075), which sets TASK_n OK and updates it; the old test snapshotted TASK_0 right after the message. Snapshot timing is correct: change_text() (test:337-343) returns only after wait_property_state() saw a TASK_0 update with revision > pre-request revision in BUSY state (the deferred update from edit_task():2610-2611), so revision() at test:1212 is >= the BUSY revision and the upload/define or any earlier OK update cannot satisfy the new wait (requires revision > deferred and OK). Same task name, so replace_text takes the update path, not delete/define. replace_text is the only OK-setting update of TASK_n in this flow. Wait is bounded (1000 x 10 ms in wait_property_state, test:265). Assertions unchanged; the '@repeat 3' check is retained. Residual theoretical case: if the OK update arrived within change_text's <=0.5 s message wait the snapshot would already include it and the wait would time out (false failure, not false pass); unreachable in practice since the 2 s body is mid-run and the message follows the BUSY update immediately. Second hypothesis (body finishing before the edit) would fail at the BUSY REQUIRE, unchanged by this ticket. Keeping the agent order is sound (completion message names the old run; a pending edit may rename). Recorded checks whitespace and command-1 (132/132) are at f048e6fde = current HEAD, tree 386448bb. Reviewer ran the worktree binary (newer than source) for the case 40 times: 40/40 passed.'"
+        }
+      ],
+      "result": {
+        "summary": "No defects found. Root cause confirmed: finish_task() (indigo_agent_scheduler.c:1355-1357) sends 'Task ... completed' and only afterwards calls apply_pending_edit() (1373) -> replace_text() (1049-1075), which sets TASK_n OK and updates it; the old test snapshotted TASK_0 right after the message. Snapshot timing is correct: change_text() (test:337-343) returns only after wait_property_state() saw a TASK_0 update with revision > pre-request revision in BUSY state (the deferred update from edit_task():2610-2611), so revision() at test:1212 is >= the BUSY revision and the upload/define or any earlier OK update cannot satisfy the new wait (requires revision > deferred and OK). Same task name, so replace_text takes the update path, not delete/define. replace_text is the only OK-setting update of TASK_n in this flow. Wait is bounded (1000 x 10 ms in wait_property_state, test:265). Assertions unchanged; the '@repeat 3' check is retained. Residual theoretical case: if the OK update arrived within change_text's <=0.5 s message wait the snapshot would already include it and the wait would time out (false failure, not false pass); unreachable in practice since the 2 s body is mid-run and the message follows the BUSY update immediately. Second hypothesis (body finishing before the edit) would fail at the BUSY REQUIRE, unchanged by this ticket. Keeping the agent order is sound (completion message names the old run; a pending edit may rename). Recorded checks whitespace and command-1 (132/132) are at f048e6fde = current HEAD, tree 386448bb. Reviewer ran the worktree binary (newer than source) for the case 40 times: 40/40 passed.'",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 169484.557,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "1f9ee599-339c-45d1-8060-68b8f6d828bb",
+      "event": "ticket/created",
+      "at": "2026-11-19T06:30:14.276774Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "abea1a87-7816-4cb2-ac8a-1db586d88804",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T06:31:11.251851Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "dcc27e92-c40b-43dd-9d37-112646e988b8",
+      "event": "task/progress",
+      "at": "2026-11-19T09:58:58.565966Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Implementation started on branch ticket/6e48ddd3-0c28-4160-82c8-11aa64b04a37"
+    },
+    {
+      "event_id": "7380d1c0-813f-46b5-955a-02838a3d886b",
+      "event": "ticket/started",
+      "at": "2026-11-19T09:58:58.569546Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/6e48ddd3-0c28-4160-82c8-11aa64b04a37",
+      "base": "master"
+    },
+    {
+      "event_id": "e44f18db-06da-4cf4-9480-45870b56e3fb",
+      "event": "task/progress",
+      "at": "2026-11-19T09:59:15.968365Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Implementer launched",
+      "attempt_id": "489b685d-b622-4521-b1bb-ccfb342f467e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "d11da8a7-497f-4c0e-9f0e-fb3166bea928",
+      "event": "task/progress",
+      "at": "2026-11-19T09:59:43.893712Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Building library, scheduler/scripting agents and the scheduler integration test"
+    },
+    {
+      "event_id": "59ff6b04-af6d-4a99-9afe-6e90142517d7",
+      "event": "task/progress",
+      "at": "2026-11-19T10:00:41.329266Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Reproducing: 40 runs of edit_of_running_task_is_deferred before the fix"
+    },
+    {
+      "event_id": "7854b214-7907-4ebb-a97e-389f0d40c9ba",
+      "event": "task/progress",
+      "at": "2026-11-19T10:03:12.565520Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Verifying: 60 runs of edit_of_running_task_is_deferred after the fix"
+    },
+    {
+      "event_id": "baf920c9-d314-4b42-bc71-340180321253",
+      "event": "task/progress",
+      "at": "2026-11-19T10:06:23.658155Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "35f4e15d-52be-4dc4-845d-96610b91a6ef",
+      "event": "task/progress",
+      "at": "2026-11-19T10:06:23.668287Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b13e695e-f5b6-40eb-9b02-f8e2880daf7b",
+      "event": "check/passed",
+      "at": "2026-11-19T10:06:23.672191Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "f048e6fde87eb6f256eb69a23bf6ce34dc98a56a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "bc1bb88c-6b02-4376-a57b-9aec5a7e3c3d",
+      "event": "task/progress",
+      "at": "2026-11-19T10:06:27.519910Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "fc65118c-9695-4aa3-8bd1-7080ec54b909",
+      "event": "task/progress",
+      "at": "2026-11-19T10:11:32.829778Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "1361dd3c-b025-4847-8175-9230041b5b09",
+      "event": "check/passed",
+      "at": "2026-11-19T10:11:32.840146Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "f048e6fde87eb6f256eb69a23bf6ce34dc98a56a",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "d1682227-8f45-44cb-80c5-c354293cab6e",
+      "event": "ticket/note",
+      "at": "2026-11-19T10:11:43.317541Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction (before fix, argv filter: build/integration/test_agent_scheduler edit_of_running_task_is_deferred): 2 failures in 40 runs, both at test_agent_scheduler.c:1215 (TASK_0 text lacks '@repeat 3'); the deferral assertion (message 'after the task ends') never failed, so the edit was always deferred and the second hypothesis (body finishing before the edit arrives) was not observed. Root cause: finish_task() in indigo_agent_scheduler.c sends 'Task ... completed' and only then calls apply_pending_edit(), which updates TASK_0 (text + OK state) via replace_text(); the test snapshotted TASK_0 right after the message. The agent order is kept: the message announces the run of the old text under its old name, and a pending edit may rename the task, so no agent change and no DRIVER_VERSION bump. Fix (test only): remember the TASK_0 revision of the BUSY 'edit deferred' update and, after the completion message, wait_property_state() for a later TASK_0 update in OK state; replace_text() is the only place that sets TASK_n to OK, so this awaits exactly the applied edit. After fix: 60/60 runs of the case passed; full scheduler integration suite via flow check --command: 132 run, 132 passed, 0 failed; whitespace check passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "9074038d-2180-426a-8fdd-1dd098af9e8e",
+      "event": "task/progress",
+      "at": "2026-11-19T10:12:10.274675Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "289ade6d-97ec-46c0-b949-5316dbdfce06",
+      "text": "Reviewer launched",
+      "attempt_id": "489b685d-b622-4521-b1bb-ccfb342f467e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "46005853-b899-4808-a612-0f81fca7b58c",
+      "event": "task/progress",
+      "at": "2026-11-19T10:12:10.336390Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5ad775e1-f4da-4bc5-882c-a540c2504f1e",
+      "text": "Review started"
+    },
+    {
+      "event_id": "851802e6-9f84-4b6d-a28f-b6444b04193c",
+      "event": "review/started",
+      "at": "2026-11-19T10:12:10.336590Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "bd4873b0-1a0f-4eeb-94d4-b7756d2625cf",
+      "event": "task/progress",
+      "at": "2026-11-19T10:12:48.138673Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5ad775e1-f4da-4bc5-882c-a540c2504f1e",
+      "text": "Running edit_of_running_task_is_deferred 40 times from the worktree build"
+    },
+    {
+      "event_id": "e5d5be32-1939-4333-b8de-2ea9b17146c4",
+      "event": "task/progress",
+      "at": "2026-11-19T10:14:59.820967Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5ad775e1-f4da-4bc5-882c-a540c2504f1e",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d4263672-d603-428c-855b-638085c5f844",
+      "event": "review/passed",
+      "at": "2026-11-19T10:14:59.821274Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5ad775e1-f4da-4bc5-882c-a540c2504f1e",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "f048e6fde87eb6f256eb69a23bf6ce34dc98a56a"
+    },
+    {
+      "event_id": "d2519f81-cf51-4c82-b485-fc4e738cb2b8",
+      "event": "ticket/closed",
+      "at": "2026-11-19T10:16:29.617070Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T10:16:29.617041Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "5b0f6b9ccbb280169149d43893cfbffff2d46978"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f048e6fde87eb6f256eb69a23bf6ce34dc98a56a",
+        "tree": "386448bb24139f87260224b8f99bc2eca83c840b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T10:06:23.667927Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/6e48ddd3-0c28-4160-82c8-11aa64b04a37/386448bb2413-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "f048e6fde87eb6f256eb69a23bf6ce34dc98a56a",
+        "tree": "386448bb24139f87260224b8f99bc2eca83c840b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T10:11:32.824705Z",
+        "duration_s": 305.3,
+        "log": "/tmp/factory-flow/6e48ddd3-0c28-4160-82c8-11aa64b04a37/386448bb2413-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "No defects found. Root cause confirmed: finish_task() (indigo_agent_scheduler.c:1355-1357) sends 'Task ... completed' and only afterwards calls apply_pending_edit() (1373) -> replace_text() (1049-1075), which sets TASK_n OK and updates it; the old test snapshotted TASK_0 right after the message. Snapshot timing is correct: change_text() (test:337-343) returns only after wait_property_state() saw a TASK_0 update with revision > pre-request revision in BUSY state (the deferred update from edit_task():2610-2611), so revision() at test:1212 is >= the BUSY revision and the upload/define or any earlier OK update cannot satisfy the new wait (requires revision > deferred and OK). Same task name, so replace_text takes the update path, not delete/define. replace_text is the only OK-setting update of TASK_n in this flow. Wait is bounded (1000 x 10 ms in wait_property_state, test:265). Assertions unchanged; the '@repeat 3' check is retained. Residual theoretical case: if the OK update arrived within change_text's <=0.5 s message wait the snapshot would already include it and the wait would time out (false failure, not false pass); unreachable in practice since the 2 s body is mid-run and the message follows the BUSY update immediately. Second hypothesis (body finishing before the edit) would fail at the BUSY REQUIRE, unchanged by this ticket. Keeping the agent order is sound (completion message names the old run; a pending edit may rename). Recorded checks whitespace and command-1 (132/132) are at f048e6fde = current HEAD, tree 386448bb. Reviewer ran the worktree binary (newer than source) for the case 40 times: 40/40 passed.'",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "f048e6fde87eb6f256eb69a23bf6ce34dc98a56a",
+        "tree": "386448bb24139f87260224b8f99bc2eca83c840b",
+        "at": "2026-11-19T10:14:59.820885Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T10:11:43.317284Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction (before fix, argv filter: build/integration/test_agent_scheduler edit_of_running_task_is_deferred): 2 failures in 40 runs, both at test_agent_scheduler.c:1215 (TASK_0 text lacks '@repeat 3'); the deferral assertion (message 'after the task ends') never failed, so the edit was always deferred and the second hypothesis (body finishing before the edit arrives) was not observed. Root cause: finish_task() in indigo_agent_scheduler.c sends 'Task ... completed' and only then calls apply_pending_edit(), which updates TASK_0 (text + OK state) via replace_text(); the test snapshotted TASK_0 right after the message. The agent order is kept: the message announces the run of the old text under its old name, and a pending edit may rename the task, so no agent change and no DRIVER_VERSION bump. Fix (test only): remember the TASK_0 revision of the BUSY 'edit deferred' update and, after the completion message, wait_property_state() for a later TASK_0 update in OK state; replace_text() is the only place that sets TASK_n to OK, so this awaits exactly the applied edit. After fix: 60/60 runs of the case passed; full scheduler integration suite via flow check --command: 132 run, 132 passed, 0 failed; whitespace check passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "5b0f6b9ccbb280169149d43893cfbffff2d46978",
+      "tree": "386448bb24139f87260224b8f99bc2eca83c840b",
+      "base": "master",
+      "at": "2026-11-19T10:16:29.545469Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T06:30:14.275848Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T06:31:11.251772Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 961255.593,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 26,
+    "sha256": "8ce23860e56535bba20b3759053b5e7310a12204f9831abdfeda2badabd9e537"
+  }
+}
