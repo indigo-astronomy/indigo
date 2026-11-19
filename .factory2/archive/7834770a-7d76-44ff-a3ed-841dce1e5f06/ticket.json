@@ -1,0 +1,433 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7834770a-7d76-44ff-a3ed-841dce1e5f06",
+  "revision": 20,
+  "title": "indigo_mount_rainbow: MOUNT_EQUATORIAL_COORDINATES handler publishes the coordinates twice",
+  "description": "Owner request (2026-11-19): the duplicate is an obvious defect, fix it. Found by the survey recorded in ticket 42b85be0-1f19-4607-b3c3-746e60317d17.\n\nindigo_drivers/mount_rainbow/indigo_mount_rainbow.driver (3.0.0.25), on_change of the inherited MOUNT_EQUATORIAL_COORDINATES: both the SYNC branch and the GoTo branch call indigo_update_coordinates(device, NULL) themselves, and the generator appends its own indigo_update_coordinates(device, NULL) at the end of mount_equatorial_coordinates_handler, so every accepted request publishes MOUNT_EQUATORIAL_COORDINATES, MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME twice with the same state.\n\nFix: remove the hand-written calls and let the generated epilogue publish once, in every exit path (sync OK/ALERT, GoTo BUSY, GoTo ALERT); keep the state assignments and the scheduling of mount_goto_finalizer correct (the on_change references _finalizer, so check in the regenerated handler what the generator emits and that exactly one update is published per path). Driver version incremented, outputs regenerated. Simulator tests: assert one coordinates update per request in each path; recorded run with tools/run_driver_test.py mount_rainbow; MIGRATION_STATUS.md counts.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T21:16:37.445261Z",
+  "status": "closed",
+  "branch": "ticket/7834770a-7d76-44ff-a3ed-841dce1e5f06",
+  "related_ticket_id": "42b85be0-1f19-4607-b3c3-746e60317d17",
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "329adbfe-3657-4d46-9d04-1a47fab101b5",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:16:42.300360Z",
+          "last_activity_at": "2026-11-19T21:35:53.867128Z",
+          "ended_at": "2026-11-19T21:35:53.867128Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1151566.768,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T21:16:42.300360Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/7834770a-7d76-44ff-a3ed-841dce1e5f06"
+        },
+        {
+          "at": "2026-11-19T21:35:53.867128Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1151566.768,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "e2aa2f18-a352-4e72-b616-39e065d98547",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "b9cf870d-5f5a-4a8e-aa0e-41cd3e2f8b13",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:35:53.867422Z",
+          "last_activity_at": "2026-11-19T21:42:10.716830Z",
+          "ended_at": "2026-11-19T21:42:10.716830Z",
+          "outcome": {
+            "summary": "Reviewed git diff 1c2d5cb3d4...HEAD (1b57c4d35). Regenerated mount_equatorial_coordinates_handler (indigo_mount_rainbow.c:872-914) now publishes exactly once per path: parked guard INDIGO_UPDATE_PROPERTY_STATE ALERT + return (unchanged); sync OK/ALERT and GoTo BUSY/ALERT via the single generated indigo_update_coordinates() epilogue; reject_change paths in change_property (INDIGO_REJECT_CHANGE_IF) never reach the handler. mount_goto_finalizer scheduled before the BUSY epilogue cannot run first: indigo_timer.c queue_func runs one task at a time on a single worker thread and the finalizer is queued on the same device queue with 0.2 s delay; its BUSY check sees the handler's state. Only behaviour change is the removed duplicate (failure branch moved to else, same assignments). Regenerating the .driver with the worktree build/bin/indigo_generator in a temp dir gives .c/.h/_main.c byte-identical to the checked-in files. No other handler has a hand-written update followed by a generated update of the same property (park/home/guide publish BUSY then ALERT intentionally; finalizer suppresses the generated epilogue there). New case rainbow_coordinates_request_publishes_once: built the pre-change driver (1c2d5cb3d4 .c) against the new test in a scratch dir - fails with 2/2/2 at the accepted sync assertion; with the new driver the full suite passes 40/40 and the case passed 6/6 repeats. Marker technique sound: markers and handler share NORMAL priority and FIFO order, reply processing and poll timer run on the same queue and any reply triggered inside the window is queued after the close marker; bus delivery is synchronous. Version 25->26 / 0x0300001A; MIGRATION_STATUS 40 equals the 40 cases in main(); README/TEST_SUMMARY changes are only the script record; git diff --check clean; formatting conforms. Non-blocking: none.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 376849.408,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T21:35:53.867422Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T21:42:10.716830Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Reviewed git diff 1c2d5cb3d4...HEAD (1b57c4d35). Regenerated mount_equatorial_coordinates_handler (indigo_mount_rainbow.c:872-914) now publishes exactly once per path: parked guard INDIGO_UPDATE_PROPERTY_STATE ALERT + return (unchanged); sync OK/ALERT and GoTo BUSY/ALERT via the single generated indigo_update_coordinates() epilogue; reject_change paths in change_property (INDIGO_REJECT_CHANGE_IF) never reach the handler. mount_goto_finalizer scheduled before the BUSY epilogue cannot run first: indigo_timer.c queue_func runs one task at a time on a single worker thread and the finalizer is queued on the same device queue with 0.2 s delay; its BUSY check sees the handler's state. Only behaviour change is the removed duplicate (failure branch moved to else, same assignments). Regenerating the .driver with the worktree build/bin/indigo_generator in a temp dir gives .c/.h/_main.c byte-identical to the checked-in files. No other handler has a hand-written update followed by a generated update of the same property (park/home/guide publish BUSY then ALERT intentionally; finalizer suppresses the generated epilogue there). New case rainbow_coordinates_request_publishes_once: built the pre-change driver (1c2d5cb3d4 .c) against the new test in a scratch dir - fails with 2/2/2 at the accepted sync assertion; with the new driver the full suite passes 40/40 and the case passed 6/6 repeats. Marker technique sound: markers and handler share NORMAL priority and FIFO order, reply processing and poll timer run on the same queue and any reply triggered inside the window is queued after the close marker; bus delivery is synchronous. Version 25->26 / 0x0300001A; MIGRATION_STATUS 40 equals the 40 cases in main(); README/TEST_SUMMARY changes are only the script record; git diff --check clean; formatting conforms. Non-blocking: none."
+        }
+      ],
+      "result": {
+        "summary": "Reviewed git diff 1c2d5cb3d4...HEAD (1b57c4d35). Regenerated mount_equatorial_coordinates_handler (indigo_mount_rainbow.c:872-914) now publishes exactly once per path: parked guard INDIGO_UPDATE_PROPERTY_STATE ALERT + return (unchanged); sync OK/ALERT and GoTo BUSY/ALERT via the single generated indigo_update_coordinates() epilogue; reject_change paths in change_property (INDIGO_REJECT_CHANGE_IF) never reach the handler. mount_goto_finalizer scheduled before the BUSY epilogue cannot run first: indigo_timer.c queue_func runs one task at a time on a single worker thread and the finalizer is queued on the same device queue with 0.2 s delay; its BUSY check sees the handler's state. Only behaviour change is the removed duplicate (failure branch moved to else, same assignments). Regenerating the .driver with the worktree build/bin/indigo_generator in a temp dir gives .c/.h/_main.c byte-identical to the checked-in files. No other handler has a hand-written update followed by a generated update of the same property (park/home/guide publish BUSY then ALERT intentionally; finalizer suppresses the generated epilogue there). New case rainbow_coordinates_request_publishes_once: built the pre-change driver (1c2d5cb3d4 .c) against the new test in a scratch dir - fails with 2/2/2 at the accepted sync assertion; with the new driver the full suite passes 40/40 and the case passed 6/6 repeats. Marker technique sound: markers and handler share NORMAL priority and FIFO order, reply processing and poll timer run on the same queue and any reply triggered inside the window is queued after the close marker; bus delivery is synchronous. Version 25->26 / 0x0300001A; MIGRATION_STATUS 40 equals the 40 cases in main(); README/TEST_SUMMARY changes are only the script record; git diff --check clean; formatting conforms. Non-blocking: none.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 376849.408,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "d69ded49-20cc-4316-bb60-717d8644b0dd",
+      "event": "ticket/created",
+      "at": "2026-11-19T21:16:37.446554Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "744b60b8-4ab2-4c81-9dfd-2dc4f9a91401",
+      "event": "task/progress",
+      "at": "2026-11-19T21:16:42.301034Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "Implementation started on branch ticket/7834770a-7d76-44ff-a3ed-841dce1e5f06"
+    },
+    {
+      "event_id": "c143a888-0ec5-4cc2-939d-432a89419618",
+      "event": "ticket/started",
+      "at": "2026-11-19T21:16:42.303269Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/7834770a-7d76-44ff-a3ed-841dce1e5f06",
+      "base": "ticket/42b85be0-1f19-4607-b3c3-746e60317d17"
+    },
+    {
+      "event_id": "e8de6142-99f3-474e-b60a-a14a10bebf83",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T21:18:43.760294Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "a055020c-b65d-4ecc-869d-41e08effb18b",
+      "event": "task/progress",
+      "at": "2026-11-19T21:19:27.426914Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "Implementer launched",
+      "attempt_id": "329adbfe-3657-4d46-9d04-1a47fab101b5",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "cf0e2fcb-de49-472f-a7fa-2be59e10d9a9",
+      "event": "task/progress",
+      "at": "2026-11-19T21:22:00.477362Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "Writing the coordinates publication count test for sync/GOTO accepted and failed paths"
+    },
+    {
+      "event_id": "651beedf-f478-4046-b25d-0041af09fbe8",
+      "event": "task/progress",
+      "at": "2026-11-19T21:23:17.635315Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "Running test_mount_rainbow_simulator new case against unchanged driver 3.0.0.25"
+    },
+    {
+      "event_id": "2a21147e-0bf5-4d04-a54a-b1d49aa952cd",
+      "event": "task/progress",
+      "at": "2026-11-19T21:24:37.119942Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "Reproduced on 3.0.0.25: sync OK, GOTO BUSY, sync ALERT, GOTO ALERT each publish EQ/HOR/LST 2x"
+    },
+    {
+      "event_id": "c49ad03a-1586-4b58-b52c-b2181032a5a3",
+      "event": "task/progress",
+      "at": "2026-11-19T21:25:16.927023Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "Running full test_mount_rainbow_simulator against fixed driver 3.0.0.26"
+    },
+    {
+      "event_id": "f7dbe452-5d69-469b-94cf-d67ce0ba869c",
+      "event": "task/progress",
+      "at": "2026-11-19T21:28:19.234499Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "After fix 3.0.0.26: all four paths publish EQ/HOR/LST once; full rainbow suite passes"
+    },
+    {
+      "event_id": "465d424c-cdc7-4c34-a05e-ee34afad1e23",
+      "event": "task/progress",
+      "at": "2026-11-19T21:28:30.138392Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "Recorded run: python3 tools/run_driver_test.py mount_rainbow (non-interactive simulator)"
+    },
+    {
+      "event_id": "674931bb-eb04-488a-8002-9f4f77e10c14",
+      "event": "ticket/note",
+      "at": "2026-11-19T21:31:44.197365Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction and result (implementer). New case rainbow_coordinates_request_publishes_once in indigo_test/integration/test_mount_rainbow_simulator.c holds the device queue, sends one MOUNT_EQUATORIAL_COORDINATES request between two NORMAL-priority marker handlers (so only its handler runs in the window) and counts MOUNT_EQUATORIAL_COORDINATES, MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME publications with force_property_updates enabled inside the window (the bus otherwise drops an unchanged second update; clients that ask for redundant updates through the session property do receive it). Before, driver 3.0.0.25: accepted sync (OK), accepted GOTO (BUSY), failed sync (ALERT, port closed by simulator CLOSE injection) and failed GOTO (ALERT) each published 2/2/2. Without forced updates an ordinary client saw 1 EQ and 0 HOR/LST for the sync, i.e. the duplicate is mostly filtered by the bus and visible only when a value changes between the two calls or to forcing clients. After, 3.0.0.26: 1/1/1 in all four paths with the expected state. Fix: .driver only, removed the two hand-written indigo_update_coordinates() calls; the sync branch keeps its explicit OK/ALERT assignment because the _finalizer reference suppresses the generated OK prologue; the GOTO branch schedules mount_goto_finalizer before the generated epilogue publishes BUSY, which is safe because the device queue has one worker thread (indigo_timer.c queue_func) and the finalizer is queued on it, and all property writes happen on that queue (reader thread only enqueues rainbow_process_messages). No other handler of the driver has a hand-written update followed by a generated one of the same property. Recorded run: 2026-11-19 22:28 3.0.0.26 mac arm64 simulator 40/40 OK. No hardware run (no device).",
+      "tokens": null
+    },
+    {
+      "event_id": "6a74c7d0-0882-44cc-9c27-c395b172f909",
+      "event": "task/progress",
+      "at": "2026-11-19T21:31:51.266675Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2c0afee7-9ccf-426a-b18f-6fa02bf1ce0e",
+      "event": "task/progress",
+      "at": "2026-11-19T21:31:51.310827Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5f86ffda-a022-4601-abc6-5435f562058a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "56fbe6bb-7b52-4161-af76-48f46fb92265",
+      "event": "check/passed",
+      "at": "2026-11-19T21:31:51.312640Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "1b57c4d351e9f6d41d6d14ca7d021cb520c425da",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "79024c8f-17f0-4b5f-af48-83da3b05b7ef",
+      "event": "task/progress",
+      "at": "2026-11-19T21:35:53.867512Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e2aa2f18-a352-4e72-b616-39e065d98547",
+      "text": "Review started"
+    },
+    {
+      "event_id": "39231356-ee48-49d0-8951-b0a5c3b5db31",
+      "event": "review/started",
+      "at": "2026-11-19T21:35:53.868986Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "2a31fbaf-2e47-4cb6-9034-9302f2e2c4db",
+      "event": "task/progress",
+      "at": "2026-11-19T21:36:29.205869Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e2aa2f18-a352-4e72-b616-39e065d98547",
+      "text": "Reviewing mount_rainbow duplicate coordinates update diff",
+      "attempt_id": "b9cf870d-5f5a-4a8e-aa0e-41cd3e2f8b13",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "d83a1ae1-51f5-4031-a61e-e1820632eb39",
+      "event": "task/progress",
+      "at": "2026-11-19T21:38:12.005726Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e2aa2f18-a352-4e72-b616-39e065d98547",
+      "text": "Running reviewer test: make -C indigo_test test-mount-rainbow-simulator"
+    },
+    {
+      "event_id": "ae0ead4b-9a56-4f1c-8574-b556a1e32822",
+      "event": "task/progress",
+      "at": "2026-11-19T21:42:10.716921Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e2aa2f18-a352-4e72-b616-39e065d98547",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "08a6eb99-00d6-48ef-b1b2-559a0d0de664",
+      "event": "review/passed",
+      "at": "2026-11-19T21:42:10.718315Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e2aa2f18-a352-4e72-b616-39e065d98547",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "1b57c4d351e9f6d41d6d14ca7d021cb520c425da"
+    },
+    {
+      "event_id": "017b865a-3335-450a-ba66-c2b72d77f584",
+      "event": "ticket/closed",
+      "at": "2026-11-19T21:42:37.716340Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-19T21:42:37.716324Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "3e9e65f5efae4c4d217bd799ee51edb0432e4d9a"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "ticket/42b85be0-1f19-4607-b3c3-746e60317d17",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "1b57c4d351e9f6d41d6d14ca7d021cb520c425da",
+        "tree": "e97380f31b6d612e9016cdadd54ab15decbdff9a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T21:31:51.310074Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/7834770a-7d76-44ff-a3ed-841dce1e5f06/e97380f31b6d-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed git diff 1c2d5cb3d4...HEAD (1b57c4d35). Regenerated mount_equatorial_coordinates_handler (indigo_mount_rainbow.c:872-914) now publishes exactly once per path: parked guard INDIGO_UPDATE_PROPERTY_STATE ALERT + return (unchanged); sync OK/ALERT and GoTo BUSY/ALERT via the single generated indigo_update_coordinates() epilogue; reject_change paths in change_property (INDIGO_REJECT_CHANGE_IF) never reach the handler. mount_goto_finalizer scheduled before the BUSY epilogue cannot run first: indigo_timer.c queue_func runs one task at a time on a single worker thread and the finalizer is queued on the same device queue with 0.2 s delay; its BUSY check sees the handler's state. Only behaviour change is the removed duplicate (failure branch moved to else, same assignments). Regenerating the .driver with the worktree build/bin/indigo_generator in a temp dir gives .c/.h/_main.c byte-identical to the checked-in files. No other handler has a hand-written update followed by a generated update of the same property (park/home/guide publish BUSY then ALERT intentionally; finalizer suppresses the generated epilogue there). New case rainbow_coordinates_request_publishes_once: built the pre-change driver (1c2d5cb3d4 .c) against the new test in a scratch dir - fails with 2/2/2 at the accepted sync assertion; with the new driver the full suite passes 40/40 and the case passed 6/6 repeats. Marker technique sound: markers and handler share NORMAL priority and FIFO order, reply processing and poll timer run on the same queue and any reply triggered inside the window is queued after the close marker; bus delivery is synchronous. Version 25->26 / 0x0300001A; MIGRATION_STATUS 40 equals the 40 cases in main(); README/TEST_SUMMARY changes are only the script record; git diff --check clean; formatting conforms. Non-blocking: none.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "1b57c4d351e9f6d41d6d14ca7d021cb520c425da",
+        "tree": "e97380f31b6d612e9016cdadd54ab15decbdff9a",
+        "at": "2026-11-19T21:42:10.716653Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T21:31:44.195865Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction and result (implementer). New case rainbow_coordinates_request_publishes_once in indigo_test/integration/test_mount_rainbow_simulator.c holds the device queue, sends one MOUNT_EQUATORIAL_COORDINATES request between two NORMAL-priority marker handlers (so only its handler runs in the window) and counts MOUNT_EQUATORIAL_COORDINATES, MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME publications with force_property_updates enabled inside the window (the bus otherwise drops an unchanged second update; clients that ask for redundant updates through the session property do receive it). Before, driver 3.0.0.25: accepted sync (OK), accepted GOTO (BUSY), failed sync (ALERT, port closed by simulator CLOSE injection) and failed GOTO (ALERT) each published 2/2/2. Without forced updates an ordinary client saw 1 EQ and 0 HOR/LST for the sync, i.e. the duplicate is mostly filtered by the bus and visible only when a value changes between the two calls or to forcing clients. After, 3.0.0.26: 1/1/1 in all four paths with the expected state. Fix: .driver only, removed the two hand-written indigo_update_coordinates() calls; the sync branch keeps its explicit OK/ALERT assignment because the _finalizer reference suppresses the generated OK prologue; the GOTO branch schedules mount_goto_finalizer before the generated epilogue publishes BUSY, which is safe because the device queue has one worker thread (indigo_timer.c queue_func) and the finalizer is queued on it, and all property writes happen on that queue (reader thread only enqueues rainbow_process_messages). No other handler of the driver has a hand-written update followed by a generated one of the same property. Recorded run: 2026-11-19 22:28 3.0.0.26 mac arm64 simulator 40/40 OK. No hardware run (no device).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "3e9e65f5efae4c4d217bd799ee51edb0432e4d9a",
+      "tree": "e97380f31b6d612e9016cdadd54ab15decbdff9a",
+      "base": "ticket/42b85be0-1f19-4607-b3c3-746e60317d17",
+      "at": "2026-11-19T21:42:37.636717Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T21:16:37.445261Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-19T21:18:43.760054Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 1528416.176,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 26,
+    "sha256": "ae95b25e4b97320aa9da31604e8cafcbf979e529a0b906b8c9a91acc190e2783"
+  }
+}
