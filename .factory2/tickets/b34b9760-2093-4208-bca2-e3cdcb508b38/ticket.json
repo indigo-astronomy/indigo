@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b34b9760-2093-4208-bca2-e3cdcb508b38",
+  "revision": 2,
+  "title": "indigo_agent_scheduler: non-ASCII text in task names and @observer, @pi, @project values is written into FITS headers",
+  "description": "Found in the review of ticket d3605ab7 (2026-11-17). FITS header values may contain only printable ASCII (0x20-0x7e, FITS 4.0 section 4.2.1). The Scheduler Agent's header parser (indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c) rejects only control characters, so UTF-8 bytes in @task names and in @observer, @pi and @project values are accepted. apply_context() in indigo_agent_scheduler.c then writes them through fits_string() into SCHTASK, OBSERVER, PI_NAME and PROPID. The documented limits also say characters while the code counts bytes.\n\nTo decide: reject non-ASCII values in the header parser for the FITS keys, or keep accepting them (task names are also used for OBJECT and folder names) and replace or strip non-ASCII bytes only when building FITS values in fits_string(). Check what the CCD driver does with such values (indigo_libs/indigo_ccd_driver.c CCD_SET_FITS_HEADER) and whether other writers (Sequencer.js set_fits_header) have the same issue. Add unit and integration tests and update SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md (characters vs bytes).",
+  "type": "bug",
+  "discovered_at": "2026-11-17T00:00:00Z",
+  "created_at": "2026-11-16T23:31:52.531114Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "4f2069e0-4234-4f19-8462-da85e7462924",
+      "event": "ticket/created",
+      "at": "2026-11-16T23:31:52.531807Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "23e2cf4e-c816-49b5-bd6b-2aeeb9745325",
+      "event": "ticket/confirmed",
+      "at": "2026-11-16T23:48:30.802722Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-16T23:31:52.531114Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-16T23:48:30.802672Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1e416923c50584b6e7476d1861f4d7ba4f68f764d2d4a8eab70200fd18216d4c"
+  }
+}
