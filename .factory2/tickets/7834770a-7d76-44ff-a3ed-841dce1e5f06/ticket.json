@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7834770a-7d76-44ff-a3ed-841dce1e5f06",
+  "revision": 1,
+  "title": "indigo_mount_rainbow: MOUNT_EQUATORIAL_COORDINATES handler publishes the coordinates twice",
+  "description": "Owner request (2026-11-19): the duplicate is an obvious defect, fix it. Found by the survey recorded in ticket 42b85be0-1f19-4607-b3c3-746e60317d17.\n\nindigo_drivers/mount_rainbow/indigo_mount_rainbow.driver (3.0.0.25), on_change of the inherited MOUNT_EQUATORIAL_COORDINATES: both the SYNC branch and the GoTo branch call indigo_update_coordinates(device, NULL) themselves, and the generator appends its own indigo_update_coordinates(device, NULL) at the end of mount_equatorial_coordinates_handler, so every accepted request publishes MOUNT_EQUATORIAL_COORDINATES, MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME twice with the same state.\n\nFix: remove the hand-written calls and let the generated epilogue publish once, in every exit path (sync OK/ALERT, GoTo BUSY, GoTo ALERT); keep the state assignments and the scheduling of mount_goto_finalizer correct (the on_change references _finalizer, so check in the regenerated handler what the generator emits and that exactly one update is published per path). Driver version incremented, outputs regenerated. Simulator tests: assert one coordinates update per request in each path; recorded run with tools/run_driver_test.py mount_rainbow; MIGRATION_STATUS.md counts.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T21:16:37.445261Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": "42b85be0-1f19-4607-b3c3-746e60317d17",
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d69ded49-20cc-4316-bb60-717d8644b0dd",
+      "event": "ticket/created",
+      "at": "2026-11-19T21:16:37.446554Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T21:16:37.445261Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "bd6a6b5d879a11045c33ab3c3af2f36c55d277f4b9fafd001f36e6db820bc502"
+  }
+}
