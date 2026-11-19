@@ -78,6 +78,8 @@ Scheduler:
   hooks ITEM=NAME ...             set hook items, ITEM= clears one; items: startup shutdown idle
                                   night_start night_end resume
   limit civil|nautical|astronomical
+  strategy compact|visibility     COMPACT starts tasks as soon as they can run, VISIBILITY plans
+                                  the runs nearer their culmination and may wait for them
   set ITEM=VALUE ...              settings, for example set NIGHT_START_OFFSET=-30 IDLE_PARK_AFTER=1
 Watching (new scheduler messages are printed after every command):
   status                          scheduler state, current task and the task list
@@ -367,6 +369,8 @@ class Sandbox:
 		self.say("scheduler: %s, done %s, failed %s, urgent done %s, urgent failed %s, total %s" % (state.get("state"), counters.get("DONE"), counters.get("FAILED"), counters.get("URGENT_DONE"), counters.get("URGENT_FAILED"), counters.get("TOTAL")))
 		for item in ("CURRENT", "REASON"):
 			self.say("  %-10s %s" % (item, self.client.value(AGENT, "AGENT_SCHEDULER_CURRENT", item) or ""))
+		strategy = [i["name"] for i in (self.client.property(AGENT, "AGENT_SCHEDULER_STRATEGY") or {}).get("items", []) if i.get("value") is True]
+		self.say("  %-10s %s" % ("strategy", strategy[0] if strategy else "?"))
 		hooks = {i["name"]: i.get("value") for i in (self.client.property(AGENT, "AGENT_SCHEDULER_HOOKS") or {}).get("items", []) if i.get("value")}
 		self.say("  hooks      " + (", ".join("%s=%s" % h for h in hooks.items()) or "none"))
 		self.show_list("AGENT_SCHEDULER_TASK_STATE", "tasks")
@@ -444,6 +448,12 @@ class Sandbox:
 				if item not in LIMITS:
 					raise ValueError("expected civil, nautical or astronomical")
 				self.client.change("Switch", AGENT, "AGENT_SCHEDULER_NIGHT", {item: True})
+				time.sleep(0.3)
+			elif verb == "strategy":
+				item = arguments[0].upper() if arguments else ""
+				if item not in ("COMPACT", "VISIBILITY"):
+					raise ValueError("expected compact or visibility")
+				self.client.change("Switch", AGENT, "AGENT_SCHEDULER_STRATEGY", {item: True})
 				time.sleep(0.3)
 			elif verb == "set":
 				items = {}

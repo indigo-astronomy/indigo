@@ -1529,6 +1529,7 @@
 		592C32D93047793D004D5AE6 /* indigo_mount_synscan.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_synscan.driver; sourceTree = "<group>"; };
 		592C3353304B5B3F004D5AE6 /* indigo_wheel_asi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_asi.driver; sourceTree = "<group>"; };
 		592C3354304BE541004D5AE6 /* bench_queue.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bench_queue.c; sourceTree = "<group>"; };
+		7C3A51E2B0D94F6A8E1C2D40 /* bench_scheduler_plan.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bench_scheduler_plan.c; sourceTree = "<group>"; };
 		592C3355304BE541004D5AE6 /* bench_timer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bench_timer.c; sourceTree = "<group>"; };
 		592C3356304BE541004D5AE6 /* TIMERS_AND_QUEUES_MERGE_REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TIMERS_AND_QUEUES_MERGE_REVIEW.md; sourceTree = "<group>"; };
 		592C3371304CAD89004D5AE6 /* indigo_ccd_dsi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ccd_dsi.driver; sourceTree = "<group>"; };
@@ -7243,6 +7244,7 @@
 			isa = PBXGroup;
 			children = (
 				592C3354304BE541004D5AE6 /* bench_queue.c */,
+				7C3A51E2B0D94F6A8E1C2D40 /* bench_scheduler_plan.c */,
 				592C3355304BE541004D5AE6 /* bench_timer.c */,
 				592C3356304BE541004D5AE6 /* TIMERS_AND_QUEUES_MERGE_REVIEW.md */,
 			);

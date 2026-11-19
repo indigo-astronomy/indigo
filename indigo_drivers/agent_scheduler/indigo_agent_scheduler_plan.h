@@ -36,9 +36,13 @@
 extern "C" {
 #endif
 
-/** The number of best-scoring candidates examined for deferral at one decision; the next ones start without the look-ahead.
+/** The most task runs the VISIBILITY plan arranges; a night with more is planned as COMPACT.
  */
-#define SCHEDULER_MAX_DEFER_CANDIDATES	8
+#define SCHEDULER_VISIBILITY_MAX_RUNS	64
+
+/** The work budget of one VISIBILITY plan, counted in cell updates of its dynamic programme, not timed, so the plan is the same on every machine.
+ */
+#define SCHEDULER_VISIBILITY_BUDGET	20000000L
 
 /** A task as the plan sees it.
  */
@@ -63,7 +67,7 @@ typedef struct {
 	bool running;
 } scheduler_plan_hook;
 
-/** One planned run: of a task, or of a hook when hook is not -1 (task is -1 then). deferred_from is the time at which a task run held back for a better slot would have started without the hold, 0 when it was not held.
+/** One planned run: of a task, or of a hook when hook is not -1 (task is -1 then).
  */
 typedef struct {
 	int task;
@@ -71,8 +75,28 @@ typedef struct {
 	int run;
 	time_t start, end;
 	bool running;
-	time_t deferred_from;
 } scheduler_plan_run;
+
+/** How a VISIBILITY plan was decided.
+ */
+typedef enum {
+	SCHEDULER_VISIBILITY_PLANNED,
+	SCHEDULER_VISIBILITY_NOT_BETTER,
+	SCHEDULER_VISIBILITY_NO_ARRANGEMENT,
+	SCHEDULER_VISIBILITY_TOO_LARGE
+} scheduler_visibility_result;
+
+/** What indigo_scheduler_plan_visibility() did: the task runs and the summed quality (percent of the transit altitude times hours) of the COMPACT plan and of the plan returned, whether the COMPACT plan was kept and why, the work used and the time taken.
+ */
+typedef struct {
+	int compact_runs;
+	double compact_value;
+	int runs;
+	double value;
+	scheduler_visibility_result result;
+	long work;
+	double seconds;
+} scheduler_plan_info;
 
 /** Score of a task at time t; higher is selected first.
  */
@@ -90,13 +114,13 @@ extern int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_
  */
 extern int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, scheduler_plan_run *runs, int max_runs);
 
-/** Same as indigo_scheduler_plan_with_hooks(), deferring tasks as indigo_scheduler_plan_decide() does at every decision. A defer_gain of 0 gives the same plan as indigo_scheduler_plan_with_hooks().
+/** The night plan of the VISIBILITY strategy, with the same inputs and runs as indigo_scheduler_plan_with_hooks(). It never plans fewer task runs than the COMPACT plan, starts from its runs, adds the runs COMPACT leaves out where they fit, and chooses their order and start times, on whole UTC minutes, so that the summed run quality weighted by the run duration is highest. Runs of urgent tasks keep their COMPACT start. The COMPACT plan is returned when no arrangement is better. previous (may be NULL) is the rest of the last VISIBILITY plan, with task indexes into tasks; it seeds the search and wins ties, which keeps the plan stable. info (may be NULL) tells what was decided.
  */
-extern int indigo_scheduler_plan_with_deferral(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, double defer_gain, scheduler_plan_run *runs, int max_runs);
+extern int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, const scheduler_plan_run *previous, int previous_count, scheduler_plan_run *runs, int max_runs, scheduler_plan_info *info);
 
-/** The decision at now among the eligible tasks without urgency, given as indexes into tasks ranked by score, best first. A candidate is held back when a start later tonight raises its run quality by at least defer_gain percentage points and greedy simulations of the rest of the night show that the hold loses no run of any task and raises the summed run quality; it is then held until its release, the first eligible start within defer_gain of the best one. At most SCHEDULER_MAX_DEFER_CANDIDATES candidates are examined, the next one starts without the look-ahead. Returns the index of the task to start, or -1 when every candidate waits; waiting and release then name the held task with the earliest release. The plan of indigo_scheduler_plan_with_deferral() takes the same decision at every step.
+/** The best start times of the VISIBILITY plan for task runs in a fixed order, given as task indexes into tasks, without urgent runs; for tests. Stores the starts and returns the summed quality weighted by the run duration, or -1 when the order has no feasible arrangement.
  */
-extern int indigo_scheduler_plan_decide(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, double defer_gain, const int *ranked, int ranked_count, int *waiting, time_t *release);
+extern double indigo_scheduler_plan_order(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, const int *order, int order_count, time_t *starts);
 
 #ifdef __cplusplus
 }

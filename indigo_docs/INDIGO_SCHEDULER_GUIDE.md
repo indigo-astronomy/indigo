@@ -213,7 +213,7 @@ The check is made when the task starts, with the expected duration, in five-minu
 - Within a class, the scheduler compares a score made of the level and two bonuses:
   - the level, 0–100;
   - a **setting** bonus of up to `100 × SETTING_WEIGHT`, largest for a task whose constraints stop holding soonest, for example a target that is setting or a window that is closing;
-  - an **altitude** bonus of up to `100 × ALTITUDE_WEIGHT`, largest for a target near its own culmination (highest point), where it reaches the full bonus. The altitude is taken relative to the highest altitude that target reaches at your latitude, so a southern target at transit scores the same as a northern one at transit, and tasks tend to run near their own culmination rather than all at dusk. A task without `@target` gets none. The bonus only compares the tasks that can start at the same moment; by default the scheduler never waits for a better time, see [How the next task is chosen](#how-the-next-task-is-chosen) and `DEFER` for the exception. `@ha` remains the hard window. A 0 only means no bonus: whether a task can run is decided by its constraints (eligibility), so an eligible task with a 0 altitude bonus, such as one without `@target`, still runs when it scores highest or is the only eligible task.
+  - an **altitude** bonus of up to `100 × ALTITUDE_WEIGHT`, largest for a target near its own culmination (highest point), where it reaches the full bonus. The altitude is taken relative to the highest altitude that target reaches at your latitude, so a southern target at transit scores the same as a northern one at transit, and tasks tend to run near their own culmination rather than all at dusk. A task without `@target` gets none. The bonus only compares the tasks that can start at the same moment; by default the scheduler never waits for a better time, see [How the next task is chosen](#how-the-next-task-is-chosen) and the `VISIBILITY` strategy for the exception. `@ha` remains the hard window. A 0 only means no bonus: whether a task can run is decided by its constraints (eligibility), so an eligible task with a 0 altitude bonus, such as one without `@target`, still runs when it scores highest or is the only eligible task.
 
   With the default weights of 1, the two bonuses together can add up to 200 points, more than the whole level range. A `normal 40` target that is high and about to set can therefore run before a `normal 60` target. To make the level decide strictly, set `SETTING_WEIGHT` and `ALTITUDE_WEIGHT` to 0 in [Settings](#settings); to make the sky position count more, raise them. The bonuses never cross a class: with the maximum weights of 4, the level and the bonuses together add at most 900 points, less than the 1000-point gap between classes.
 - When the scores are equal, the task higher in the task list wins. You can move tasks in the list, see [Changing the order](#changing-the-order).
@@ -236,45 +236,58 @@ Whenever nothing runs (when a task ends, after a change of the tasks and every `
 1. **Which tasks can run.** A task can run now only when all its constraints (`@window`, `@altitude`, `@airmass`, `@ha`, `@moon`, `@illumination`, `@twilight`) hold for its **whole duration**, from now until now + `@duration`. A target that would sink below `@altitude > 30` twenty minutes into a one-hour run does not start. Tasks that cannot run show `WAITING`.
 2. **Urgent tasks first.** An urgent task that can run starts before everything else, in the order the urgent tasks were submitted.
 3. **The best score wins.** The other tasks that can run are compared by their score: the class (`high`, `normal`, `low`), then the level plus the setting and altitude bonuses, see [Priorities](#priorities). The altitude bonus is 100 at the target's own culmination and 0 for a task without `@target`. A bonus of 0 never stops a task from running; it only makes it lose against tasks with a higher score.
-4. **Start now.** By default the best task starts at once. The scheduler is *greedy*: it never leaves the equipment idle while some task can run, and it does not look ahead in the night. With a short queue this means that all tasks run one after another from dusk, even when a target would be much higher a few hours later. The setting `DEFER` changes this, see below.
+4. **Start now, or as planned.** With the default strategy `COMPACT` the best task starts at once. The scheduler is then *greedy*: it never leaves the equipment idle while some task can run, and it does not look ahead in the night. With a short queue this means that all tasks run one after another from dusk, even when a target would be much higher a few hours later. With the strategy `VISIBILITY` the scheduler plans the whole night first, never with fewer runs than `COMPACT` would make, and places the runs where their targets stand highest; it starts the first run of that plan at its planned time and may wait for it, see [Choosing a strategy](#choosing-a-strategy).
 5. **Nothing to start.** The scheduler shows the reason in `REASON` and checks again every `IDLE_CHECK_INTERVAL`. After `IDLE_PARK_AFTER` minutes the `IDLE` hook runs, see [Hooks](#hooks).
 
 The night plan applies exactly the same rules to the rest of the night, so it shows the order and times the scheduler will follow, see [The night plan](#the-night-plan).
 
-#### Waiting for a better slot: `DEFER`
+#### Choosing a strategy
 
-`DEFER` in [Settings](#settings) lets the scheduler hold a task back for a slot nearer its culmination. It is a strength from 0 to 100: 0 (off) is the default, and a higher value waits for a slot nearer the culmination. With a value such as 79, the scheduler looks at the best task before starting it:
+`AGENT_SCHEDULER_STRATEGY` decides how the scheduler uses the night. It has two settings, one of them on:
 
-- It measures the quality of a run as the mean altitude of the target during the run, in percent of the altitude the target reaches at its culmination. 100 % is a run centred on the culmination.
-- The strength sets the gain the scheduler waits for, in percentage points of this quality: 20 points at `DEFER` 1, falling linearly to 1 point at `DEFER` 100 (gain = 20 − 19 × (`DEFER` − 1) / 99, so 50 is about 10.6 points and 79 about 5 points).
-- When a start later tonight would raise the quality by at least this gain, the task is a candidate for waiting. It waits only until the first start that is within the gain of the best one, not until the best start itself.
-- The scheduler then simulates the rest of the night with and without the wait. The task waits only when **no task loses a run** that the night could hold, counting repeats, urgent tasks and window ends, and when the runs of the night get better as a whole. A full night is therefore never made shorter; the wait uses only time that would otherwise be idle.
-- While a task waits, the next task in the ranking is considered the same way, so another task, for example one without `@target` such as flats, can use the gap. When every candidate waits, nothing starts.
+- **`COMPACT`** (the default) starts the best task as soon as one can run. The night fills from dusk, and the equipment is never idle while a task could run. With a short queue all tasks run one after another from dusk and the rest of the night stays empty.
+- **`VISIBILITY`** first plans the whole night. The plan never has fewer runs than `COMPACT` would make, adds the runs `COMPACT` leaves out where they still fit, and then moves the runs to the times where their targets stand highest. It leaves gaps where waiting gains more than it costs. The scheduler starts the first run of this plan at its planned time and plans again after every run.
 
-Some things never wait: urgent tasks, tasks without `@target`, and tasks whose best slot is now. A waiting task stays `QUEUED`. `REASON` then names the first run of the night plan, for example `M31 waits until 18:20 UTC, nearer its culmination`, and the night plan lists the run at that time with the reason `deferred from 17:00`, the time it would have started otherwise. While it waits, the scheduler follows that plan: nothing starts before the planned run, unless something changes, such as an upload, an urgent task or a new setting; then it decides again. Waiting counts as idle time: after `IDLE_PARK_AFTER` minutes the `IDLE` hook runs, and the `RESUME` hook runs before the waiting task starts. If you use an `IDLE` hook that parks or closes the dome, give `IDLE_PARK_AFTER` a value long enough that a short wait does not park and unpark.
+**The quality of a run** is the mean altitude of the target during the run, in percent of the altitude it reaches at its culmination: 100 % is a run centred on the culmination, a target that sinks towards the horizon scores less. `VISIBILITY` makes the sum of these qualities as large as it can, each weighted by the length of its run, so two hours at 95 % count more than twenty minutes at 99 %. A task without `@target` has no quality; it runs where the plan has room for it, as early as it can there.
 
-**Example.** At 48° N on 19 November 2026, four one-hour tasks with `@altitude > 30` and `@twilight astronomical` (dusk at 17:00 UTC, dawn at 04:20 UTC):
+**Example.** At 42° N, 23° E on 19 November 2026, six tasks with `@twilight astronomical` and `@altitude > 20` (`> 10` for Pleiades and Soul), Orion with `@priority high`, astronomical dusk at 16:45 UTC:
 
-| Task | Culmination | `DEFER` 0 | `DEFER` 79 |
-|---|---|---|---|
-| M31 | 19:40 | 17:00, 79 % | 18:20, 94 % |
-| M45 | 22:45 | 18:00, 53 % | 21:10, 95 % |
-| M81 | 04:50 | 19:20, 46 % | 02:20, 93 % |
-| M42 | 00:30 | 22:30, 90 % | 23:00, 95 % |
-| Mean quality | | 67 % | 94 % |
+| Task | Length | Culmination (UTC) | `COMPACT` | Quality | `VISIBILITY` | Quality |
+|---|---|---|---|---|---|---|
+| Elephant | 121 min | 16:08 | 16:45–18:46 | 91 % | 16:45–18:46 | 91 % |
+| Soul | 28 min | 21:25 | 18:46–19:14 | 85 % | 21:15–21:43 | 100 % |
+| Pleiades | 21 min | 22:21 | 19:14–19:35 | 67 % | 22:10–22:31 | 100 % |
+| Jellyfish | 121 min | 00:50 | 19:35–21:36 | 48 % | 23:51–01:52 | 98 % |
+| Orion | 31 min | 00:08 | 21:36–22:07 | 78 % | 23:20–23:51 | 98 % |
+| Rosette | 21 min | 01:06 | 22:07–22:28 | 69 % | 01:52–02:13 | 96 % |
+| Mean | | | | 73 % | | 97 % |
 
-Without the setting, everything runs from dusk: M45 almost five hours before its culmination, M81 low in the north in the evening instead of high before dawn, and the equipment is idle after 23:30. With 79, every task still runs once, each close to its culmination, and the idle time is spread over the night.
+With `COMPACT` everything runs from dusk: Jellyfish more than three hours before its culmination at less than half of its best altitude, and the equipment is idle after 22:28. With `VISIBILITY` every task still runs once, each close to its culmination, and the scheduler waits between Elephant and Soul. Elephant stays at dusk, where it stands highest tonight.
 
-**Choosing a value.**
+**When to use which.**
 
-- **0** keeps the classic behaviour: start whatever is best now.
-- **About 80** is a good start for most nights. It waits for a gain of about 5 points, which catches tasks that would run hours away from their culmination and ignores small differences.
-- **90–100** waits for almost the best slot, a gain of 3 points down to 1. It creates more and longer waits.
-- **1–50** waits only for a large gain, 20 points down to about 10, for example a target that would otherwise run near its lowest point.
+- `COMPACT` for a queue that fills the night, for many short tasks, or when the weather is uncertain and you prefer data early in the night.
+- `VISIBILITY` for a queue shorter than the night, so the targets can wait for their culmination. When the queue fills the night, there is little room to move runs, and both strategies give nearly the same plan.
 
-A higher value waits for a slot nearer the culmination, but each wait is still decided one task at a time. When the waits fill the night, a very high value can let one task lose its slot to a neighbour: in the example above, from 96 on M45 runs so late that M42 starts right after it, at 22:40 with 92 %, instead of waiting until 23:25, and the mean quality falls from 97 % to 96 %.
+**What `VISIBILITY` respects.**
 
-When the queue fills the night, for example with many targets or `@repeat`, there is no idle time to move tasks into, and the setting changes little or nothing. Use `@ha` instead when a task must run within a fixed range of hour angles; `DEFER` is a preference, `@ha` a hard limit.
+- It never plans fewer runs in total than `COMPACT`. Priority decides which runs are in the plan: it starts from the runs of `COMPACT`, and to keep the runs it planned before it may leave out a `COMPACT` run whose priority class is not above theirs, never a run of a higher class or an urgent one; within the plan a `high` run may come after a `normal` one when that puts both higher in the sky.
+- Urgent tasks never wait: they run at once, also during a wait, and keep the times `COMPACT` gives them in the plan.
+- Every run keeps all its constraints for its whole duration: `@window`, nightly windows, `@ha`, `@twilight`, `@altitude` and the Moon. `@repeat … every` keeps its spacing, also when other runs come between two runs of a task, and repeat and retry delays are kept. `@ha` stays the hard limit; the strategy is a preference within it.
+- Hooks are not blocked: a hook due during a run runs after it, and a hook delays the next run by its duration.
+- Runs start on whole UTC minutes.
+- The plan is computed again after every run and after every change (an upload, an edit, an urgent task, a new setting, a new site, the night hooks); while nothing changes, the plan and its times stay. A failed run with `@retry` is planned again after its delay.
+- Waiting is idle time. The `IDLE` hook does not start while the next planned run starts within `IDLE_PARK_AFTER` minutes. When `IDLE_PARK_AFTER` minutes have passed and the next run is still further away, `IDLE` runs, and `RESUME` runs before the planned run. If your `IDLE` hook parks the mount or closes the dome, choose `IDLE_PARK_AFTER` so that a short wait does not park and unpark.
+- With more than 64 runs in a night, `VISIBILITY` uses the `COMPACT` plan and says so once a night.
+
+**What you see during a wait.** The tasks stay `QUEUED`. `REASON` names the next planned run, for example `Soul starts at 21:15 UTC, planned for better visibility`, and the night plan lists every run at its planned time, with the gaps as idle time.
+
+```
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_STRATEGY.VISIBILITY=ON"
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_STRATEGY.COMPACT=ON"
+```
+
+Switching back to `COMPACT` during a wait starts the best task at once. A running task is never stopped by a change of the strategy.
 
 ### Time windows
 
@@ -587,7 +600,7 @@ Hooks are stored tasks that the scheduler runs at special moments, for example t
 |---|---|
 | `STARTUP` | On `START`, before the first task. If it fails, the scheduler stops with Alert |
 | `SHUTDOWN` | When the scheduler stops: on `STOP`, on `ABORT` and on the automatic stop. It does not run after a failed `STARTUP` hook or after a stop timeout, and it is skipped with a message when another sequence occupies the Scripting Agent |
-| `IDLE` | Once, after the scheduler has found nothing to run for `IDLE_PARK_AFTER` minutes, for example to park the mount while waiting for clouds, for a target to rise or for a task held back by `DEFER`. It does not run again while the equipment is in standby, see [Several nights](#several-nights) |
+| `IDLE` | Once, after the scheduler has found nothing to run for `IDLE_PARK_AFTER` minutes, for example to park the mount while waiting for clouds, for a target to rise or for a run planned later by `VISIBILITY`. It does not run again while the equipment is in standby, see [Several nights](#several-nights) |
 | `NIGHT_START` | When a night with work starts, see [Several nights](#several-nights). If it fails, the `SHUTDOWN` hook runs and the scheduler stops with Alert |
 | `NIGHT_END` | When that night ends |
 | `RESUME` | Before a task that starts after the `IDLE` or `NIGHT_END` hook put the equipment away. If it fails, the `SHUTDOWN` hook runs and the scheduler stops with Alert |
@@ -732,19 +745,18 @@ A night then runs like this:
 | `OPERATION_OVERHEAD` | s | 120 | 0–3600 | Time added per slew, centering, focus or guiding start in the duration estimate |
 | `NIGHT_START_OFFSET` | min | 0 | −240–240 | Shift of the night start for the night hooks; negative is earlier, see [Several nights](#several-nights) |
 | `NIGHT_END_OFFSET` | min | 0 | −240–240 | Shift of the night end for the night hooks; negative is earlier |
-| `DEFER` | % | 0 | 0–100 | 0 is off. Otherwise a task may wait for a slot later tonight where its mean altitude is higher by a gain in percent of its culmination altitude, when no run is lost; a higher value waits for a smaller gain, 20 at 1 down to 1 at 100, see [Waiting for a better slot](#waiting-for-a-better-slot-defer) |
 
 ```
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.IDLE_CHECK_INTERVAL=10;IDLE_PARK_AFTER=20"
 ```
 
-For a short queue that does not fill the night, let the targets wait for their culmination:
+For a short queue that does not fill the night, let the targets wait for their culmination with the strategy `VISIBILITY` in `AGENT_SCHEDULER_STRATEGY`, see [Choosing a strategy](#choosing-a-strategy):
 
 ```
-indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.DEFER=79"
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_STRATEGY.VISIBILITY=ON"
 ```
 
-The tasks, their states and counters, the settings, the data settings, the hooks, the night limit and the history are saved in the scheduler's configuration and restored when the server starts.
+The tasks, their states and counters, the settings, the strategy, the data settings, the hooks, the night limit and the history are saved in the scheduler's configuration and restored when the server starts.
 
 ## Watching the scheduler
 
@@ -776,7 +788,7 @@ A one-off urgent task leaves the task list when it ends, so it is counted in `UR
 | Item | Meaning |
 |---|---|
 | `CURRENT` | The running task or hook, empty when none runs |
-| `REASON` | Why nothing runs now: the reason of the first waiting task in the list, or the task held back by `DEFER` and when it starts, see [Reasons](#reasons) |
+| `REASON` | Why nothing runs now: the reason of the first waiting task in the list, or with `VISIBILITY` the next planned run and when it starts, see [Reasons](#reasons) |
 
 ```
 indigo_prop_tool get_state "Scheduler Agent.AGENT_SCHEDULER_STATE"
@@ -835,7 +847,7 @@ The priority is `urgent`, the class and level of the task such as `normal 60`, o
 2026-11-20 20:14-20:44 | SN 2026abc | run 1/1 | urgent | PLANNED | -
 2026-11-20 20:44-22:36 | M31 LRGB | run 1/2 | normal 60 | PLANNED | -
 2026-11-20 23:36-01:28 | M31 LRGB | run 2/2 | normal 60 | PLANNED | -
-2026-11-21 01:45-02:45 | M81 | run 1/1 | normal 50 | PLANNED | deferred from 01:28
+2026-11-21 01:45-02:45 | M81 | run 1/1 | normal 50 | PLANNED | -
 2026-11-21 05:10-05:12 | Morning | - | hook night end | PLANNED | -
 - | M42 | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit
 - | NGC 891 | run 0/1 | normal 50 | NOT TONIGHT | disabled
@@ -843,7 +855,7 @@ The priority is `urgent`, the class and level of the task such as `normal 60`, o
 
 - Each run shows its expected UTC start and end, the task, the run number of a repeated task and the priority. The night hooks appear at their expected times with `-` as the run and `hook night start` or `hook night end` as the priority.
 - The state is `RUNNING` (Busy light) for the running task or hook and `PLANNED` (Idle light) for planned runs.
-- The reason of a planned run is `-`, or `deferred from HH:MM` for a run that [`DEFER`](#waiting-for-a-better-slot-defer) holds back for a slot nearer its culmination; HH:MM is the UTC time at which it would have started otherwise. The gap before it is idle time.
+- The reason of a planned run is `-`. A gap between runs is idle time: with `COMPACT` nothing can run then, with [`VISIBILITY`](#choosing-a-strategy) the plan waits for a better slot.
 - While a hook runs, whatever its kind (`hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`), it is the first item, for example `2026-11-20 19:58-20:03 | Evening | - | hook night start | RUNNING | -`. Its end is its start plus its duration, but not earlier than a minute from now, and the planned runs follow from that end. A running night hook replaces its planned item, and the item disappears when the hook ends. Only the night hooks are forecast; `STARTUP`, `SHUTDOWN`, `IDLE` and `RESUME` show up only while they run.
 - After the runs come the tasks that will not run tonight, with an Alert light, `-` as the time, the state `NOT TONIGHT` and the reason. Typical reasons are a constraint that never holds tonight (see [Reasons](#reasons)), `disabled`, `script error`, or `no time left tonight` for a task that could run but finds no room after the others. A day without night, with night hooks set, adds the item `- | - | - | - | NOT TONIGHT | no night at the night limit within a day, the night hooks do not run`.
 - During the day the plan shows the coming night. When the night of the night hooks ends after sunrise, the plan lasts until it ends. It is shown also while the scheduler is stopped, as the plan that `START` would follow.
@@ -918,8 +930,7 @@ A rejected request puts the property you changed into the Alert state, and a mes
 | `window ends before the task can finish`, `nightly window ends before the task can finish` | The run does not fit in `@window` |
 | `site coordinates unknown` | No Mount Agent is loaded on this server, or it has no site coordinates |
 | `beyond the forecast` | The constraints would have to hold beyond the next 48 hours |
-| `<task> waits until HH:MM UTC, nearer its culmination` | Every task that could run now is held back by `DEFER`; the named task is the first one the night plan runs, at the given time, after its own wait. It takes precedence over the reasons of the other tasks |
-| `<task> starts at HH:MM UTC, the eligible tasks wait nearer their culmination` | Every task that could run now is held back by `DEFER`, and the first run of the night plan is another task that cannot start yet, for example until its window opens |
+| `<task> starts at HH:MM UTC, planned for better visibility` | With `VISIBILITY` a task could run now, but the plan starts its next run, of the named task, at the given time. It takes precedence over the reasons of the tasks that cannot run |
 | `estimating the task duration` | The estimate of a task has not finished yet; no other task starts before it, except an urgent one |
 | `no task is ready`, `no tasks`, `all tasks finished` | Nothing to run |
 | `another sequence is running` | A sequence started by hand occupies the Scripting Agent |
@@ -1024,6 +1035,7 @@ It puts the site on the equator and moves its longitude to choose the time of da
 | `hold` | A task for the day after tomorrow, which keeps the scheduler from stopping when the other tasks are finished |
 | `hooks idle=Park resume=` | Set or clear hook items |
 | `limit nautical`, `set NIGHT_START_OFFSET=-30` | The night limit and the settings |
+| `strategy visibility`, `strategy compact` | The [strategy](#choosing-a-strategy); `status` shows it |
 | `start`, `stop`, `abort`, `reset NAME`, `delete NAME` | Control the scheduler and the tasks |
 | `reset_all`, `delete_all` | Reset every task, or delete every task that is not a hook task; the sandbox prompt does not ask for a confirmation |
 | `status`, `plan`, `history` | The task list, the night plan and the history |
@@ -1044,8 +1056,8 @@ With `--script`, or with commands on standard input, an `until` that times out e
 | Problem | What to check |
 |---|---|
 | A task never starts | `REASON` and the night plan say why. A task waits until all its constraints hold for its whole duration; a shorter `@duration` or wider limits help |
-| A task could run but the scheduler waits | `DEFER` holds it back for a slot nearer its culmination; `REASON` names the start time. Set `DEFER` to 0 to start tasks as soon as they can run, or lower it to wait less |
-| All tasks run right after dusk although the night is long | That is the default greedy selection; set `DEFER`, for example to 79, see [Waiting for a better slot](#waiting-for-a-better-slot-defer) |
+| A task could run but the scheduler waits | The strategy `VISIBILITY` plans it for a better slot; `REASON` names the planned start. Switch to `COMPACT` to start tasks as soon as they can run |
+| All tasks run right after dusk although the night is long | That is the default strategy `COMPACT`; switch to `VISIBILITY`, see [Choosing a strategy](#choosing-a-strategy) |
 | Every task waits with `site coordinates unknown` | Load the Mount Agent (`indigo_agent_mount`) on the same server as the Scheduler Agent and set its site (`GEOGRAPHIC_COORDINATES`), see [Agents the scheduler depends on](#agents-the-scheduler-depends-on) |
 | The upload is rejected | The message of the Scheduler Agent names the line and the problem |
 | A task shows `SCRIPT ERROR` | The message names the JavaScript error. Fix the body with an edit, or `RESET` the task after fixing an agent the body needed |
@@ -1086,5 +1098,6 @@ All properties belong to the device "Scheduler Agent". [PROPERTIES.md](PROPERTIE
 | `AGENT_SCHEDULER_DATA_DIR` | text | `BASE` | Parent folder of the task folders, empty for the folder of the Imager Agent |
 | `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE`, `NIGHT_START`, `NIGHT_END`, `RESUME` | Hook task names |
 | `AGENT_SCHEDULER_NIGHT` | switch | `CIVIL`, `NAUTICAL`, `ASTRONOMICAL` | The night limit of the night hooks |
+| `AGENT_SCHEDULER_STRATEGY` | switch | `COMPACT`, `VISIBILITY` | How the next task is chosen, see [Choosing a strategy](#choosing-a-strategy) |
 
 `AGENT_SCHEDULER_ADD_TASK.STATUS` and `AGENT_SCHEDULER_RESTORE_HISTORY` are used only to restore the configuration; leave them alone.
