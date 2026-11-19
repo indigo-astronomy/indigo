@@ -1,0 +1,1407 @@
+{
+  "schema_version": 1,
+  "ticket_id": "cc3c31d5-4e48-4dcf-9d9d-4a78450e946b",
+  "revision": 77,
+  "title": "indigo_agent_scheduler: add DEFER_GAIN to wait for a slot nearer the culmination instead of running every task from dusk, faster night plans",
+  "description": "Follow-up to 85f0bbec (relative altitude score). The scheduler is greedy and never idles while a task is eligible, so with a queue shorter than the night every task still runs back to back from dusk; the score only chooses between tasks eligible at the same moment. Simulation with the plan code (site 48.15 N 17.11 E, 2026-11-19, @altitude 30, four 60 min tasks M81, M42, M31, M45): both master and the relative score run M31 17:00, M45 18:05, M81 19:20, M42 22:30 UTC; M45 culminates at 22:45 UTC. Mean altitude during the runs is 67 % of the transit altitude in both versions. Altitude map artifact: https://claude.ai/code/artifact/cddb2045-33b1-4d9d-a034-4f858156c15a\n\nGoal: let the scheduler leave the equipment idle (or run another task) instead of starting a task far from its culmination when a clearly better slot remains tonight.\n\nDesign to agree with the owner before implementation; candidates:\n- a scheduler-wide setting (e.g. a minimum relative altitude, or a maximum hours before transit) under which a task is not started while the night plan shows a later slot tonight where it scores better and still fits;\n- a per-task header key (e.g. `@near_transit <hours>` or a soft HA preference) instead of or in addition to the setting;\n- a look-ahead in the night plan: start a task now only if delaying it does not lose any run that the plan can place tonight.\nQuestions: idle time vs. quality trade-off, interaction with the IDLE hook (IDLE_PARK_AFTER) and standby, repeats with intervals, urgent tasks, @window ends, the night plan display (a waiting task should show its planned later start), and the reason shown in AGENT_SCHEDULER_CURRENT while waiting.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-19T00:12:14.634672Z",
+  "status": "closed",
+  "branch": "ticket/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2",
+      "title": "Design",
+      "type": "planning",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "0249c693-d07a-45f9-acb3-12f677737b95",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T00:16:07.827400Z",
+          "last_activity_at": "2026-11-19T00:36:45.516621Z",
+          "ended_at": "2026-11-19T00:36:45.516621Z",
+          "outcome": {
+            "summary": "Approved design.md",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1237689.221,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T00:16:07.827400Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design started"
+        },
+        {
+          "at": "2026-11-19T00:36:45.516621Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Approved design.md"
+        }
+      ],
+      "result": {
+        "summary": "Approved design.md",
+        "source": "owner",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "phase": "design",
+      "action": "implement",
+      "workflow_step": "design/implement",
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 1237689.221,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "aae82ec3-4d52-44a0-89ee-ef0dd3d0b763",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T00:39:40.401146Z",
+          "last_activity_at": "2026-11-19T01:02:36.223682Z",
+          "ended_at": "2026-11-19T01:02:36.223682Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1375822.536,
+          "tokens": null
+        },
+        {
+          "attempt_id": "bccd1cd3-a957-44a1-96bc-71db059f8c81",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T01:09:17.234156Z",
+          "last_activity_at": "2026-11-19T01:47:05.458094Z",
+          "ended_at": "2026-11-19T01:47:05.458094Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2268223.938,
+          "tokens": null
+        },
+        {
+          "attempt_id": "5af0d98e-6f8e-4096-98d0-6adbf7b8fb21",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T01:53:14.576383Z",
+          "last_activity_at": "2026-11-19T06:16:25.375254Z",
+          "ended_at": "2026-11-19T06:16:25.375254Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 15790798.871,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T00:39:40.401146Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b"
+        },
+        {
+          "at": "2026-11-19T01:02:36.223682Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-19T01:09:17.234156Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-19T01:47:05.458094Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-19T01:53:14.576383Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-19T06:16:25.375254Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 19434845.345,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    },
+    {
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3ceecaa1-e1e8-4d77-813f-f4447e8ec807",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-19T01:02:36.223723Z",
+          "last_activity_at": "2026-11-19T01:09:17.234070Z",
+          "ended_at": "2026-11-19T01:09:17.234070Z",
+          "outcome": {
+            "summary": "Verdict: changes (one concrete defect, two minor items). Tests: test_agent_scheduler_plan 32/32 passed; test_agent_scheduler 131/131 passed (incl. edit_of_running_task_is_deferred and the 6 new deferral cases).\n\n1. [defect] The night plan and the scheduler disagree after a run ends. In simulate() (indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c, decide() sets state->available_from[i] = hold at ~line 410, kept until the release) a hold stays in force for the rest of the outer simulation, even after another task starts. The runtime (select_deferred(), indigo_agent_scheduler.c) keeps no holds and checks the no-loss and quality guards again at every decision, so after any task ends it may start a held task earlier, or a different task, than the plan showed. Scratch harness, 300 random queues of 3-16 targets, 15-90 min, gain 5, every run lasting exactly its duration: the stateless runtime differs from its own initial plan in 91/300 queues (gain 0: 0/300). Examples: seed 3, a task planned at 23:00 starts at 22:25; seed 6, task 8 starts at 19:55 where the plan had task 4 at 21:35. The runtime never lost runs or quality against greedy, so the guarantees hold, but the documented promises are wrong: SCHEDULER.md:641 ('the run starts at the time the plan shows'), INDIGO_SCHEDULER_GUIDE.md:242 ('shows the order and times the scheduler will follow'), and design 3.2 ('the forecast start equals the real start'). test_defer_decision_matches_plan only checks the wait before the first start, so it does not catch this. Fix, verified in a scratch copy: in simulate(), when defer is on and a task starts, put every other held task (deferred_from != 0 && available_from > t) back to available_from = t so the next decision checks it again, as the runtime does. That gives 0/300 divergence, the unit suite still passes, and the worked example is unchanged. Cost on this x86: 128 tasks of 5 min go from 0.14 s to 0.63 s per plan, the other cases from 0.01 to 0.04 s. Add a test that re",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 401010.347,
+          "tokens": null
+        },
+        {
+          "attempt_id": "aa8bfa13-826e-42a5-b302-a2d69fc0e623",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-19T01:47:05.458116Z",
+          "last_activity_at": "2026-11-19T01:53:14.576297Z",
+          "ended_at": "2026-11-19T01:53:14.576297Z",
+          "outcome": {
+            "summary": "Round 2. Verified: release_holds; replan-follows-plan (300 random queues, gain 5/10/20: 0 divergent, no run or quality loss vs greedy); next-start search bounded at plan end (equivalent for gain 0); constant-time points_time_to_set is exact for windowless tasks (derivation: fails at grid(bad-1), or from when bad<=first+1, grid end via sky_covers, horizon cap; also checked by the existing random reference test test_points_match_reference) and is not used with a window; gain 0 unchanged (defer_wait_until stays 0, the refresh/cadence code is unchanged then); invalidation covers edit/delete/reset/enable/urgent/settings/hooks/night/site/start/finish/START/STOP/ABORT/RETRY-REPEAT; cached start re-checks eligibility through candidates[]; weather is not an input (TODO), moon is on the grid. Tests: plan 34/34, sky 16/16, integration test_agent_scheduler 131/131. DEFECT 1 (blocking): refresh_nights() (indigo_agent_scheduler.c:1852) rebuilds the night table every hour (now - nights->built >= SKY_REFRESH_INTERVAL) and sets plan_dirty unconditionally, so a deferral wait is discarded once an hour and re-decided mid-wait. The refresh_sky() exception (1541-1552) is therefore ineffective; sky->start is floored to 5 min, so the two rebuilds fall on different ticks. Harness with an hourly re-decision during waits: 101-104 of 300 random queues execute differently from the plan shown (mean quality 82.4 -> 82.1, no run lost). This contradicts the owner's decision (a) and SCHEDULER.md:654 ('The hourly rebuild ... does not discard it. The run therefore starts at the time the plan shows'). Fix: in refresh_nights keep plan_dirty during a wait when only time changed (same site, limit and offsets), as refresh_sky does, or document the hourly re-decision. MINOR (doc accuracy): REASON names the held task with the earliest release (select_deferred), but the wait ends at the plan's first task run, which can be a different task or time (for example a task whose window opens earlier). INDIGO_SCHEDUL",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 369118.181,
+          "tokens": null
+        },
+        {
+          "attempt_id": "5252f987-09db-479d-9ab3-297398d5ceb8",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T06:16:25.375275Z",
+          "last_activity_at": "2026-11-19T06:24:03.598470Z",
+          "ended_at": "2026-11-19T06:24:03.598470Z",
+          "outcome": {
+            "summary": "Round 3 review of 9efcf5678 (diff from merge-base 890646492; worktree clean, master has not touched any scheduler file since). Round-2 fixes: refresh_nights() (indigo_agent_scheduler.c:1848-1856) now sets plan_dirty only when indigo_scheduler_nights_changed() reports a changed input or no wait is active. refresh_sky() (1541-1552) does the same. A change of site, limit or offset still drops the wait. The helper's unit test (test_agent_scheduler_night.c changed_inputs) is enough for a two-term condition that cannot be reached in integration without a clock hook. REASON (select_deferred, 2455-2477) is now built from the plan's first task run. decide() returns -1 only when every eligible non-urgent candidate is held, so a first run without deferred_from must belong to a task that is not eligible now. That makes the 'starts at ..., the eligible tasks wait' wording true. When no task run is planned, it falls back to the held task with the earliest release, which is also true. A/C/D: I rebuilt the bench from the worktree with build.sh. verify gives 8e7cd36d5e574eac (300 cases) and cbb58d43316b0969 (600 cases), the same as a build of perf/orig, which is identical to the round-2 plan.c. The perf, heavy, hooks and windows hashes all match. I rebuilt ttscheck against the worktree sky.c: 1141200 checks, 0 differ. Reasoning: A (next_good) is exact because points_ok uses floor(first), so every start before the next passing point contains a failing point. C: the cache lives on the stack of each plan_with_deferral/plan_decide call and is shared only with that call's nested simulations. It depends only on the constraints. It is checked after runs_left/available_from. Nightly-window tasks are excluded (points_next does not step to minute openings). The end+1 sentinel is safe. D: next_bad_step is filled in points_build next to next_bad/next_good, so the tables are rebuilt together. Gain 0: select_deferred is not called, defer_wait_until stays 0, so the refresh and process paths are un",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 458223.195,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1bda4a21-86e8-48ec-973a-f797f86fd64b",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T06:28:25.162065Z",
+          "last_activity_at": "2026-11-19T06:29:06.303292Z",
+          "ended_at": "2026-11-19T06:29:06.303292Z",
+          "outcome": {
+            "summary": "Docs follow-up review of 971bb5cec. The only change since the round-3 pass (9efcf5678 = HEAD~1) is 2 lines in indigo_drivers/agent_scheduler/doc/SCHEDULER.md, and the worktree is clean. (1) Line 507: test_points_match_reference exists in indigo_test/unit/test_agent_scheduler_sky.c (lines 368-431) and is registered as points_match_reference. It runs 720 random cases from random_header(), which includes absolute windows (30%) and nightly windows (20%). It compares indigo_scheduler_points_next with indigo_scheduler_next_eligible (reasons included), indigo_scheduler_points_time_to_set with indigo_scheduler_time_to_set, and points_ok with interval_ok, and it also checks the grid-boundary cases. The new sentence is accurate. (2) Line 666: gain-0 'about 0.03 ms' matches the round-3 bench measurement (0.03 ms on the i5-9400; gain 5 0.25 ms, stated as about 0.3 ms). It does not contradict the table or the text: the idle-time queues at 0.1 ms do more next-start searches, and the 4-task row stays 'below 0.1 ms'. No tests were run, as instructed.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 41141.227,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T01:02:36.223723Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T01:09:17.234070Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Verdict: changes (one concrete defect, two minor items). Tests: test_agent_scheduler_plan 32/32 passed; test_agent_scheduler 131/131 passed (incl. edit_of_running_task_is_deferred and the 6 new deferral cases).\n\n1. [defect] The night plan and the scheduler disagree after a run ends. In simulate() (indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c, decide() sets state->available_from[i] = hold at ~line 410, kept until the release) a hold stays in force for the rest of the outer simulation, even after another task starts. The runtime (select_deferred(), indigo_agent_scheduler.c) keeps no holds and checks the no-loss and quality guards again at every decision, so after any task ends it may start a held task earlier, or a different task, than the plan showed. Scratch harness, 300 random queues of 3-16 targets, 15-90 min, gain 5, every run lasting exactly its duration: the stateless runtime differs from its own initial plan in 91/300 queues (gain 0: 0/300). Examples: seed 3, a task planned at 23:00 starts at 22:25; seed 6, task 8 starts at 19:55 where the plan had task 4 at 21:35. The runtime never lost runs or quality against greedy, so the guarantees hold, but the documented promises are wrong: SCHEDULER.md:641 ('the run starts at the time the plan shows'), INDIGO_SCHEDULER_GUIDE.md:242 ('shows the order and times the scheduler will follow'), and design 3.2 ('the forecast start equals the real start'). test_defer_decision_matches_plan only checks the wait before the first start, so it does not catch this. Fix, verified in a scratch copy: in simulate(), when defer is on and a task starts, put every other held task (deferred_from != 0 && available_from > t) back to available_from = t so the next decision checks it again, as the runtime does. That gives 0/300 divergence, the unit suite still passes, and the worked example is unchanged. Cost on this x86: 128 tasks of 5 min go from 0.14 s to 0.63 s per plan, the other cases from 0.01 to 0.04 s. Add a test that re"
+        },
+        {
+          "at": "2026-11-19T01:47:05.458116Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T01:53:14.576297Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2. Verified: release_holds; replan-follows-plan (300 random queues, gain 5/10/20: 0 divergent, no run or quality loss vs greedy); next-start search bounded at plan end (equivalent for gain 0); constant-time points_time_to_set is exact for windowless tasks (derivation: fails at grid(bad-1), or from when bad<=first+1, grid end via sky_covers, horizon cap; also checked by the existing random reference test test_points_match_reference) and is not used with a window; gain 0 unchanged (defer_wait_until stays 0, the refresh/cadence code is unchanged then); invalidation covers edit/delete/reset/enable/urgent/settings/hooks/night/site/start/finish/START/STOP/ABORT/RETRY-REPEAT; cached start re-checks eligibility through candidates[]; weather is not an input (TODO), moon is on the grid. Tests: plan 34/34, sky 16/16, integration test_agent_scheduler 131/131. DEFECT 1 (blocking): refresh_nights() (indigo_agent_scheduler.c:1852) rebuilds the night table every hour (now - nights->built >= SKY_REFRESH_INTERVAL) and sets plan_dirty unconditionally, so a deferral wait is discarded once an hour and re-decided mid-wait. The refresh_sky() exception (1541-1552) is therefore ineffective; sky->start is floored to 5 min, so the two rebuilds fall on different ticks. Harness with an hourly re-decision during waits: 101-104 of 300 random queues execute differently from the plan shown (mean quality 82.4 -> 82.1, no run lost). This contradicts the owner's decision (a) and SCHEDULER.md:654 ('The hourly rebuild ... does not discard it. The run therefore starts at the time the plan shows'). Fix: in refresh_nights keep plan_dirty during a wait when only time changed (same site, limit and offsets), as refresh_sky does, or document the hourly re-decision. MINOR (doc accuracy): REASON names the held task with the earliest release (select_deferred), but the wait ends at the plan's first task run, which can be a different task or time (for example a task whose window opens earlier). INDIGO_SCHEDUL"
+        },
+        {
+          "at": "2026-11-19T06:16:25.375275Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T06:24:03.598470Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 3 review of 9efcf5678 (diff from merge-base 890646492; worktree clean, master has not touched any scheduler file since). Round-2 fixes: refresh_nights() (indigo_agent_scheduler.c:1848-1856) now sets plan_dirty only when indigo_scheduler_nights_changed() reports a changed input or no wait is active. refresh_sky() (1541-1552) does the same. A change of site, limit or offset still drops the wait. The helper's unit test (test_agent_scheduler_night.c changed_inputs) is enough for a two-term condition that cannot be reached in integration without a clock hook. REASON (select_deferred, 2455-2477) is now built from the plan's first task run. decide() returns -1 only when every eligible non-urgent candidate is held, so a first run without deferred_from must belong to a task that is not eligible now. That makes the 'starts at ..., the eligible tasks wait' wording true. When no task run is planned, it falls back to the held task with the earliest release, which is also true. A/C/D: I rebuilt the bench from the worktree with build.sh. verify gives 8e7cd36d5e574eac (300 cases) and cbb58d43316b0969 (600 cases), the same as a build of perf/orig, which is identical to the round-2 plan.c. The perf, heavy, hooks and windows hashes all match. I rebuilt ttscheck against the worktree sky.c: 1141200 checks, 0 differ. Reasoning: A (next_good) is exact because points_ok uses floor(first), so every start before the next passing point contains a failing point. C: the cache lives on the stack of each plan_with_deferral/plan_decide call and is shared only with that call's nested simulations. It depends only on the constraints. It is checked after runs_left/available_from. Nightly-window tasks are excluded (points_next does not step to minute openings). The end+1 sentinel is safe. D: next_bad_step is filled in points_build next to next_bad/next_good, so the tables are rebuilt together. Gain 0: select_deferred is not called, defer_wait_until stays 0, so the refresh and process paths are un"
+        },
+        {
+          "at": "2026-11-19T06:28:25.162065Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T06:29:06.303292Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Docs follow-up review of 971bb5cec. The only change since the round-3 pass (9efcf5678 = HEAD~1) is 2 lines in indigo_drivers/agent_scheduler/doc/SCHEDULER.md, and the worktree is clean. (1) Line 507: test_points_match_reference exists in indigo_test/unit/test_agent_scheduler_sky.c (lines 368-431) and is registered as points_match_reference. It runs 720 random cases from random_header(), which includes absolute windows (30%) and nightly windows (20%). It compares indigo_scheduler_points_next with indigo_scheduler_next_eligible (reasons included), indigo_scheduler_points_time_to_set with indigo_scheduler_time_to_set, and points_ok with interval_ok, and it also checks the grid-boundary cases. The new sentence is accurate. (2) Line 666: gain-0 'about 0.03 ms' matches the round-3 bench measurement (0.03 ms on the i5-9400; gain 5 0.25 ms, stated as about 0.3 ms). It does not contradict the table or the text: the idle-time queues at 0.1 ms do more next-start searches, and the 4-task row stays 'below 0.1 ms'. No tests were run, as instructed."
+        }
+      ],
+      "result": {
+        "summary": "Docs follow-up review of 971bb5cec. The only change since the round-3 pass (9efcf5678 = HEAD~1) is 2 lines in indigo_drivers/agent_scheduler/doc/SCHEDULER.md, and the worktree is clean. (1) Line 507: test_points_match_reference exists in indigo_test/unit/test_agent_scheduler_sky.c (lines 368-431) and is registered as points_match_reference. It runs 720 random cases from random_header(), which includes absolute windows (30%) and nightly windows (20%). It compares indigo_scheduler_points_next with indigo_scheduler_next_eligible (reasons included), indigo_scheduler_points_time_to_set with indigo_scheduler_time_to_set, and points_ok with interval_ok, and it also checks the grid-boundary cases. The new sentence is accurate. (2) Line 666: gain-0 'about 0.03 ms' matches the round-3 bench measurement (0.03 ms on the i5-9400; gain 5 0.25 ms, stated as about 0.3 ms). It does not contradict the table or the text: the idle-time queues at 0.1 ms do more next-start searches, and the 4-task row stays 'below 0.1 ms'. No tests were run, as instructed.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 1269492.95,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 4
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "1d49dbb6-777c-43bd-88fc-4d0e649fb2b7",
+      "event": "ticket/created",
+      "at": "2026-11-19T00:12:14.635369Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "full"
+    },
+    {
+      "event_id": "32f470c7-7fc6-452e-9808-0b242143b17d",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T00:16:07.701333Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "full",
+      "corrected": null
+    },
+    {
+      "event_id": "208e01bf-165a-4026-8c59-3637a1ab28f8",
+      "event": "task/progress",
+      "at": "2026-11-19T00:16:07.827494Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2",
+      "text": "Design started"
+    },
+    {
+      "event_id": "3557e859-f5ea-4fdb-b0ab-879b57b457c7",
+      "event": "stage/started",
+      "at": "2026-11-19T00:16:07.828211Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2"
+    },
+    {
+      "event_id": "8ea5f262-e6f8-485b-8ea3-44ff4efabf47",
+      "event": "task/progress",
+      "at": "2026-11-19T00:16:29.099251Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2",
+      "text": "Design worker launched",
+      "attempt_id": "0249c693-d07a-45f9-acb3-12f677737b95",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "93e0b048-b7b8-4edf-8ef0-2a35263677fc",
+      "event": "task/progress",
+      "at": "2026-11-19T00:16:43.914624Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2",
+      "text": "Reading scheduler selection, idle and plan code"
+    },
+    {
+      "event_id": "abc68dc0-876e-4244-952e-86dc5c04fa79",
+      "event": "task/progress",
+      "at": "2026-11-19T00:18:08.692101Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2",
+      "text": "Prototyping the look-ahead deferral in a scratch copy of the plan code"
+    },
+    {
+      "event_id": "2089c2d7-7e7b-4623-bb48-ffc9620dc90e",
+      "event": "task/progress",
+      "at": "2026-11-19T00:21:39.940719Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2",
+      "text": "Simulations done (greedy, look-ahead, threshold); writing design.md"
+    },
+    {
+      "event_id": "6ffe784d-c25e-45cd-aaca-758d063747ac",
+      "event": "task/progress",
+      "at": "2026-11-19T00:23:09.327810Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2",
+      "text": "design.md written: option C (look-ahead deferral, DEFER_GAIN setting), 7 open questions"
+    },
+    {
+      "event_id": "967bd57e-4e2d-4f8f-bb5e-f6831226a1d3",
+      "event": "stage/presented",
+      "at": "2026-11-19T00:23:28.368547Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "73aa40a9-c21c-4a25-a88f-ba8b3dc067f5",
+      "event": "ticket/note",
+      "at": "2026-11-19T00:36:45.378875Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions on design.md open questions: (1) DEFER_GAIN default 0 (off); (2) the IDLE hook runs during a deferral wait like any wait; (3) a deferred task stays QUEUED; (4) cap of 8 examined candidates per decision, fallback to 4 if the 256-task test is slow; (5) scheduler-wide setting only, no per-task @defer; (6) the shift-the-whole-block variant is left for a later ticket; (7) quality = mean relative altitude over the run.",
+      "tokens": null
+    },
+    {
+      "event_id": "42367ec2-4273-467c-9193-044660850110",
+      "event": "task/progress",
+      "at": "2026-11-19T00:36:45.516707Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2",
+      "text": "Design approved: design.md"
+    },
+    {
+      "event_id": "55d08b3a-1493-4aa3-bd73-0a85cf894f92",
+      "event": "stage/approved",
+      "at": "2026-11-19T00:36:45.517291Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "44d72116-bad2-4165-8e41-ef79788f0fe2",
+      "file": "design.md"
+    },
+    {
+      "event_id": "9f30060d-5812-489a-b57c-b821a7fbf097",
+      "event": "ticket/note",
+      "at": "2026-11-19T00:39:31.652477Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner request with the start: update the user guide (indigo_docs/INDIGO_SCHEDULER_GUIDE.md) and the design document (indigo_drivers/agent_scheduler/doc/SCHEDULER.md) and explain the scheduling well: how a task is chosen (eligibility, urgent first, score terms incl. the relative altitude), why the scheduler is greedy and when DEFER_GAIN holds a task back for a slot nearer its culmination, with a worked example and how the night plan and REASON show it.",
+      "tokens": null
+    },
+    {
+      "event_id": "f953c8af-24d4-435f-8243-af3f562b1de8",
+      "event": "task/progress",
+      "at": "2026-11-19T00:39:40.401248Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Implementation started on branch ticket/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b"
+    },
+    {
+      "event_id": "fb312537-aa2d-4929-a596-ee6eb6adb54d",
+      "event": "ticket/started",
+      "at": "2026-11-19T00:39:40.402145Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b",
+      "base": "master"
+    },
+    {
+      "event_id": "f3d4a922-80ed-4f28-9ee7-13e416c3d58e",
+      "event": "task/progress",
+      "at": "2026-11-19T00:40:01.119842Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Implementer launched",
+      "attempt_id": "aae82ec3-4d52-44a0-89ee-ef0dd3d0b763",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f2a40c07-1201-459e-abb5-812bb6a305fa",
+      "event": "task/progress",
+      "at": "2026-11-19T00:43:23.308224Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Implementing the deferral decision in indigo_agent_scheduler_plan.c"
+    },
+    {
+      "event_id": "357ed062-fbce-46a1-9ad2-f089e36a7bc7",
+      "event": "task/progress",
+      "at": "2026-11-19T00:47:47.580309Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Writing the deferral unit tests in test_agent_scheduler_plan.c"
+    },
+    {
+      "event_id": "43ff2a20-196d-4ce2-ad10-b93fc908abb4",
+      "event": "task/progress",
+      "at": "2026-11-19T00:49:44.390157Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Wiring DEFER_GAIN into the agent: setting, selection, REASON and plan label"
+    },
+    {
+      "event_id": "30cfa667-f80d-4509-a1cc-0831eefeeb15",
+      "event": "task/progress",
+      "at": "2026-11-19T00:52:07.689043Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Writing the deferral integration cases in test_agent_scheduler.c"
+    },
+    {
+      "event_id": "a163e878-90fb-4053-b79e-0d01ae9d139e",
+      "event": "task/progress",
+      "at": "2026-11-19T00:52:49.179853Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Running the full test_agent_scheduler integration suite"
+    },
+    {
+      "event_id": "32b9388f-97c6-4819-9f64-2e1cb8217017",
+      "event": "task/progress",
+      "at": "2026-11-19T00:53:55.449726Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Documenting the selection and DEFER_GAIN in SCHEDULER.md"
+    },
+    {
+      "event_id": "b03a1450-aad8-4d2e-8548-8280342d032b",
+      "event": "task/progress",
+      "at": "2026-11-19T00:55:20.756662Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Documenting task selection and DEFER_GAIN in INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md"
+    },
+    {
+      "event_id": "96a49ea6-6e04-4d02-86db-9892fe7edf28",
+      "event": "task/progress",
+      "at": "2026-11-19T00:56:21.734546Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "82364c3f-0291-4081-b2d5-3ae420fa6afe",
+      "event": "task/progress",
+      "at": "2026-11-19T00:56:21.772904Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "3fc3266f-1e84-4f9f-af36-3783fcc74e7a",
+      "event": "task/progress",
+      "at": "2026-11-19T00:56:21.778352Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "76302461-9fb4-41a0-ba39-d4e269ef694c",
+      "event": "task/progress",
+      "at": "2026-11-19T00:58:05.885806Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "aa5fda06-2584-49e6-b11b-dc9527bc4d12",
+      "event": "check/passed",
+      "at": "2026-11-19T00:58:05.891249Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "b056e89ec18cdb5a4b7b862919051051498618a1",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "24a41c1b-6a18-40c6-8248-8916de85d6ce",
+      "event": "task/progress",
+      "at": "2026-11-19T00:58:17.735310Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Rerunning the full test_agent_scheduler suite on the final tree"
+    },
+    {
+      "event_id": "4d06b6d9-2679-4dea-b7f1-0b200398c9e2",
+      "event": "task/progress",
+      "at": "2026-11-19T01:01:57.036164Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Implementation done: flow check passed, scheduler suite 131/131"
+    },
+    {
+      "event_id": "d0644946-d215-457b-984c-1e35fa42a091",
+      "event": "task/progress",
+      "at": "2026-11-19T01:02:36.223791Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Review started"
+    },
+    {
+      "event_id": "1c3338f5-44ae-4dcc-a224-59a0fbd86b33",
+      "event": "review/started",
+      "at": "2026-11-19T01:02:36.224456Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "29fe2b30-59bf-480e-9024-da909c53d763",
+      "event": "task/progress",
+      "at": "2026-11-19T01:02:40.148747Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Reviewer launched",
+      "attempt_id": "3ceecaa1-e1e8-4d77-813f-f4447e8ec807",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "79fdc957-9112-48ca-9305-8fad2991bf57",
+      "event": "task/progress",
+      "at": "2026-11-19T01:04:34.513354Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Running plan unit test and test_agent_scheduler suite"
+    },
+    {
+      "event_id": "7579b37d-db45-4b17-96e1-b8a77128163c",
+      "event": "task/progress",
+      "at": "2026-11-19T01:09:17.234147Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "538ffb14-38d6-42da-8b0c-d8b6fbf742d9",
+      "event": "task/progress",
+      "at": "2026-11-19T01:09:17.234184Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "6ba7974d-2801-4326-a305-c107aae1f5f7",
+      "event": "review/changes_requested",
+      "at": "2026-11-19T01:09:17.234870Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "b056e89ec18cdb5a4b7b862919051051498618a1"
+    },
+    {
+      "event_id": "07de2683-2a63-4e2b-94d3-a5f24d80c631",
+      "event": "task/progress",
+      "at": "2026-11-19T01:10:16.498292Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 1: releasing holds when a run starts, measuring the cost"
+    },
+    {
+      "event_id": "48ce4417-8f66-42c4-befb-581366c717c4",
+      "event": "task/progress",
+      "at": "2026-11-19T01:16:27.682234Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 1: replan, cap and heavy-deferral performance tests"
+    },
+    {
+      "event_id": "fd2c721f-669f-4239-8e28-2fcc47dba004",
+      "event": "task/progress",
+      "at": "2026-11-19T01:23:48.479858Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 1: updating SCHEDULER.md and the guide for holds, the wait and measured costs"
+    },
+    {
+      "event_id": "3bd1e5c5-ff3d-4421-845c-d91be8d87055",
+      "event": "task/progress",
+      "at": "2026-11-19T01:23:53.050317Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2ca89f80-ce62-4c6c-bd23-1fbbf8f4b340",
+      "event": "task/progress",
+      "at": "2026-11-19T01:23:53.072667Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5bd73615-cf5b-4d62-9af7-24283fa72fe2",
+      "event": "task/progress",
+      "at": "2026-11-19T01:23:53.078429Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "277d6a8f-280e-4ccd-8bfe-725115f9fbb2",
+      "event": "task/progress",
+      "at": "2026-11-19T01:25:21.582913Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "b95296f0-041c-42e1-b770-e4874bbc2526",
+      "event": "check/passed",
+      "at": "2026-11-19T01:25:21.590492Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "65ed45ddfb40a5ee3eb051c82212341f778b784e",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "3b75d4c9-eeb8-44b0-a9a5-010b7e7358a5",
+      "event": "task/progress",
+      "at": "2026-11-19T01:25:25.984311Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 1: running the full test_agent_scheduler suite"
+    },
+    {
+      "event_id": "f103d1e6-f501-4a8f-9a06-57dc4092cc4e",
+      "event": "task/progress",
+      "at": "2026-11-19T01:29:11.105177Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 1 fixes done: flow check passed, scheduler suite 131/131"
+    },
+    {
+      "event_id": "bb6dd94f-46e8-445d-b79e-a6fc7a97d388",
+      "event": "ticket/note",
+      "at": "2026-11-19T01:47:05.295691Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions after review round 1: (a) during a deferral wait the scheduler follows the plan that decided the wait until its first run or any change (deviation from design 3.2, which said no stored hold; re-deciding every grid step was offered and declined, it lowers the example from 94% to 92%); (b) the cost is acceptable as is: 8 candidates, full-night check, worst case about 0.1 s per plan on an i5-9400, only with DEFER_GAIN > 0.",
+      "tokens": null
+    },
+    {
+      "event_id": "6217bc00-d79a-4f97-b815-b8958884bef3",
+      "event": "task/progress",
+      "at": "2026-11-19T01:47:05.458194Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e65047c0-2a65-4870-bebf-29555cb10abb",
+      "event": "review/started",
+      "at": "2026-11-19T01:47:05.458930Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "9e14ee9f-47ef-4fd9-8a1e-446fa1c9e2c3",
+      "event": "task/progress",
+      "at": "2026-11-19T01:47:09.405627Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Reviewer launched (round 2)",
+      "attempt_id": "aa8bfa13-826e-42a5-b302-a2d69fc0e623",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "54df346a-84ee-45ca-b257-f669dda1a154",
+      "event": "task/progress",
+      "at": "2026-11-19T01:48:43.641393Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Building worktree and running plan/sky unit tests and scheduler integration suite"
+    },
+    {
+      "event_id": "794766a3-e320-4a97-b873-20fbecbcd6a3",
+      "event": "task/progress",
+      "at": "2026-11-19T01:53:14.576374Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "b762b4a9-b71a-4e65-9abd-829095ba481f",
+      "event": "task/progress",
+      "at": "2026-11-19T01:53:14.576412Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "b503ab69-17bb-44a0-9fc5-5d2e722e0de3",
+      "event": "review/changes_requested",
+      "at": "2026-11-19T01:53:14.577176Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "65ed45ddfb40a5ee3eb051c82212341f778b784e"
+    },
+    {
+      "event_id": "c9d4790f-1c30-4a51-b9c7-922706206497",
+      "event": "question/asked",
+      "at": "2026-11-19T01:53:39.271152Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Review round 2 asked for changes: (1) refresh_nights() marks the plan dirty every hour, so a deferral wait is re-decided hourly despite the follow-the-plan decision; fix: keep plan_dirty when only time changed, as refresh_sky() does. (2) REASON names the held task with the earliest release, but the wait ends at the plan's first run; build REASON from the plan's first run or reword two doc lines. Fix both and review again?"
+    },
+    {
+      "event_id": "fd9833be-781c-4700-8016-4668b234a919",
+      "event": "question/answered",
+      "at": "2026-11-19T06:02:23.765937Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Fix both (keep plan_dirty in refresh_nights() during a wait when only time changed; build REASON from the plan's first run) and review again."
+    },
+    {
+      "event_id": "a8816252-f908-4f13-bdc0-e32d967c80c0",
+      "event": "ticket/note",
+      "at": "2026-11-19T06:07:01.212459Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision: include the exact performance optimizations A (skip a whole failing stretch in points_next via next_good[]), C (per-plan cache of stretches where a task cannot start, excluding nightly-window tasks) and D (table lookup for time_to_set with a time window via next_bad_step[]) in this ticket. Study and prototypes: scratchpad/perf/ (proto_A_C_D_exact.diff, bench.c verify mode, ttscheck.c). Results must stay bit-identical; update the SCHEDULER.md Cost table and the unit test timing comment.",
+      "tokens": null
+    },
+    {
+      "event_id": "4708ada6-3e1f-432b-bf33-395d3a54dd9e",
+      "event": "task/progress",
+      "at": "2026-11-19T06:07:28.963146Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 2: applying optimizations A, C and D"
+    },
+    {
+      "event_id": "535b44ff-cf21-4ed1-b6f4-7ae5ce289a03",
+      "event": "task/progress",
+      "at": "2026-11-19T06:08:02.086957Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 2: hourly nights rebuild keeps the wait, REASON from the first planned run"
+    },
+    {
+      "event_id": "d03e8fb7-115a-47b3-965c-4cc48f0249fb",
+      "event": "task/progress",
+      "at": "2026-11-19T06:10:20.611051Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 2: updating the Cost table, REASON and the hourly rebuild in the docs"
+    },
+    {
+      "event_id": "102c1a42-6256-45b4-a67c-820eb1b10f9a",
+      "event": "task/progress",
+      "at": "2026-11-19T06:10:26.886573Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b3555a1f-e231-4705-a27e-cfd67cb77b57",
+      "event": "task/progress",
+      "at": "2026-11-19T06:10:26.925982Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "55a1cf88-2511-4e43-8e70-27030a4b4452",
+      "event": "task/progress",
+      "at": "2026-11-19T06:10:26.933941Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "25710346-a3ec-4653-862a-8c99d2faa6d1",
+      "event": "task/progress",
+      "at": "2026-11-19T06:11:55.782511Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "d7e0123d-5ef2-40d2-892f-6a485ca9bf6f",
+      "event": "check/passed",
+      "at": "2026-11-19T06:11:55.789755Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "9efcf56780127dba5e54d02974008d8bf88c0dfe",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "eca164ca-e52f-4556-9aa8-67b28ef5e3cc",
+      "event": "task/progress",
+      "at": "2026-11-19T06:12:00.950720Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 2: running the full test_agent_scheduler suite"
+    },
+    {
+      "event_id": "1169f55e-3b8a-4ecb-9ee9-b9edf2796e83",
+      "event": "task/progress",
+      "at": "2026-11-19T06:15:51.247343Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Review round 2 fixes done: flow check passed, scheduler suite run"
+    },
+    {
+      "event_id": "420a0857-9701-4883-8981-c8850ce30648",
+      "event": "task/progress",
+      "at": "2026-11-19T06:16:25.375351Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Review started"
+    },
+    {
+      "event_id": "93cb9622-819d-492b-9465-7a1b2a5c8f0c",
+      "event": "review/started",
+      "at": "2026-11-19T06:16:25.376177Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "8e212f83-02cb-40bc-8f69-bf44097d82ae",
+      "event": "task/progress",
+      "at": "2026-11-19T06:16:29.764152Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Reviewer launched (round 3)",
+      "attempt_id": "5252f987-09db-479d-9ab3-297398d5ceb8",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ccc839c3-431a-4967-a386-1a5151c64f02",
+      "event": "task/progress",
+      "at": "2026-11-19T06:17:43.870533Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Rebuilding perf bench from worktree sources and running verify"
+    },
+    {
+      "event_id": "66c45575-dc04-4679-b6e8-9bbcff3bddde",
+      "event": "task/progress",
+      "at": "2026-11-19T06:19:38.940837Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Running scheduler unit tests (plan, sky, night) and test_agent_scheduler"
+    },
+    {
+      "event_id": "4901e4d4-9cde-49a0-91d7-492d1879062a",
+      "event": "task/progress",
+      "at": "2026-11-19T06:24:03.598546Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "afc19720-4cea-4dca-adcf-d93c08433291",
+      "event": "review/passed",
+      "at": "2026-11-19T06:24:03.599392Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "9efcf56780127dba5e54d02974008d8bf88c0dfe"
+    },
+    {
+      "event_id": "1740bb11-bf15-45ef-8d00-e85719f1a34b",
+      "event": "task/progress",
+      "at": "2026-11-19T06:26:56.123091Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c1c927b3-ae71-41a1-91ce-8d79a81f0a62",
+      "text": "Coordinator fixed two SCHEDULER.md lines from review round 3 notes (owner request)"
+    },
+    {
+      "event_id": "f70c1fd6-3a00-48a1-816d-c07583ea9a1f",
+      "event": "task/progress",
+      "at": "2026-11-19T06:26:56.378133Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bde8281f-f90a-406c-b7fe-80d3f3f3ac13",
+      "event": "task/progress",
+      "at": "2026-11-19T06:26:56.401681Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "df6bfe8c-a247-46d9-ad09-986132fb4157",
+      "event": "task/progress",
+      "at": "2026-11-19T06:26:56.408611Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "0e28be20-3ac0-4f59-b70a-8aa5fd79c83c",
+      "event": "task/progress",
+      "at": "2026-11-19T06:28:24.978734Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "3798154a-318e-48ea-b3cb-026074f32104",
+      "event": "check/passed",
+      "at": "2026-11-19T06:28:24.993705Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "971bb5cec58456fdca7f25e78994b128cd49fea0",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "665b9e4f-85f7-4d60-a7e3-7cfca3e5d69b",
+      "event": "task/progress",
+      "at": "2026-11-19T06:28:25.162148Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Review started"
+    },
+    {
+      "event_id": "cc6f61ab-a28b-4d61-97cb-8b815e706106",
+      "event": "review/started",
+      "at": "2026-11-19T06:28:25.163023Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "4f03eaaf-e5b6-4072-b456-f5f09dee25c1",
+      "event": "task/progress",
+      "at": "2026-11-19T06:28:40.413598Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Reviewer launched (docs follow-up)",
+      "attempt_id": "1bda4a21-86e8-48ec-973a-f797f86fd64b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f7a098c1-8125-4809-9c99-2ea0fef3c6bd",
+      "event": "task/progress",
+      "at": "2026-11-19T06:29:06.303365Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "66962a47-f2ec-434c-97a5-fd92e6542280",
+      "event": "review/passed",
+      "at": "2026-11-19T06:29:06.304282Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c9e62185-40b5-4380-ab3c-a1020af8f4cb",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "971bb5cec58456fdca7f25e78994b128cd49fea0"
+    },
+    {
+      "event_id": "f0bf553e-3f42-4385-9a41-b0958dc29513",
+      "event": "ticket/title_changed",
+      "at": "2026-11-19T06:29:21.806734Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: wait for a better slot near culmination instead of running every task from dusk",
+      "title": "indigo_agent_scheduler: add DEFER_GAIN to wait for a slot nearer the culmination instead of running every task from dusk, faster night plans"
+    },
+    {
+      "event_id": "2b2917d4-35ae-4517-bf22-7be45763397b",
+      "event": "ticket/closed",
+      "at": "2026-11-19T06:29:22.121046Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T06:29:22.121019Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "d514bd0e4efded82a9296eeb1bc22e2c9e29cef5"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "high",
+  "flow": {
+    "profile": "full",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "b056e89ec18cdb5a4b7b862919051051498618a1",
+        "tree": "c4f9ab47593058b45324f57e5411ee610a53f4d9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T00:56:21.771900Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b/c4f9ab475930-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "b056e89ec18cdb5a4b7b862919051051498618a1",
+        "tree": "c4f9ab47593058b45324f57e5411ee610a53f4d9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T00:58:05.884933Z",
+        "duration_s": 104.1,
+        "log": "/tmp/factory-flow/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b/c4f9ab475930-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "65ed45ddfb40a5ee3eb051c82212341f778b784e",
+        "tree": "9c935eda2b4896226f23a2a10a26e0a5c0f8eed0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T01:23:53.071594Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b/9c935eda2b48-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "65ed45ddfb40a5ee3eb051c82212341f778b784e",
+        "tree": "9c935eda2b4896226f23a2a10a26e0a5c0f8eed0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T01:25:21.581750Z",
+        "duration_s": 88.5,
+        "log": "/tmp/factory-flow/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b/9c935eda2b48-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9efcf56780127dba5e54d02974008d8bf88c0dfe",
+        "tree": "4141240b1ed4db8bfc6ea7e6ccced0a12460c4d9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T06:10:26.924667Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b/4141240b1ed4-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "9efcf56780127dba5e54d02974008d8bf88c0dfe",
+        "tree": "4141240b1ed4db8bfc6ea7e6ccced0a12460c4d9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T06:11:55.781185Z",
+        "duration_s": 88.8,
+        "log": "/tmp/factory-flow/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b/4141240b1ed4-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "971bb5cec58456fdca7f25e78994b128cd49fea0",
+        "tree": "e0740b42e3df0ca0921a2a9e7e9204f32632a382",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T06:26:56.400197Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b/e0740b42e3df-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "971bb5cec58456fdca7f25e78994b128cd49fea0",
+        "tree": "e0740b42e3df0ca0921a2a9e7e9204f32632a382",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T06:28:24.974986Z",
+        "duration_s": 88.6,
+        "log": "/tmp/factory-flow/cc3c31d5-4e48-4dcf-9d9d-4a78450e946b/e0740b42e3df-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Verdict: changes (one concrete defect, two minor items). Tests: test_agent_scheduler_plan 32/32 passed; test_agent_scheduler 131/131 passed (incl. edit_of_running_task_is_deferred and the 6 new deferral cases).\n\n1. [defect] The night plan and the scheduler disagree after a run ends. In simulate() (indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c, decide() sets state->available_from[i] = hold at ~line 410, kept until the release) a hold stays in force for the rest of the outer simulation, even after another task starts. The runtime (select_deferred(), indigo_agent_scheduler.c) keeps no holds and checks the no-loss and quality guards again at every decision, so after any task ends it may start a held task earlier, or a different task, than the plan showed. Scratch harness, 300 random queues of 3-16 targets, 15-90 min, gain 5, every run lasting exactly its duration: the stateless runtime differs from its own initial plan in 91/300 queues (gain 0: 0/300). Examples: seed 3, a task planned at 23:00 starts at 22:25; seed 6, task 8 starts at 19:55 where the plan had task 4 at 21:35. The runtime never lost runs or quality against greedy, so the guarantees hold, but the documented promises are wrong: SCHEDULER.md:641 ('the run starts at the time the plan shows'), INDIGO_SCHEDULER_GUIDE.md:242 ('shows the order and times the scheduler will follow'), and design 3.2 ('the forecast start equals the real start'). test_defer_decision_matches_plan only checks the wait before the first start, so it does not catch this. Fix, verified in a scratch copy: in simulate(), when defer is on and a task starts, put every other held task (deferred_from != 0 && available_from > t) back to available_from = t so the next decision checks it again, as the runtime does. That gives 0/300 divergence, the unit suite still passes, and the worked example is unchanged. Cost on this x86: 128 tasks of 5 min go from 0.14 s to 0.63 s per plan, the other cases from 0.01 to 0.04 s. Add a test that replans at the end of each planned run and compares the result with the original plan. The other option is to keep the code and correct the three documents to say the plan is only a forecast after the first run. That is an owner decision, because it contradicts design 3.2.\n\n2. [minor, tests] Nothing tests the 8-candidate cap. With the SCHEDULER_MAX_DEFER_CANDIDATES check removed from decide() (an `if (0)` mutation), all unit tests still pass. Mutating the no-loss guard fails defer_no_loss and defer_urgent, and mutating the quality guard fails defer_no_loss and defer_quality_guard, so both guards are covered. Add a case with more than 8 deferrable candidates in which the 9th starts without the look-ahead.\n\n3. [minor, docs] SCHEDULER.md:654 says that 128 random tasks plan 'in a few milliseconds'. In that test almost nothing is deferred. A queue of 128 targets of 5 min that defers a lot takes 0.14 s here, and runs at every 30 s idle check (update_plan is called from select_deferred, plus the decide simulations). Give a worst-case figure instead.\n\nChecked and fine: gain 0 gives the same plan run for run (the defer branch is skipped and the runtime is guarded by value > 0); urgent tasks are never deferred; the release is stable at t, t+30 s and later; there is no start->defer flapping; the IDLE, RESUME and STOP paths and NIGHT_START has_work are correct; everything runs on the tick handler queue, the same as update_plan(); DEFER_GAIN is persisted and old configurations keep the default 0; the indigo_names.h item follows the existing naming; PROPERTIES.md is updated; the version is bumped to 0x0300001A; the worked-example times match the unit-test output (the guide, SCHEDULER.md and the test print agree); formatting is OK. The flaky edit_of_running_task_is_deferred is a pre-existing timing race: the 2 s task body can finish before the edit arrives. That path does not touch the deferral, which is off by default, so this change is very unlikely to cause it.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "b056e89ec18cdb5a4b7b862919051051498618a1",
+        "tree": "c4f9ab47593058b45324f57e5411ee610a53f4d9",
+        "at": "2026-11-19T01:09:17.234043Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 2. Verified: release_holds; replan-follows-plan (300 random queues, gain 5/10/20: 0 divergent, no run or quality loss vs greedy); next-start search bounded at plan end (equivalent for gain 0); constant-time points_time_to_set is exact for windowless tasks (derivation: fails at grid(bad-1), or from when bad<=first+1, grid end via sky_covers, horizon cap; also checked by the existing random reference test test_points_match_reference) and is not used with a window; gain 0 unchanged (defer_wait_until stays 0, the refresh/cadence code is unchanged then); invalidation covers edit/delete/reset/enable/urgent/settings/hooks/night/site/start/finish/START/STOP/ABORT/RETRY-REPEAT; cached start re-checks eligibility through candidates[]; weather is not an input (TODO), moon is on the grid. Tests: plan 34/34, sky 16/16, integration test_agent_scheduler 131/131. DEFECT 1 (blocking): refresh_nights() (indigo_agent_scheduler.c:1852) rebuilds the night table every hour (now - nights->built >= SKY_REFRESH_INTERVAL) and sets plan_dirty unconditionally, so a deferral wait is discarded once an hour and re-decided mid-wait. The refresh_sky() exception (1541-1552) is therefore ineffective; sky->start is floored to 5 min, so the two rebuilds fall on different ticks. Harness with an hourly re-decision during waits: 101-104 of 300 random queues execute differently from the plan shown (mean quality 82.4 -> 82.1, no run lost). This contradicts the owner's decision (a) and SCHEDULER.md:654 ('The hourly rebuild ... does not discard it. The run therefore starts at the time the plan shows'). Fix: in refresh_nights keep plan_dirty during a wait when only time changed (same site, limit and offsets), as refresh_sky does, or document the hourly re-decision. MINOR (doc accuracy): REASON names the held task with the earliest release (select_deferred), but the wait ends at the plan's first task run, which can be a different task or time (for example a task whose window opens earlier). INDIGO_SCHEDULER_GUIDE.md:918 ('the named task starts first, at the given time') and SCHEDULER.md:681 ('because it names the next start') overstate this. Either word it as such, or build REASON from the plan's first run.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "65ed45ddfb40a5ee3eb051c82212341f778b784e",
+        "tree": "9c935eda2b4896226f23a2a10a26e0a5c0f8eed0",
+        "at": "2026-11-19T01:53:14.576272Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3 review of 9efcf5678 (diff from merge-base 890646492; worktree clean, master has not touched any scheduler file since). Round-2 fixes: refresh_nights() (indigo_agent_scheduler.c:1848-1856) now sets plan_dirty only when indigo_scheduler_nights_changed() reports a changed input or no wait is active. refresh_sky() (1541-1552) does the same. A change of site, limit or offset still drops the wait. The helper's unit test (test_agent_scheduler_night.c changed_inputs) is enough for a two-term condition that cannot be reached in integration without a clock hook. REASON (select_deferred, 2455-2477) is now built from the plan's first task run. decide() returns -1 only when every eligible non-urgent candidate is held, so a first run without deferred_from must belong to a task that is not eligible now. That makes the 'starts at ..., the eligible tasks wait' wording true. When no task run is planned, it falls back to the held task with the earliest release, which is also true. A/C/D: I rebuilt the bench from the worktree with build.sh. verify gives 8e7cd36d5e574eac (300 cases) and cbb58d43316b0969 (600 cases), the same as a build of perf/orig, which is identical to the round-2 plan.c. The perf, heavy, hooks and windows hashes all match. I rebuilt ttscheck against the worktree sky.c: 1141200 checks, 0 differ. Reasoning: A (next_good) is exact because points_ok uses floor(first), so every start before the next passing point contains a failing point. C: the cache lives on the stack of each plan_with_deferral/plan_decide call and is shared only with that call's nested simulations. It depends only on the constraints. It is checked after runs_left/available_from. Nightly-window tasks are excluded (points_next does not step to minute openings). The end+1 sentinel is safe. D: next_bad_step is filled in points_build next to next_bad/next_good, so the tables are rebuilt together. Gain 0: select_deferred is not called, defer_wait_until stays 0, so the refresh and process paths are unchanged, and the gain-0 hashes match. Tests (LD_LIBRARY_PATH=build/lib): unit plan 34/34, sky 16/16, night 18/18; integration test_agent_scheduler 131 run, 131 passed, 0 failed. Heavy deferral 0.014 s, with windows 0.025 s. git diff --check is clean. No blank lines in function bodies. DRIVER_VERSION is 0x03000019 -> 0x0300001A. PROPERTIES.md documents DEFER_GAIN. The guide's 'How the next task is chosen' and DEFER_GAIN sections and the deferral section of SCHEDULER.md are clear and match the code. Non-blocking notes: (1) SCHEDULER.md Cost table, row '128 random tasks ... fill the night', gives 'about 0.2 ms' for gain 0. The bench measures 0.03 ms on the same i5-9400 (gain 5: 0.25 ms, close to the stated 0.3 ms). (2) SCHEDULER.md mentions 'a scratch check of more than a million random cases'. That is execution history, not something the repository can reproduce; the claim about the unit tests is enough (test_agent_scheduler_sky points_match_reference compares points_next and points_time_to_set with the reference, windows included). (3) No test covers the second REASON wording ('<task> starts at HH:MM UTC, ...'). The branch is short and I checked it by reasoning only.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "9efcf56780127dba5e54d02974008d8bf88c0dfe",
+        "tree": "4141240b1ed4db8bfc6ea7e6ccced0a12460c4d9",
+        "at": "2026-11-19T06:24:03.598443Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Docs follow-up review of 971bb5cec. The only change since the round-3 pass (9efcf5678 = HEAD~1) is 2 lines in indigo_drivers/agent_scheduler/doc/SCHEDULER.md, and the worktree is clean. (1) Line 507: test_points_match_reference exists in indigo_test/unit/test_agent_scheduler_sky.c (lines 368-431) and is registered as points_match_reference. It runs 720 random cases from random_header(), which includes absolute windows (30%) and nightly windows (20%). It compares indigo_scheduler_points_next with indigo_scheduler_next_eligible (reasons included), indigo_scheduler_points_time_to_set with indigo_scheduler_time_to_set, and points_ok with interval_ok, and it also checks the grid-boundary cases. The new sentence is accurate. (2) Line 666: gain-0 'about 0.03 ms' matches the round-3 bench measurement (0.03 ms on the i5-9400; gain 5 0.25 ms, stated as about 0.3 ms). It does not contradict the table or the text: the idle-time queues at 0.1 ms do more next-start searches, and the 4-task row stays 'below 0.1 ms'. No tests were run, as instructed.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "971bb5cec58456fdca7f25e78994b128cd49fea0",
+        "tree": "e0740b42e3df0ca0921a2a9e7e9204f32632a382",
+        "at": "2026-11-19T06:29:06.303268Z"
+      }
+    ],
+    "approvals": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": true,
+        "text": "",
+        "sha256": "2f9e30bc0f01e3550842db1666eb05a7083e01a5a7c62f60c23268ed1f2a4bde",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-19T00:36:45.515186Z"
+      }
+    ],
+    "notes": [
+      {
+        "at": "2026-11-19T00:36:45.378345Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions on design.md open questions: (1) DEFER_GAIN default 0 (off); (2) the IDLE hook runs during a deferral wait like any wait; (3) a deferred task stays QUEUED; (4) cap of 8 examined candidates per decision, fallback to 4 if the 256-task test is slow; (5) scheduler-wide setting only, no per-task @defer; (6) the shift-the-whole-block variant is left for a later ticket; (7) quality = mean relative altitude over the run.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T00:39:31.651919Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner request with the start: update the user guide (indigo_docs/INDIGO_SCHEDULER_GUIDE.md) and the design document (indigo_drivers/agent_scheduler/doc/SCHEDULER.md) and explain the scheduling well: how a task is chosen (eligibility, urgent first, score terms incl. the relative altitude), why the scheduler is greedy and when DEFER_GAIN holds a task back for a slot nearer its culmination, with a worked example and how the night plan and REASON show it.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T01:47:05.294345Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions after review round 1: (a) during a deferral wait the scheduler follows the plan that decided the wait until its first run or any change (deviation from design 3.2, which said no stored hold; re-deciding every grid step was offered and declined, it lowers the example from 94% to 92%); (b) the cost is acceptable as is: 8 candidates, full-night check, worst case about 0.1 s per plan on an i5-9400, only with DEFER_GAIN > 0.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T06:07:01.211542Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision: include the exact performance optimizations A (skip a whole failing stretch in points_next via next_good[]), C (per-plan cache of stretches where a task cannot start, excluding nightly-window tasks) and D (table lookup for time_to_set with a time window via next_bad_step[]) in this ticket. Study and prototypes: scratchpad/perf/ (proto_A_C_D_exact.diff, bench.c verify mode, ttscheck.c). Results must stay bit-identical; update the SCHEDULER.md Cost table and the unit test timing comment.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Review round 2 asked for changes: (1) refresh_nights() marks the plan dirty every hour, so a deferral wait is re-decided hourly despite the follow-the-plan decision; fix: keep plan_dirty when only time changed, as refresh_sky() does. (2) REASON names the held task with the earliest release, but the wait ends at the plan's first run; build REASON from the plan's first run or reword two doc lines. Fix both and review again?",
+        "at": "2026-11-19T01:53:39.270186Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Fix both (keep plan_dirty in refresh_nights() during a wait when only time changed; build REASON from the plan's first run) and review again.",
+        "answered_at": "2026-11-19T06:02:23.765167Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      }
+    ],
+    "presented": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-19T00:23:28.368041Z"
+      }
+    ],
+    "landing": {
+      "commit": "d514bd0e4efded82a9296eeb1bc22e2c9e29cef5",
+      "tree": "e0740b42e3df0ca0921a2a9e7e9204f32632a382",
+      "base": "master",
+      "at": "2026-11-19T06:29:22.013349Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "full",
+    "at": "2026-11-19T00:12:14.634672Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T00:16:07.701278Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 21942027.516,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 8
+    }
+  },
+  "journal": {
+    "entries": 105,
+    "sha256": "89d908dc664e273b664397cf67e3992ea0b9f0f0bad24f78b5d4f52863305a35"
+  }
+}
