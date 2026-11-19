@@ -145,9 +145,9 @@ All methods below are called on a `Sequence` instance and append one or more ste
 | `break_at(time)` | Checkpoint: when execution reaches it, if `time` has already passed, skip forward to the next `resume_point()`; otherwise continue. `time` is a UTC time string or a local time number. Typically placed inside a loop to stop capturing after a cutoff time. Warns once if `time` is more than 12 hours ahead. |
 | `break_at_ha(limit)` | Checkpoint: if the mount's hour angle is past `limit`, skip forward to the next `resume_point()`; otherwise continue. `limit` is a sexagesimal string or a number in hours. |
 | `wait_until_solar_altitude_below(limit)` | Wait until the Sun is below `limit` degrees at the selected site. |
-| `wait_until_target_altitude_above(limit, ra, dec)` | Wait until the target at `ra`/`dec` is above `limit` degrees at the selected site. |
+| `wait_until_target_altitude_above(limit, ra, dec)` | Wait until the target at `ra`/`dec` (J2000, RA in hours, Dec in degrees, as `@target` and `slew()`) is above `limit` degrees at the selected site. |
 | `break_if_solar_altitude_above(limit)` | Skip to the next `resume_point()` when the Sun is above `limit` degrees. |
-| `break_if_target_altitude_below(limit, ra, dec)` | Skip to the next `resume_point()` when the target is below `limit` degrees. |
+| `break_if_target_altitude_below(limit, ra, dec)` | Skip to the next `resume_point()` when the target at `ra`/`dec` (J2000) is below `limit` degrees. |
 | `send_message(message)` | Broadcast a human readable message to all clients. |
 | `evaluate(code)` | Evaluate an arbitrary snippet of scripting `code` as a step. |
 | `enable_verbose()` / `disable_verbose()` | Turn verbose logging of executed steps on/off. |

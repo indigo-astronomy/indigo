@@ -25,7 +25,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x03000013
+#define DRIVER_VERSION 0x03000014
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -921,6 +921,8 @@ static duk_ret_t target_altitude(duk_context *ctx) {
 	double longitude = duk_require_number(ctx, 3);
 	double alt, az;
 	time_t now = time(NULL);
+	// ra/dec are J2000 like @target and the mount steps, indigo_radec_to_altaz() needs coordinates of date
+	indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(now)), &ra, &dec);
 	indigo_radec_to_altaz(ra, dec, &now, latitude, longitude, 0, &alt, &az);
 	duk_push_number(ctx, alt);
 	return 1;
