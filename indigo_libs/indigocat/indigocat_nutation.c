@@ -17,6 +17,7 @@
 
 #include <math.h>
 
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigocat/indigocat_nutation.h>
 #include <indigo/indigocat/indigocat_dynamical_time.h>
 
@@ -170,8 +171,8 @@ static const struct nutation_coefficients coefficients[TERMS] = {
     {-3.0,	0.0,	0.0,	0.0},
     {-3.0,	0.0,	0.0,	0.0}};
 
-/* cache values */
-static long double c_JD = 0.0, c_longitude = 0.0, c_obliquity = 0.0, c_ecliptic = 0.0;
+/* cache values, one set per thread: a shared cache would let a concurrent call see another epoch or a partial sum */
+static INDIGO_THREAD_LOCAL long double c_JD = 0.0, c_longitude = 0.0, c_obliquity = 0.0, c_ecliptic = 0.0;
 
 void indigocat_get_nutation(double JD, nutation_s *nutation) {
 	long double D,M,MM,F,O,T,T2,T3,JDE;

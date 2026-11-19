@@ -57,13 +57,23 @@ INDIGO_EXTERN void indigocat_neptune_heliocentric_coords(double JD, heliocentric
 INDIGO_EXTERN void indigocat_pluto_equatorial_coords(double JD, equatorial_coords_s *position);
 INDIGO_EXTERN void indigocat_pluto_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
+/* Geocentric position of the Sun in J2000 like the planets, without nutation and aberration.
+ */
 INDIGO_EXTERN void indigocat_sun_equatorial_coords(double JD, equatorial_coords_s *position);
 INDIGO_EXTERN void indigocat_sun_geometric_coords(double JD, heliocentric_coords_s *position);
 
+/* Geocentric position of the Moon in J2000. JD is UT; it is converted to dynamical time with indigocat_jd_to_jde().
+ * indigocat_moon_geocentric_coords() and indigocat_moon_ecliptical_coords() take the dynamical time (JDE) directly.
+ */
 INDIGO_EXTERN void indigocat_moon_equatorial_coords(double JD, equatorial_coords_s *position);
 INDIGO_EXTERN void indigocat_moon_geocentric_coords(double JD, cartesian_coords_s *moon, double precision);
 INDIGO_EXTERN void indigocat_moon_equatorial_coords_prec(double JD, equatorial_coords_s *position, double precision);
 INDIGO_EXTERN void indigocat_moon_ecliptical_coords(double JD, lonlat_coords_s *position, double precision);
+
+/* Coarse Moon position for planning: the ELP2000/82 series is truncated at 1e-6 rad per term.
+ * The result stays within about 3.5 arcsec of indigocat_moon_equatorial_coords() and is about 50x faster.
+ */
+INDIGO_EXTERN void indigocat_moon_equatorial_coords_coarse(double JD, equatorial_coords_s *position);
 
 #ifdef __cplusplus
 };

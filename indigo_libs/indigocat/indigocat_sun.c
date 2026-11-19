@@ -20,7 +20,6 @@
 #include <indigo/indigocat/indigocat_solar_system.h>
 #include <indigo/indigocat/indigocat_vsop87.h>
 #include <indigo/indigocat/indigocat_transform.h>
-#include <indigo/indigocat/indigocat_nutation.h>
 
 #if defined(INDIGO_WINDOWS)
 #pragma warning(disable:4305)
@@ -34,21 +33,12 @@ void indigocat_sun_geometric_coords(double JD, heliocentric_coords_s * position)
 	position->B *= -1.0;
 }
 
+/* J2000 position like the planets: neither nutation nor aberration is applied */
 void indigocat_sun_equatorial_coords(double JD, equatorial_coords_s * position) {
 	heliocentric_coords_s sol;
 	lonlat_coords_s LB;
-	nutation_s nutation;
-	double aberration;
 
 	indigocat_sun_geometric_coords(JD, &sol);
-
-	/* add nutation */
-	indigocat_get_nutation(JD, &nutation);
-	sol.L += nutation.longitude;
-
-	/* aberration */
-	aberration = (20.4898 / (60 * 60)) / sol.R;
-	sol.L -= aberration;
 
 	/* transform to equatorial */
 	LB.lat = sol.B;

@@ -943,6 +943,22 @@ static void conversion_bindings(void) {
 	ASSERT_TRUE(js("testValue = 1;"));
 }
 
+// JPL Horizons apparent airless Sun elevation at the fixed time 2024-01-01 12:34:56 UTC;
+// precession since J2000 alone moves the result by about 0.3 deg, the tolerance covers nutation and aberration
+static void solar_altitude_reference(void) {
+	ASSERT_TRUE(js("var a=indigo_solar_altitude(48.15,17.11); if(Math.abs(a-15.377750482)>0.02) throw new Error('solar altitude '+a+' instead of 15.377750482');"));
+	ASSERT_TRUE(js("var a=indigo_solar_altitude(-30,-70); if(Math.abs(a-34.643634261)>0.02) throw new Error('solar altitude '+a+' instead of 34.643634261');"));
+}
+
+// Apparent airless elevation of fixed J2000 positions at the fixed time 2024-01-01 12:34:56 UTC, computed independently of INDIGO
+// (IAU 1976 precession, IAU 1980 nutation, annual aberration, mean sidereal time plus equation of the equinoxes); its sidereal time
+// and horizon conversion reproduce the JPL Horizons Sun elevations above within 0.004 deg. Using the J2000 position as coordinates of date
+// moves the results by -0.32 deg and +0.15 deg, the tolerance covers the nutation and aberration INDIGO does not apply
+static void target_altitude_reference(void) {
+	ASSERT_TRUE(js("var a=indigo_target_altitude(10,20,-30,-70); if(Math.abs(a-6.944816)>0.02) throw new Error('target altitude '+a+' instead of 6.944816');"));
+	ASSERT_TRUE(js("var a=indigo_target_altitude(3,40,48.15,17.11); if(Math.abs(a-23.642420)>0.02) throw new Error('target altitude '+a+' instead of 23.642420');"));
+}
+
 static void timer_bindings(void) {
 	int messages_before = atomic_load(&message_count);
 	ASSERT_TRUE(js("var fired=indigo_set_timer(function(){indigo_send_message('timer-fired')},0.01); if(fired<0) throw new Error('timer failed');"));
@@ -1041,6 +1057,8 @@ static const indigo_test_case tests[] = {
 	{ "boot.js property change helper", peer_property_change_helper },
 	{ "BLOB populate and save bindings", blob_bindings },
 	{ "conversion and astronomy bindings", conversion_bindings },
+	{ "solar altitude matches reference", solar_altitude_reference },
+	{ "J2000 target altitude matches reference", target_altitude_reference },
 	{ "timer scheduling cancellation capacity", timer_bindings },
 	{ "shutdown cancels pending timers", shutdown_cancels_timers },
 	{ "logging and message bindings", logging_and_messages },

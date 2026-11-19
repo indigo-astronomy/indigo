@@ -1,0 +1,503 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5e45fc6d-2d19-4c37-aedb-5d37489e695a",
+  "revision": 24,
+  "title": "indigo_agent_scheduler: replace the DEFER_GAIN threshold with a deferral strength where a higher value waits more",
+  "description": "Reported by the owner: 'defer for altitude gain works fine at 5%, at 0% is as before and at 100 is like at 0'. Cause: AGENT_SCHEDULER_SETTINGS.DEFER_GAIN (label 'Defer for altitude gain (%)', range 0-100) is a threshold - a task waits only when a later start raises its run quality by at least DEFER_GAIN points (indigo_agent_scheduler_plan.c defer_release). So 0 is off, 1 waits most, larger values wait less, and above about 50 nothing ever waits because real gains are limited by @altitude and twilight. The scale runs opposite to what the label and range suggest.\n\nOwner's decision (option 2): turn it into a strength where a higher value waits more.\n- Replace the item DEFER_GAIN with DEFER (AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME in indigo_names.h), 0-100, step 1, default 0, label such as 'Wait for a better slot (%)'. 0 = off (no deferral, exactly as today with DEFER_GAIN 0). Higher values wait for a slot nearer the culmination.\n- Map the strength to the internal threshold in the agent, at one place, linearly: strength 1 -> 20 quality points, strength 100 -> 1 point (threshold = 20 - 19 * (strength - 1) / 99). Keep indigo_scheduler_plan_decide() / indigo_scheduler_plan_with_deferral() taking the threshold so the planning code and its unit tests stay unchanged; if a value must not be 0 at strength 100 make sure the minimum is 1 point. Behavior at every strength must be monotonic: a higher strength never waits less than a lower one in the guide's example.\n- Saved configurations with DEFER_GAIN are not migrated (the setting is unreleased); an old value is ignored and DEFER starts at 0. State this in the ticket note.\n- Update INDIGO_SCHEDULER_GUIDE.md (the 'Waiting for a better slot' section, the example table with the DEFER values that reproduce it - e.g. the strength that maps to 5 points, the 'Choosing a value' list rewritten for the new scale, the Settings table, every DEFER_GAIN mention), doc/SCHEDULER.md and indigo_docs/PROPERTIES.md.\n- Tests: integration tests that used DEFER_GAIN switch to DEFER with the equivalent value; add a unit or integration case for the mapping (0 off, 1 -> 20, 100 -> 1, monotonic) and one showing that 100 defers at least as much as a middle value (the reported symptom).\n- Increment the scheduler agent DRIVER_VERSION.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T07:50:48.572464Z",
+  "status": "closed",
+  "branch": "ticket/5e45fc6d-2d19-4c37-aedb-5d37489e695a",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "bb72dc06-98a5-48a5-acf5-bb376af75209",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T07:57:46.716234Z",
+          "last_activity_at": "2026-11-19T08:21:51.142551Z",
+          "ended_at": "2026-11-19T08:21:51.142551Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1444426.317,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T07:57:46.716234Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/5e45fc6d-2d19-4c37-aedb-5d37489e695a"
+        },
+        {
+          "at": "2026-11-19T08:21:51.142551Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1444426.317,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "dcf87e96-c6ad-40e7-97ac-7c2f4d7ec5c4",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a26f2d1c-1718-4552-a2cc-118bcd392ab9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T08:21:51.142573Z",
+          "last_activity_at": "2026-11-19T08:24:32.825436Z",
+          "ended_at": "2026-11-19T08:24:32.825436Z",
+          "outcome": {
+            "summary": "Pass at 0c244ccb5b. Mapping: defer_threshold() (indigo_agent_scheduler.c:1561) returns 0 for strength <= 0, else 20 - 19*(s-1)/99 (1->20, 100->1, linear); the 0 path is unchanged: select_task still gates on the item value > 0 (line 1668) and plan_decide/plan_with_deferral treat 0 as off. All former DEFER_GAIN item uses (update_plan 2328, select_deferred 2460) go through defer_threshold(); remaining DEFER_GAIN/defer_gain names are only the planner's internal threshold and the unit test's planner threshold macro. indigo_names.h renamed to AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME \"DEFER\", tab-aligned with neighbours at tab width 2. Item 0-100 step 1 default 0, label 'Wait for a better slot (%)'. DRIVER_VERSION 0x0300001A -> 0x0300001B. PROPERTIES.md, INDIGO_SCHEDULER_GUIDE.md and doc/SCHEDULER.md updated; anchors #waiting-for-a-better-slot-defer resolve to the renamed heading; no stale DEFER_GAIN text. Independently verified with a scratch copy of the plan unit test linked to the built archive: threshold of strength 79 reproduces the guide table exactly (M31 18:20 94, M45 21:10 95, M42 23:00 95, M81 02:20 93, mean 94); strengths 95/96/100 give mean 97/96/97 with M42 at 22:40 92% from 96, matching the documented dip (accepted by the owner). New integration case deferral_strength_waits_longer_when_higher is meaningful (strengths 1/50/79/100 in one run, strictly later releases, 100 waits longest) and deterministic: site latitude 0, target on the equator at hour angle -2 h, quality is altitude-only (no Moon), so releases vary only by the 5-min grid phase; recorded run 45/80/100/115 min against bounds 35-60 and 105-125 leaves about 10 min margin each side, consecutive gaps about 20 min. Checks whitespace, unit and command-1 (132/132 including the new case) recorded on current HEAD; worktree clean. No defects found. Minor non-blocking: SETTINGS_DEFER_ITEM macro (line 121) uses one tab like its misaligned predecessor; the mapping is tested indirectly through release times rat",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 161682.863,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T08:21:51.142573Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T08:24:32.825436Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass at 0c244ccb5b. Mapping: defer_threshold() (indigo_agent_scheduler.c:1561) returns 0 for strength <= 0, else 20 - 19*(s-1)/99 (1->20, 100->1, linear); the 0 path is unchanged: select_task still gates on the item value > 0 (line 1668) and plan_decide/plan_with_deferral treat 0 as off. All former DEFER_GAIN item uses (update_plan 2328, select_deferred 2460) go through defer_threshold(); remaining DEFER_GAIN/defer_gain names are only the planner's internal threshold and the unit test's planner threshold macro. indigo_names.h renamed to AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME \"DEFER\", tab-aligned with neighbours at tab width 2. Item 0-100 step 1 default 0, label 'Wait for a better slot (%)'. DRIVER_VERSION 0x0300001A -> 0x0300001B. PROPERTIES.md, INDIGO_SCHEDULER_GUIDE.md and doc/SCHEDULER.md updated; anchors #waiting-for-a-better-slot-defer resolve to the renamed heading; no stale DEFER_GAIN text. Independently verified with a scratch copy of the plan unit test linked to the built archive: threshold of strength 79 reproduces the guide table exactly (M31 18:20 94, M45 21:10 95, M42 23:00 95, M81 02:20 93, mean 94); strengths 95/96/100 give mean 97/96/97 with M42 at 22:40 92% from 96, matching the documented dip (accepted by the owner). New integration case deferral_strength_waits_longer_when_higher is meaningful (strengths 1/50/79/100 in one run, strictly later releases, 100 waits longest) and deterministic: site latitude 0, target on the equator at hour angle -2 h, quality is altitude-only (no Moon), so releases vary only by the 5-min grid phase; recorded run 45/80/100/115 min against bounds 35-60 and 105-125 leaves about 10 min margin each side, consecutive gaps about 20 min. Checks whitespace, unit and command-1 (132/132 including the new case) recorded on current HEAD; worktree clean. No defects found. Minor non-blocking: SETTINGS_DEFER_ITEM macro (line 121) uses one tab like its misaligned predecessor; the mapping is tested indirectly through release times rat"
+        }
+      ],
+      "result": {
+        "summary": "Pass at 0c244ccb5b. Mapping: defer_threshold() (indigo_agent_scheduler.c:1561) returns 0 for strength <= 0, else 20 - 19*(s-1)/99 (1->20, 100->1, linear); the 0 path is unchanged: select_task still gates on the item value > 0 (line 1668) and plan_decide/plan_with_deferral treat 0 as off. All former DEFER_GAIN item uses (update_plan 2328, select_deferred 2460) go through defer_threshold(); remaining DEFER_GAIN/defer_gain names are only the planner's internal threshold and the unit test's planner threshold macro. indigo_names.h renamed to AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME \"DEFER\", tab-aligned with neighbours at tab width 2. Item 0-100 step 1 default 0, label 'Wait for a better slot (%)'. DRIVER_VERSION 0x0300001A -> 0x0300001B. PROPERTIES.md, INDIGO_SCHEDULER_GUIDE.md and doc/SCHEDULER.md updated; anchors #waiting-for-a-better-slot-defer resolve to the renamed heading; no stale DEFER_GAIN text. Independently verified with a scratch copy of the plan unit test linked to the built archive: threshold of strength 79 reproduces the guide table exactly (M31 18:20 94, M45 21:10 95, M42 23:00 95, M81 02:20 93, mean 94); strengths 95/96/100 give mean 97/96/97 with M42 at 22:40 92% from 96, matching the documented dip (accepted by the owner). New integration case deferral_strength_waits_longer_when_higher is meaningful (strengths 1/50/79/100 in one run, strictly later releases, 100 waits longest) and deterministic: site latitude 0, target on the equator at hour angle -2 h, quality is altitude-only (no Moon), so releases vary only by the 5-min grid phase; recorded run 45/80/100/115 min against bounds 35-60 and 105-125 leaves about 10 min margin each side, consecutive gaps about 20 min. Checks whitespace, unit and command-1 (132/132 including the new case) recorded on current HEAD; worktree clean. No defects found. Minor non-blocking: SETTINGS_DEFER_ITEM macro (line 121) uses one tab like its misaligned predecessor; the mapping is tested indirectly through release times rat",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 161682.863,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "5eb64e94-436b-4200-8fd1-9bfdd795c305",
+      "event": "ticket/created",
+      "at": "2026-11-19T07:50:48.574076Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "1f7bf1da-4a72-4881-a1c6-966c31ac1603",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T07:57:30.454421Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "3b8cbc30-903c-4b4c-a02f-b2e411f84528",
+      "event": "task/progress",
+      "at": "2026-11-19T07:57:46.717300Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Implementation started on branch ticket/5e45fc6d-2d19-4c37-aedb-5d37489e695a"
+    },
+    {
+      "event_id": "6b251e19-84fd-4ab2-8c3a-4d0c69747445",
+      "event": "ticket/started",
+      "at": "2026-11-19T07:57:46.720133Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/5e45fc6d-2d19-4c37-aedb-5d37489e695a",
+      "base": "master"
+    },
+    {
+      "event_id": "d5024c03-520f-4766-a2da-c20e689fe9b2",
+      "event": "task/progress",
+      "at": "2026-11-19T07:58:08.568752Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Implementer launched",
+      "attempt_id": "bb72dc06-98a5-48a5-acf5-bb376af75209",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f85b185b-cd44-43f3-a98e-3924eeb5946c",
+      "event": "task/progress",
+      "at": "2026-11-19T07:59:12.925637Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Reproducing: DEFER_GAIN 100 vs 5 through a temporary integration case"
+    },
+    {
+      "event_id": "8df4cee4-03ac-470e-8851-5a4b540c613c",
+      "event": "ticket/note",
+      "at": "2026-11-19T08:01:05.950236Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction before the fix (temporary integration cases in test_agent_scheduler.c, removed afterwards; target two hours before its culmination at two thirds of its transit altitude, upload_before_culmination()): DEFER_GAIN 5 -> reason 'Deferred waits until 09:40 UTC, nearer its culmination', plan lists 'deferred from', task not started; DEFER_GAIN 50 -> task started at once ('Starting task Deferred' 1, no 'deferred from'); DEFER_GAIN 100 -> task started at once, the same as 0. Confirms the report: 100 behaves like 0, the scale is a threshold running opposite to the label.",
+      "tokens": null
+    },
+    {
+      "event_id": "2cfd175c-2df7-42a1-8bc2-bff050cfbaba",
+      "event": "task/progress",
+      "at": "2026-11-19T08:03:09.593660Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Updating the guide, SCHEDULER.md and PROPERTIES.md for DEFER"
+    },
+    {
+      "event_id": "7f0f5a0d-7a55-4ec0-8ad5-80ac76008b34",
+      "event": "task/progress",
+      "at": "2026-11-19T08:05:34.934440Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "33b62c53-c8fc-46bb-af9e-97fce79a50ee",
+      "event": "task/progress",
+      "at": "2026-11-19T08:05:34.958884Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "46704ad5-e49c-4f7f-9839-bb1990940061",
+      "event": "task/progress",
+      "at": "2026-11-19T08:05:34.963550Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "2ced6407-8c5c-474f-9c38-7ece6d42dd30",
+      "event": "task/progress",
+      "at": "2026-11-19T08:06:40.324117Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "0e877bdb-87bc-4d42-a74a-b3b7c2f8a466",
+      "event": "check/passed",
+      "at": "2026-11-19T08:06:40.330697Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "0c244ccb5b1ecf3a6b72bf65e5930a7379ea6fb5",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "1b491fca-d095-465c-a55c-0206321bf34f",
+      "event": "task/progress",
+      "at": "2026-11-19T08:06:51.729351Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "5d571115-6614-47b4-8c5e-210bf20de858",
+      "event": "ticket/note",
+      "at": "2026-11-19T08:10:05.773773Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementation: AGENT_SCHEDULER_SETTINGS.DEFER_GAIN replaced by DEFER (AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 0-100, step 1, default 0, label 'Wait for a better slot (%)'). Mapping in one static function defer_threshold() in indigo_agent_scheduler.c: 0 -> 0 (off, deferral path skipped exactly as DEFER_GAIN 0 before), strength 1..100 -> threshold = 20 - 19 * (strength - 1) / 99 (1 -> 20, 50 -> 10.6, 79 -> 5.03, 100 -> 1). Planning code and its unit tests unchanged (they still take the threshold; the unit test's local DEFER_GAIN macro is the planner threshold 5). DRIVER_VERSION 0x0300001A -> 0x0300001B. No migration: a saved DEFER_GAIN value in an existing configuration is ignored (no matching item) and DEFER starts at 0; the setting is unreleased.\nGuide example: DEFER 79 (threshold 5.03) reproduces the table exactly (M31 18:20 94 %, M45 21:10 95 %, M42 23:00 95 %, M81 02:20 93 %, mean 94 %), checked with a scratch program linking the unchanged planner on the unit test's example (48.15 N, 2026-11-19, four 60-min Messier tasks) for every strength 0..100.\nMonotonicity finding (needs owner decision): on the guide example the deferral grows with the strength from 0 to 95 (mean quality 66.9 % at 0, 88.8 % at 50, 94.3 % at 79, 97.1 % at 95; total hold time rising), but at 96-97 it drops (mean 95.9 %, total hold 755 vs 795 min) and recovers partly to 96.8 % at 100: M45 is held so late (21:40-22:40) that M42 starts right after it at 22:40 (92 %) instead of being held until 23:25 (98 %). This is the planner's per-decision greedy deferral, not the mapping; with the planner unchanged the ticket's 'monotonic at every strength in the guide's example' holds for 0..95 only. Strength 100 still defers much more than a middle value (50: mean 88.8 %, holds 525 min; 100: 96.8 %, 775 min). Documented in the guide's 'Choosing a value' and SCHEDULER.md 'Choosing the strength'. Options for the owner: accept and document (current state), raise the minimum threshold to about 1.7 points (str",
+      "tokens": null
+    },
+    {
+      "event_id": "cd740bb0-7452-4748-93f4-355e116ac0c8",
+      "event": "task/progress",
+      "at": "2026-11-19T08:12:24.773892Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "4d9265e0-2521-45ed-b31e-02eaed306af8",
+      "event": "check/passed",
+      "at": "2026-11-19T08:12:24.785038Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "0c244ccb5b1ecf3a6b72bf65e5930a7379ea6fb5",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "17de7b40-d110-406b-aa04-9567558906fd",
+      "event": "question/asked",
+      "at": "2026-11-19T08:13:41.356292Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "On the guide example, mean quality rises with DEFER up to 95 (97.1 %) but dips at 96-100 (95.9-96.8 %) because the planner decides one task at a time (M45 held later pushes M42 to start right after it). Strength 100 still waits much more than 50. Accept and document (current state), tune strength 100 to ~1.7 points, or open a separate planner ticket?"
+    },
+    {
+      "event_id": "795753e2-df86-4f80-b567-7e1b80d0f240",
+      "event": "question/answered",
+      "at": "2026-11-19T08:21:38.025405Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner: commit - accept the current state (option 1): the 96-100 dip on the guide example stays documented, no further mapping or planner change in this ticket."
+    },
+    {
+      "event_id": "d45e02a3-ab6f-4832-8661-b27c99dcf31f",
+      "event": "task/progress",
+      "at": "2026-11-19T08:21:51.081176Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c55acc09-316d-40d3-bc8a-abae03706037",
+      "text": "Reviewer launched",
+      "attempt_id": "bb72dc06-98a5-48a5-acf5-bb376af75209",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "39084405-05fc-4d39-abfb-30a53e58a1d9",
+      "event": "task/progress",
+      "at": "2026-11-19T08:21:51.142602Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "dcf87e96-c6ad-40e7-97ac-7c2f4d7ec5c4",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f79e3358-98d5-4d2e-98b0-54495dceff1d",
+      "event": "review/started",
+      "at": "2026-11-19T08:21:51.142821Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "b575632d-62ee-471f-8d2f-af7bbad2fad2",
+      "event": "task/progress",
+      "at": "2026-11-19T08:23:23.360757Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "dcf87e96-c6ad-40e7-97ac-7c2f4d7ec5c4",
+      "text": "Reviewer: checking guide example at DEFER 79 with a scratch copy of the plan unit test"
+    },
+    {
+      "event_id": "f282e3ed-6a61-4307-8c05-2ebdbc4dcb7f",
+      "event": "task/progress",
+      "at": "2026-11-19T08:24:32.825502Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "dcf87e96-c6ad-40e7-97ac-7c2f4d7ec5c4",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "da43c7ba-2b49-42c2-92fd-dce4b10738e6",
+      "event": "review/passed",
+      "at": "2026-11-19T08:24:32.825810Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "dcf87e96-c6ad-40e7-97ac-7c2f4d7ec5c4",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0c244ccb5b1ecf3a6b72bf65e5930a7379ea6fb5"
+    },
+    {
+      "event_id": "ef798729-9983-4dea-ab37-cc01d09de810",
+      "event": "ticket/closed",
+      "at": "2026-11-19T08:24:54.691380Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T08:24:54.691354Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "1414a26c6af9d8db67d78dcc64b91ba2760fd505"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0c244ccb5b1ecf3a6b72bf65e5930a7379ea6fb5",
+        "tree": "a657bfebc33f8315ff30ec533b9b448247d0db8f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T08:05:34.958573Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/5e45fc6d-2d19-4c37-aedb-5d37489e695a/a657bfebc33f-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "0c244ccb5b1ecf3a6b72bf65e5930a7379ea6fb5",
+        "tree": "a657bfebc33f8315ff30ec533b9b448247d0db8f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T08:06:40.322275Z",
+        "duration_s": 65.4,
+        "log": "/tmp/factory-flow/5e45fc6d-2d19-4c37-aedb-5d37489e695a/a657bfebc33f-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "0c244ccb5b1ecf3a6b72bf65e5930a7379ea6fb5",
+        "tree": "a657bfebc33f8315ff30ec533b9b448247d0db8f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T08:12:24.769969Z",
+        "duration_s": 333.0,
+        "log": "/tmp/factory-flow/5e45fc6d-2d19-4c37-aedb-5d37489e695a/a657bfebc33f-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass at 0c244ccb5b. Mapping: defer_threshold() (indigo_agent_scheduler.c:1561) returns 0 for strength <= 0, else 20 - 19*(s-1)/99 (1->20, 100->1, linear); the 0 path is unchanged: select_task still gates on the item value > 0 (line 1668) and plan_decide/plan_with_deferral treat 0 as off. All former DEFER_GAIN item uses (update_plan 2328, select_deferred 2460) go through defer_threshold(); remaining DEFER_GAIN/defer_gain names are only the planner's internal threshold and the unit test's planner threshold macro. indigo_names.h renamed to AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME \"DEFER\", tab-aligned with neighbours at tab width 2. Item 0-100 step 1 default 0, label 'Wait for a better slot (%)'. DRIVER_VERSION 0x0300001A -> 0x0300001B. PROPERTIES.md, INDIGO_SCHEDULER_GUIDE.md and doc/SCHEDULER.md updated; anchors #waiting-for-a-better-slot-defer resolve to the renamed heading; no stale DEFER_GAIN text. Independently verified with a scratch copy of the plan unit test linked to the built archive: threshold of strength 79 reproduces the guide table exactly (M31 18:20 94, M45 21:10 95, M42 23:00 95, M81 02:20 93, mean 94); strengths 95/96/100 give mean 97/96/97 with M42 at 22:40 92% from 96, matching the documented dip (accepted by the owner). New integration case deferral_strength_waits_longer_when_higher is meaningful (strengths 1/50/79/100 in one run, strictly later releases, 100 waits longest) and deterministic: site latitude 0, target on the equator at hour angle -2 h, quality is altitude-only (no Moon), so releases vary only by the 5-min grid phase; recorded run 45/80/100/115 min against bounds 35-60 and 105-125 leaves about 10 min margin each side, consecutive gaps about 20 min. Checks whitespace, unit and command-1 (132/132 including the new case) recorded on current HEAD; worktree clean. No defects found. Minor non-blocking: SETTINGS_DEFER_ITEM macro (line 121) uses one tab like its misaligned predecessor; the mapping is tested indirectly through release times rather than a direct unit case, which the ticket allows (unit or integration).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "0c244ccb5b1ecf3a6b72bf65e5930a7379ea6fb5",
+        "tree": "a657bfebc33f8315ff30ec533b9b448247d0db8f",
+        "at": "2026-11-19T08:24:32.825372Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T08:01:05.949944Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction before the fix (temporary integration cases in test_agent_scheduler.c, removed afterwards; target two hours before its culmination at two thirds of its transit altitude, upload_before_culmination()): DEFER_GAIN 5 -> reason 'Deferred waits until 09:40 UTC, nearer its culmination', plan lists 'deferred from', task not started; DEFER_GAIN 50 -> task started at once ('Starting task Deferred' 1, no 'deferred from'); DEFER_GAIN 100 -> task started at once, the same as 0. Confirms the report: 100 behaves like 0, the scale is a threshold running opposite to the label.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T08:10:05.773469Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementation: AGENT_SCHEDULER_SETTINGS.DEFER_GAIN replaced by DEFER (AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 0-100, step 1, default 0, label 'Wait for a better slot (%)'). Mapping in one static function defer_threshold() in indigo_agent_scheduler.c: 0 -> 0 (off, deferral path skipped exactly as DEFER_GAIN 0 before), strength 1..100 -> threshold = 20 - 19 * (strength - 1) / 99 (1 -> 20, 50 -> 10.6, 79 -> 5.03, 100 -> 1). Planning code and its unit tests unchanged (they still take the threshold; the unit test's local DEFER_GAIN macro is the planner threshold 5). DRIVER_VERSION 0x0300001A -> 0x0300001B. No migration: a saved DEFER_GAIN value in an existing configuration is ignored (no matching item) and DEFER starts at 0; the setting is unreleased.\nGuide example: DEFER 79 (threshold 5.03) reproduces the table exactly (M31 18:20 94 %, M45 21:10 95 %, M42 23:00 95 %, M81 02:20 93 %, mean 94 %), checked with a scratch program linking the unchanged planner on the unit test's example (48.15 N, 2026-11-19, four 60-min Messier tasks) for every strength 0..100.\nMonotonicity finding (needs owner decision): on the guide example the deferral grows with the strength from 0 to 95 (mean quality 66.9 % at 0, 88.8 % at 50, 94.3 % at 79, 97.1 % at 95; total hold time rising), but at 96-97 it drops (mean 95.9 %, total hold 755 vs 795 min) and recovers partly to 96.8 % at 100: M45 is held so late (21:40-22:40) that M42 starts right after it at 22:40 (92 %) instead of being held until 23:25 (98 %). This is the planner's per-decision greedy deferral, not the mapping; with the planner unchanged the ticket's 'monotonic at every strength in the guide's example' holds for 0..95 only. Strength 100 still defers much more than a middle value (50: mean 88.8 %, holds 525 min; 100: 96.8 %, 775 min). Documented in the guide's 'Choosing a value' and SCHEDULER.md 'Choosing the strength'. Options for the owner: accept and document (current state), raise the minimum threshold to about 1.7 points (strength 100 -> ~1.7, removes the dip in this example only), or a separate planner ticket.\nTests to requirements: deferral_off_starts_at_once (default 0, off); deferral_waits_for_the_culmination (strength 79 ~ the former 5: release 1-2 h ahead, setting back to 0 starts the task); new deferral_strength_waits_longer_when_higher (strengths 1, 50, 79, 100 in one run: every strength from 1 defers; release about 48, 78, 98, 113 min ahead; strength 1 within 35-60 min = threshold 20, strength 100 within 105-125 min = threshold 1; strictly increasing, so 100 waits longer than the middle value - the reported symptom); persistence_across_restart (DEFER 69 kept across restart); the other deferral cases switched from DEFER_GAIN 5 to DEFER 79.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "On the guide example, mean quality rises with DEFER up to 95 (97.1 %) but dips at 96-100 (95.9-96.8 %) because the planner decides one task at a time (M45 held later pushes M42 to start right after it). Strength 100 still waits much more than 50. Accept and document (current state), tune strength 100 to ~1.7 points, or open a separate planner ticket?",
+        "at": "2026-11-19T08:13:41.355930Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Owner: commit - accept the current state (option 1): the 96-100 dip on the guide example stays documented, no further mapping or planner change in this ticket.",
+        "answered_at": "2026-11-19T08:21:38.024590Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "1414a26c6af9d8db67d78dcc64b91ba2760fd505",
+      "tree": "a657bfebc33f8315ff30ec533b9b448247d0db8f",
+      "base": "master",
+      "at": "2026-11-19T08:24:54.539854Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-19T07:50:48.572464Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T07:57:30.454364Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1606109.18,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 30,
+    "sha256": "f872da3d2271ccd486d13e748f6893eab5b06ebd0fdb936f2fbef704e8d6ea01"
+  }
+}

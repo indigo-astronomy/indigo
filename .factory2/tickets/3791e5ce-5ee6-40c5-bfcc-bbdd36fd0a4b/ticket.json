@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3791e5ce-5ee6-40c5-bfcc-bbdd36fd0a4b",
+  "revision": 2,
+  "title": "indigo_agent_scripting: a timer created by an on-unload script can fire after the Duktape heap and the agent are freed",
+  "description": "Found 2026-11-19 in the review of d337820c (commit after 3d1f8e18f). In agent_device_detach() (indigo_drivers/agent_scripting/indigo_agent_scripting.c) the script timers are cancelled synchronously before the on-unload scripts run. A timer created by an on-unload script (indigo_set_timer / setTimeout-like binding) is therefore registered after the cancel loop and is never cancelled; it can fire after duk_destroy_heap() and after the agent device and private data are freed: a use-after-free.\nWork: reproduce (integration test with an on-unload script that sets a short timer, run under ASan via the existing sanitizer targets if available, or show the callback runs after detach); fix minimally, e.g. cancel the script timers again after the on-unload scripts (and before the queue drain added in d337820c), or refuse timer creation while unloading; bump DRIVER_VERSION; document in INDIGO_SCRIPT_GUIDE.md that timers set by on-unload scripts do not run.\nAlso consider (same unload path, from the same review): properties that an on-unload script defines or updates on the agent itself now reach clients after the bus has already sent 'delete all properties' for the agent (indigo_bus.c indigo_detach_device), so they stay defined in clients. Either document it in the AGENT_SCRIPTING_ON_UNLOAD_SCRIPT row or suppress such updates during unload; propose the choice to the owner in a ticket note before implementing.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T11:57:37.349507Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "3cb2b895-6bed-4605-b6a4-bf2d235841f8",
+      "event": "ticket/created",
+      "at": "2026-11-19T11:57:37.349798Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "a52e612f-74a8-4316-9c20-fecebfa67139",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T11:58:37.753001Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-19T11:57:37.349507Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T11:58:37.752948Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "a2a14c7d5b3d1158972e923ffa4b94f7af2a6481065482e9dfa775cdd4779f35"
+  }
+}

@@ -83,9 +83,9 @@ Policies take effect when their queued step runs. Recovery paths must consider w
 | `break_at(time)` | When this step is reached, test the supplied UTC string or numeric epoch seconds; if reached, skip forward to `resume_point()`. Does not arm a general interrupt during another long-running step. |
 | `break_at_ha(limit)` | Test hour-angle limit at this step; numeric hours or a sexagesimal string decoded by `indigo_stod`. Requires mount coordinates/site context. |
 | `wait_until_solar_altitude_below(limit)` | Poll until solar altitude falls below the limit in degrees; requires valid observing location. |
-| `wait_until_target_altitude_above(limit, ra, dec)` | Poll until target altitude exceeds degrees `limit`; RA is hours, DEC degrees. Requires location/time. |
+| `wait_until_target_altitude_above(limit, ra, dec)` | Poll until target altitude exceeds degrees `limit`; J2000 RA in hours, DEC in degrees. Requires location/time. |
 | `break_if_solar_altitude_above(limit)` | At this step, skip to resume point if solar altitude exceeds degrees `limit`. |
-| `break_if_target_altitude_below(limit, ra, dec)` | At this step, skip to resume point if target altitude is below degrees `limit`; RA hours, DEC degrees. |
+| `break_if_target_altitude_below(limit, ra, dec)` | At this step, skip to resume point if target altitude is below degrees `limit`; J2000 RA hours, DEC degrees. |
 
 Site coordinates come from the selected Mount Agent's available GPS/geographic properties. Validate location and time first. Sky-condition breaks are evaluated where placed; repeat them between batches if required by the plan. A warning for waits/breaks more than12 hours ahead does not prohibit that schedule. None of these conditions is a substitute for autonomous equipment protection.
 

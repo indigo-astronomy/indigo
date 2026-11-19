@@ -37,6 +37,7 @@ typedef struct {
 	double ecliptic;	/* Mean obliquity of the ecliptic, in degrees */
 } nutation_s;
 
+/* The result is cached per thread and reused for calls within 0.1 day of the cached epoch, so the function is thread-safe. */
 INDIGO_EXTERN void indigocat_get_nutation(double JD, nutation_s *nutation);
 
 #ifdef __cplusplus

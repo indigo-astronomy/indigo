@@ -1,0 +1,475 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f44484e4-0db1-4551-a129-e67b4c04732f",
+  "revision": 22,
+  "title": "indigo_agent_scripting: indigo_target_altitude() passes the caller's RA/Dec to indigo_radec_to_altaz() without stating or converting the frame",
+  "description": "Found 2026-11-19 in ticket ceebf3be. indigo_target_altitude(ra, dec, latitude, longitude) in indigo_drivers/agent_scripting/indigo_agent_scripting.c passes the caller's coordinates straight to indigo_radec_to_altaz(), which expects coordinates of date. Sequencer.js steps wait_until_target_altitude_above() and break_if_target_altitude_below() pass user values, and scheduler tasks pass scheduler_task.ra/dec from @target, which is J2000. If the caller's coordinates are J2000, the altitude is wrong by the precession since J2000 (about 0.36 deg in position, up to roughly 0.3 deg in altitude).\nWork: determine what each caller actually passes (Sequencer.js steps, scheduler task wrapper, documented JS API in indigo_docs / agent_scripting README is read-only); decide and document the frame (J2000 is what @target and catalogues use) and convert J2000 -> date before indigo_radec_to_altaz() if so, or convert at the call sites; reproduce first with a reference test (embedded JPL Horizons/independent values, synthetic site, fixed time via the existing scripting test time override), then fix; bump DRIVER_VERSION of each fixed driver; update the scripting/sequencer documentation that describes these functions (no README.md edits without approval - if a README needs a change, report it).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T11:13:26.538242Z",
+  "status": "closed",
+  "branch": "ticket/f44484e4-0db1-4551-a129-e67b4c04732f",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "66606d6b-134f-463b-81d5-cd185a91f033",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T11:18:18.667004Z",
+          "last_activity_at": "2026-11-19T11:28:42.582838Z",
+          "ended_at": "2026-11-19T11:28:42.582838Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 623915.834,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T11:18:18.667004Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/f44484e4-0db1-4551-a129-e67b4c04732f"
+        },
+        {
+          "at": "2026-11-19T11:28:42.582838Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 623915.834,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "a86c3e24-4a91-4afb-84f6-4c4192d13fa3",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "b9efb905-b9a7-4e13-9a88-76e2d95c0a34",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T11:28:42.582876Z",
+          "last_activity_at": "2026-11-19T11:29:53.765201Z",
+          "ended_at": "2026-11-19T11:29:53.765201Z",
+          "outcome": {
+            "summary": "Pass, no defects. indigo_agent_scripting.c:924-925 precesses J2000 ra (hours) / dec (deg) with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(now))) before indigo_radec_to_altaz(...,&now,...); same 'now' feeds equinox and LST, units match indigo_align.c:72-79 (ra*15*DEG2RAD), mirrors solar_altitude(). Callers: only Sequencer.js:1553/1561/1588 forward user ra/dec unchanged; scheduler bodies pass @target (J2000) as slew() does (Sequencer.js:1852 AGENT_MOUNT_EQUATORIAL_COORDINATES); no of-date caller; pointing paths untouched. Independent recomputation (own Python: IAU 2006 P03 precession, ERA-based GMST, main nutation terms, approx annual aberration) at 1704112496: case 1 apparent 6.9367 (ref 6.944816, -0.008), precession-only 6.9412 (-0.004), J2000-as-of-date 6.6199 (-0.325); case 2 apparent 23.6435 (+0.001), precession-only 23.6412 (-0.001), old 23.7894 (+0.147). Reference confirmed; 0.02 deg tolerance covers nutation/aberration omission yet is >7x below the smallest bug delta, so the test discriminates. Docs (Sequencer.md:148/150, mcp/agents/sequencer.md:86/88, scripting.md:105) accurate; no README changes. DRIVER_VERSION 0x03000014 > master 0x03000013; master changed only indigocat since merge base 2a0caefcb, git merge-tree against master is clean. Recorded whitespace and command-1 checks are on current tree 3edec2da; log shows 'PASS J2000 target altitude matches reference'. Limits: did not rerun tests; aberration in my check is approximate; flaky on-unload case not assessed.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 71182.325,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T11:28:42.582876Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T11:29:53.765201Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass, no defects. indigo_agent_scripting.c:924-925 precesses J2000 ra (hours) / dec (deg) with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(now))) before indigo_radec_to_altaz(...,&now,...); same 'now' feeds equinox and LST, units match indigo_align.c:72-79 (ra*15*DEG2RAD), mirrors solar_altitude(). Callers: only Sequencer.js:1553/1561/1588 forward user ra/dec unchanged; scheduler bodies pass @target (J2000) as slew() does (Sequencer.js:1852 AGENT_MOUNT_EQUATORIAL_COORDINATES); no of-date caller; pointing paths untouched. Independent recomputation (own Python: IAU 2006 P03 precession, ERA-based GMST, main nutation terms, approx annual aberration) at 1704112496: case 1 apparent 6.9367 (ref 6.944816, -0.008), precession-only 6.9412 (-0.004), J2000-as-of-date 6.6199 (-0.325); case 2 apparent 23.6435 (+0.001), precession-only 23.6412 (-0.001), old 23.7894 (+0.147). Reference confirmed; 0.02 deg tolerance covers nutation/aberration omission yet is >7x below the smallest bug delta, so the test discriminates. Docs (Sequencer.md:148/150, mcp/agents/sequencer.md:86/88, scripting.md:105) accurate; no README changes. DRIVER_VERSION 0x03000014 > master 0x03000013; master changed only indigocat since merge base 2a0caefcb, git merge-tree against master is clean. Recorded whitespace and command-1 checks are on current tree 3edec2da; log shows 'PASS J2000 target altitude matches reference'. Limits: did not rerun tests; aberration in my check is approximate; flaky on-unload case not assessed."
+        }
+      ],
+      "result": {
+        "summary": "Pass, no defects. indigo_agent_scripting.c:924-925 precesses J2000 ra (hours) / dec (deg) with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(now))) before indigo_radec_to_altaz(...,&now,...); same 'now' feeds equinox and LST, units match indigo_align.c:72-79 (ra*15*DEG2RAD), mirrors solar_altitude(). Callers: only Sequencer.js:1553/1561/1588 forward user ra/dec unchanged; scheduler bodies pass @target (J2000) as slew() does (Sequencer.js:1852 AGENT_MOUNT_EQUATORIAL_COORDINATES); no of-date caller; pointing paths untouched. Independent recomputation (own Python: IAU 2006 P03 precession, ERA-based GMST, main nutation terms, approx annual aberration) at 1704112496: case 1 apparent 6.9367 (ref 6.944816, -0.008), precession-only 6.9412 (-0.004), J2000-as-of-date 6.6199 (-0.325); case 2 apparent 23.6435 (+0.001), precession-only 23.6412 (-0.001), old 23.7894 (+0.147). Reference confirmed; 0.02 deg tolerance covers nutation/aberration omission yet is >7x below the smallest bug delta, so the test discriminates. Docs (Sequencer.md:148/150, mcp/agents/sequencer.md:86/88, scripting.md:105) accurate; no README changes. DRIVER_VERSION 0x03000014 > master 0x03000013; master changed only indigocat since merge base 2a0caefcb, git merge-tree against master is clean. Recorded whitespace and command-1 checks are on current tree 3edec2da; log shows 'PASS J2000 target altitude matches reference'. Limits: did not rerun tests; aberration in my check is approximate; flaky on-unload case not assessed.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 71182.325,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "c46b629e-2c60-4c22-b92a-13b79526b606",
+      "event": "ticket/created",
+      "at": "2026-11-19T11:13:26.538624Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "a61f5e1b-8c21-4a24-824a-0e2bed0e267c",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T11:17:13.815751Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "07c6181b-0775-4f11-8fc3-871b7147f08b",
+      "event": "task/progress",
+      "at": "2026-11-19T11:18:18.667799Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "text": "Implementation started on branch ticket/f44484e4-0db1-4551-a129-e67b4c04732f"
+    },
+    {
+      "event_id": "c5b4133b-d389-494c-8b05-b678d1852d6c",
+      "event": "ticket/started",
+      "at": "2026-11-19T11:18:18.670250Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/f44484e4-0db1-4551-a129-e67b4c04732f",
+      "base": "master"
+    },
+    {
+      "event_id": "65482771-8b0e-46e2-8ed4-91a1e7d40ecc",
+      "event": "task/progress",
+      "at": "2026-11-19T11:18:56.485483Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "text": "Implementer launched",
+      "attempt_id": "66606d6b-134f-463b-81d5-cd185a91f033",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "52a73e26-27a6-4098-b920-cf1d9a4c61b4",
+      "event": "task/progress",
+      "at": "2026-11-19T11:20:23.688791Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "text": "Adding target altitude reference test to test_agent_scripting.c"
+    },
+    {
+      "event_id": "2a9368f4-3195-44fd-a929-8635b1774e25",
+      "event": "task/progress",
+      "at": "2026-11-19T11:20:39.233772Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "text": "Reproducing on old code: make test-agent-scripting"
+    },
+    {
+      "event_id": "32a58cfd-4014-4acb-afeb-bd1fab666bd4",
+      "event": "task/progress",
+      "at": "2026-11-19T11:22:20.408983Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1ac773ef-57b8-4ac9-b30e-f3ffacfad80c",
+      "event": "task/progress",
+      "at": "2026-11-19T11:22:20.425035Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b0512c81-bd4e-4ce6-9c4a-8c08f0d9533a",
+      "event": "check/passed",
+      "at": "2026-11-19T11:22:20.430872Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e71a791ebb9695fd055edf3a02d45d789d9b5fc5",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7a33e9a3-e1ea-43f2-9b00-f2b5efbad6c4",
+      "event": "task/progress",
+      "at": "2026-11-19T11:22:24.152325Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "ca8c58ee-d0c0-4ff7-8dd3-712935869ee3",
+      "event": "task/progress",
+      "at": "2026-11-19T11:27:51.746103Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "6c67ea3b-6203-4775-9a2f-55b353076cb4",
+      "event": "check/passed",
+      "at": "2026-11-19T11:27:51.755742Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e71a791ebb9695fd055edf3a02d45d789d9b5fc5",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "dc78b043-d6ce-4f40-8eac-04adcba1c5f0",
+      "event": "ticket/note",
+      "at": "2026-11-19T11:28:09.752855Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Callers and frames: indigo_target_altitude() is called only from Sequencer.js steps wait_until_target_altitude_above() (lines 1553, 1561) and break_if_target_altitude_below() (line 1588), which forward the user's ra/dec unchanged. Scheduler task bodies pass scheduler_task.ra/dec from @target, documented as J2000 (INDIGO_SCHEDULER_GUIDE.md), the same frame slew()/precise_goto() send to AGENT_MOUNT_EQUATORIAL_COORDINATES. No caller in the repository passes coordinates of date, so converting inside the C binding cannot double-convert. Pointing paths are unchanged.",
+      "tokens": null
+    },
+    {
+      "event_id": "ff737894-f8a2-4f98-8869-8fd21a7fbf63",
+      "event": "ticket/note",
+      "at": "2026-11-19T11:28:09.836826Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: new case 'J2000 target altitude matches reference' in indigo_test/integration/test_agent_scripting.c, fixed time 2024-01-01 12:34:56 UTC (scripting_test_time override). References computed independently of INDIGO (IAU 1976 precession, IAU 1980 nutation main terms, annual aberration, GMST + equation of equinoxes; the same sidereal/horizon pipeline reproduces the JPL Horizons Sun elevations of the solar test within 0.004 deg): RA 10h Dec +20 at lat -30 lon -70 -> 6.944816 deg; RA 3h Dec +40 at lat 48.15 lon 17.11 -> 23.642420 deg; tolerance 0.02 deg. Old code: make -C indigo_test test-agent-scripting failed the case with 'target altitude 6.619793088395294 instead of 6.944816' (-0.325 deg, the precession since J2000).",
+      "tokens": null
+    },
+    {
+      "event_id": "21cba0f6-0340-418b-9662-3616bb215d52",
+      "event": "ticket/note",
+      "at": "2026-11-19T11:28:09.895557Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Fix: target_altitude() in indigo_agent_scripting.c now precesses the J2000 ra/dec with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(now)), &ra, &dec) before indigo_radec_to_altaz(), as solar_altitude() does. DRIVER_VERSION 0x03000013 -> 0x03000014. Sequencer.js unchanged, so agent_scheduler's embedded Sequencer.js.dat needs no regeneration and the scheduler suite was not required. Docs: Sequencer.md, indigo_docs/mcp/agents/sequencer.md and scripting.md state J2000 input and precession-only conversion. After fix: flow check --command (build + test-agent-scripting test-agent-scripting-sequencer) passed, Scripting Agent 39/39, Sequencer.js 68/68; whitespace check passed. The pre-fix run also showed one unrelated 'on-unload execution' failure (has_message unload-ran) that did not recur on the post-fix run.",
+      "tokens": null
+    },
+    {
+      "event_id": "df0e86e6-6a48-43ab-83c2-cbecdd10c385",
+      "event": "ticket/note",
+      "at": "2026-11-19T11:28:09.973221Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Test mapping: J2000 frame contract of indigo_target_altitude() -> test_agent_scripting 'J2000 target altitude matches reference' (two sites/hemispheres, error -0.32 and +0.15 deg if J2000 were used as of-date). Sequencer steps forwarding unchanged ra/dec -> existing test_agent_scripting_sequencer 'simulator altitude and hour angle' and sequencer_simulators.js sky cases (behavioural, limits +-91).",
+      "tokens": null
+    },
+    {
+      "event_id": "99eab29d-95f1-4709-b545-a83a993ee69e",
+      "event": "task/progress",
+      "at": "2026-11-19T11:28:42.501920Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "89214fcd-400a-4ad4-8703-fea722f2ab0e",
+      "text": "Reviewer launched",
+      "attempt_id": "66606d6b-134f-463b-81d5-cd185a91f033",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "370aecb2-4c1c-4c84-9d70-89c66fd6744b",
+      "event": "task/progress",
+      "at": "2026-11-19T11:28:42.582923Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a86c3e24-4a91-4afb-84f6-4c4192d13fa3",
+      "text": "Review started"
+    },
+    {
+      "event_id": "16080579-e77d-4da2-8b87-410cf5578b6f",
+      "event": "review/started",
+      "at": "2026-11-19T11:28:42.583258Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "d93dc1e7-c077-4378-8f35-435d2544f8f9",
+      "event": "task/progress",
+      "at": "2026-11-19T11:29:03.218692Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a86c3e24-4a91-4afb-84f6-4c4192d13fa3",
+      "text": "Recomputing target altitude references independently"
+    },
+    {
+      "event_id": "387a65ab-664b-42ab-99ba-06a362bcf618",
+      "event": "task/progress",
+      "at": "2026-11-19T11:29:53.765268Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a86c3e24-4a91-4afb-84f6-4c4192d13fa3",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "df7e6497-3f55-4b82-8293-8dea1644a740",
+      "event": "review/passed",
+      "at": "2026-11-19T11:29:53.765597Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a86c3e24-4a91-4afb-84f6-4c4192d13fa3",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "e71a791ebb9695fd055edf3a02d45d789d9b5fc5"
+    },
+    {
+      "event_id": "81e52646-61e2-41fc-b203-985115335283",
+      "event": "ticket/closed",
+      "at": "2026-11-19T11:35:53.045737Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T11:35:53.045693Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "801b605f8a1a586bf63dd69402c58beebb5f22be"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e71a791ebb9695fd055edf3a02d45d789d9b5fc5",
+        "tree": "3edec2da525c874eba3ff15a76ee9ad4aad421db",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T11:22:20.424626Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/f44484e4-0db1-4551-a129-e67b4c04732f/3edec2da525c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -C indigo_test test-agent-scripting test-agent-scripting-sequencer",
+        "commit": "e71a791ebb9695fd055edf3a02d45d789d9b5fc5",
+        "tree": "3edec2da525c874eba3ff15a76ee9ad4aad421db",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T11:27:51.722550Z",
+        "duration_s": 327.6,
+        "log": "/tmp/factory-flow/f44484e4-0db1-4551-a129-e67b4c04732f/3edec2da525c-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass, no defects. indigo_agent_scripting.c:924-925 precesses J2000 ra (hours) / dec (deg) with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(now))) before indigo_radec_to_altaz(...,&now,...); same 'now' feeds equinox and LST, units match indigo_align.c:72-79 (ra*15*DEG2RAD), mirrors solar_altitude(). Callers: only Sequencer.js:1553/1561/1588 forward user ra/dec unchanged; scheduler bodies pass @target (J2000) as slew() does (Sequencer.js:1852 AGENT_MOUNT_EQUATORIAL_COORDINATES); no of-date caller; pointing paths untouched. Independent recomputation (own Python: IAU 2006 P03 precession, ERA-based GMST, main nutation terms, approx annual aberration) at 1704112496: case 1 apparent 6.9367 (ref 6.944816, -0.008), precession-only 6.9412 (-0.004), J2000-as-of-date 6.6199 (-0.325); case 2 apparent 23.6435 (+0.001), precession-only 23.6412 (-0.001), old 23.7894 (+0.147). Reference confirmed; 0.02 deg tolerance covers nutation/aberration omission yet is >7x below the smallest bug delta, so the test discriminates. Docs (Sequencer.md:148/150, mcp/agents/sequencer.md:86/88, scripting.md:105) accurate; no README changes. DRIVER_VERSION 0x03000014 > master 0x03000013; master changed only indigocat since merge base 2a0caefcb, git merge-tree against master is clean. Recorded whitespace and command-1 checks are on current tree 3edec2da; log shows 'PASS J2000 target altitude matches reference'. Limits: did not rerun tests; aberration in my check is approximate; flaky on-unload case not assessed.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "e71a791ebb9695fd055edf3a02d45d789d9b5fc5",
+        "tree": "3edec2da525c874eba3ff15a76ee9ad4aad421db",
+        "at": "2026-11-19T11:29:53.765145Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T11:28:09.752558Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Callers and frames: indigo_target_altitude() is called only from Sequencer.js steps wait_until_target_altitude_above() (lines 1553, 1561) and break_if_target_altitude_below() (line 1588), which forward the user's ra/dec unchanged. Scheduler task bodies pass scheduler_task.ra/dec from @target, documented as J2000 (INDIGO_SCHEDULER_GUIDE.md), the same frame slew()/precise_goto() send to AGENT_MOUNT_EQUATORIAL_COORDINATES. No caller in the repository passes coordinates of date, so converting inside the C binding cannot double-convert. Pointing paths are unchanged.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T11:28:09.836612Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: new case 'J2000 target altitude matches reference' in indigo_test/integration/test_agent_scripting.c, fixed time 2024-01-01 12:34:56 UTC (scripting_test_time override). References computed independently of INDIGO (IAU 1976 precession, IAU 1980 nutation main terms, annual aberration, GMST + equation of equinoxes; the same sidereal/horizon pipeline reproduces the JPL Horizons Sun elevations of the solar test within 0.004 deg): RA 10h Dec +20 at lat -30 lon -70 -> 6.944816 deg; RA 3h Dec +40 at lat 48.15 lon 17.11 -> 23.642420 deg; tolerance 0.02 deg. Old code: make -C indigo_test test-agent-scripting failed the case with 'target altitude 6.619793088395294 instead of 6.944816' (-0.325 deg, the precession since J2000).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T11:28:09.895240Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Fix: target_altitude() in indigo_agent_scripting.c now precesses the J2000 ra/dec with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(now)), &ra, &dec) before indigo_radec_to_altaz(), as solar_altitude() does. DRIVER_VERSION 0x03000013 -> 0x03000014. Sequencer.js unchanged, so agent_scheduler's embedded Sequencer.js.dat needs no regeneration and the scheduler suite was not required. Docs: Sequencer.md, indigo_docs/mcp/agents/sequencer.md and scripting.md state J2000 input and precession-only conversion. After fix: flow check --command (build + test-agent-scripting test-agent-scripting-sequencer) passed, Scripting Agent 39/39, Sequencer.js 68/68; whitespace check passed. The pre-fix run also showed one unrelated 'on-unload execution' failure (has_message unload-ran) that did not recur on the post-fix run.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T11:28:09.972997Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Test mapping: J2000 frame contract of indigo_target_altitude() -> test_agent_scripting 'J2000 target altitude matches reference' (two sites/hemispheres, error -0.32 and +0.15 deg if J2000 were used as of-date). Sequencer steps forwarding unchanged ra/dec -> existing test_agent_scripting_sequencer 'simulator altitude and hour angle' and sequencer_simulators.js sky cases (behavioural, limits +-91).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "801b605f8a1a586bf63dd69402c58beebb5f22be",
+      "tree": "3edec2da525c874eba3ff15a76ee9ad4aad421db",
+      "base": "master",
+      "at": "2026-11-19T11:35:52.955054Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-19T11:13:26.538242Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T11:17:13.815686Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 695098.159,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 28,
+    "sha256": "33455974249e559474529e83cf5bb00c48e60eeac96c77d3cf09846cf6c1f566"
+  }
+}

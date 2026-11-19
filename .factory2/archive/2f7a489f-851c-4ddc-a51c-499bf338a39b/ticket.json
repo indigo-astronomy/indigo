@@ -1,0 +1,422 @@
+{
+  "schema_version": 1,
+  "ticket_id": "2f7a489f-851c-4ddc-a51c-499bf338a39b",
+  "revision": 17,
+  "title": "indigocat: Delta T table interpolation for 1620-1992 is off by one entry",
+  "description": "Found 2026-11-19 in ticket 885c8a5b. get_dynamical_diff_table() in indigo_libs/indigocat/indigocat_dynamical_time.c (JD 2312752.5 - 2448622.5, years 1620-1992) appears to interpolate with an index off by one: it gives 58.0 s at 1990.0 where the table has 56.9 s, 51.5 s at 1991.0 where about 57.6 s is expected, and drops from 119 s at 1620 to 110.5 s at 1621. Reproduce against the table and published values (Meeus / USNO), fix the indexing minimally, check continuity at 1620 and 1992 with the neighbouring branches.\nAlso include two minor follow-ups from the 885c8a5b review in the same file and test: the comment above get_dynamical_diff_sh2 still says '948 A.D. and 1600 A.D.' (now 1620), and the assertion 'no jump at 1600' in delta_t_matches_observed_values_and_stays_bounded (indigo_test/unit/test_indigocat_corrections.c) compares two points of the same branch; replace it with real continuity checks at the branch boundaries (1620, 1992, 2000). Requires indigo_libs approval (owner approved registering it).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T11:13:26.604526Z",
+  "status": "closed",
+  "branch": "ticket/2f7a489f-851c-4ddc-a51c-499bf338a39b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "9969454f-2085-46f4-b4c9-9c36c2e667e8",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3660a38d-644c-4c4d-89d8-7072bae94815",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T11:18:28.913114Z",
+          "last_activity_at": "2026-11-19T11:23:25.486034Z",
+          "ended_at": "2026-11-19T11:23:25.486034Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 296572.92,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T11:18:28.913114Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/2f7a489f-851c-4ddc-a51c-499bf338a39b"
+        },
+        {
+          "at": "2026-11-19T11:23:25.486034Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 296572.92,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "0092aa52-7989-433b-969c-2ceb6f1c28ad",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "6e37efab-f7a3-4eda-8739-645387cc6fe2",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T11:23:25.486085Z",
+          "last_activity_at": "2026-11-19T11:24:12.302234Z",
+          "ended_at": "2026-11-19T11:24:12.302234Z",
+          "outcome": {
+            "summary": "Pass. indigocat_dynamical_time.c:116-133 now applies Meeus 3.3 correctly: central y2 = delta_t[i], a = y2 - y1, b = y3 - y2, c = b - a, TD = y2 + n/2 (a + b + n c), with n measured in 2-year units from the epoch of delta_t[i] (JD 2312752.5 + 730.5 i, the same epoch formula used to compute i). TERMS 187 matches the initialisers (37 rows of 5 + 2, lines 47-84; the last entry 58.3 is 1992). Bounds: the table branch covers JD [2312752.5, 2448622.5), so i is 0..185; i=0 is clamped to 1, which gives n in [-1,0), still interpolation (n=-1 returns delta_t[0] exactly). The upper clamp TERMS-2=185 is never reached, and delta_t[i+1] stays at most index 186, so nothing reads outside the array. Scratch program linked against the worktree's build/lib/libindigocat.a: every table epoch k=0..185 is reproduced exactly; all 186 mid-interval values lie between their neighbours; the largest step between half-day samples inside the table is 0.006 s. 1992 boundary: 58.294 -> 58.318 (0.024 s, under the test's 0.05 s tolerance). 2000: 63.830/63.830. 1620: 119.021 (sh2, 22.5 t^2 with t = -2.3) -> 124.0 (table entry 0). That 5 s step comes from the difference between the two published sources, and the ticket rightly leaves it out of scope. Minor pre-existing note, not a defect: the 730.5-day epochs drift 3 days behind Gregorian 1 January by 1992 (1700, 1800 and 1900 are not leap years), which causes the 0.024 s residual at 1992. Tests check the exact table values at 8 indices, which I verified against the array (index 40=9.0, 90=13.7, 140=-2.7, 165=29.1, 184=55.8, 185=56.9), plus the mid-values 1621, 1991 (USNO 57.57) and 1951. They also replace the ineffective 1600 assertion with real continuity checks at 1620, 1992 and 2000. The comments are corrected (lines 32, 35, 98, 109). The recorded checks (whitespace, unit) ran on HEAD 74a452ce6, the reviewed tree. Formatting matches the surrounding code.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 46816.149,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T11:23:25.486085Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T11:24:12.302234Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. indigocat_dynamical_time.c:116-133 now applies Meeus 3.3 correctly: central y2 = delta_t[i], a = y2 - y1, b = y3 - y2, c = b - a, TD = y2 + n/2 (a + b + n c), with n measured in 2-year units from the epoch of delta_t[i] (JD 2312752.5 + 730.5 i, the same epoch formula used to compute i). TERMS 187 matches the initialisers (37 rows of 5 + 2, lines 47-84; the last entry 58.3 is 1992). Bounds: the table branch covers JD [2312752.5, 2448622.5), so i is 0..185; i=0 is clamped to 1, which gives n in [-1,0), still interpolation (n=-1 returns delta_t[0] exactly). The upper clamp TERMS-2=185 is never reached, and delta_t[i+1] stays at most index 186, so nothing reads outside the array. Scratch program linked against the worktree's build/lib/libindigocat.a: every table epoch k=0..185 is reproduced exactly; all 186 mid-interval values lie between their neighbours; the largest step between half-day samples inside the table is 0.006 s. 1992 boundary: 58.294 -> 58.318 (0.024 s, under the test's 0.05 s tolerance). 2000: 63.830/63.830. 1620: 119.021 (sh2, 22.5 t^2 with t = -2.3) -> 124.0 (table entry 0). That 5 s step comes from the difference between the two published sources, and the ticket rightly leaves it out of scope. Minor pre-existing note, not a defect: the 730.5-day epochs drift 3 days behind Gregorian 1 January by 1992 (1700, 1800 and 1900 are not leap years), which causes the 0.024 s residual at 1992. Tests check the exact table values at 8 indices, which I verified against the array (index 40=9.0, 90=13.7, 140=-2.7, 165=29.1, 184=55.8, 185=56.9), plus the mid-values 1621, 1991 (USNO 57.57) and 1951. They also replace the ineffective 1600 assertion with real continuity checks at 1620, 1992 and 2000. The comments are corrected (lines 32, 35, 98, 109). The recorded checks (whitespace, unit) ran on HEAD 74a452ce6, the reviewed tree. Formatting matches the surrounding code."
+        }
+      ],
+      "result": {
+        "summary": "Pass. indigocat_dynamical_time.c:116-133 now applies Meeus 3.3 correctly: central y2 = delta_t[i], a = y2 - y1, b = y3 - y2, c = b - a, TD = y2 + n/2 (a + b + n c), with n measured in 2-year units from the epoch of delta_t[i] (JD 2312752.5 + 730.5 i, the same epoch formula used to compute i). TERMS 187 matches the initialisers (37 rows of 5 + 2, lines 47-84; the last entry 58.3 is 1992). Bounds: the table branch covers JD [2312752.5, 2448622.5), so i is 0..185; i=0 is clamped to 1, which gives n in [-1,0), still interpolation (n=-1 returns delta_t[0] exactly). The upper clamp TERMS-2=185 is never reached, and delta_t[i+1] stays at most index 186, so nothing reads outside the array. Scratch program linked against the worktree's build/lib/libindigocat.a: every table epoch k=0..185 is reproduced exactly; all 186 mid-interval values lie between their neighbours; the largest step between half-day samples inside the table is 0.006 s. 1992 boundary: 58.294 -> 58.318 (0.024 s, under the test's 0.05 s tolerance). 2000: 63.830/63.830. 1620: 119.021 (sh2, 22.5 t^2 with t = -2.3) -> 124.0 (table entry 0). That 5 s step comes from the difference between the two published sources, and the ticket rightly leaves it out of scope. Minor pre-existing note, not a defect: the 730.5-day epochs drift 3 days behind Gregorian 1 January by 1992 (1700, 1800 and 1900 are not leap years), which causes the 0.024 s residual at 1992. Tests check the exact table values at 8 indices, which I verified against the array (index 40=9.0, 90=13.7, 140=-2.7, 165=29.1, 184=55.8, 185=56.9), plus the mid-values 1621, 1991 (USNO 57.57) and 1951. They also replace the ineffective 1600 assertion with real continuity checks at 1620, 1992 and 2000. The comments are corrected (lines 32, 35, 98, 109). The recorded checks (whitespace, unit) ran on HEAD 74a452ce6, the reviewed tree. Formatting matches the surrounding code.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 46816.149,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "f58a78a0-38ea-4fd5-bdcb-c592de8efb24",
+      "event": "ticket/created",
+      "at": "2026-11-19T11:13:26.604790Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "bc117db8-3a26-4f67-a761-accfd0325223",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T11:17:13.878635Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "b5dc9ca5-1fee-499d-a639-569b6360065a",
+      "event": "task/progress",
+      "at": "2026-11-19T11:18:28.915369Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9969454f-2085-46f4-b4c9-9c36c2e667e8",
+      "text": "Implementation started on branch ticket/2f7a489f-851c-4ddc-a51c-499bf338a39b"
+    },
+    {
+      "event_id": "bcfa8344-39ee-43f9-8888-0ac5e63f98e4",
+      "event": "ticket/started",
+      "at": "2026-11-19T11:18:28.922751Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/2f7a489f-851c-4ddc-a51c-499bf338a39b",
+      "base": "master"
+    },
+    {
+      "event_id": "38b2bf39-079a-4f0d-98b9-3e0c4143abf8",
+      "event": "task/progress",
+      "at": "2026-11-19T11:18:56.460922Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9969454f-2085-46f4-b4c9-9c36c2e667e8",
+      "text": "Implementer launched",
+      "attempt_id": "3660a38d-644c-4c4d-89d8-7072bae94815",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "8577ce4f-9c5a-40e8-a60e-a1a95d4c0021",
+      "event": "task/progress",
+      "at": "2026-11-19T11:19:26.319897Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9969454f-2085-46f4-b4c9-9c36c2e667e8",
+      "text": "Building indigo_libs in worktree to reproduce Delta T table values"
+    },
+    {
+      "event_id": "c380f8f2-c339-47da-9742-82ca1965f6e1",
+      "event": "task/progress",
+      "at": "2026-11-19T11:21:15.331585Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9969454f-2085-46f4-b4c9-9c36c2e667e8",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "53dd8c54-a92f-4d94-b166-3712426bfd98",
+      "event": "task/progress",
+      "at": "2026-11-19T11:21:15.386758Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9969454f-2085-46f4-b4c9-9c36c2e667e8",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "d1503d82-a729-4a73-9bd5-26f1d17719e4",
+      "event": "task/progress",
+      "at": "2026-11-19T11:21:15.397648Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9969454f-2085-46f4-b4c9-9c36c2e667e8",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a48161cb-e6d9-45a7-ad1d-57f68f588ec9",
+      "event": "task/progress",
+      "at": "2026-11-19T11:22:29.752560Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9969454f-2085-46f4-b4c9-9c36c2e667e8",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "b88e1165-b743-4af9-8b63-5cfffad544f6",
+      "event": "check/passed",
+      "at": "2026-11-19T11:22:29.765995Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "74a452ce667a077a96d7b54c74c0ab3d41a97201",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "f391f23f-cc61-4b25-95ea-9c05eaa107ec",
+      "event": "ticket/note",
+      "at": "2026-11-19T11:22:49.934992Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction (scratch tool printing indigocat_get_dynamical_time_diff at JD 2312752.5 + (year-1620)*365.25; table entry from the source / USNO): year before -> after (table | published): 1620 115.000 -> 124.000 (124); 1621 110.500 -> 119.500 (between 124 and 115); 1622 106.000 -> 115.000 (115); 1700 9.000 -> 9.000 (9.0); 1800 13.100 -> 13.700 (13.7); 1900 0.000 -> -2.700 (-2.7 | USNO -2.72); 1950 30.000 -> 29.100 (29.1 | 29.15); 1989 57.487 -> 56.325; 1990 58.300 -> 56.900 (56.9 | 56.86); 1991 51.537 -> 57.562 (between 56.9 and 58.3 | 57.57). Boundaries (value 1e-6 day before / at): 1620 JD 2312752.5 before 119.021/115.000, after 119.021/124.000; 1992 JD 2448622.5 before 59.572/58.318, after 58.294/58.318; 2000 JD 2451544.5 63.830/63.830 unchanged.\nRoot cause: get_dynamical_diff_table() measured n from the epoch of delta_t[i] but used delta_t[i+1] as the central value of Meeus formula 3.3, so every value was shifted one table entry (two years) late; c was also computed as a - b instead of b - a; and for 1990..1992 the third point delta_t[i+2] was the zero filler after the last real entry (TERMS 192 with 187 initialisers), which produced the 51.5 s at 1991.\nFix: central entry delta_t[i] with neighbours i-1 and i+1, i clamped to 1..TERMS-2, c = b - a, TD = delta_t[i] + n/2 (a + b + n c); TERMS 192 -> 187 (the real entry count, so no zero filler can be read). Comments 1600 -> 1620 above get_dynamical_diff_sh2 and the table function.\nTests (indigo_test/unit/test_indigocat_corrections.c): new delta_t_table_is_interpolated_around_the_right_entries - table epochs exact to 1e-9 for indices 0, 1, 40, 90, 140, 165, 184, 185 (1620..1990; fails before the fix, e.g. 1620 gave 115); mid-interval 1621 (119.5 +-0.5), 1991 (USNO 57.57 +-0.1), 1951 (29.55 +-0.45). delta_t_matches_observed_values_and_stays_bounded: the ineffective 'at 1600' assertion (JD 2305447.5, both points in sh2) replaced by boundary checks at 1992 (tolerance 0.05 s, was 1.25 s jump before) and 1620 (5.1 s, see o",
+      "tokens": null
+    },
+    {
+      "event_id": "72e100bd-1e5d-4c04-8f90-45716066d546",
+      "event": "task/progress",
+      "at": "2026-11-19T11:23:25.406149Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9969454f-2085-46f4-b4c9-9c36c2e667e8",
+      "text": "Reviewer launched",
+      "attempt_id": "3660a38d-644c-4c4d-89d8-7072bae94815",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "4c8fd0cf-d528-4769-9923-27dae7eab893",
+      "event": "task/progress",
+      "at": "2026-11-19T11:23:25.486158Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0092aa52-7989-433b-969c-2ceb6f1c28ad",
+      "text": "Review started"
+    },
+    {
+      "event_id": "ecd424cc-b0db-435d-8d19-5290970d9ebb",
+      "event": "review/started",
+      "at": "2026-11-19T11:23:25.486736Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "6501c39e-f9e8-4a69-becf-30cb97595feb",
+      "event": "task/progress",
+      "at": "2026-11-19T11:23:45.032851Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0092aa52-7989-433b-969c-2ceb6f1c28ad",
+      "text": "Spot-checking Delta T values with a scratch program"
+    },
+    {
+      "event_id": "f912465d-af21-459c-bca0-1338b19888b1",
+      "event": "task/progress",
+      "at": "2026-11-19T11:24:12.302292Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0092aa52-7989-433b-969c-2ceb6f1c28ad",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "98229169-b7e5-4ad5-861e-d3638acba27f",
+      "event": "review/passed",
+      "at": "2026-11-19T11:24:12.302690Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0092aa52-7989-433b-969c-2ceb6f1c28ad",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "74a452ce667a077a96d7b54c74c0ab3d41a97201"
+    },
+    {
+      "event_id": "83f689b6-142c-42d8-9dfe-02204242cbba",
+      "event": "ticket/closed",
+      "at": "2026-11-19T11:25:58.541752Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T11:25:58.541731Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "3c58d224ed23fb0d38ddffdfe635239356da80b9"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "74a452ce667a077a96d7b54c74c0ab3d41a97201",
+        "tree": "d83d8742fcd3aa7f2307ed7bd68bbe4ae99d719f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T11:21:15.386256Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/2f7a489f-851c-4ddc-a51c-499bf338a39b/d83d8742fcd3-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "74a452ce667a077a96d7b54c74c0ab3d41a97201",
+        "tree": "d83d8742fcd3aa7f2307ed7bd68bbe4ae99d719f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T11:22:29.750754Z",
+        "duration_s": 74.4,
+        "log": "/tmp/factory-flow/2f7a489f-851c-4ddc-a51c-499bf338a39b/d83d8742fcd3-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. indigocat_dynamical_time.c:116-133 now applies Meeus 3.3 correctly: central y2 = delta_t[i], a = y2 - y1, b = y3 - y2, c = b - a, TD = y2 + n/2 (a + b + n c), with n measured in 2-year units from the epoch of delta_t[i] (JD 2312752.5 + 730.5 i, the same epoch formula used to compute i). TERMS 187 matches the initialisers (37 rows of 5 + 2, lines 47-84; the last entry 58.3 is 1992). Bounds: the table branch covers JD [2312752.5, 2448622.5), so i is 0..185; i=0 is clamped to 1, which gives n in [-1,0), still interpolation (n=-1 returns delta_t[0] exactly). The upper clamp TERMS-2=185 is never reached, and delta_t[i+1] stays at most index 186, so nothing reads outside the array. Scratch program linked against the worktree's build/lib/libindigocat.a: every table epoch k=0..185 is reproduced exactly; all 186 mid-interval values lie between their neighbours; the largest step between half-day samples inside the table is 0.006 s. 1992 boundary: 58.294 -> 58.318 (0.024 s, under the test's 0.05 s tolerance). 2000: 63.830/63.830. 1620: 119.021 (sh2, 22.5 t^2 with t = -2.3) -> 124.0 (table entry 0). That 5 s step comes from the difference between the two published sources, and the ticket rightly leaves it out of scope. Minor pre-existing note, not a defect: the 730.5-day epochs drift 3 days behind Gregorian 1 January by 1992 (1700, 1800 and 1900 are not leap years), which causes the 0.024 s residual at 1992. Tests check the exact table values at 8 indices, which I verified against the array (index 40=9.0, 90=13.7, 140=-2.7, 165=29.1, 184=55.8, 185=56.9), plus the mid-values 1621, 1991 (USNO 57.57) and 1951. They also replace the ineffective 1600 assertion with real continuity checks at 1620, 1992 and 2000. The comments are corrected (lines 32, 35, 98, 109). The recorded checks (whitespace, unit) ran on HEAD 74a452ce6, the reviewed tree. Formatting matches the surrounding code.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "74a452ce667a077a96d7b54c74c0ab3d41a97201",
+        "tree": "d83d8742fcd3aa7f2307ed7bd68bbe4ae99d719f",
+        "at": "2026-11-19T11:24:12.302172Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T11:22:49.934538Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction (scratch tool printing indigocat_get_dynamical_time_diff at JD 2312752.5 + (year-1620)*365.25; table entry from the source / USNO): year before -> after (table | published): 1620 115.000 -> 124.000 (124); 1621 110.500 -> 119.500 (between 124 and 115); 1622 106.000 -> 115.000 (115); 1700 9.000 -> 9.000 (9.0); 1800 13.100 -> 13.700 (13.7); 1900 0.000 -> -2.700 (-2.7 | USNO -2.72); 1950 30.000 -> 29.100 (29.1 | 29.15); 1989 57.487 -> 56.325; 1990 58.300 -> 56.900 (56.9 | 56.86); 1991 51.537 -> 57.562 (between 56.9 and 58.3 | 57.57). Boundaries (value 1e-6 day before / at): 1620 JD 2312752.5 before 119.021/115.000, after 119.021/124.000; 1992 JD 2448622.5 before 59.572/58.318, after 58.294/58.318; 2000 JD 2451544.5 63.830/63.830 unchanged.\nRoot cause: get_dynamical_diff_table() measured n from the epoch of delta_t[i] but used delta_t[i+1] as the central value of Meeus formula 3.3, so every value was shifted one table entry (two years) late; c was also computed as a - b instead of b - a; and for 1990..1992 the third point delta_t[i+2] was the zero filler after the last real entry (TERMS 192 with 187 initialisers), which produced the 51.5 s at 1991.\nFix: central entry delta_t[i] with neighbours i-1 and i+1, i clamped to 1..TERMS-2, c = b - a, TD = delta_t[i] + n/2 (a + b + n c); TERMS 192 -> 187 (the real entry count, so no zero filler can be read). Comments 1600 -> 1620 above get_dynamical_diff_sh2 and the table function.\nTests (indigo_test/unit/test_indigocat_corrections.c): new delta_t_table_is_interpolated_around_the_right_entries - table epochs exact to 1e-9 for indices 0, 1, 40, 90, 140, 165, 184, 185 (1620..1990; fails before the fix, e.g. 1620 gave 115); mid-interval 1621 (119.5 +-0.5), 1991 (USNO 57.57 +-0.1), 1951 (29.55 +-0.45). delta_t_matches_observed_values_and_stays_bounded: the ineffective 'at 1600' assertion (JD 2305447.5, both points in sh2) replaced by boundary checks at 1992 (tolerance 0.05 s, was 1.25 s jump before) and 1620 (5.1 s, see open item); 2000 check kept. Bit-for-bit reference values unchanged: all captured JDs and concurrent dates are >= 1993, outside 1620..1992.\nOpen item (not changed, out of scope): at 1620 the Stephenson-Houlden parabola gives 119.0 s and the table's first entry is 124 s, a 5 s step inherent in the two data sources (before the fix the step was 4 s, 119 -> 115). Smoothing it would need a change of the sh2 model or a blend, to be decided by the owner.\nChecks: flow check whitespace passed; unit passed (553 PASS lines, 0 FAIL, 39 suites 'all tests passed'; indigocat corrections 9/9 including the new test).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "3c58d224ed23fb0d38ddffdfe635239356da80b9",
+      "tree": "d83d8742fcd3aa7f2307ed7bd68bbe4ae99d719f",
+      "base": "master",
+      "at": "2026-11-19T11:25:58.478777Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T11:13:26.604526Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T11:17:13.878604Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 343389.069,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 23,
+    "sha256": "86ce1944cedbd53e11faedb782b02d35b9e1c4c4365ae43fb6df2184cf018e52"
+  }
+}
