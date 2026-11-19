@@ -25,7 +25,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x03000012
+#define DRIVER_VERSION 0x03000013
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -903,9 +903,13 @@ static duk_ret_t solar_altitude(duk_context *ctx) {
 	double longitude = duk_require_number(ctx, 1);
 	equatorial_coords_s sun_pos;
 	time_t now = time(NULL);
-	indigocat_sun_equatorial_coords(UT2JD(now), &sun_pos);
+	double jd = UT2JD(now);
+	indigocat_sun_equatorial_coords(jd, &sun_pos);
+	// indigocat returns J2000 coordinates, indigo_radec_to_altaz() needs coordinates of date
+	double ra = sun_pos.ra / 15.0, dec = sun_pos.dec;
+	indigo_j2k_to_eq(indigo_eq_of_date(jd), &ra, &dec);
 	double alt, az;
-	indigo_radec_to_altaz(sun_pos.ra / 15.0, sun_pos.dec, &now, latitude, longitude, 0, &alt, &az);
+	indigo_radec_to_altaz(ra, dec, &now, latitude, longitude, 0, &alt, &az);
 	duk_push_number(ctx, alt);
 	return 1;
 }

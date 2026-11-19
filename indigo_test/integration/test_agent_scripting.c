@@ -943,6 +943,13 @@ static void conversion_bindings(void) {
 	ASSERT_TRUE(js("testValue = 1;"));
 }
 
+// JPL Horizons apparent airless Sun elevation at the fixed time 2024-01-01 12:34:56 UTC;
+// precession since J2000 alone moves the result by about 0.3 deg, the tolerance covers nutation and aberration
+static void solar_altitude_reference(void) {
+	ASSERT_TRUE(js("var a=indigo_solar_altitude(48.15,17.11); if(Math.abs(a-15.377750482)>0.02) throw new Error('solar altitude '+a+' instead of 15.377750482');"));
+	ASSERT_TRUE(js("var a=indigo_solar_altitude(-30,-70); if(Math.abs(a-34.643634261)>0.02) throw new Error('solar altitude '+a+' instead of 34.643634261');"));
+}
+
 static void timer_bindings(void) {
 	int messages_before = atomic_load(&message_count);
 	ASSERT_TRUE(js("var fired=indigo_set_timer(function(){indigo_send_message('timer-fired')},0.01); if(fired<0) throw new Error('timer failed');"));
@@ -1041,6 +1048,7 @@ static const indigo_test_case tests[] = {
 	{ "boot.js property change helper", peer_property_change_helper },
 	{ "BLOB populate and save bindings", blob_bindings },
 	{ "conversion and astronomy bindings", conversion_bindings },
+	{ "solar altitude matches reference", solar_altitude_reference },
 	{ "timer scheduling cancellation capacity", timer_bindings },
 	{ "shutdown cancels pending timers", shutdown_cancels_timers },
 	{ "logging and message bindings", logging_and_messages },
