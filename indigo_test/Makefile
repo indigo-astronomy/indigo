@@ -374,7 +374,17 @@ test-tool-input-safety: $(BUILD_LIB)/libindigo_client.a
 test-buildsystem:
 	python3 -B -m unittest discover -s buildsystem -p 'test_*.py'
 
-test-unit: check-lib $(UNIT_TESTS)
+# Raspberry Pi control script regression; runs the scripts with stub commands only.
+.PHONY: test-rpi-ctrl-wifi-client
+test-rpi-ctrl-wifi-client:
+	python3 -B unit/test_rpi_ctrl_wifi_client.py
+
+# rpi_ctrl_v2.sh channel readback, version install, Wi-Fi client join and parser; stub commands only.
+.PHONY: test-rpi-ctrl-v2
+test-rpi-ctrl-v2:
+	python3 -B unit/test_rpi_ctrl_v2.py
+
+test-unit: check-lib $(UNIT_TESTS) test-rpi-ctrl-wifi-client test-rpi-ctrl-v2
 	@executed=0; \
 	for test in $(UNIT_TESTS); do \
 		printf "Running %s\n" "$$test"; \

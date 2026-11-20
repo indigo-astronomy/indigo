@@ -446,8 +446,8 @@ __set-wifi-client() {
 
     [[ -z ${WIFI_CN_SSID} ]] && __ALERT "WIFI_CN_SSID not set"
     [[ -z ${WIFI_CN_PW} ]] && __ALERT "WIFI_CN_PW not set"
-    [[ ${#WIFI_CN_PW} -lt 8 ]] && "WIFI_CN_PW length < 8"
-    [[ ${#WIFI_CN_PW} -gt 63 ]] && "WIFI_CN_PW length > 63"
+    [[ ${#WIFI_CN_PW} -lt 8 ]] && __ALERT "WIFI_CN_PW length < 8"
+    [[ ${#WIFI_CN_PW} -gt 63 ]] && __ALERT "WIFI_CN_PW length > 63"
 
     ${CP_EXE} "${CONF_WPA_SUPPLICANT}" "${CONF_WPA_SUPPLICANT}.backup"
     [[ $? -ne 0 ]] && __ALERT "cannot copy ${CONF_WPA_SUPPLICANT} to ${CONF_WPA_SUPPLICANT}.backup"
