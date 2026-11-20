@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "19a35ae7-c029-486a-8a39-f4c66c85856a",
+  "revision": 1,
+  "title": "test_mount_ioptron_simulator: opt-in case ioptron_tcp_connection_loss_and_reconnect fails",
+  "description": "The opt-in --tcp case ioptron_tcp_connection_loss_and_reconnect (target test-mount-ioptron-tcp) failed 6 of 6 runs on master before ticket 42b85be0, so it is not caused by that change. Establish whether the driver or the test is wrong. The case is not part of the recorded simulator run.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:05.072682Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "a81db93c-7e46-4eee-af39-7acbd1daa80a",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:05.073438Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:05.072682Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "a7ca4488416b2b5f1c63982de19ff4119236d0798ecc018f5a8d7f1c9d71cf48"
+  }
+}
