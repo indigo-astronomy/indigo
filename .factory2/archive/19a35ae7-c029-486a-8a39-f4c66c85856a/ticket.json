@@ -1,0 +1,417 @@
+{
+  "schema_version": 1,
+  "ticket_id": "19a35ae7-c029-486a-8a39-f4c66c85856a",
+  "revision": 18,
+  "title": "test_mount_ioptron_simulator: opt-in case ioptron_tcp_connection_loss_and_reconnect fails",
+  "description": "The opt-in --tcp case ioptron_tcp_connection_loss_and_reconnect (target test-mount-ioptron-tcp) failed 6 of 6 runs on master before ticket 42b85be0, so it is not caused by that change. Establish whether the driver or the test is wrong. The case is not part of the recorded simulator run.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:05.072682Z",
+  "status": "closed",
+  "branch": "ticket/19a35ae7-c029-486a-8a39-f4c66c85856a",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "b85c4a08-08d8-4d98-ab98-6721b0aeaca1",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "89da0f08-28b9-440b-af8d-2951d5c08780",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T20:32:50.357965Z",
+          "last_activity_at": "2026-11-20T21:22:30.045069Z",
+          "ended_at": "2026-11-20T21:22:30.045069Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 2979687.104,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T20:32:50.357965Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/19a35ae7-c029-486a-8a39-f4c66c85856a"
+        },
+        {
+          "at": "2026-11-20T21:22:30.045069Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2979687.104,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "0f36eb39-6501-41be-9d5e-cc97fc4a2af0",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d250c55d-404c-46dd-87d3-45fbc5c3bade",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T21:22:30.045230Z",
+          "last_activity_at": "2026-11-20T21:41:22.165529Z",
+          "ended_at": "2026-11-20T21:41:22.165529Z",
+          "outcome": {
+            "summary": "Pass. Root cause confirmed independently: since 52f657108 ioptron_validate_handle() (indigo_mount_ioptron.driver:351-366) closes the port on indigo_uni_is_connection_lost() and queues ioptron_connection_lost(), which disconnects with CONNECTION ALERT and deletes the device properties; simulator_client_delete_property() uncaches the property (simulator_test_common.h:492-497), so io_switch()'s wait_for_property_state_seen_after() on MOUNT_ABORT_MOTION (test_mount_ioptron_simulator.c:394-397) can never succeed. Driver behaviour over TCP is correct from a user's view and consistent with the serial path: the URGENT abort runs ioptron_stop(), fails, publishes ABORT ALERT, then the queued NORMAL ioptron_connection_lost() disconnects with 'Connection to ... lost' ALERT, and a new CONNECT opens a fresh TCP session. Rewritten case (test_mount_ioptron_simulator.c:2985-3017): the abort_test_block hold is released unconditionally (line 2999) before any SERIAL_CHECK, the only check before queuing the block (line 2991) is before the hold exists, so no failure path leaks a held queue; no deadlock since change_property, sim_control and wait_event do not need the mount queue (same pattern as check_queued_abort). Holding the queue makes the order deterministic: abort is URGENT(20) and the 1 s poll TIME(10) (indigo_timer.h:89-92), so the abort is the first command on the lost session. Waits are bounded polls, as in the serial reference case ioptron_transport_loss_and_fresh_session. Coverage is a superset of before: abort ALERT, plus CONNECTION ALERT (wait_for_connection_lost), new CONNECT event 1 on the simulator, sync readback. Formatting OK; driver version 70 unchanged and matches the record; README/TEST_SUMMARY line pair is consistent (2026-11-20 22:05 3.0.0.70 mac arm64 simulator 141/141 OK) and replaces the same-configuration line as the recording rules require; nothing else touched. Non-blocking nits: line 3010 'fixture.mount = false;' is a dead store immediately overwritten by l",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1132120.299,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T21:22:30.045230Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T21:41:22.165529Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass. Root cause confirmed independently: since 52f657108 ioptron_validate_handle() (indigo_mount_ioptron.driver:351-366) closes the port on indigo_uni_is_connection_lost() and queues ioptron_connection_lost(), which disconnects with CONNECTION ALERT and deletes the device properties; simulator_client_delete_property() uncaches the property (simulator_test_common.h:492-497), so io_switch()'s wait_for_property_state_seen_after() on MOUNT_ABORT_MOTION (test_mount_ioptron_simulator.c:394-397) can never succeed. Driver behaviour over TCP is correct from a user's view and consistent with the serial path: the URGENT abort runs ioptron_stop(), fails, publishes ABORT ALERT, then the queued NORMAL ioptron_connection_lost() disconnects with 'Connection to ... lost' ALERT, and a new CONNECT opens a fresh TCP session. Rewritten case (test_mount_ioptron_simulator.c:2985-3017): the abort_test_block hold is released unconditionally (line 2999) before any SERIAL_CHECK, the only check before queuing the block (line 2991) is before the hold exists, so no failure path leaks a held queue; no deadlock since change_property, sim_control and wait_event do not need the mount queue (same pattern as check_queued_abort). Holding the queue makes the order deterministic: abort is URGENT(20) and the 1 s poll TIME(10) (indigo_timer.h:89-92), so the abort is the first command on the lost session. Waits are bounded polls, as in the serial reference case ioptron_transport_loss_and_fresh_session. Coverage is a superset of before: abort ALERT, plus CONNECTION ALERT (wait_for_connection_lost), new CONNECT event 1 on the simulator, sync readback. Formatting OK; driver version 70 unchanged and matches the record; README/TEST_SUMMARY line pair is consistent (2026-11-20 22:05 3.0.0.70 mac arm64 simulator 141/141 OK) and replaces the same-configuration line as the recording rules require; nothing else touched. Non-blocking nits: line 3010 'fixture.mount = false;' is a dead store immediately overwritten by l"
+        }
+      ],
+      "result": {
+        "summary": "Pass. Root cause confirmed independently: since 52f657108 ioptron_validate_handle() (indigo_mount_ioptron.driver:351-366) closes the port on indigo_uni_is_connection_lost() and queues ioptron_connection_lost(), which disconnects with CONNECTION ALERT and deletes the device properties; simulator_client_delete_property() uncaches the property (simulator_test_common.h:492-497), so io_switch()'s wait_for_property_state_seen_after() on MOUNT_ABORT_MOTION (test_mount_ioptron_simulator.c:394-397) can never succeed. Driver behaviour over TCP is correct from a user's view and consistent with the serial path: the URGENT abort runs ioptron_stop(), fails, publishes ABORT ALERT, then the queued NORMAL ioptron_connection_lost() disconnects with 'Connection to ... lost' ALERT, and a new CONNECT opens a fresh TCP session. Rewritten case (test_mount_ioptron_simulator.c:2985-3017): the abort_test_block hold is released unconditionally (line 2999) before any SERIAL_CHECK, the only check before queuing the block (line 2991) is before the hold exists, so no failure path leaks a held queue; no deadlock since change_property, sim_control and wait_event do not need the mount queue (same pattern as check_queued_abort). Holding the queue makes the order deterministic: abort is URGENT(20) and the 1 s poll TIME(10) (indigo_timer.h:89-92), so the abort is the first command on the lost session. Waits are bounded polls, as in the serial reference case ioptron_transport_loss_and_fresh_session. Coverage is a superset of before: abort ALERT, plus CONNECTION ALERT (wait_for_connection_lost), new CONNECT event 1 on the simulator, sync readback. Formatting OK; driver version 70 unchanged and matches the record; README/TEST_SUMMARY line pair is consistent (2026-11-20 22:05 3.0.0.70 mac arm64 simulator 141/141 OK) and replaces the same-configuration line as the recording rules require; nothing else touched. Non-blocking nits: line 3010 'fixture.mount = false;' is a dead store immediately overwritten by l",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1132120.299,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "a81db93c-7e46-4eee-af39-7acbd1daa80a",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:05.073438Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "a50ef33f-fc14-41a1-838b-136b12d7b737",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T17:02:38.722684Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "6e07491c-19d6-43a5-9436-5df7825fcf25",
+      "event": "task/progress",
+      "at": "2026-11-20T20:32:50.358362Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b85c4a08-08d8-4d98-ab98-6721b0aeaca1",
+      "text": "Implementation started on branch ticket/19a35ae7-c029-486a-8a39-f4c66c85856a"
+    },
+    {
+      "event_id": "2a06a10f-7941-4518-85f9-5dbebbd54140",
+      "event": "ticket/started",
+      "at": "2026-11-20T20:32:50.360061Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/19a35ae7-c029-486a-8a39-f4c66c85856a",
+      "base": "master"
+    },
+    {
+      "event_id": "b389414c-8e08-42c0-9dcb-fb9372fe37cf",
+      "event": "task/progress",
+      "at": "2026-11-20T20:33:10.499510Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b85c4a08-08d8-4d98-ab98-6721b0aeaca1",
+      "text": "Implementer launched",
+      "attempt_id": "89da0f08-28b9-440b-af8d-2951d5c08780",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "852fe4e1-8e5a-4652-8503-2e69fc1fff95",
+      "event": "task/progress",
+      "at": "2026-11-20T20:34:07.599297Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b85c4a08-08d8-4d98-ab98-6721b0aeaca1",
+      "text": "Reproducing the --tcp failure with test-mount-ioptron-tcp"
+    },
+    {
+      "event_id": "4af50349-b2a7-4ccf-bc1b-47ae7caa29c7",
+      "event": "task/progress",
+      "at": "2026-11-20T20:38:43.510339Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b85c4a08-08d8-4d98-ab98-6721b0aeaca1",
+      "text": "Reproduced: line 2991 abort ALERT read from a property deleted by the loss handling; fixing test"
+    },
+    {
+      "event_id": "5657f745-bb15-46d9-a40f-395abcbfee23",
+      "event": "task/progress",
+      "at": "2026-11-20T20:39:12.569417Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b85c4a08-08d8-4d98-ab98-6721b0aeaca1",
+      "text": "Running test-mount-ioptron-tcp repeatedly (normal and sanitizer builds)"
+    },
+    {
+      "event_id": "79a5ed3b-59e1-4fcc-8eae-c5198b6b9831",
+      "event": "task/progress",
+      "at": "2026-11-20T21:03:35.085930Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b85c4a08-08d8-4d98-ab98-6721b0aeaca1",
+      "text": "TCP cases green 6/6; running recorded run tools/run_driver_test.py mount_ioptron"
+    },
+    {
+      "event_id": "5fca0467-05e8-44b9-9915-8dc2aef95179",
+      "event": "ticket/note",
+      "at": "2026-11-20T21:17:20.291030Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction (mac arm64, unchanged master tree): test_mount_ioptron_simulator --tcp failed ioptron_tcp_connection_loss_and_reconnect at test_mount_ioptron_simulator.c:2991, io_switch(MOUNT_ABORT_MOTION ... INDIGO_ALERT_STATE); the other two --tcp cases passed. Cause: test, not driver/simulator/library. Since 52f657108 the driver turns a detected lost connection into a disconnect with CONNECTION ALERT (ioptron_validate_handle -> ioptron_connection_lost), which deletes MOUNT_ABORT_MOTION right after its ALERT; io_switch reads the state revision from the client property cache, which loses the entry on delete, so the wait can never succeed. The serial case ioptron_transport_loss_and_fresh_session was updated in that commit, the opt-in TCP case was not. Fix: the TCP case now observes the abort ALERT through the existing abort_alerted client callback and waits for the CONNECTION ALERT disconnect (wait_for_connection_lost), and holds the mount queue (abort_queue_test_common.h abort_test_block) while the peer closes and the abort is queued, so the abort rather than the 1 s status poll is deterministically the first command on the lost session. After the fix: make test-mount-ioptron-tcp (normal + ASan/UBSan build) 6/6 consecutive runs, 3/3 + 3/3 PASS each; recorded run tools/run_driver_test.py mount_ioptron 141/141 OK (does not include the --tcp cases). No driver change, version stays 70.",
+      "tokens": null
+    },
+    {
+      "event_id": "f2fcd7a6-43a8-4479-9ab5-645870f960d8",
+      "event": "task/progress",
+      "at": "2026-11-20T21:22:07.084900Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b85c4a08-08d8-4d98-ab98-6721b0aeaca1",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e1e43837-996a-4e76-b343-3dfda8a120b6",
+      "event": "task/progress",
+      "at": "2026-11-20T21:22:07.110948Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b85c4a08-08d8-4d98-ab98-6721b0aeaca1",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e668d07e-e36e-406e-8a41-2cab93ec58fb",
+      "event": "check/passed",
+      "at": "2026-11-20T21:22:07.112536Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "9444514a7b685228b91bf540ca6d8c4ba559de66",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "903dc7ef-2519-4221-8e15-044f2ffbd0a7",
+      "event": "task/progress",
+      "at": "2026-11-20T21:22:30.045297Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f36eb39-6501-41be-9d5e-cc97fc4a2af0",
+      "text": "Review started"
+    },
+    {
+      "event_id": "19da20c7-1f2a-470e-9cb1-cb65e02c11ac",
+      "event": "review/started",
+      "at": "2026-11-20T21:22:30.046463Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "23d89c8e-1808-450a-a7a7-aaae44449d69",
+      "event": "task/progress",
+      "at": "2026-11-20T21:22:47.131054Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f36eb39-6501-41be-9d5e-cc97fc4a2af0",
+      "text": "Reviewer launched",
+      "attempt_id": "d250c55d-404c-46dd-87d3-45fbc5c3bade",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "8f3c1e27-e76e-4454-abc5-070d55320913",
+      "event": "task/progress",
+      "at": "2026-11-20T21:24:28.250483Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f36eb39-6501-41be-9d5e-cc97fc4a2af0",
+      "text": "Running make -C indigo_test test-mount-ioptron-tcp several times in the worktree"
+    },
+    {
+      "event_id": "9077538a-b4c9-4c03-b45b-e150868e4d4f",
+      "event": "task/progress",
+      "at": "2026-11-20T21:41:22.165621Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f36eb39-6501-41be-9d5e-cc97fc4a2af0",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "15791180-2415-4557-bda3-b07db373588c",
+      "event": "review/passed",
+      "at": "2026-11-20T21:41:22.167627Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f36eb39-6501-41be-9d5e-cc97fc4a2af0",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "9444514a7b685228b91bf540ca6d8c4ba559de66"
+    },
+    {
+      "event_id": "baaf13fb-371e-43b2-96a9-ab3e733bd4d7",
+      "event": "ticket/closed",
+      "at": "2026-11-20T21:41:41.219756Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T21:41:41.219727Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "6730fda023c0163da683769aa82cec090e8876bc"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9444514a7b685228b91bf540ca6d8c4ba559de66",
+        "tree": "f73ea0170f863d3c0f558b60d479357540f2f366",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T21:22:07.110311Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/19a35ae7-c029-486a-8a39-f4c66c85856a/f73ea0170f86-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Root cause confirmed independently: since 52f657108 ioptron_validate_handle() (indigo_mount_ioptron.driver:351-366) closes the port on indigo_uni_is_connection_lost() and queues ioptron_connection_lost(), which disconnects with CONNECTION ALERT and deletes the device properties; simulator_client_delete_property() uncaches the property (simulator_test_common.h:492-497), so io_switch()'s wait_for_property_state_seen_after() on MOUNT_ABORT_MOTION (test_mount_ioptron_simulator.c:394-397) can never succeed. Driver behaviour over TCP is correct from a user's view and consistent with the serial path: the URGENT abort runs ioptron_stop(), fails, publishes ABORT ALERT, then the queued NORMAL ioptron_connection_lost() disconnects with 'Connection to ... lost' ALERT, and a new CONNECT opens a fresh TCP session. Rewritten case (test_mount_ioptron_simulator.c:2985-3017): the abort_test_block hold is released unconditionally (line 2999) before any SERIAL_CHECK, the only check before queuing the block (line 2991) is before the hold exists, so no failure path leaks a held queue; no deadlock since change_property, sim_control and wait_event do not need the mount queue (same pattern as check_queued_abort). Holding the queue makes the order deterministic: abort is URGENT(20) and the 1 s poll TIME(10) (indigo_timer.h:89-92), so the abort is the first command on the lost session. Waits are bounded polls, as in the serial reference case ioptron_transport_loss_and_fresh_session. Coverage is a superset of before: abort ALERT, plus CONNECTION ALERT (wait_for_connection_lost), new CONNECT event 1 on the simulator, sync readback. Formatting OK; driver version 70 unchanged and matches the record; README/TEST_SUMMARY line pair is consistent (2026-11-20 22:05 3.0.0.70 mac arm64 simulator 141/141 OK) and replaces the same-configuration line as the recording rules require; nothing else touched. Non-blocking nits: line 3010 'fixture.mount = false;' is a dead store immediately overwritten by line 3011 (in the serial case a check sits between them); the abort-ALERT poll loop (3005-3008) duplicates 2904-2907 and could be a small helper. Reviewer runs: make -C indigo_test test-mount-ioptron-tcp 2/2 consecutive runs exit 0 in the worktree (normal + ASan/UBSan each, 3/3 PASS each, 4 executions of the case total); two further queued runs were cancelled because the shared test lock was held by another ticket's long suite. Not verified: Linux TCP behaviour; the old case's failure on base was not re-run by me (relied on code reading plus the implementer's 6/6 reproduction).",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "9444514a7b685228b91bf540ca6d8c4ba559de66",
+        "tree": "f73ea0170f863d3c0f558b60d479357540f2f366",
+        "at": "2026-11-20T21:41:22.165358Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T21:17:20.289829Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction (mac arm64, unchanged master tree): test_mount_ioptron_simulator --tcp failed ioptron_tcp_connection_loss_and_reconnect at test_mount_ioptron_simulator.c:2991, io_switch(MOUNT_ABORT_MOTION ... INDIGO_ALERT_STATE); the other two --tcp cases passed. Cause: test, not driver/simulator/library. Since 52f657108 the driver turns a detected lost connection into a disconnect with CONNECTION ALERT (ioptron_validate_handle -> ioptron_connection_lost), which deletes MOUNT_ABORT_MOTION right after its ALERT; io_switch reads the state revision from the client property cache, which loses the entry on delete, so the wait can never succeed. The serial case ioptron_transport_loss_and_fresh_session was updated in that commit, the opt-in TCP case was not. Fix: the TCP case now observes the abort ALERT through the existing abort_alerted client callback and waits for the CONNECTION ALERT disconnect (wait_for_connection_lost), and holds the mount queue (abort_queue_test_common.h abort_test_block) while the peer closes and the abort is queued, so the abort rather than the 1 s status poll is deterministically the first command on the lost session. After the fix: make test-mount-ioptron-tcp (normal + ASan/UBSan build) 6/6 consecutive runs, 3/3 + 3/3 PASS each; recorded run tools/run_driver_test.py mount_ioptron 141/141 OK (does not include the --tcp cases). No driver change, version stays 70.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "6730fda023c0163da683769aa82cec090e8876bc",
+      "tree": "f73ea0170f863d3c0f558b60d479357540f2f366",
+      "base": "master",
+      "at": "2026-11-20T21:41:41.129536Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:05.072682Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T17:02:38.722546Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 4111807.403,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 24,
+    "sha256": "3aadf90b4e7f471747d1bcced995bd39d944cfbce8332c9495441b43d5c5dd5f"
+  }
+}
