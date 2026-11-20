@@ -282,6 +282,8 @@ Frames captured by `capture_batch` / `capture_stream` contribute to the `EXPOSUR
 
 ### Plate solving & centering
 
+Configure the selected backend using the [solver operating manual](../../../indigo_docs/mcp/agents/platesolver.md). For native algorithms, WCS and indexes, see the [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 | Method | Description |
 |---|---|
 | `sync_center(exposure)` | Plate solve using `exposure` second frames and center the current pointing. |

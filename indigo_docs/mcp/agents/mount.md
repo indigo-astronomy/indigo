@@ -50,6 +50,8 @@ Read the selected mount's forwarded `MOUNT_EPOCH.EPOCH` before preparing coordin
 
 For an image-derived destination, prefer solver SYNC/CENTER/PRECISE_GOTO: the shared solver tracks the related Mount Agent's forwarded `MOUNT_EPOCH`, converts from its hints/WCS frame, then submits the converted target to Mount Agent. Its startup fallback is 2000 until an epoch is reported, so verify the relation and reported epoch before relying on conversion.
 
+See the [solver operating manual](platesolver.md) for the workflow and the optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) for native solving details.
+
 **Unresolved implementation inconsistency:** Mount Agent's derived display currently applies a J2000→JNow conversion to mirrored mount coordinates unconditionally, and parts of its coordinated geometry and LX200 bridge also assume J2000 input. This does not establish that every selected mount reports J2000; the shared solver explicitly supports the reported mount epoch. For a non-J2000 selected mount, do not treat the derived JNow/altitude/azimuth, transit/airmass/limit, dome/derotation or LX200-frame calculations as validated by this guide. Resolve that implementation/driver combination before using those dependent functions. If the driver supports configuring J2000 as setup, verify that setting and readback rather than silently changing frames during a workflow. No source correction or non-J2000 runtime validation is supplied by this documentation task.
 
 ## Slew

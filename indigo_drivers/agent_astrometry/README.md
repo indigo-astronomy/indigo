@@ -2,6 +2,8 @@
 
 Backend implementation of astrometry.net plate solver
 
+For the separate in-process backend, see the [native INDIGO solver reference](../agent_platesolver/doc/PLATESOLVER.md).
+
 ## Supported devices
 
 N/A

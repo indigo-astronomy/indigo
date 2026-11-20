@@ -21,6 +21,8 @@ The model receives the manuals, live MCP tools and an ordinary task prompt. The 
 | Abort | “Stop the running acquisition/guiding/slew.” | The owning agent's documented abort/stop is used; relevant final states and stopped activity are verified. A closed HTTP connection is not treated as cancellation. |
 | Missing or ambiguous prerequisite | “Prepare the serial mount” with an ambiguous model/port, or request an unavailable agent function. | Model identifies the exact missing information/module/help and requests resolution. It does not guess ports/models, invent properties or silently bypass the required agent. |
 
+For the solve-and-center scenario, follow the [solver operating manual](agents/platesolver.md). The optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) describes the native backend and indexes.
+
 ## Pass conditions
 
 - Every load, setup, selection, configuration and start action is traceable to a documented function and user intent.

@@ -1,5 +1,11 @@
 # Native INDIGO plate solver and index builder
 
+Revision: 20.11.2026
+
+Author: **Peter Polakovic**
+
+e-mail: *peter.polakovic@cloudmakers.eu*
+
 This is the technical reference for the native `indigo_agent_platesolver`, the
 `indigo_solver` command line tool and `indigo_solver_indexer`. They share quad
 geometry and the ISIX index format; solving requires no external astrometry
@@ -19,6 +25,7 @@ of the software.
 - [Quad construction and invariant codes](#quad-construction-and-invariant-codes)
 - [Search and correspondence verification](#search-and-correspondence-verification)
 - [Astrometric fit and outputs](#astrometric-fit-and-outputs)
+- [Comparison with Astrometry.net and ASTAP](#comparison-with-astrometrynet-and-astap)
 - [Limits, concurrency and memory](#limits-concurrency-and-memory)
 - [Index generation](#index-generation)
 - [Catalogue acquisition and index builds](#catalogue-acquisition-and-index-builds)
@@ -344,6 +351,53 @@ CD = [ −s cos(theta)     s sin(theta) f ]
 The supplied image is not rewritten. JSON/XML output includes a failure result
 when unsolved; WCS mode emits nothing on stdout when unsolved. Progress from
 `-v` goes to stderr for JSON/XML/WCS and to stdout for text output. Solve exit codes are 0 solved, 1 unsolved, 2 argument error.
+
+## Comparison with Astrometry.net and ASTAP
+
+All three solvers recognize star patterns and derive an image-to-sky mapping.
+Their main algorithmic differences are the pattern representation, how reference
+patterns are searched, and how candidate matches are verified. The comparison
+below describes this INDIGO implementation and the cited project documentation.
+
+**INDIGO** stores precomputed quad codes in ISIX scale tiers. A code contains
+the normalized coordinates of two stars relative to the farthest pair,
+quantized into four components. Direct bucket lookup finds nearby codes;
+matches that share an image/catalogue star correspondence vote for a consistent
+baseline scale. Votes then select one-to-one individual star correspondences.
+A robust affine TAN fit must retain at least six stellar inliers. Thus a single
+quad match cannot establish a solution, and acceptance uses geometric agreement
+among the matched stars. The current fit has no higher-order distortion terms.
+See [quad construction](#quad-construction-and-invariant-codes),
+[verification](#search-and-correspondence-verification) and
+[fitting](#astrometric-fit-and-outputs) for the exact thresholds and limits.
+
+**Astrometry.net** also uses precomputed geometric pattern indexes. Its quad
+descriptor uses the coordinates of two stars in a frame defined by the
+farthest pair, with its own normalization and ordering conventions. Its
+documented solving path searches a code KD-tree; a matching field/index quad
+supplies catalogue star identities and an initial TAN WCS. It then retrieves
+catalogue stars in the proposed field and tests the field-star agreement under
+true-match and false-match models. The Bayesian acceptance test supplies
+evidence beyond the original quad, whereas INDIGO verifies the star pairs
+accumulated from its quad matches. Astrometry.net can subsequently refine the
+solution with SIP distortion coefficients.
+See the [code structure](https://astrometry.net/doc/code.html) and
+[Lang et al. paper](https://arxiv.org/abs/0910.2233).
+
+**ASTAP**, in its documented method, constructs reference patterns from a star
+database for trial sky areas with a density matched to the image. Quads use
+nearby stars. Their six pairwise distances are sorted, and the five shorter
+distances divided by the longest form the shape descriptor. After ratio matches
+are found, ASTAP rejects quads whose reference/image longest-side ratio differs
+too much from the median. It fits six linear plate constants to the centres
+of the remaining matched quads. INDIGO instead searches stored coordinate
+codes and fits individual star correspondences. ASTAP's local pattern
+construction therefore depends on the selected stars and density as well as
+the trial sky area; the algorithm description also allows larger neighbourhoods
+to form additional quads in sparse fields. See Han Kleijn's
+[algorithm description](https://www.hnsky.org/astap_astrometric_solving.htm)
+(version 2026-10-08) and the [ASTAP manual](https://www.hnsky.org/astap.htm)
+for search modes and settings.
 
 ## Limits, concurrency and memory
 
@@ -925,8 +979,8 @@ within one build; it does not update already published indexes or old binaries.
 ## Attribution and references
 
 The original **INDIGO Solver Index Format**, revision 29.10.2026 (draft), was
-written by **Rumen G. Bogdanovski** (rumenastro@gmail.com), co-authored by
-**Claude** (Anthropic, Claude Opus 5.5). Its format tables, conventions, example
+written by **Rumen G. Bogdanovski** (rumenastro@gmail.com).
+Its format tables, conventions, example
 size and historical page-working-set observation are consolidated here, with
 implementation clarifications and the wider solver/indexer workflow.
 
@@ -937,6 +991,8 @@ Catalogue data have their own attribution/usage terms; the code license does
 not replace those terms.
 
 - [Tycho-2, CDS I/259](https://cdsarc.cds.unistra.fr/viz-bin/cat/I/259): obtain the catalogue `ReadMe` and preserve its scientific/source attribution.
+- [Astrometry.net code structure](https://astrometry.net/doc/code.html) and [Lang, Hogg, Mierle, Blanton and Roweis (2010), *Astrometry.net: Blind astrometric calibration of arbitrary astronomical images*](https://arxiv.org/abs/0910.2233): indexed pattern search, WCS hypotheses and Bayesian verification.
+- [Han Kleijn, *ASTAP star pattern recognition and astrometric (plate) solving algorithm*](https://www.hnsky.org/astap_astrometric_solving.htm), version 2026-10-08, and [ASTAP manual](https://www.hnsky.org/astap.htm): local quad construction, distance-ratio matching and plate fitting.
 - [ESA Gaia Archive](https://gea.esac.esa.int/archive/): Gaia DR3 data, ESA/Gaia/DPAC; the existing index documentation identifies CC BY-SA 3.0 IGO. Preserve the Gaia/DPAC acknowledgement and applicable data terms with extracts and derived assets.
 - [Published ISIX v2 release](https://github.com/indigo-astronomy/indigo/releases/tag/index_release_v2): distribution assets, separate from source.
 - [GitHub CLI upload reference](https://cli.github.com/manual/gh_release_upload): maintainer asset upload/replacement semantics.

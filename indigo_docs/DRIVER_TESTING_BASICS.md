@@ -68,6 +68,8 @@ Drivers that talk to a vendor SDK, libusb, hidapi or sysfs are tested against a 
 
 ### Agent tests
 
+The [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) describes native plate-solving behavior and links its focused tests.
+
 `test_agent_imager`, `test_agent_guider`, `test_agent_mount`, `test_agent_config`, `test_agent_astrometry`, `test_agent_scripting`, `test_agent_scripting_sequencer`, `test_agent_imager_guider_mount` and `test_agent_imager_instances` build the real agent source, plus `indigo_driver.c` and `indigo_filter.c` where needed, into test objects and link them with simulator driver archives. Time, sleeps, sockets or file replacement are redirected with `-D` where a scenario needs it. For example `test_agent_mount` replaces `time`, `indigo_usleep` and the `indigo_uni_*` socket calls with a scripted LX200 transport, so no socket is opened. These tests are the place to check how drivers and agents cooperate.
 
 ### Client-detach motion release

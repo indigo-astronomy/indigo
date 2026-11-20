@@ -29,7 +29,7 @@ The [preparation manual](server-and-devices.md) supplies the exact loading, port
 | Autofocus or Bahtinov-assisted focus | Imager Agent with camera and focuser |
 | Calibrate a guide setup, guide or dither | Guider Agent |
 | Slew, sync, park, track or coordinate mount/dome/rotator behavior | Mount Agent |
-| Solve an image, center a target or run supported polar-alignment procedures | One solver backend with the documented related agents |
+| Solve an image, center a target or run supported polar-alignment procedures | One solver backend with the documented related agents; [solver operations](agents/platesolver.md), optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) |
 | Restore or save an observing setup | Configuration Agent |
 | Select/proxy auxiliary equipment | Auxiliary Agent |
 | Multi-step observing program with loops, recovery and coordinated operations | Scripting Agent with the explicitly provisioned Sequencer library |

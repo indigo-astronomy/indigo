@@ -47,6 +47,8 @@ Example arguments to `set_property`, only after those item names were found in t
 
 This does not turn other driver items off. It also does not connect the camera or start an exposure. Some solver backends are mutually exclusive; follow the chosen backend's manual before loading it.
 
+For native plate solving, use the [solver operating manual](agents/platesolver.md); the optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) covers algorithms, WCS and indexes.
+
 **Results:** requested driver switches and newly visible agent/device names. **Failure:** false selection/missing objects, inaccessible module, initialization error or native-policy denial. **Recovery:** inspect current selection and prerequisites; do not repeatedly toggle a module or unload working dependencies. There is no generic cancellation command for an already queued driver-load request.
 
 ## Serial ports

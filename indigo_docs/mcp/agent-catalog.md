@@ -102,6 +102,8 @@ Full manuals and this index are compiled into the MCP agent. Read this catalog w
 
 ## Platesolver Agent and shared solver operations
 
+For algorithms and index construction, see the optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 [Read the complete manual](agents/platesolver.md). IDs are local to this manual.
 
 | ID | User function | Recipe |

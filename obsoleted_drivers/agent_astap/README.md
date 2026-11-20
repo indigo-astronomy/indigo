@@ -2,6 +2,8 @@
 
 Backend implementation of ASTAP plate solver
 
+For the maintained native backend, see the [native INDIGO solver reference](../../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 ## Supported devices
 
 N/A

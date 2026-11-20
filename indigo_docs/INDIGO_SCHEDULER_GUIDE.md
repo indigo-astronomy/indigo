@@ -50,6 +50,8 @@ An unconfigured Mount Agent reports latitude 0° and longitude 0°. The schedule
 
 The task bodies are ordinary `Sequencer.js` sequences. They use the Imager, Mount and Guider Agents and a plate solver agent, as any sequence does, and these must be set up as usual, with the camera, mount, guider and other devices selected. The scheduler does not check them: a task that needs a missing agent or device fails when it runs.
 
+For the native Platesolver Agent used by these sequences, see the [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 ### Loading the agents
 
 Name the agents when you start the server:

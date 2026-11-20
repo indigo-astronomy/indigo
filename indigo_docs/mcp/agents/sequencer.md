@@ -189,6 +189,8 @@ Dithering is performed by the agent capture workflow between frames. Monitor Gui
 
 ### Solving and meridian flip
 
+See the [solver operating manual](platesolver.md) for setup and the optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) for native algorithms and indexes.
+
 | Exact method | Semantics and prerequisites |
 | --- | --- |
 | `sync_center(exposure)` | Set selected solver `AGENT_PLATESOLVER_EXPOSURE.EXPOSURE` seconds, start solver `AGENT_START_PROCESS.CENTER`; requires its imager/mount relationships, usable solver and suitable image/search settings. |

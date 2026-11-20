@@ -6,6 +6,8 @@ Run from the repository root after building the native server, agents and simula
 python3 indigo_test/integration/run_sequencer_simulators.py --output /tmp/sequencer-results
 ```
 
+For native solving and index requirements, see the [native INDIGO solver reference](../../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 To include successful native solving, copy already installed indexes into the private test home:
 
 ```sh

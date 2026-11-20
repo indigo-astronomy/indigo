@@ -96,6 +96,8 @@ An unconfigured Mount Agent reports 0° latitude and 0° longitude, which the sc
 
 The task bodies depend on more: the agents and devices their `Sequencer.js` steps use, by default the "Imager Agent", "Mount Agent" and "Guider Agent" and a plate solver agent selected for the Imager Agent. The scheduler does not check these; a missing one makes the run fail. A safety or weather device is added in a later phase.
 
+For the native Platesolver Agent used by a sequence, see the [native INDIGO solver reference](../../agent_platesolver/doc/PLATESOLVER.md).
+
 The agent names are currently fixed, so the Scheduler Agent must run on the same server as these agents: an agent on another server appears with a host suffix, such as `Scripting Agent @ obs2`, and is not used. A later phase lets the user select the Scripting Agent, see [Implementation phases](#implementation-phases).
 
 ## Task format

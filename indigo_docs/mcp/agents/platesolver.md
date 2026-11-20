@@ -4,7 +4,9 @@ Draft for review. These source-inspected instructions are included in compiled M
 
 Module `indigo_agent_platesolver` creates `Platesolver Agent`. It detects stars and matches quads **inside the INDIGO process** using native `.isix` indexes. It does not invoke Astrometry.net's `solve-field`. The separate [Astrometry Agent](astrometry.md) uses the same agent-operation interface with an external backend and different indexes. These two modules reject simultaneous loading in one server; choose one backend. Do not confuse Platesolver Agent with an obsolete “INDIGO Solver Agent” module/device name.
 
-The process recipes below are also the shared operating contract for Astrometry Agent. When using that backend, substitute the discovered Astrometry Agent instance for the solver device and apply its [backend prerequisites](astrometry.md#prepare-the-backend). Every link is to a local manual; external websites are not required to understand operation.
+The process recipes below are also the shared operating contract for Astrometry Agent. When using that backend, substitute the discovered Astrometry Agent instance for the solver device and apply its [backend prerequisites](astrometry.md#prepare-the-backend). Operating recipes link to local manuals; external websites are not required to understand operation.
+
+For algorithms, WCS fitting and index construction, see the optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
 
 ## Function inventory
 
