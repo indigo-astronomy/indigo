@@ -1,0 +1,401 @@
+{
+  "schema_version": 1,
+  "ticket_id": "76669b90-a8d2-4e76-a34e-46b6dfd552d8",
+  "revision": 16,
+  "title": "indigo_mount_temma: sync completes through a finalizer instead of the coordinates handler",
+  "description": "The sync path of MOUNT_EQUATORIAL_COORDINATES finishes in a finalizer rather than in mount_equatorial_coordinates_handler ending with indigo_update_coordinates(), unlike the pattern set in ticket 42b85be0 (BUSY from the change branch, OK/ALERT from the handler). Check that a refused sync keeps its ALERT and that the OK publication carries the mount-reported position. Found while working on ticket 42b85be0-1f19-4607-b3c3-746e60317d17 (closed, commit a09e0f878), which introduced the kept coordinates ALERT in indigo_update_coordinates(): an ALERT published after a BUSY stays until the next BUSY. Reproduce in the driver's simulator suite before changing code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:04.479382Z",
+  "status": "closed",
+  "branch": "ticket/76669b90-a8d2-4e76-a34e-46b6dfd552d8",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "eb8858a1-0e71-4861-85b3-93751035ac16",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "116066ae-f306-4558-a43e-b130be32c941",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T17:35:34.627534Z",
+          "last_activity_at": "2026-11-20T17:57:40.511198Z",
+          "ended_at": "2026-11-20T17:57:40.511198Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1325883.664,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T17:35:34.627534Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/76669b90-a8d2-4e76-a34e-46b6dfd552d8"
+        },
+        {
+          "at": "2026-11-20T17:57:40.511198Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1325883.664,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "992d2be5-7a86-424b-b916-3856b87c5df7",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "53a976b8-a347-477f-85d7-82354fef2123",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T17:57:40.511399Z",
+          "last_activity_at": "2026-11-20T18:05:00.033751Z",
+          "ended_at": "2026-11-20T18:05:00.033751Z",
+          "outcome": {
+            "summary": "Pass. Conclusion 'no driver defect' is sound. Sync path in indigo_mount_temma.driver: change_property publishes BUSY through INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE/indigo_update_coordinates; on_change (driver:550-567) publishes BUSY or, on STN-OFF/T/D failure or R1-R3, ALERT through indigo_update_coordinates; mount_goto_finalizer (driver:289-319) reads E before s and publishes OK/ALERT with the reported position through indigo_update_coordinates; on_timer (driver:383-393) rewrites non-BUSY to OK but through indigo_update_coordinates, so the keep-ALERT flag (indigo_libs/indigo_mount_driver.c:1386-1398) turns it back to ALERT. No sync path ends OK after a refusal or publishes the request as values. Test temma_sync_result_and_refusals (test_mount_temma_simulator.c:1901-1997) is not vacuous: epoch 2000 is default and the trace check D201201+61000 pins the rounding (RA diff 3.7e-5 h > 1e-5, Dec 4.2e-4 deg > 1e-4), so the request-vs-reported check is deterministic. I reproduced both mutations independently on scratch copies: values=targets in the finalizer OK fails at :1956; indigo_update_property+return in the refusal branch fails check_alert_kept at :1978. Formatting follows the rules. Records: README line replaces the same-configuration line (indigo_test/AGENTS.md:637), agrees with TEST_SUMMARY.md and version 28 (0x0300001C); MIGRATION_STATUS 32/0 = 30 simulator cases on macOS + 2 deadline cases. I reran locally: simulator 30/30 and deadline 2/2 pass. Nothing else touched. Out-of-scope observations for the owner, not blocking: (1) the generated mount_equatorial_coordinates_handler (indigo_mount_temma.c:649) appends indigo_update_coordinates after an on_change that names a _finalizer, so every request publishes BUSY or ALERT twice; this is harmless for keep-ALERT. (2) The generator's in-handler parked guard (indigo_mount_temma.c:626-630) publishes ALERT with INDIGO_UPDATE_PROPERTY_STATE after the macro's BUSY, which bypasses indigo_update_coordinates. Only a rac",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 439522.352,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T17:57:40.511399Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T18:05:00.033751Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass. Conclusion 'no driver defect' is sound. Sync path in indigo_mount_temma.driver: change_property publishes BUSY through INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE/indigo_update_coordinates; on_change (driver:550-567) publishes BUSY or, on STN-OFF/T/D failure or R1-R3, ALERT through indigo_update_coordinates; mount_goto_finalizer (driver:289-319) reads E before s and publishes OK/ALERT with the reported position through indigo_update_coordinates; on_timer (driver:383-393) rewrites non-BUSY to OK but through indigo_update_coordinates, so the keep-ALERT flag (indigo_libs/indigo_mount_driver.c:1386-1398) turns it back to ALERT. No sync path ends OK after a refusal or publishes the request as values. Test temma_sync_result_and_refusals (test_mount_temma_simulator.c:1901-1997) is not vacuous: epoch 2000 is default and the trace check D201201+61000 pins the rounding (RA diff 3.7e-5 h > 1e-5, Dec 4.2e-4 deg > 1e-4), so the request-vs-reported check is deterministic. I reproduced both mutations independently on scratch copies: values=targets in the finalizer OK fails at :1956; indigo_update_property+return in the refusal branch fails check_alert_kept at :1978. Formatting follows the rules. Records: README line replaces the same-configuration line (indigo_test/AGENTS.md:637), agrees with TEST_SUMMARY.md and version 28 (0x0300001C); MIGRATION_STATUS 32/0 = 30 simulator cases on macOS + 2 deadline cases. I reran locally: simulator 30/30 and deadline 2/2 pass. Nothing else touched. Out-of-scope observations for the owner, not blocking: (1) the generated mount_equatorial_coordinates_handler (indigo_mount_temma.c:649) appends indigo_update_coordinates after an on_change that names a _finalizer, so every request publishes BUSY or ALERT twice; this is harmless for keep-ALERT. (2) The generator's in-handler parked guard (indigo_mount_temma.c:626-630) publishes ALERT with INDIGO_UPDATE_PROPERTY_STATE after the macro's BUSY, which bypasses indigo_update_coordinates. Only a rac"
+        }
+      ],
+      "result": {
+        "summary": "Pass. Conclusion 'no driver defect' is sound. Sync path in indigo_mount_temma.driver: change_property publishes BUSY through INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE/indigo_update_coordinates; on_change (driver:550-567) publishes BUSY or, on STN-OFF/T/D failure or R1-R3, ALERT through indigo_update_coordinates; mount_goto_finalizer (driver:289-319) reads E before s and publishes OK/ALERT with the reported position through indigo_update_coordinates; on_timer (driver:383-393) rewrites non-BUSY to OK but through indigo_update_coordinates, so the keep-ALERT flag (indigo_libs/indigo_mount_driver.c:1386-1398) turns it back to ALERT. No sync path ends OK after a refusal or publishes the request as values. Test temma_sync_result_and_refusals (test_mount_temma_simulator.c:1901-1997) is not vacuous: epoch 2000 is default and the trace check D201201+61000 pins the rounding (RA diff 3.7e-5 h > 1e-5, Dec 4.2e-4 deg > 1e-4), so the request-vs-reported check is deterministic. I reproduced both mutations independently on scratch copies: values=targets in the finalizer OK fails at :1956; indigo_update_property+return in the refusal branch fails check_alert_kept at :1978. Formatting follows the rules. Records: README line replaces the same-configuration line (indigo_test/AGENTS.md:637), agrees with TEST_SUMMARY.md and version 28 (0x0300001C); MIGRATION_STATUS 32/0 = 30 simulator cases on macOS + 2 deadline cases. I reran locally: simulator 30/30 and deadline 2/2 pass. Nothing else touched. Out-of-scope observations for the owner, not blocking: (1) the generated mount_equatorial_coordinates_handler (indigo_mount_temma.c:649) appends indigo_update_coordinates after an on_change that names a _finalizer, so every request publishes BUSY or ALERT twice; this is harmless for keep-ALERT. (2) The generator's in-handler parked guard (indigo_mount_temma.c:626-630) publishes ALERT with INDIGO_UPDATE_PROPERTY_STATE after the macro's BUSY, which bypasses indigo_update_coordinates. Only a rac",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 439522.352,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "b58d8f14-56ec-4bd3-94cf-e2bf24b08c82",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:04.480179Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "8001522b-e683-40b2-8e9b-0cd3f73b997b",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T17:02:38.369681Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "705bd7b5-fcb6-4059-942d-d83564515ac8",
+      "event": "task/progress",
+      "at": "2026-11-20T17:35:34.627943Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "eb8858a1-0e71-4861-85b3-93751035ac16",
+      "text": "Implementation started on branch ticket/76669b90-a8d2-4e76-a34e-46b6dfd552d8"
+    },
+    {
+      "event_id": "6b812c3a-4522-4e53-9adc-b7728536b97f",
+      "event": "ticket/started",
+      "at": "2026-11-20T17:35:34.629548Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/76669b90-a8d2-4e76-a34e-46b6dfd552d8",
+      "base": "master"
+    },
+    {
+      "event_id": "5ea2e1d5-9589-4a10-9cad-c7327245947c",
+      "event": "task/progress",
+      "at": "2026-11-20T17:36:28.894017Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "eb8858a1-0e71-4861-85b3-93751035ac16",
+      "text": "Implementer launched",
+      "attempt_id": "116066ae-f306-4558-a43e-b130be32c941",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "8e866f0d-daed-46b2-92d6-386d388b97dd",
+      "event": "task/progress",
+      "at": "2026-11-20T17:38:51.281034Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "eb8858a1-0e71-4861-85b3-93751035ac16",
+      "text": "Characterizing sync result and refused-sync ALERT with a new simulator case"
+    },
+    {
+      "event_id": "23bbc022-6f79-4e11-bc29-e56c66fe1cbf",
+      "event": "task/progress",
+      "at": "2026-11-20T17:45:53.674237Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "eb8858a1-0e71-4861-85b3-93751035ac16",
+      "text": "No driver defect: new case passes on unchanged driver; 2 mutations detected. Running full temma suites"
+    },
+    {
+      "event_id": "2587ef43-3653-4dd6-bd65-48d546d6afde",
+      "event": "ticket/note",
+      "at": "2026-11-20T17:53:05.260037Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction attempt: new simulator case temma_sync_result_and_refusals (indigo_test/integration/test_mount_temma_simulator.c) run against the UNCHANGED driver 3.0.0.28 passed. (1) Accepted sync with a request finer than the mount units (20.20013 h, 61.00042 deg -> D201201+61000): BUSY with old position, OK publication carries the position read by E in mount_goto_finalizer (equal within 1e-6 to the later polls, not the request), targets = request; nothing between BUSY and OK other than BUSY. (2) Sync refused with R1 and (3) unanswered D: one D, ALERT with the previous position, and every later poll publication stays ALERT (>=2 polls) via indigo_update_coordinates() keep-ALERT; next sync goes BUSY -> OK. Mutation check: publishing the request as values in the sync OK fails the case (SYNC check at line ~1956); publishing the refusal ALERT with indigo_update_property() and returning (bypassing indigo_update_coordinates) fails check_alert_kept. Conclusion: the deviation is structural only (sync completes in mount_goto_finalizer 0.1 s later instead of in the handler); no observable defect, so no driver change and no version bump. Generated .c/.h/_main.c verified identical to unchanged build/bin/indigo_generator output. Recorded run: 2026-11-20 18:50 3.0.0.28 mac arm64 simulator 32/32 OK; MIGRATION_STATUS automated tests 31/0 -> 32/0. Not verified: Linux/Windows, hardware, MountSim.",
+      "tokens": null
+    },
+    {
+      "event_id": "0a7929db-a53d-4584-9d49-3a3a6df2b91c",
+      "event": "task/progress",
+      "at": "2026-11-20T17:57:06.456319Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "eb8858a1-0e71-4861-85b3-93751035ac16",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3e83ecb2-c6da-4a6f-9137-e7e675888742",
+      "event": "task/progress",
+      "at": "2026-11-20T17:57:06.479024Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "eb8858a1-0e71-4861-85b3-93751035ac16",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "449846fd-c9b2-4f89-a1ef-61667db75d39",
+      "event": "check/passed",
+      "at": "2026-11-20T17:57:06.480744Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "08171b9eadf5ac3ece415ddfdb16f75e0f959bc4",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "e9b03953-f1ef-49e0-9a3d-4fff19666ec3",
+      "event": "task/progress",
+      "at": "2026-11-20T17:57:40.511475Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "992d2be5-7a86-424b-b916-3856b87c5df7",
+      "text": "Review started"
+    },
+    {
+      "event_id": "d762bbd6-1e1b-40f3-839c-cda00b6ffe5c",
+      "event": "review/started",
+      "at": "2026-11-20T17:57:40.512769Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "8f2ba972-f0ac-4a55-986c-49a1680773f9",
+      "event": "task/progress",
+      "at": "2026-11-20T17:58:27.763077Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "992d2be5-7a86-424b-b916-3856b87c5df7",
+      "text": "Reviewer launched",
+      "attempt_id": "53a976b8-a347-477f-85d7-82354fef2123",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "00f5803f-8347-4996-9cfa-736d4108fb64",
+      "event": "task/progress",
+      "at": "2026-11-20T18:00:31.141177Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "992d2be5-7a86-424b-b916-3856b87c5df7",
+      "text": "Building and running temma simulator and deadline suites"
+    },
+    {
+      "event_id": "d2304e82-653a-4c2e-b9b3-7de1e340137f",
+      "event": "task/progress",
+      "at": "2026-11-20T18:05:00.033841Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "992d2be5-7a86-424b-b916-3856b87c5df7",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "f9091678-f178-4ab0-9822-aa46ac3770dc",
+      "event": "review/passed",
+      "at": "2026-11-20T18:05:00.035125Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "992d2be5-7a86-424b-b916-3856b87c5df7",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "08171b9eadf5ac3ece415ddfdb16f75e0f959bc4"
+    },
+    {
+      "event_id": "c16d2184-08eb-4197-b743-db51e9585ffe",
+      "event": "ticket/closed",
+      "at": "2026-11-20T18:05:19.910633Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T18:05:19.910609Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "4b5208fbb434ab1d8816f743ad7a211eb276e20c"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "08171b9eadf5ac3ece415ddfdb16f75e0f959bc4",
+        "tree": "11b9ed71d17fde87fb60e22aba267da0539344e4",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T17:57:06.478403Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/76669b90-a8d2-4e76-a34e-46b6dfd552d8/11b9ed71d17f-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Conclusion 'no driver defect' is sound. Sync path in indigo_mount_temma.driver: change_property publishes BUSY through INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE/indigo_update_coordinates; on_change (driver:550-567) publishes BUSY or, on STN-OFF/T/D failure or R1-R3, ALERT through indigo_update_coordinates; mount_goto_finalizer (driver:289-319) reads E before s and publishes OK/ALERT with the reported position through indigo_update_coordinates; on_timer (driver:383-393) rewrites non-BUSY to OK but through indigo_update_coordinates, so the keep-ALERT flag (indigo_libs/indigo_mount_driver.c:1386-1398) turns it back to ALERT. No sync path ends OK after a refusal or publishes the request as values. Test temma_sync_result_and_refusals (test_mount_temma_simulator.c:1901-1997) is not vacuous: epoch 2000 is default and the trace check D201201+61000 pins the rounding (RA diff 3.7e-5 h > 1e-5, Dec 4.2e-4 deg > 1e-4), so the request-vs-reported check is deterministic. I reproduced both mutations independently on scratch copies: values=targets in the finalizer OK fails at :1956; indigo_update_property+return in the refusal branch fails check_alert_kept at :1978. Formatting follows the rules. Records: README line replaces the same-configuration line (indigo_test/AGENTS.md:637), agrees with TEST_SUMMARY.md and version 28 (0x0300001C); MIGRATION_STATUS 32/0 = 30 simulator cases on macOS + 2 deadline cases. I reran locally: simulator 30/30 and deadline 2/2 pass. Nothing else touched. Out-of-scope observations for the owner, not blocking: (1) the generated mount_equatorial_coordinates_handler (indigo_mount_temma.c:649) appends indigo_update_coordinates after an on_change that names a _finalizer, so every request publishes BUSY or ALERT twice; this is harmless for keep-ALERT. (2) The generator's in-handler parked guard (indigo_mount_temma.c:626-630) publishes ALERT with INDIGO_UPDATE_PROPERTY_STATE after the macro's BUSY, which bypasses indigo_update_coordinates. Only a race reaches it: park is requested after a sync is accepted and before its handler runs, and the park start then fails. The next poll would then show OK. This is generator-owned, common to generated mounts and not specific to sync. Not verified: Linux/Windows, hardware, MountSim.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "08171b9eadf5ac3ece415ddfdb16f75e0f959bc4",
+        "tree": "11b9ed71d17fde87fb60e22aba267da0539344e4",
+        "at": "2026-11-20T18:05:00.033580Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T17:53:05.258608Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction attempt: new simulator case temma_sync_result_and_refusals (indigo_test/integration/test_mount_temma_simulator.c) run against the UNCHANGED driver 3.0.0.28 passed. (1) Accepted sync with a request finer than the mount units (20.20013 h, 61.00042 deg -> D201201+61000): BUSY with old position, OK publication carries the position read by E in mount_goto_finalizer (equal within 1e-6 to the later polls, not the request), targets = request; nothing between BUSY and OK other than BUSY. (2) Sync refused with R1 and (3) unanswered D: one D, ALERT with the previous position, and every later poll publication stays ALERT (>=2 polls) via indigo_update_coordinates() keep-ALERT; next sync goes BUSY -> OK. Mutation check: publishing the request as values in the sync OK fails the case (SYNC check at line ~1956); publishing the refusal ALERT with indigo_update_property() and returning (bypassing indigo_update_coordinates) fails check_alert_kept. Conclusion: the deviation is structural only (sync completes in mount_goto_finalizer 0.1 s later instead of in the handler); no observable defect, so no driver change and no version bump. Generated .c/.h/_main.c verified identical to unchanged build/bin/indigo_generator output. Recorded run: 2026-11-20 18:50 3.0.0.28 mac arm64 simulator 32/32 OK; MIGRATION_STATUS automated tests 31/0 -> 32/0. Not verified: Linux/Windows, hardware, MountSim.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "4b5208fbb434ab1d8816f743ad7a211eb276e20c",
+      "tree": "11b9ed71d17fde87fb60e22aba267da0539344e4",
+      "base": "master",
+      "at": "2026-11-20T18:05:19.839290Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:04.479382Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T17:02:38.369533Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 1765406.016,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 22,
+    "sha256": "3f1199678f4a996f3a7d33df0060c5185326ecaaccb43761e47333a5cf2cbd8f"
+  }
+}
