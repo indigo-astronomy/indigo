@@ -1,0 +1,1019 @@
+{
+  "schema_version": 1,
+  "ticket_id": "062e82e9-ba52-49d5-87d9-ec0251cef619",
+  "revision": 58,
+  "title": "indigo_agent_mcp: embedded help bundle is stale and test_agent_mcp expects the previous driver version",
+  "description": "Registered on the owner's request of 2026-11-20; both defects confirmed on master at d411033ba.\n\n1. Stale help bundle. python3 indigo_drivers/agent_mcp/generate_help.py --check exits 1 with 'MCP help bundle is stale'. The checked-in indigo_drivers/agent_mcp/indigo_agent_mcp_help.h is generated from indigo_docs/mcp/*.md, indigo_docs/mcp/agents/*.md and indigo_drivers/agent_scripting/library/Sequencer.md; those sources were changed by later commits (for example cbbc6aedf and 47da62f95 of 2026-11-20) without regenerating the header. A make build regenerates it, but the checked-in copy is what the Visual Studio build and a reader of the repository get, and nothing runs --check. Regenerate the header. Find which source documents changed since the last regeneration and report them. Add the --check run to an existing hardware-free test target (indigo_test buildsystem tests) so that a forgotten regeneration fails a test; establish first whether the Windows build has any way to regenerate the header and state the result.\n\n2. Version assertion. indigo_test/integration/test_agent_mcp.c:211 asserts info.version == 0x03000003 while indigo_drivers/agent_mcp/indigo_agent_mcp.c:42 defines DRIVER_VERSION 0x03000004 (raised by 85313ca07 of 2026-11-10), so the case 'idempotent automatic lifecycle' of make -C indigo_test test-agent-mcp fails. Reported during ticket e4cfbebb, not re-run since. Reproduce with test-agent-mcp, find out whether anything besides the stale constant fails, and fix the test; prefer not to hard-code a literal that must be edited with every version bump if the surrounding tests have a convention for it.\n\nIf the fix changes the behaviour of the driver, increment DRIVER_VERSION; regenerating the help header from changed documents changes what the agent serves, so decide and justify whether that counts. Do not edit README files. Verification: generate_help.py --check exits 0, test-agent-mcp and test-agent-mcp-sanitize pass with counts reported, test-buildsystem passes.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T18:23:05.284202Z",
+  "status": "closed",
+  "branch": "ticket/062e82e9-ba52-49d5-87d9-ec0251cef619",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "53f0cac4-96d6-4d3a-a0bd-511058b30f17",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:24:11.770081Z",
+          "last_activity_at": "2026-11-20T18:29:56.086013Z",
+          "ended_at": "2026-11-20T18:29:56.086013Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 344315.932,
+          "tokens": null
+        },
+        {
+          "attempt_id": "c019f603-86ce-44ad-9d81-3594b1a2dabc",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:36:47.422196Z",
+          "last_activity_at": "2026-11-20T18:37:57.522745Z",
+          "ended_at": "2026-11-20T18:37:57.522745Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 70100.549,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:24:11.770081Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/062e82e9-ba52-49d5-87d9-ec0251cef619"
+        },
+        {
+          "at": "2026-11-20T18:29:56.086013Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-20T18:36:47.422196Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-20T18:37:57.522745Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 414416.481,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "fe5c8e26-f522-4845-a6dc-03e87365efc0",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-20T18:29:56.086297Z",
+          "last_activity_at": "2026-11-20T18:36:47.422082Z",
+          "ended_at": "2026-11-20T18:36:47.422082Z",
+          "outcome": {
+            "summary": "Header, guard test, test assertion and Xcode edit are correct; two small documentation fixes needed.\n1. indigo_docs/MAKEFILES.md:45: the new MCP paragraph is inserted between the hexdump dependency paragraph (:43) and the paragraph at :47 that starts 'As with the generator, the tool is an order-only prerequisite ... these makefiles build it through indigo_tools'. That paragraph is about indigo_hexdump; it now directly follows the generate_help.py paragraph, so 'the tool' and 'these makefiles' read as generate_help.py / the agent_mcp Makefile, which is false (generate_help.py is a checked-in Python script, not built through indigo_tools, and is not run by any Xcode or Visual Studio step). Move the MCP paragraph to after :47 (end of the Embedded files section) or give it its own heading; text itself is accurate.\n2. Version decision not justified in the ticket: the description asks to 'decide and justify' whether regenerating the header counts for DRIVER_VERSION; the implementer note only says 'DRIVER_VERSION not bumped'. Not bumping is defensible (agent_mcp code unchanged; make builds already regenerated the header in place and served this text since cbbc6aedf/47da62f95; only Xcode/VS builds change, to match), but record that justification with flow note.\nVerified: generate_help.py --check exit 0 (18 documents); per-document decode of master vs branch header: preamble and metadata table identical, only mcp_help_text_13 (agents/sequencer.md) and _17 (reference/sequencer.md = Sequencer.md) differ, matching the only source changes since e61331cde; guard test in a git-archive copy outside the tree: OK clean, FAILED after editing a doc, with master's header, and with header missing, no files written; test-buildsystem Ran 21 OK; test-agent-mcp 1+25 make runs 34/34 each plus 40 direct runs under 12 busy loops, 0 failures (admission/unload case not reproduced); test-agent-mcp-sanitize 5 runs 34/34; assertion matches the INDIGO_DRIVER_API_GENERATION convention of test_agent_sc",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 411335.785,
+          "tokens": null
+        },
+        {
+          "attempt_id": "7c47bee2-7972-423e-adf3-435589cda61f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:37:57.523008Z",
+          "last_activity_at": "2026-11-20T18:40:19.963340Z",
+          "ended_at": "2026-11-20T18:40:19.963340Z",
+          "outcome": {
+            "summary": "Second round, full change reviewed at 952ab36f3 (git diff master...HEAD, 5 files). No defects. Round-1 items resolved: (1) the MCP paragraph is now the last paragraph of 'Embedded files' (MAKEFILES.md:47), so the hexdump order-only paragraph (:45) again follows the hexdump dependency paragraph; every statement checked against the build files: generate_help.py TOPICS/SOURCES match the three named source sets; indigo_drivers/agent_mcp/Makefile and indigo_test/Makefile:597-613 regenerate the header for test-agent-mcp and test-agent-mcp-sanitize; no Xcode shellScript phase (6 phases: hexdump and ctrlpanel only) and no step in indigo_agent_mcp.vcxproj/indigo_windows.sln/Directory.Build.props runs Python, the vcxproj only lists the header as ClInclude; test-buildsystem discovers test_*.py. (2) DRIVER_VERSION decision is recorded in a ticket note and its facts hold: 85313ca07 is the only change of indigo_agent_mcp.c since the help bundle (raised 0x03000003->0x03000004); 0422e2248, 4652c1d3e, ae4bb9925, bb0b9687d, e61331cde changed indigo_agent_mcp_help.h without touching DRIVER_VERSION; no agent_mcp code changes here; make builds already served this text. Header: generate_help.py --check exit 0 (18 documents) and its comparison is exact string equality with the generator output; decoding master vs branch header shows identical preamble and document table, only mcp_help_text_13 and _17 differ, matching git diff e61331cde master (agents/sequencer.md and agent_scripting/library/Sequencer.md only). Guard test: read-only, runs the real generator with sys.executable -B; in a git-archive copy outside the tree it passed clean and FAILED after editing agents/sequencer.md, with master's header, and after editing Sequencer.md. Assertion test_agent_mcp.c:211 now uses INDIGO_DRIVER_API_GENERATION, the convention of test_agent_scripting.c:412, test_agent_astrometry.c:697 and others. pbxproj: new ID unique (2 references), file in the buildsystem group only, plutil OK. Ran: make -C indigo",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 142440.332,
+          "tokens": null
+        },
+        {
+          "attempt_id": "f807f7c5-69e8-4207-9106-7ffc9403021e",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:52:10.099584Z",
+          "last_activity_at": "2026-11-20T18:54:27.903525Z",
+          "ended_at": "2026-11-20T18:54:27.903525Z",
+          "outcome": {
+            "summary": "Round 3 (claude-opus-5-5, high), tree 70b9eefd7. No defects found.\nOwner decisions: DRIVER_VERSION 0x03000004->0x03000005 (question answered 18:42Z), MCP_AGENT_VERSION '3.0.0.3'->'3.0.0.5' (owner note 18:43Z, incl. documents stating the version), README.md:23 only (answered 18:51Z). indigo_agent_mcp.c:42-43 and README.md:23 change exactly that; README test records :56-58 untouched; mcp.md:5 is the document stating the version. Both values higher than before.\nVersion statements: git grep for 3.0.0.x/0x030000x/serverInfo/MCP_AGENT_VERSION outside .factory2 finds only indigo_agent_mcp.c:42-43, README.md:23, mcp.md:5 (all 3.0.0.5) plus historical records README.md:56-58 and TEST_SUMMARY.md:35. CHANGELOG states no version.\nHeader: generate_help.py --check exit 0 (18 documents); per-document decode vs master: preamble and metadata table identical, only mcp_help_text_13 (agents/sequencer.md), 15 (agents/mcp.md), 17 (reference/sequencer.md = Sequencer.md) differ, matching the only source changes since e61331cde plus mcp.md:5. Generator unchanged; master has no source changes since the branch point.\nGuard test (git-archive copy in scratch): OK clean; FAILED with a doc edited, with master's header and with the header missing; writes nothing (--check only, -B).\nAssertion test_agent_mcp.c:211 uses INDIGO_DRIVER_API_GENERATION, the convention documented in indigo_test/AGENTS.md:211 and used by other tests.\nBinaries indigo_test/build/integration/test_agent_mcp{,_sanitize} are up to date (make -n builds nothing) and contain 3.0.0.5 strings, no 3.0.0.3.\nXcode: one file reference + buildsystem group child, unique ID, no build phase, no .factory2 reference, plutil -lint OK. MAKEFILES.md:47 now ends the section after the hexdump paragraph and is accurate (vcxproj lists generate_help.py as None only, no pre-build step).\nRan: test-buildsystem Ran 21 OK; test-agent-mcp 34 PASS 0 FAIL; test-agent-mcp-sanitize 34 PASS 0 FAIL; git diff --check clean; git status clean.\nNot verified: Windows ",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 137803.941,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:29:56.086297Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T18:36:47.422082Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "Header, guard test, test assertion and Xcode edit are correct; two small documentation fixes needed.\n1. indigo_docs/MAKEFILES.md:45: the new MCP paragraph is inserted between the hexdump dependency paragraph (:43) and the paragraph at :47 that starts 'As with the generator, the tool is an order-only prerequisite ... these makefiles build it through indigo_tools'. That paragraph is about indigo_hexdump; it now directly follows the generate_help.py paragraph, so 'the tool' and 'these makefiles' read as generate_help.py / the agent_mcp Makefile, which is false (generate_help.py is a checked-in Python script, not built through indigo_tools, and is not run by any Xcode or Visual Studio step). Move the MCP paragraph to after :47 (end of the Embedded files section) or give it its own heading; text itself is accurate.\n2. Version decision not justified in the ticket: the description asks to 'decide and justify' whether regenerating the header counts for DRIVER_VERSION; the implementer note only says 'DRIVER_VERSION not bumped'. Not bumping is defensible (agent_mcp code unchanged; make builds already regenerated the header in place and served this text since cbbc6aedf/47da62f95; only Xcode/VS builds change, to match), but record that justification with flow note.\nVerified: generate_help.py --check exit 0 (18 documents); per-document decode of master vs branch header: preamble and metadata table identical, only mcp_help_text_13 (agents/sequencer.md) and _17 (reference/sequencer.md = Sequencer.md) differ, matching the only source changes since e61331cde; guard test in a git-archive copy outside the tree: OK clean, FAILED after editing a doc, with master's header, and with header missing, no files written; test-buildsystem Ran 21 OK; test-agent-mcp 1+25 make runs 34/34 each plus 40 direct runs under 12 busy loops, 0 failures (admission/unload case not reproduced); test-agent-mcp-sanitize 5 runs 34/34; assertion matches the INDIGO_DRIVER_API_GENERATION convention of test_agent_sc"
+        },
+        {
+          "at": "2026-11-20T18:37:57.523008Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T18:40:19.963340Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Second round, full change reviewed at 952ab36f3 (git diff master...HEAD, 5 files). No defects. Round-1 items resolved: (1) the MCP paragraph is now the last paragraph of 'Embedded files' (MAKEFILES.md:47), so the hexdump order-only paragraph (:45) again follows the hexdump dependency paragraph; every statement checked against the build files: generate_help.py TOPICS/SOURCES match the three named source sets; indigo_drivers/agent_mcp/Makefile and indigo_test/Makefile:597-613 regenerate the header for test-agent-mcp and test-agent-mcp-sanitize; no Xcode shellScript phase (6 phases: hexdump and ctrlpanel only) and no step in indigo_agent_mcp.vcxproj/indigo_windows.sln/Directory.Build.props runs Python, the vcxproj only lists the header as ClInclude; test-buildsystem discovers test_*.py. (2) DRIVER_VERSION decision is recorded in a ticket note and its facts hold: 85313ca07 is the only change of indigo_agent_mcp.c since the help bundle (raised 0x03000003->0x03000004); 0422e2248, 4652c1d3e, ae4bb9925, bb0b9687d, e61331cde changed indigo_agent_mcp_help.h without touching DRIVER_VERSION; no agent_mcp code changes here; make builds already served this text. Header: generate_help.py --check exit 0 (18 documents) and its comparison is exact string equality with the generator output; decoding master vs branch header shows identical preamble and document table, only mcp_help_text_13 and _17 differ, matching git diff e61331cde master (agents/sequencer.md and agent_scripting/library/Sequencer.md only). Guard test: read-only, runs the real generator with sys.executable -B; in a git-archive copy outside the tree it passed clean and FAILED after editing agents/sequencer.md, with master's header, and after editing Sequencer.md. Assertion test_agent_mcp.c:211 now uses INDIGO_DRIVER_API_GENERATION, the convention of test_agent_scripting.c:412, test_agent_astrometry.c:697 and others. pbxproj: new ID unique (2 references), file in the buildsystem group only, plutil OK. Ran: make -C indigo"
+        },
+        {
+          "at": "2026-11-20T18:52:10.099584Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T18:54:27.903525Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Round 3 (claude-opus-5-5, high), tree 70b9eefd7. No defects found.\nOwner decisions: DRIVER_VERSION 0x03000004->0x03000005 (question answered 18:42Z), MCP_AGENT_VERSION '3.0.0.3'->'3.0.0.5' (owner note 18:43Z, incl. documents stating the version), README.md:23 only (answered 18:51Z). indigo_agent_mcp.c:42-43 and README.md:23 change exactly that; README test records :56-58 untouched; mcp.md:5 is the document stating the version. Both values higher than before.\nVersion statements: git grep for 3.0.0.x/0x030000x/serverInfo/MCP_AGENT_VERSION outside .factory2 finds only indigo_agent_mcp.c:42-43, README.md:23, mcp.md:5 (all 3.0.0.5) plus historical records README.md:56-58 and TEST_SUMMARY.md:35. CHANGELOG states no version.\nHeader: generate_help.py --check exit 0 (18 documents); per-document decode vs master: preamble and metadata table identical, only mcp_help_text_13 (agents/sequencer.md), 15 (agents/mcp.md), 17 (reference/sequencer.md = Sequencer.md) differ, matching the only source changes since e61331cde plus mcp.md:5. Generator unchanged; master has no source changes since the branch point.\nGuard test (git-archive copy in scratch): OK clean; FAILED with a doc edited, with master's header and with the header missing; writes nothing (--check only, -B).\nAssertion test_agent_mcp.c:211 uses INDIGO_DRIVER_API_GENERATION, the convention documented in indigo_test/AGENTS.md:211 and used by other tests.\nBinaries indigo_test/build/integration/test_agent_mcp{,_sanitize} are up to date (make -n builds nothing) and contain 3.0.0.5 strings, no 3.0.0.3.\nXcode: one file reference + buildsystem group child, unique ID, no build phase, no .factory2 reference, plutil -lint OK. MAKEFILES.md:47 now ends the section after the hexdump paragraph and is accurate (vcxproj lists generate_help.py as None only, no pre-build step).\nRan: test-buildsystem Ran 21 OK; test-agent-mcp 34 PASS 0 FAIL; test-agent-mcp-sanitize 34 PASS 0 FAIL; git diff --check clean; git status clean.\nNot verified: Windows "
+        }
+      ],
+      "result": {
+        "summary": "Round 3 (claude-opus-5-5, high), tree 70b9eefd7. No defects found.\nOwner decisions: DRIVER_VERSION 0x03000004->0x03000005 (question answered 18:42Z), MCP_AGENT_VERSION '3.0.0.3'->'3.0.0.5' (owner note 18:43Z, incl. documents stating the version), README.md:23 only (answered 18:51Z). indigo_agent_mcp.c:42-43 and README.md:23 change exactly that; README test records :56-58 untouched; mcp.md:5 is the document stating the version. Both values higher than before.\nVersion statements: git grep for 3.0.0.x/0x030000x/serverInfo/MCP_AGENT_VERSION outside .factory2 finds only indigo_agent_mcp.c:42-43, README.md:23, mcp.md:5 (all 3.0.0.5) plus historical records README.md:56-58 and TEST_SUMMARY.md:35. CHANGELOG states no version.\nHeader: generate_help.py --check exit 0 (18 documents); per-document decode vs master: preamble and metadata table identical, only mcp_help_text_13 (agents/sequencer.md), 15 (agents/mcp.md), 17 (reference/sequencer.md = Sequencer.md) differ, matching the only source changes since e61331cde plus mcp.md:5. Generator unchanged; master has no source changes since the branch point.\nGuard test (git-archive copy in scratch): OK clean; FAILED with a doc edited, with master's header and with the header missing; writes nothing (--check only, -B).\nAssertion test_agent_mcp.c:211 uses INDIGO_DRIVER_API_GENERATION, the convention documented in indigo_test/AGENTS.md:211 and used by other tests.\nBinaries indigo_test/build/integration/test_agent_mcp{,_sanitize} are up to date (make -n builds nothing) and contain 3.0.0.5 strings, no 3.0.0.3.\nXcode: one file reference + buildsystem group child, unique ID, no build phase, no .factory2 reference, plutil -lint OK. MAKEFILES.md:47 now ends the section after the hexdump paragraph and is accurate (vcxproj lists generate_help.py as None only, no pre-build step).\nRan: test-buildsystem Ran 21 OK; test-agent-mcp 34 PASS 0 FAIL; test-agent-mcp-sanitize 34 PASS 0 FAIL; git diff --check clean; git status clean.\nNot verified: Windows ",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 691580.058,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "46b9c618-9af2-4005-9005-3eb1bd32e47e",
+      "event": "ticket/created",
+      "at": "2026-11-20T18:23:05.285750Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "9c62828c-20b0-4ed5-a639-281a2eb567b3",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T18:24:05.938405Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "c0fb6814-f626-4bc7-8391-a790421903c6",
+      "event": "task/progress",
+      "at": "2026-11-20T18:24:11.770476Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Implementation started on branch ticket/062e82e9-ba52-49d5-87d9-ec0251cef619"
+    },
+    {
+      "event_id": "da05e415-03a9-4a85-a7d5-7c3345f692e2",
+      "event": "ticket/started",
+      "at": "2026-11-20T18:24:11.772256Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/062e82e9-ba52-49d5-87d9-ec0251cef619",
+      "base": "master"
+    },
+    {
+      "event_id": "2317c3b5-b583-4f01-af01-3c67475f9ac7",
+      "event": "task/progress",
+      "at": "2026-11-20T18:24:26.355736Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Implementer launched",
+      "attempt_id": "53f0cac4-96d6-4d3a-a0bd-511058b30f17",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "71dcf124-eed6-41c4-a99f-73355de54de3",
+      "event": "task/progress",
+      "at": "2026-11-20T18:24:31.140939Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Reproducing stale MCP help bundle and test-agent-mcp failure"
+    },
+    {
+      "event_id": "78c57b9d-fa43-4477-9052-5990ff62ff68",
+      "event": "task/progress",
+      "at": "2026-11-20T18:25:41.073617Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Adding MCP help staleness test to indigo_test/buildsystem"
+    },
+    {
+      "event_id": "6cf128d5-6692-4cce-baec-24ff32b18c72",
+      "event": "task/progress",
+      "at": "2026-11-20T18:26:04.933170Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Building libindigo and reproducing test-agent-mcp failure"
+    },
+    {
+      "event_id": "2a25fe20-4357-4471-a1ba-8f1c74d5c233",
+      "event": "task/progress",
+      "at": "2026-11-20T18:28:31.311738Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Running test-agent-mcp-sanitize and test-buildsystem"
+    },
+    {
+      "event_id": "da9468fe-bb69-4662-ab79-42c191bc6d5d",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:29:19.859926Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementer evidence (macOS arm64/x86_64 universal, worktree). Before: generate_help.py --check exit 1 'MCP help bundle is stale'; the new indigo_test/buildsystem/test_agent_mcp_help.py failed in make -C indigo_test test-buildsystem (Ran 21, failures=1). Stale since e61331cde: only indigo_docs/mcp/agents/sequencer.md and indigo_drivers/agent_scripting/library/Sequencer.md differ (MERIDIAN_FLIP docs from cbbc6aedf and 47da62f95); topic metadata unchanged. make -C indigo_test test-agent-mcp before: 2 of 34 failed, 'idempotent automatic lifecycle' (test_agent_mcp.c:211 expected 0x03000003 got 0x03000004) and 'admission and unload draining' (test_agent_mcp.c:485). The second is intermittent and independent of the version: the unmodified test rebuilt separately failed only at :211 in 4 of 4 runs, the fixed test passed 26 of 26 direct runs plus 15 of 15 under 16 busy CPU loops. After: --check exit 0 (18 documents); test-buildsystem Ran 21 OK; test-agent-mcp 34/34 PASS; test-agent-mcp-sanitize 34/34 PASS. Version assertion now checks INDIGO_DRIVER_API_3 generation, the convention of the other integration tests; DRIVER_VERSION not bumped. Windows: indigo_agent_mcp.vcxproj and Directory.Build.props have no Python or pre-build step, so Visual Studio compiles the checked-in header only; Xcode likewise.",
+      "tokens": null
+    },
+    {
+      "event_id": "3d2a216e-808e-42ea-a54a-50711c59f5e7",
+      "event": "task/progress",
+      "at": "2026-11-20T18:29:25.075239Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5997f923-f670-4db0-ab03-2240bced1eae",
+      "event": "task/progress",
+      "at": "2026-11-20T18:29:25.117429Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5523b268-a5d2-47b2-acce-ae22e6445711",
+      "event": "check/passed",
+      "at": "2026-11-20T18:29:25.119598Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "c0a3605e8d6b06b7fb745230c63c182180e708a6",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7c9336ac-38c7-401f-957f-6e8f3a636d75",
+      "event": "task/progress",
+      "at": "2026-11-20T18:29:56.086377Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Review started"
+    },
+    {
+      "event_id": "02863da3-473b-4c13-b72b-c4166d96a53a",
+      "event": "review/started",
+      "at": "2026-11-20T18:29:56.087881Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "8e7ddce1-5f60-4ac0-a0fe-1de1bd341fdf",
+      "event": "task/progress",
+      "at": "2026-11-20T18:29:56.238995Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Reviewer launched",
+      "attempt_id": "fe5c8e26-f522-4845-a6dc-03e87365efc0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "1275602e-b609-4f9a-bc06-46ee755d9779",
+      "event": "task/progress",
+      "at": "2026-11-20T18:30:13.168885Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Reviewer reading diff and repository rules",
+      "attempt_id": "fe5c8e26-f522-4845-a6dc-03e87365efc0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b1077980-fe88-4daf-b9a2-a73a6040310e",
+      "event": "task/progress",
+      "at": "2026-11-20T18:30:37.159638Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Comparing regenerated header per document against master"
+    },
+    {
+      "event_id": "22e23c69-0959-4944-aa1b-13f0fb719c4f",
+      "event": "task/progress",
+      "at": "2026-11-20T18:31:27.502391Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Running test-buildsystem, test-agent-mcp (repeated) and test-agent-mcp-sanitize"
+    },
+    {
+      "event_id": "50b45ca1-615e-48d2-8ef4-ec97a38f1664",
+      "event": "task/progress",
+      "at": "2026-11-20T18:36:47.422189Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "191a447b-a38c-4a87-8c86-1482586146e1",
+      "event": "task/progress",
+      "at": "2026-11-20T18:36:47.422217Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "dc48d0cf-2a0f-4b4f-8d03-4b47f4c14d7a",
+      "event": "review/changes_requested",
+      "at": "2026-11-20T18:36:47.423739Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "c0a3605e8d6b06b7fb745230c63c182180e708a6"
+    },
+    {
+      "event_id": "934c0640-3467-4f3c-b5b5-0b7a83b0ddab",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:37:28.721772Z",
+      "actor": "human/Peter Polakovic",
+      "text": "DRIVER_VERSION decision (implementer's decision; the owner may still overrule it): indigo_agent_mcp DRIVER_VERSION stays 0x03000004. Reasons: no agent_mcp code changed, only the checked-in help header was regenerated from documents already committed. Make builds regenerate indigo_agent_mcp_help.h in place (indigo_drivers/agent_mcp/Makefile rule), so they have served this text under 0x03000004 since cbbc6aedf and 47da62f95; only Xcode and Visual Studio builds, which compile the checked-in copy, change, and they now match the make builds. The earlier header-only regenerations 0422e2248, 4652c1d3e, ae4bb9925, bb0b9687d and e61331cde did not bump DRIVER_VERSION either (it was last raised to 0x03000004 by the code change 85313ca07).",
+      "tokens": null
+    },
+    {
+      "event_id": "b78334df-2795-46d1-8e95-0413f6e74a74",
+      "event": "task/progress",
+      "at": "2026-11-20T18:37:35.448452Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Review fixes: moved MCP paragraph in MAKEFILES.md, recorded version note"
+    },
+    {
+      "event_id": "5559d497-bd82-4ab7-b029-8fb89749a986",
+      "event": "task/progress",
+      "at": "2026-11-20T18:37:35.848579Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "0f904b65-248f-49bb-82f1-3035b3d7f313",
+      "event": "task/progress",
+      "at": "2026-11-20T18:37:35.894624Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "21b788f0-1926-4629-b9e9-2f8d801f10ff",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "8f92a0fc-01f3-43e3-acde-27714b0f061b",
+      "event": "check/passed",
+      "at": "2026-11-20T18:37:35.896797Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "952ab36f39efa331f7c1cd5a866a6b554248f5bd",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "60b37ed1-8ffe-4418-aa03-908ce4b08288",
+      "event": "task/progress",
+      "at": "2026-11-20T18:37:57.523186Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Review started"
+    },
+    {
+      "event_id": "0e2e24fb-1647-45fd-8ac7-971359657f07",
+      "event": "review/started",
+      "at": "2026-11-20T18:37:57.526054Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "d3a6f3b6-fe48-4198-8fb8-b9500d381d6c",
+      "event": "task/progress",
+      "at": "2026-11-20T18:37:57.747817Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Second reviewer launched",
+      "attempt_id": "7c47bee2-7972-423e-adf3-435589cda61f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "d2c80868-eed6-4ce8-b788-b28755009894",
+      "event": "task/progress",
+      "at": "2026-11-20T18:38:14.315854Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Second-round review: reading the full diff",
+      "attempt_id": "7c47bee2-7972-423e-adf3-435589cda61f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ba7d67e0-333d-40d5-8278-4e8aa08c122c",
+      "event": "task/progress",
+      "at": "2026-11-20T18:39:03.094083Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Running generate_help.py --check and test-buildsystem in the worktree"
+    },
+    {
+      "event_id": "0f71543d-c21a-45bb-9447-b4bf9c12f9fd",
+      "event": "task/progress",
+      "at": "2026-11-20T18:39:51.976405Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Running make test-agent-mcp and test-agent-mcp-sanitize in the worktree"
+    },
+    {
+      "event_id": "2dab6757-6da6-4647-8c9f-b4ccf8d5e677",
+      "event": "task/progress",
+      "at": "2026-11-20T18:40:19.963435Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b0096ff9-d212-4469-a60c-3b165cd1914f",
+      "event": "review/passed",
+      "at": "2026-11-20T18:40:19.964872Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "952ab36f39efa331f7c1cd5a866a6b554248f5bd"
+    },
+    {
+      "event_id": "b91873bb-5ad6-46a3-b5b0-08ef2fced925",
+      "event": "question/asked",
+      "at": "2026-11-20T18:40:46.194290Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Second review passed at 952ab36f3; checks pass; nothing is missing for close. Before closing the owner decides: close as implemented with DRIVER_VERSION of indigo_agent_mcp left at 0x03000004 (implementer's justified decision), or bump the version first?"
+    },
+    {
+      "event_id": "4a492f65-5556-4ed1-8d0c-afe34de1d3b3",
+      "event": "question/answered",
+      "at": "2026-11-20T18:42:47.317808Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner, 2026-11-20: 'Zvýš verziu' - overrules the implementer's decision: increment DRIVER_VERSION of indigo_agent_mcp (0x03000004 -> 0x03000005) in this ticket before closing."
+    },
+    {
+      "event_id": "4824fe9c-ea14-40aa-a129-2f63a7ee411e",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:43:12.323368Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Supersedes the earlier DRIVER_VERSION note: the owner overruled the implementer's decision and decided to bump. indigo_agent_mcp DRIVER_VERSION is raised from 0x03000004 to 0x03000005 (indigo_drivers/agent_mcp/indigo_agent_mcp.c:42, hand-written driver, no .driver source). Reason: Xcode and Visual Studio builds, which compile the checked-in help header, now serve different help text than before. MCP_AGENT_VERSION \"3.0.0.3\" (serverInfo.version) is unchanged at the owner's instruction. The test assertion at test_agent_mcp.c:211 checks only the API generation and is unaffected.",
+      "tokens": null
+    },
+    {
+      "event_id": "ecdf3cf1-3166-4e3a-ac5b-289eee6ef387",
+      "event": "task/progress",
+      "at": "2026-11-20T18:43:12.410538Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Bumped agent_mcp DRIVER_VERSION to 0x03000005; running flow check and MCP tests"
+    },
+    {
+      "event_id": "380340b6-8a6e-4658-99fe-53cc901564d3",
+      "event": "task/progress",
+      "at": "2026-11-20T18:43:12.732319Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b865c3a1-8c8f-4160-95a3-861190c0cb7f",
+      "event": "task/progress",
+      "at": "2026-11-20T18:43:12.777353Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2ff54b6c-4d9e-4de6-942a-83abd4a68d44",
+      "event": "check/passed",
+      "at": "2026-11-20T18:43:12.779607Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "d246293f96ace87fa13de3f9cd49a095bda648a3",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "01a7bcf2-9b19-4d50-bc26-d1973f841c99",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:43:21.034307Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner, 2026-11-20: also align MCP_AGENT_VERSION in indigo_drivers/agent_mcp/indigo_agent_mcp.c with the new DRIVER_VERSION in this ticket (\"3.0.0.3\" -> \"3.0.0.5\", the dotted form of 0x03000005, as the two matched at 7a9beb098), together with any test or document that asserts or states the serverInfo version.",
+      "tokens": null
+    },
+    {
+      "event_id": "4a4ef1e7-0b18-4724-bedd-8b75a69378ae",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:44:18.086916Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Supersedes the earlier version notes. Owner decision: bump indigo_agent_mcp DRIVER_VERSION 0x03000004 -> 0x03000005 and align MCP_AGENT_VERSION (MCP initialize serverInfo.version) \"3.0.0.3\" -> \"3.0.0.5\", its dotted form. Reason: Xcode and Visual Studio builds, which compile the checked-in help header, now serve different help text. Convention verified in git: 5a48ccdd2 had DRIVER_VERSION 0x03000001 with serverInfo \"3.0.0.1\", 7a9beb098 introduced MCP_AGENT_VERSION \"3.0.0.3\" with 0x03000003; 85313ca07 raised DRIVER_VERSION to 0x03000004 without the string, the drift corrected here. indigo_docs/mcp/agents/mcp.md now says the lifecycle applies to driver version 3.0.0.5 and the help header was regenerated (--check exit 0). No test asserts either value: test_agent_mcp.c:211 checks the API generation only and :237 only the presence of serverInfo. indigo_drivers/agent_mcp/README.md:23 still says 'Driver version 3.0.0.3 starts the service on load' and is left for owner approval (lines 56-58 are historical test records).",
+      "tokens": null
+    },
+    {
+      "event_id": "f89b2b1a-fd10-41b9-a737-d222322803e3",
+      "event": "task/progress",
+      "at": "2026-11-20T18:44:18.172609Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Aligned MCP_AGENT_VERSION 3.0.0.5, regenerated help; running flow check and MCP tests"
+    },
+    {
+      "event_id": "d7bac927-43c3-433f-9a1a-9aec08670760",
+      "event": "task/progress",
+      "at": "2026-11-20T18:44:18.439615Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e8863d08-f099-45fb-b408-a2f2909b0963",
+      "event": "task/progress",
+      "at": "2026-11-20T18:44:18.483777Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "d82f3e67-4a6e-4aef-8eb8-9546f0f46c95",
+      "event": "check/passed",
+      "at": "2026-11-20T18:44:18.486185Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "33267b7e24be7d21ef3155c782fbc4c71cd397af",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "cf66b54c-ee50-412f-a020-bb957fe56a9d",
+      "event": "question/asked",
+      "at": "2026-11-20T18:45:07.859129Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Versions bumped (DRIVER_VERSION 0x03000005, MCP_AGENT_VERSION 3.0.0.5), checks pass. indigo_drivers/agent_mcp/README.md:23 still says 'Driver version 3.0.0.3 starts the service on load.' README edits need the owner's approval: update that line in this ticket before the review, or leave the README as it is?"
+    },
+    {
+      "event_id": "b69d5b5d-2b4b-49a9-a0bd-968d4b69cbd0",
+      "event": "question/answered",
+      "at": "2026-11-20T18:51:46.072412Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner, 2026-11-20: 'Áno, uprav' - approves editing indigo_drivers/agent_mcp/README.md line 23 in this ticket so that it states driver version 3.0.0.5 instead of 3.0.0.3. Only that statement; the historical test records in the README stay as they are."
+    },
+    {
+      "event_id": "b220945c-b045-4246-a4ed-ce56edd00886",
+      "event": "task/progress",
+      "at": "2026-11-20T18:51:55.943454Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Owner-approved README line 23 version update; running flow check"
+    },
+    {
+      "event_id": "95a6910a-573c-499d-8880-c50feef008b6",
+      "event": "task/progress",
+      "at": "2026-11-20T18:51:56.211265Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ddb96699-0c14-4ffb-b571-8c88245df57f",
+      "event": "task/progress",
+      "at": "2026-11-20T18:51:56.253044Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "d932904b-3fca-455a-ba86-f5b63ade0f77",
+      "event": "check/passed",
+      "at": "2026-11-20T18:51:56.255611Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "70b9eefd71698f9dcbfa05bd9f7b9d7d66ef30a6",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "b37645fd-8b9f-422a-8d38-df613bdcce00",
+      "event": "task/progress",
+      "at": "2026-11-20T18:52:10.099887Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Review started"
+    },
+    {
+      "event_id": "17a99f7b-76c7-46e7-ae13-7149d2f4c0fb",
+      "event": "review/started",
+      "at": "2026-11-20T18:52:10.101568Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "28d31f7d-fdfb-4b7d-b078-5bae8fc7d45e",
+      "event": "task/progress",
+      "at": "2026-11-20T18:52:10.259438Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Third reviewer launched",
+      "attempt_id": "f807f7c5-69e8-4207-9106-7ffc9403021e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "bbad927c-5ae9-4972-94f5-19b06b77014b",
+      "event": "task/progress",
+      "at": "2026-11-20T18:52:29.344288Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Review round 3: reading the full diff against master",
+      "attempt_id": "f807f7c5-69e8-4207-9106-7ffc9403021e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "bc774481-fc56-4ff0-bf7c-ef466b7b03c9",
+      "event": "task/progress",
+      "at": "2026-11-20T18:52:45.665300Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Searching the repository for statements of the agent_mcp version"
+    },
+    {
+      "event_id": "70502e46-34bc-4e1e-ba5f-2ed26ea7f9b4",
+      "event": "task/progress",
+      "at": "2026-11-20T18:53:01.960321Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Verifying the regenerated help header against the unchanged generator"
+    },
+    {
+      "event_id": "7bbe2170-914e-4d20-95d9-e4d80c4003b0",
+      "event": "task/progress",
+      "at": "2026-11-20T18:53:24.590301Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Checking the guard test fails on a stale header in a scratch copy"
+    },
+    {
+      "event_id": "1a873ead-498a-4d7e-b28b-d47da361bee1",
+      "event": "task/progress",
+      "at": "2026-11-20T18:53:40.010769Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Running test-buildsystem, test-agent-mcp and test-agent-mcp-sanitize"
+    },
+    {
+      "event_id": "6dd162f7-4aee-4955-93a2-2ea7b418b813",
+      "event": "task/progress",
+      "at": "2026-11-20T18:54:27.903623Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "aa1357d4-d66a-4332-b2a0-f0a9e9520dd1",
+      "event": "review/passed",
+      "at": "2026-11-20T18:54:27.905109Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0365a25c-cd49-4410-bdc6-e098f245e560",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "70b9eefd71698f9dcbfa05bd9f7b9d7d66ef30a6"
+    },
+    {
+      "event_id": "b5c3a944-1ea8-4d2c-945d-c79815dc83db",
+      "event": "ticket/closed",
+      "at": "2026-11-20T19:07:46.129882Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T19:07:46.129853Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "273d8a22411bb69a14dc880e3fe7da6a677d6903"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c0a3605e8d6b06b7fb745230c63c182180e708a6",
+        "tree": "51a3669bc74acba3b1d38c430ba37ba7db871ee7",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:29:25.116564Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/062e82e9-ba52-49d5-87d9-ec0251cef619/51a3669bc74a-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "952ab36f39efa331f7c1cd5a866a6b554248f5bd",
+        "tree": "bbee308d80961a0277c65050f26648f13d4af8c3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:37:35.893668Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/062e82e9-ba52-49d5-87d9-ec0251cef619/bbee308d8096-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d246293f96ace87fa13de3f9cd49a095bda648a3",
+        "tree": "8d88b37935632a49bd74d53a1967bbb44de2b73b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:43:12.776274Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/062e82e9-ba52-49d5-87d9-ec0251cef619/8d88b3793563-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "33267b7e24be7d21ef3155c782fbc4c71cd397af",
+        "tree": "6485711618773114e5766d4668ffeac5e8f9cbf3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:44:18.482721Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/062e82e9-ba52-49d5-87d9-ec0251cef619/648571161877-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "70b9eefd71698f9dcbfa05bd9f7b9d7d66ef30a6",
+        "tree": "b3c773106e088cbd6149bd02e5f40a1a2a506c3d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:51:56.251873Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/062e82e9-ba52-49d5-87d9-ec0251cef619/b3c773106e08-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Header, guard test, test assertion and Xcode edit are correct; two small documentation fixes needed.\n1. indigo_docs/MAKEFILES.md:45: the new MCP paragraph is inserted between the hexdump dependency paragraph (:43) and the paragraph at :47 that starts 'As with the generator, the tool is an order-only prerequisite ... these makefiles build it through indigo_tools'. That paragraph is about indigo_hexdump; it now directly follows the generate_help.py paragraph, so 'the tool' and 'these makefiles' read as generate_help.py / the agent_mcp Makefile, which is false (generate_help.py is a checked-in Python script, not built through indigo_tools, and is not run by any Xcode or Visual Studio step). Move the MCP paragraph to after :47 (end of the Embedded files section) or give it its own heading; text itself is accurate.\n2. Version decision not justified in the ticket: the description asks to 'decide and justify' whether regenerating the header counts for DRIVER_VERSION; the implementer note only says 'DRIVER_VERSION not bumped'. Not bumping is defensible (agent_mcp code unchanged; make builds already regenerated the header in place and served this text since cbbc6aedf/47da62f95; only Xcode/VS builds change, to match), but record that justification with flow note.\nVerified: generate_help.py --check exit 0 (18 documents); per-document decode of master vs branch header: preamble and metadata table identical, only mcp_help_text_13 (agents/sequencer.md) and _17 (reference/sequencer.md = Sequencer.md) differ, matching the only source changes since e61331cde; guard test in a git-archive copy outside the tree: OK clean, FAILED after editing a doc, with master's header, and with header missing, no files written; test-buildsystem Ran 21 OK; test-agent-mcp 1+25 make runs 34/34 each plus 40 direct runs under 12 busy loops, 0 failures (admission/unload case not reproduced); test-agent-mcp-sanitize 5 runs 34/34; assertion matches the INDIGO_DRIVER_API_GENERATION convention of test_agent_scripting.c:412 and others; pbxproj ID unique, plutil OK, file in buildsystem group; git diff --check clean; worktree clean.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "c0a3605e8d6b06b7fb745230c63c182180e708a6",
+        "tree": "51a3669bc74acba3b1d38c430ba37ba7db871ee7",
+        "at": "2026-11-20T18:36:47.421894Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Second round, full change reviewed at 952ab36f3 (git diff master...HEAD, 5 files). No defects. Round-1 items resolved: (1) the MCP paragraph is now the last paragraph of 'Embedded files' (MAKEFILES.md:47), so the hexdump order-only paragraph (:45) again follows the hexdump dependency paragraph; every statement checked against the build files: generate_help.py TOPICS/SOURCES match the three named source sets; indigo_drivers/agent_mcp/Makefile and indigo_test/Makefile:597-613 regenerate the header for test-agent-mcp and test-agent-mcp-sanitize; no Xcode shellScript phase (6 phases: hexdump and ctrlpanel only) and no step in indigo_agent_mcp.vcxproj/indigo_windows.sln/Directory.Build.props runs Python, the vcxproj only lists the header as ClInclude; test-buildsystem discovers test_*.py. (2) DRIVER_VERSION decision is recorded in a ticket note and its facts hold: 85313ca07 is the only change of indigo_agent_mcp.c since the help bundle (raised 0x03000003->0x03000004); 0422e2248, 4652c1d3e, ae4bb9925, bb0b9687d, e61331cde changed indigo_agent_mcp_help.h without touching DRIVER_VERSION; no agent_mcp code changes here; make builds already served this text. Header: generate_help.py --check exit 0 (18 documents) and its comparison is exact string equality with the generator output; decoding master vs branch header shows identical preamble and document table, only mcp_help_text_13 and _17 differ, matching git diff e61331cde master (agents/sequencer.md and agent_scripting/library/Sequencer.md only). Guard test: read-only, runs the real generator with sys.executable -B; in a git-archive copy outside the tree it passed clean and FAILED after editing agents/sequencer.md, with master's header, and after editing Sequencer.md. Assertion test_agent_mcp.c:211 now uses INDIGO_DRIVER_API_GENERATION, the convention of test_agent_scripting.c:412, test_agent_astrometry.c:697 and others. pbxproj: new ID unique (2 references), file in the buildsystem group only, plutil OK. Ran: make -C indigo_test test-buildsystem Ran 21 OK; test-agent-mcp 34 PASS 0 FAIL; test-agent-mcp-sanitize 34 PASS 0 FAIL, no sanitizer reports; git diff --check clean; worktree clean. Not verified: Windows/Linux builds (inspected only).",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "952ab36f39efa331f7c1cd5a866a6b554248f5bd",
+        "tree": "bbee308d80961a0277c65050f26648f13d4af8c3",
+        "at": "2026-11-20T18:40:19.963170Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3 (claude-opus-5-5, high), tree 70b9eefd7. No defects found.\nOwner decisions: DRIVER_VERSION 0x03000004->0x03000005 (question answered 18:42Z), MCP_AGENT_VERSION '3.0.0.3'->'3.0.0.5' (owner note 18:43Z, incl. documents stating the version), README.md:23 only (answered 18:51Z). indigo_agent_mcp.c:42-43 and README.md:23 change exactly that; README test records :56-58 untouched; mcp.md:5 is the document stating the version. Both values higher than before.\nVersion statements: git grep for 3.0.0.x/0x030000x/serverInfo/MCP_AGENT_VERSION outside .factory2 finds only indigo_agent_mcp.c:42-43, README.md:23, mcp.md:5 (all 3.0.0.5) plus historical records README.md:56-58 and TEST_SUMMARY.md:35. CHANGELOG states no version.\nHeader: generate_help.py --check exit 0 (18 documents); per-document decode vs master: preamble and metadata table identical, only mcp_help_text_13 (agents/sequencer.md), 15 (agents/mcp.md), 17 (reference/sequencer.md = Sequencer.md) differ, matching the only source changes since e61331cde plus mcp.md:5. Generator unchanged; master has no source changes since the branch point.\nGuard test (git-archive copy in scratch): OK clean; FAILED with a doc edited, with master's header and with the header missing; writes nothing (--check only, -B).\nAssertion test_agent_mcp.c:211 uses INDIGO_DRIVER_API_GENERATION, the convention documented in indigo_test/AGENTS.md:211 and used by other tests.\nBinaries indigo_test/build/integration/test_agent_mcp{,_sanitize} are up to date (make -n builds nothing) and contain 3.0.0.5 strings, no 3.0.0.3.\nXcode: one file reference + buildsystem group child, unique ID, no build phase, no .factory2 reference, plutil -lint OK. MAKEFILES.md:47 now ends the section after the hexdump paragraph and is accurate (vcxproj lists generate_help.py as None only, no pre-build step).\nRan: test-buildsystem Ran 21 OK; test-agent-mcp 34 PASS 0 FAIL; test-agent-mcp-sanitize 34 PASS 0 FAIL; git diff --check clean; git status clean.\nNot verified: Windows and Linux builds (inspected only); the integer DRIVER_VERSION is asserted by no test by design.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "70b9eefd71698f9dcbfa05bd9f7b9d7d66ef30a6",
+        "tree": "b3c773106e088cbd6149bd02e5f40a1a2a506c3d",
+        "at": "2026-11-20T18:54:27.903357Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T18:29:19.858650Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementer evidence (macOS arm64/x86_64 universal, worktree). Before: generate_help.py --check exit 1 'MCP help bundle is stale'; the new indigo_test/buildsystem/test_agent_mcp_help.py failed in make -C indigo_test test-buildsystem (Ran 21, failures=1). Stale since e61331cde: only indigo_docs/mcp/agents/sequencer.md and indigo_drivers/agent_scripting/library/Sequencer.md differ (MERIDIAN_FLIP docs from cbbc6aedf and 47da62f95); topic metadata unchanged. make -C indigo_test test-agent-mcp before: 2 of 34 failed, 'idempotent automatic lifecycle' (test_agent_mcp.c:211 expected 0x03000003 got 0x03000004) and 'admission and unload draining' (test_agent_mcp.c:485). The second is intermittent and independent of the version: the unmodified test rebuilt separately failed only at :211 in 4 of 4 runs, the fixed test passed 26 of 26 direct runs plus 15 of 15 under 16 busy CPU loops. After: --check exit 0 (18 documents); test-buildsystem Ran 21 OK; test-agent-mcp 34/34 PASS; test-agent-mcp-sanitize 34/34 PASS. Version assertion now checks INDIGO_DRIVER_API_3 generation, the convention of the other integration tests; DRIVER_VERSION not bumped. Windows: indigo_agent_mcp.vcxproj and Directory.Build.props have no Python or pre-build step, so Visual Studio compiles the checked-in header only; Xcode likewise.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T18:37:28.718934Z",
+        "actor": "human/Peter Polakovic",
+        "text": "DRIVER_VERSION decision (implementer's decision; the owner may still overrule it): indigo_agent_mcp DRIVER_VERSION stays 0x03000004. Reasons: no agent_mcp code changed, only the checked-in help header was regenerated from documents already committed. Make builds regenerate indigo_agent_mcp_help.h in place (indigo_drivers/agent_mcp/Makefile rule), so they have served this text under 0x03000004 since cbbc6aedf and 47da62f95; only Xcode and Visual Studio builds, which compile the checked-in copy, change, and they now match the make builds. The earlier header-only regenerations 0422e2248, 4652c1d3e, ae4bb9925, bb0b9687d and e61331cde did not bump DRIVER_VERSION either (it was last raised to 0x03000004 by the code change 85313ca07).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T18:43:12.321851Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Supersedes the earlier DRIVER_VERSION note: the owner overruled the implementer's decision and decided to bump. indigo_agent_mcp DRIVER_VERSION is raised from 0x03000004 to 0x03000005 (indigo_drivers/agent_mcp/indigo_agent_mcp.c:42, hand-written driver, no .driver source). Reason: Xcode and Visual Studio builds, which compile the checked-in help header, now serve different help text than before. MCP_AGENT_VERSION \"3.0.0.3\" (serverInfo.version) is unchanged at the owner's instruction. The test assertion at test_agent_mcp.c:211 checks only the API generation and is unaffected.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T18:43:21.032711Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Owner, 2026-11-20: also align MCP_AGENT_VERSION in indigo_drivers/agent_mcp/indigo_agent_mcp.c with the new DRIVER_VERSION in this ticket (\"3.0.0.3\" -> \"3.0.0.5\", the dotted form of 0x03000005, as the two matched at 7a9beb098), together with any test or document that asserts or states the serverInfo version.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T18:44:18.085393Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Supersedes the earlier version notes. Owner decision: bump indigo_agent_mcp DRIVER_VERSION 0x03000004 -> 0x03000005 and align MCP_AGENT_VERSION (MCP initialize serverInfo.version) \"3.0.0.3\" -> \"3.0.0.5\", its dotted form. Reason: Xcode and Visual Studio builds, which compile the checked-in help header, now serve different help text. Convention verified in git: 5a48ccdd2 had DRIVER_VERSION 0x03000001 with serverInfo \"3.0.0.1\", 7a9beb098 introduced MCP_AGENT_VERSION \"3.0.0.3\" with 0x03000003; 85313ca07 raised DRIVER_VERSION to 0x03000004 without the string, the drift corrected here. indigo_docs/mcp/agents/mcp.md now says the lifecycle applies to driver version 3.0.0.5 and the help header was regenerated (--check exit 0). No test asserts either value: test_agent_mcp.c:211 checks the API generation only and :237 only the presence of serverInfo. indigo_drivers/agent_mcp/README.md:23 still says 'Driver version 3.0.0.3 starts the service on load' and is left for owner approval (lines 56-58 are historical test records).",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Second review passed at 952ab36f3; checks pass; nothing is missing for close. Before closing the owner decides: close as implemented with DRIVER_VERSION of indigo_agent_mcp left at 0x03000004 (implementer's justified decision), or bump the version first?",
+        "at": "2026-11-20T18:40:46.192906Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner, 2026-11-20: 'Zvýš verziu' - overrules the implementer's decision: increment DRIVER_VERSION of indigo_agent_mcp (0x03000004 -> 0x03000005) in this ticket before closing.",
+        "answered_at": "2026-11-20T18:42:47.315913Z",
+        "answered_by": "human/Peter Polakovic"
+      },
+      {
+        "text": "Versions bumped (DRIVER_VERSION 0x03000005, MCP_AGENT_VERSION 3.0.0.5), checks pass. indigo_drivers/agent_mcp/README.md:23 still says 'Driver version 3.0.0.3 starts the service on load.' README edits need the owner's approval: update that line in this ticket before the review, or leave the README as it is?",
+        "at": "2026-11-20T18:45:07.857624Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner, 2026-11-20: 'Áno, uprav' - approves editing indigo_drivers/agent_mcp/README.md line 23 in this ticket so that it states driver version 3.0.0.5 instead of 3.0.0.3. Only that statement; the historical test records in the README stay as they are.",
+        "answered_at": "2026-11-20T18:51:46.070752Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "273d8a22411bb69a14dc880e3fe7da6a677d6903",
+      "tree": "b3c773106e088cbd6149bd02e5f40a1a2a506c3d",
+      "base": "master",
+      "at": "2026-11-20T19:07:46.041102Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T18:23:05.284202Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T18:24:05.938187Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 1105996.539,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 75,
+    "sha256": "b4bf52918b6da9f9d4887007e5dd1c9ba98ece14c3306b68885ebef8db36caed"
+  }
+}
