@@ -31,6 +31,8 @@ indigo.xcodeproj/xcuserdata/
 indigo_server/ctrl.data
 indigo_server/resource/*.data
 indigo_server/resource/data/*.data
+# generated from indigo_drivers/agent_scripting/library/Sequencer.js by indigo_hexdump
+/indigo_drivers/agent_scheduler/Sequencer.js.dat
 /Makefile.inc
 /indigo_windows/.vs/indigo_windows/v15
 **/Debug

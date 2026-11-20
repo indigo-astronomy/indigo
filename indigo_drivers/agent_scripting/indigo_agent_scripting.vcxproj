@@ -82,6 +82,10 @@
       <Command>
       </Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>"$(MSBuildProjectDirectory)\..\..\build\$(Configuration)\x64\indigo_hexdump.exe" "$(MSBuildProjectDirectory)\boot.js" "$(MSBuildProjectDirectory)\boot.js.dat"</Command>
+      <Message>Generating boot.js.dat with indigo_hexdump</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -108,6 +112,10 @@
       <Command>
       </Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>"$(MSBuildProjectDirectory)\..\..\build\$(Configuration)\x64\indigo_hexdump.exe" "$(MSBuildProjectDirectory)\boot.js" "$(MSBuildProjectDirectory)\boot.js.dat"</Command>
+      <Message>Generating boot.js.dat with indigo_hexdump</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
@@ -130,6 +138,10 @@
       <Command>
       </Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>"$(MSBuildProjectDirectory)\..\..\build\$(Configuration)\x64\indigo_hexdump.exe" "$(MSBuildProjectDirectory)\boot.js" "$(MSBuildProjectDirectory)\boot.js.dat"</Command>
+      <Message>Generating boot.js.dat with indigo_hexdump</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
@@ -156,6 +168,10 @@
       <Command>
       </Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>"$(MSBuildProjectDirectory)\..\..\build\$(Configuration)\x64\indigo_hexdump.exe" "$(MSBuildProjectDirectory)\boot.js" "$(MSBuildProjectDirectory)\boot.js.dat"</Command>
+      <Message>Generating boot.js.dat with indigo_hexdump</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp" />

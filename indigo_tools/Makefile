@@ -33,7 +33,10 @@ endif
 TOOL_NAMES = indigo_prop_tool indigo_list_usbserial indigo_raw_to_fits indigo_raw_crop indigo_drivers indigo_driver_metadata indigo_generator indigo_scan_drivers indigo_solver_indexer indigo_solver
 TOOL_BINARIES = $(addprefix $(BUILD_BIN)/, $(TOOL_NAMES))
 
-all: $(TOOL_BINARIES)
+# Build-only tools: used while building INDIGO and not installed.
+BUILD_TOOL_BINARIES = $(BUILD_BIN)/indigo_hexdump
+
+all: $(TOOL_BINARIES) $(BUILD_TOOL_BINARIES)
 
 install: all
 	cp $(TOOL_BINARIES) $(INSTALL_BIN)
@@ -46,7 +49,7 @@ status:
 	@printf "\nindigo_tools -------------------------\n\n"
 
 clean: status
-	rm -f *.o $(TOOL_BINARIES)
+	rm -f *.o $(TOOL_BINARIES) $(BUILD_TOOL_BINARIES)
 
 clean-all: status
 	git clean -dfx
@@ -73,6 +76,11 @@ $(BUILD_BIN)/indigo_driver_metadata: indigo_driver_metadata.o
 
 $(BUILD_BIN)/indigo_generator: indigo_generator.c
 	$(CC) indigo_generator.c -o $(BUILD_BIN)/indigo_generator
+
+# Embeds files into C arrays (the agents' .dat and the server's .data files) without the system hexdump.
+# It uses the C library only, so it is compiled straight from its source like indigo_generator.
+$(BUILD_BIN)/indigo_hexdump: indigo_hexdump.c
+	$(CC) indigo_hexdump.c -o $(BUILD_BIN)/indigo_hexdump
 
 $(BUILD_BIN)/indigo_scan_drivers: indigo_scan_drivers.o
 	$(CC) $(CFLAGS)  -o $@ indigo_scan_drivers.o $(LDFLAGS) -lindigo

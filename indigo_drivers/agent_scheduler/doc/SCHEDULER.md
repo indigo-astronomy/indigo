@@ -810,7 +810,7 @@ The agent relates the frames to the task that produced them by changing `CCD_LOC
 
 ## Running a task
 
-`Sequencer.js` is compiled into the Scheduler Agent from `indigo_drivers/agent_scripting/library/Sequencer.js`. It uses the same hexdump build rule as the Scripting Agent's `boot.js`. The generated `.dat` file is checked in and gets an Xcode build phase, as `boot.js.dat` does.
+`Sequencer.js` is compiled into the Scheduler Agent from `indigo_drivers/agent_scripting/library/Sequencer.js`. The build converts it into `Sequencer.js.dat` with `indigo_hexdump`, as the Scripting Agent's `boot.js`: the make rule in `Makefile.inc` whenever the file is missing or older than `Sequencer.js`, the Xcode build phase and the pre-build step in `indigo_agent_scheduler.vcxproj` on every build. The generated file is not checked in. See [MAKEFILES.md](../../../indigo_docs/MAKEFILES.md#embedded-files).
 
 The scheduler starts no task until the Scripting Agent is present. When the Scripting Agent does not yet define `SEQUENCE_STATE`, the scheduler loads the library into it through `AGENT_SCRIPTING_RUN_SCRIPT`. A library that a client loaded already, possibly of another version, is used as it is.
 

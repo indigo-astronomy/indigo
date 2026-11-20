@@ -58,12 +58,22 @@ endif
 #
 #---------------------------------------------------------------------
 
-ctrlpanel_data: resource/data/constellations.bounds.json.data resource/data/mw.json.data resource/data/constellations.json.data resource/data/planets.json.data
+CTRLPANEL_DATA = resource/data/constellations.bounds.json.data resource/data/mw.json.data resource/data/constellations.json.data resource/data/planets.json.data
 
-ctrlpanel: ctrlpanel_data resource/celestial.min.js.data resource/d3.min.js.data resource/celestial.css.data resource/mng.html.data resource/ctrl.html.data resource/imager.html.data resource/mount.html.data resource/guider.html.data resource/astrometry.html.data resource/script.html.data resource/indigo.js.data resource/mng.png.data resource/components.js.data resource/mount.png.data resource/ctrl.png.data resource/imager.png.data resource/guider.png.data resource/astrometry.png.data resource/script.png.data resource/indigo.css.data resource/bootstrap.min.css.data resource/glyphicons.css.data resource/jquery.min.js.data resource/bootstrap.min.js.data resource/popper.min.js.data resource/vue.global.prod.js.data resource/glyphicons-regular.ttf.data resource/Sequencer.js.data
+ctrlpanel_data: $(CTRLPANEL_DATA)
 
-resource/Sequencer.js.data: ../indigo_drivers/agent_scripting/library/Sequencer.js
-	cat $< | gzip | hexdump -v -e '1/1 "0x%02x, "' >$@
+CTRLPANEL_FILES = resource/celestial.min.js.data resource/d3.min.js.data resource/celestial.css.data resource/mng.html.data resource/ctrl.html.data resource/imager.html.data resource/mount.html.data resource/guider.html.data resource/astrometry.html.data resource/script.html.data resource/indigo.js.data resource/mng.png.data resource/components.js.data resource/mount.png.data resource/ctrl.png.data resource/imager.png.data resource/guider.png.data resource/astrometry.png.data resource/script.png.data resource/indigo.css.data resource/bootstrap.min.css.data resource/glyphicons.css.data resource/jquery.min.js.data resource/bootstrap.min.js.data resource/popper.min.js.data resource/vue.global.prod.js.data resource/glyphicons-regular.ttf.data resource/Sequencer.js.data
 
-%.data: %
-	cat $< | gzip | hexdump -v -e '1/1 "0x%02x, "' >$@
+ctrlpanel: ctrlpanel_data $(CTRLPANEL_FILES)
+
+# indigo_server.c includes the generated files, so a regenerated resource must recompile it
+indigo_server.o: $(CTRLPANEL_DATA) $(CTRLPANEL_FILES)
+
+resource/Sequencer.js.data: ../indigo_drivers/agent_scripting/library/Sequencer.js | $(BUILD_BIN)/indigo_hexdump
+	cat $< | gzip | $(BUILD_BIN)/indigo_hexdump >$@
+
+%.data: % | $(BUILD_BIN)/indigo_hexdump
+	cat $< | gzip | $(BUILD_BIN)/indigo_hexdump >$@
+
+$(BUILD_BIN)/indigo_hexdump: ../indigo_tools/indigo_hexdump.c
+	$(MAKE) -C ../indigo_tools $(BUILD_BIN)/indigo_hexdump

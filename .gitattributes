@@ -1,1 +1,4 @@
 *.dat -whitespace
+*.vcxproj whitespace=cr-at-eol
+indigo_drivers/agent_scripting/boot.js eol=lf
+indigo_drivers/agent_scripting/library/Sequencer.js eol=lf

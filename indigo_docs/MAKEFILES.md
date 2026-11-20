@@ -31,3 +31,15 @@ make -C indigo_tools "$(pwd)/build/bin/indigo_generator"
 ```
 
 Edit the `.driver` source and regenerate its outputs; do not hand-edit generated files. See [DRIVER_GENERATOR_MIGRATION.md](DRIVER_GENERATOR_MIGRATION.md) for manual invocation and migration instructions.
+
+### Embedded files
+
+Files compiled into C arrays with `#include` are converted by `$(BUILD_BIN)/indigo_hexdump` (source `indigo_tools/indigo_hexdump.c`), not by the system `hexdump`, which Windows lacks. `indigo_hexdump [INPUT [OUTPUT]]` writes every byte as `0x%02x, ` on one line, without a header or a trailing newline; omitted arguments mean standard input and output, so `gzip <file | indigo_hexdump` works too. The tool depends on the C library only, is built by `make -C indigo_tools all` and is not installed. The embedded JavaScript sources `boot.js` and `library/Sequencer.js` in `indigo_drivers/agent_scripting` carry `eol=lf` in `.gitattributes`, so a Windows checkout with `core.autocrlf=true` embeds the same bytes as macOS and Linux.
+
+- `indigo_drivers/agent_scheduler/Makefile.inc` generates `Sequencer.js.dat` from `indigo_drivers/agent_scripting/library/Sequencer.js` whenever it is missing or older; the file is not checked in.
+- `indigo_drivers/agent_scripting/Makefile.inc` regenerates the checked-in `boot.js.dat` when `boot.js` changes.
+- `indigo_server/Makefile` gzips the control panel resources and converts them into `resource/*.data`.
+
+The object that includes a generated file depends on it (`indigo_agent_scheduler.o`, `indigo_agent_scripting.o`, `indigo_server.o`), so a regenerated file recompiles the object and rebuilds the archive and shared library; a prerequisite on the `.c` file would not, because the source itself is never remade. `indigo_test/buildsystem/test_embedded_file_dependencies.py` checks these dependencies.
+
+As with the generator, the tool is an order-only prerequisite with its own rule: these makefiles build it through `indigo_tools` when it is missing or older than its source, so standalone driver and server builds work once the root `Makefile.inc` and build directories exist. The Xcode project builds the `indigo_hexdump` target before the `indigo` and `indigo_m1` libraries. In `indigo_windows.sln` the `indigo_hexdump` project is built first, always for x64 so that it also runs on an x64 host building ARM64, and the pre-build steps of `indigo_agent_scheduler` and `indigo_agent_scripting` run it.
