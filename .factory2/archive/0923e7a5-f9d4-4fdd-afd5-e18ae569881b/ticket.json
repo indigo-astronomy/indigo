@@ -1,0 +1,433 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0923e7a5-f9d4-4fdd-afd5-e18ae569881b",
+  "revision": 20,
+  "title": "indigo_mount_nexstaraux: coordinates ALERTs bypass indigo_update_coordinates(); MOUNT_PARK writes the park position into the equatorial targets",
+  "description": "Two defects: (1) MOUNT_EQUATORIAL_COORDINATES ALERTs are published with indigo_update_property() instead of indigo_update_coordinates(), so they are not kept; (2) MOUNT_PARK writes the park position into the targets of MOUNT_EQUATORIAL_COORDINATES, although targets may hold only the client's request. Found while working on ticket 42b85be0-1f19-4607-b3c3-746e60317d17 (closed, commit a09e0f878), which introduced the kept coordinates ALERT in indigo_update_coordinates(): an ALERT published after a BUSY stays until the next BUSY. Reproduce in the driver's simulator suite before changing code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:04.188052Z",
+  "status": "closed",
+  "branch": "ticket/0923e7a5-f9d4-4fdd-afd5-e18ae569881b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "efa15794-fbf2-446e-9f2c-b6fee60af434",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "0aae4c68-5521-4d8f-bb4d-8901933cb7f3",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:12:02.003748Z",
+          "last_activity_at": "2026-11-20T19:00:46.066772Z",
+          "ended_at": "2026-11-20T19:00:46.066772Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 2924063.024,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:12:02.003748Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/0923e7a5-f9d4-4fdd-afd5-e18ae569881b"
+        },
+        {
+          "at": "2026-11-20T19:00:46.066772Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2924063.024,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "1fdcb20b-e87d-4b2f-bc47-f0c026a632b5",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3ddc20e5-c6e7-4515-9a2e-a737f80a900b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T19:00:46.066937Z",
+          "last_activity_at": "2026-11-20T21:03:02.960613Z",
+          "ended_at": "2026-11-20T21:03:02.960613Z",
+          "outcome": {
+            "summary": "Reviewed git diff c912611a4..974d9da20 (merge base to branch head). No defects found.\n\nPublications: every hand-written publication of MOUNT_EQUATORIAL_COORDINATES in indigo_mount_nexstaraux.driver now goes through indigo_update_coordinates(): poll (857, 862), mount_slew_failed (882), stop after abort (913), arrival/stopped short (945), park start (1127), abort of a queued request (1151). The remaining one is the generator-owned parked guard (indigo_mount_nexstaraux.c:1161, INDIGO_UPDATE_PROPERTY_STATE), out of scope. Messages formerly attached to the ALERT ('Mount aborted the slew', 'Mount refused the slow approach', 'Mount stopped answering during the slew', 'Mount stopped short of the target') still reach the client on the equatorial publication; the message is now a format string instead of '%s', all callers pass literals without '%'.\n\nTargets/values: nothing writes the equatorial targets any more; values are written only from nextstar_get_coordinates() readbacks (841, 1081). Unpark and sync do not touch targets. The only two slew sources (coordinates handler 1065, park 1125) set PRIVATE_DATA->target_ra/target_dec before the slew; the finalizer (924, 959) and nexstaraux_reached_target() (583) read them only while slewing/centering, so they cannot be stale across abort, refusal or a new request. The conversion is unchanged: GoTo stores j2k_to_eq(request) as the old finalizer recomputed; park stores j2k_to_eq(LST+6/0, +-90) exactly as the old code commanded and recomputed from the targets, so the mount is commanded to the same place. A park started while an ALERT is kept publishes BUSY through indigo_update_coordinates() and clears the flag.\n\nGenerated output: worktree .driver regenerated with indigo_generator built from the branch sources; .c, .h and _main.c identical. Version 26 -> 27 (0x0300001B), README record and TEST_SUMMARY.md agree (3.0.0.27, mac arm64 simulator 70/70), MIGRATION_STATUS 69 -> 70 with Comment untouched, 70 registered cases. Nothing outside ",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 7336893.676,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T19:00:46.066937Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T21:03:02.960613Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Reviewed git diff c912611a4..974d9da20 (merge base to branch head). No defects found.\n\nPublications: every hand-written publication of MOUNT_EQUATORIAL_COORDINATES in indigo_mount_nexstaraux.driver now goes through indigo_update_coordinates(): poll (857, 862), mount_slew_failed (882), stop after abort (913), arrival/stopped short (945), park start (1127), abort of a queued request (1151). The remaining one is the generator-owned parked guard (indigo_mount_nexstaraux.c:1161, INDIGO_UPDATE_PROPERTY_STATE), out of scope. Messages formerly attached to the ALERT ('Mount aborted the slew', 'Mount refused the slow approach', 'Mount stopped answering during the slew', 'Mount stopped short of the target') still reach the client on the equatorial publication; the message is now a format string instead of '%s', all callers pass literals without '%'.\n\nTargets/values: nothing writes the equatorial targets any more; values are written only from nextstar_get_coordinates() readbacks (841, 1081). Unpark and sync do not touch targets. The only two slew sources (coordinates handler 1065, park 1125) set PRIVATE_DATA->target_ra/target_dec before the slew; the finalizer (924, 959) and nexstaraux_reached_target() (583) read them only while slewing/centering, so they cannot be stale across abort, refusal or a new request. The conversion is unchanged: GoTo stores j2k_to_eq(request) as the old finalizer recomputed; park stores j2k_to_eq(LST+6/0, +-90) exactly as the old code commanded and recomputed from the targets, so the mount is commanded to the same place. A park started while an ALERT is kept publishes BUSY through indigo_update_coordinates() and clears the flag.\n\nGenerated output: worktree .driver regenerated with indigo_generator built from the branch sources; .c, .h and _main.c identical. Version 26 -> 27 (0x0300001B), README record and TEST_SUMMARY.md agree (3.0.0.27, mac arm64 simulator 70/70), MIGRATION_STATUS 69 -> 70 with Comment untouched, 70 registered cases. Nothing outside "
+        }
+      ],
+      "result": {
+        "summary": "Reviewed git diff c912611a4..974d9da20 (merge base to branch head). No defects found.\n\nPublications: every hand-written publication of MOUNT_EQUATORIAL_COORDINATES in indigo_mount_nexstaraux.driver now goes through indigo_update_coordinates(): poll (857, 862), mount_slew_failed (882), stop after abort (913), arrival/stopped short (945), park start (1127), abort of a queued request (1151). The remaining one is the generator-owned parked guard (indigo_mount_nexstaraux.c:1161, INDIGO_UPDATE_PROPERTY_STATE), out of scope. Messages formerly attached to the ALERT ('Mount aborted the slew', 'Mount refused the slow approach', 'Mount stopped answering during the slew', 'Mount stopped short of the target') still reach the client on the equatorial publication; the message is now a format string instead of '%s', all callers pass literals without '%'.\n\nTargets/values: nothing writes the equatorial targets any more; values are written only from nextstar_get_coordinates() readbacks (841, 1081). Unpark and sync do not touch targets. The only two slew sources (coordinates handler 1065, park 1125) set PRIVATE_DATA->target_ra/target_dec before the slew; the finalizer (924, 959) and nexstaraux_reached_target() (583) read them only while slewing/centering, so they cannot be stale across abort, refusal or a new request. The conversion is unchanged: GoTo stores j2k_to_eq(request) as the old finalizer recomputed; park stores j2k_to_eq(LST+6/0, +-90) exactly as the old code commanded and recomputed from the targets, so the mount is commanded to the same place. A park started while an ALERT is kept publishes BUSY through indigo_update_coordinates() and clears the flag.\n\nGenerated output: worktree .driver regenerated with indigo_generator built from the branch sources; .c, .h and _main.c identical. Version 26 -> 27 (0x0300001B), README record and TEST_SUMMARY.md agree (3.0.0.27, mac arm64 simulator 70/70), MIGRATION_STATUS 69 -> 70 with Comment untouched, 70 registered cases. Nothing outside ",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 7336893.676,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "70254dcc-0da5-48d8-8303-3c4ee8a7586a",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:04.188836Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "c87dd4b9-1045-4707-be1f-4411093881f4",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T17:02:38.201673Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "01950cf3-5246-42d1-8511-f315948fea96",
+      "event": "task/progress",
+      "at": "2026-11-20T18:12:02.004122Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "efa15794-fbf2-446e-9f2c-b6fee60af434",
+      "text": "Implementation started on branch ticket/0923e7a5-f9d4-4fdd-afd5-e18ae569881b"
+    },
+    {
+      "event_id": "c0b3c3e5-33c0-4d4c-a72f-dc8a30908fd5",
+      "event": "ticket/started",
+      "at": "2026-11-20T18:12:02.005933Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/0923e7a5-f9d4-4fdd-afd5-e18ae569881b",
+      "base": "master"
+    },
+    {
+      "event_id": "272c8c9c-001a-4ec5-aca4-dd264bdb1739",
+      "event": "task/progress",
+      "at": "2026-11-20T18:12:58.197702Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "efa15794-fbf2-446e-9f2c-b6fee60af434",
+      "text": "Implementer launched",
+      "attempt_id": "0aae4c68-5521-4d8f-bb4d-8901933cb7f3",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "1fd21c98-9fa4-4ff8-bf84-99c7de1424f8",
+      "event": "task/progress",
+      "at": "2026-11-20T18:14:33.605911Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "efa15794-fbf2-446e-9f2c-b6fee60af434",
+      "text": "Building library and nexstaraux driver in the worktree for the baseline"
+    },
+    {
+      "event_id": "764d2ff6-e431-4dd5-8075-bc61d6772387",
+      "event": "task/progress",
+      "at": "2026-11-20T18:18:02.395620Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "efa15794-fbf2-446e-9f2c-b6fee60af434",
+      "text": "Running new nexstaraux reproducers against the unchanged driver"
+    },
+    {
+      "event_id": "2b320437-da07-465c-9064-3487e9c4f628",
+      "event": "task/progress",
+      "at": "2026-11-20T18:22:43.568787Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "efa15794-fbf2-446e-9f2c-b6fee60af434",
+      "text": "Rerunning the nexstaraux reproducers on the fixed driver"
+    },
+    {
+      "event_id": "cc48d757-b707-4a4a-a523-73110f8e282a",
+      "event": "task/progress",
+      "at": "2026-11-20T18:43:19.654874Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "efa15794-fbf2-446e-9f2c-b6fee60af434",
+      "text": "Recorded run: tools/run_driver_test.py mount_nexstaraux"
+    },
+    {
+      "event_id": "0feb55d4-0000-47b7-9156-0a4224b0c1a0",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:43:31.568454Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction and fix (implementer).\n\nDefect 1, coordinates publications bypassing indigo_update_coordinates() in indigo_mount_nexstaraux.driver (pre-fix lines): mount_slew_failed() line 877 (ALERT, indigo_update_property with message); mount_slew_finalizer stopping path after an abort line 908 (ALERT); arrival/stopped-short path line 943 (OK or ALERT); MOUNT_PARK start line 1125 (BUSY). Each published MOUNT_EQUATORIAL_COORDINATES without the horizontal coordinates in the same state, and the park start did not reset the kept-ALERT flag. Generator-owned code (parked guard in the generated handler) left out of scope.\nDefect 2: MOUNT_PARK on_change (pre-fix lines 1106-1107) wrote the park position into the targets of MOUNT_EQUATORIAL_COORDINATES; the finalizer (slow approaches, lines 919-921 and 956-958) and nexstaraux_reached_target() (lines 579-581) read the slew target back from those targets.\n\nFix (version 26 -> 27, 3.0.0.27): the four publications go through indigo_update_coordinates(); the JNow target of the goto or park in progress is kept in PRIVATE_DATA->target_ra/target_dec, set by the coordinates handler and by the park handler with the same conversion as before, and read by the slow approaches and the arrival check; the park no longer touches the equatorial targets.\n\nTests (indigo_test/integration/test_mount_nexstaraux_simulator.c): new helpers check_published_with_horizontal() and check_alert_kept(); extended coordinates_publish_the_mount_position (slew arrival, abort mid-slew), goto_stopped_short, goto_aborted_by_mount, abort_park; new case park_leaves_the_targets_alone (70 cases, was 69). Before the fix (unchanged driver, same test binary): all five failed - coordinates_publish_the_mount_position (slew: OK publication 12 not preceded by horizontal coordinates), goto_stopped_short (publication 10), goto_aborted_by_mount (publication 4), abort_park (publication 1), park_leaves_the_targets_alone (BUSY publication had targets 22.353630 h 90 deg instead of the",
+      "tokens": null
+    },
+    {
+      "event_id": "86962cbc-615d-4af9-a65e-b798b167507a",
+      "event": "task/progress",
+      "at": "2026-11-20T19:00:20.001514Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "efa15794-fbf2-446e-9f2c-b6fee60af434",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e3d661fd-90fa-4026-b39c-ed2b575a33e1",
+      "event": "task/progress",
+      "at": "2026-11-20T19:00:20.024808Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "efa15794-fbf2-446e-9f2c-b6fee60af434",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "67ffc40f-48bd-449f-8976-15abda2b0685",
+      "event": "check/passed",
+      "at": "2026-11-20T19:00:20.026406Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "974d9da207a3366d010984e3eab6521a40e61e42",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "460e56ad-fa6a-4b59-b7dc-1ec49fd999c5",
+      "event": "task/progress",
+      "at": "2026-11-20T19:00:46.066999Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1fdcb20b-e87d-4b2f-bc47-f0c026a632b5",
+      "text": "Review started"
+    },
+    {
+      "event_id": "130c7c57-beaf-44ce-bb54-35bc4e3b1d68",
+      "event": "review/started",
+      "at": "2026-11-20T19:00:46.068117Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "2dccb051-8438-4b72-8167-e0c6d40aac86",
+      "event": "task/progress",
+      "at": "2026-11-20T19:01:06.302009Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1fdcb20b-e87d-4b2f-bc47-f0c026a632b5",
+      "text": "Reviewer launched",
+      "attempt_id": "3ddc20e5-c6e7-4515-9a2e-a737f80a900b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "eddcc60b-2009-4b52-8313-9db30716d0c3",
+      "event": "task/progress",
+      "at": "2026-11-20T19:02:46.664725Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1fdcb20b-e87d-4b2f-bc47-f0c026a632b5",
+      "text": "Building a scratch copy of the branch to check generation and run the nexstaraux suite"
+    },
+    {
+      "event_id": "f35556a0-1845-48a8-99b0-7974bbe64c1f",
+      "event": "task/progress",
+      "at": "2026-11-20T19:04:56.885349Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1fdcb20b-e87d-4b2f-bc47-f0c026a632b5",
+      "text": "Running test_mount_nexstaraux_simulator (full) on a scratch copy of the fix"
+    },
+    {
+      "event_id": "f982e3c6-9a4a-4607-8b7d-f9e0759dd8a4",
+      "event": "task/progress",
+      "at": "2026-11-20T19:24:28.258391Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1fdcb20b-e87d-4b2f-bc47-f0c026a632b5",
+      "text": "Running the five changed cases against the unchanged driver on a scratch copy"
+    },
+    {
+      "event_id": "ea42cf12-8c57-408d-bc52-1faf689e20fd",
+      "event": "task/progress",
+      "at": "2026-11-20T21:03:02.960703Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1fdcb20b-e87d-4b2f-bc47-f0c026a632b5",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "ad14b352-95c1-4268-b0a6-b002367fa627",
+      "event": "review/passed",
+      "at": "2026-11-20T21:03:02.962921Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1fdcb20b-e87d-4b2f-bc47-f0c026a632b5",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "974d9da207a3366d010984e3eab6521a40e61e42"
+    },
+    {
+      "event_id": "3c77acfb-9bff-45ec-9891-47562dda7148",
+      "event": "ticket/closed",
+      "at": "2026-11-20T21:03:26.380341Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T21:03:26.380320Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "bdda9a46bd24919adddc9bb3774b97d180625d8b"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "974d9da207a3366d010984e3eab6521a40e61e42",
+        "tree": "44b0bee3a2671d5585a20c80189b4b0b3b298a1d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T19:00:20.024135Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/0923e7a5-f9d4-4fdd-afd5-e18ae569881b/44b0bee3a267-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed git diff c912611a4..974d9da20 (merge base to branch head). No defects found.\n\nPublications: every hand-written publication of MOUNT_EQUATORIAL_COORDINATES in indigo_mount_nexstaraux.driver now goes through indigo_update_coordinates(): poll (857, 862), mount_slew_failed (882), stop after abort (913), arrival/stopped short (945), park start (1127), abort of a queued request (1151). The remaining one is the generator-owned parked guard (indigo_mount_nexstaraux.c:1161, INDIGO_UPDATE_PROPERTY_STATE), out of scope. Messages formerly attached to the ALERT ('Mount aborted the slew', 'Mount refused the slow approach', 'Mount stopped answering during the slew', 'Mount stopped short of the target') still reach the client on the equatorial publication; the message is now a format string instead of '%s', all callers pass literals without '%'.\n\nTargets/values: nothing writes the equatorial targets any more; values are written only from nextstar_get_coordinates() readbacks (841, 1081). Unpark and sync do not touch targets. The only two slew sources (coordinates handler 1065, park 1125) set PRIVATE_DATA->target_ra/target_dec before the slew; the finalizer (924, 959) and nexstaraux_reached_target() (583) read them only while slewing/centering, so they cannot be stale across abort, refusal or a new request. The conversion is unchanged: GoTo stores j2k_to_eq(request) as the old finalizer recomputed; park stores j2k_to_eq(LST+6/0, +-90) exactly as the old code commanded and recomputed from the targets, so the mount is commanded to the same place. A park started while an ALERT is kept publishes BUSY through indigo_update_coordinates() and clears the flag.\n\nGenerated output: worktree .driver regenerated with indigo_generator built from the branch sources; .c, .h and _main.c identical. Version 26 -> 27 (0x0300001B), README record and TEST_SUMMARY.md agree (3.0.0.27, mac arm64 simulator 70/70), MIGRATION_STATUS 69 -> 70 with Comment untouched, 70 registered cases. Nothing outside mount_nexstaraux, its test, README record, TEST_SUMMARY.md and MIGRATION_STATUS.md changed. git diff --check clean; formatting of the added code follows the rules.\n\nTests (scratch copy, under the test lock): full test_mount_nexstaraux_simulator on the fix 70/70 PASS. With the merge-base driver and the new test binary, all five changed cases fail (coordinates_publish_the_mount_position pub 12, goto_stopped_short pub 10, goto_aborted_by_mount pub 4, abort_park pub 1, park_leaves_the_targets_alone BUSY targets 1.01 h 90 deg). Ad hoc scratch case (not committed): kept ALERT from a mount-aborted goto, then a successful park: passes on the fix (OK after arrival, targets stay the request), fails on the old driver on the targets only. Skipping publication 0 in check_published_with_horizontal() is justified (recording can start between the H and E of a poll); the park-start defect at index 0 is still caught by check_request_publication()/target check in park_leaves_the_targets_alone.\n\nObservations, not blocking: the new helpers are near copies of check_alert_kept() in test_mount_temma_simulator.c:1902 and check_abort_alert_publications() in test_mount_pmc8_simulator.c:705; mount_coordinates_test_common.h has no equivalent, so nothing there was bypassed, and consolidating them into the shared header would be separate work. Pre-existing, untouched: blank line inside MOUNT_ABORT_MOTION on_change (.driver:1180); this binary ignores INDIGO_TEST_CASE_FILTER (uses NEXSTARAUX_TEST_FILTER).",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "974d9da207a3366d010984e3eab6521a40e61e42",
+        "tree": "44b0bee3a2671d5585a20c80189b4b0b3b298a1d",
+        "at": "2026-11-20T21:03:02.960442Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T18:43:31.567182Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction and fix (implementer).\n\nDefect 1, coordinates publications bypassing indigo_update_coordinates() in indigo_mount_nexstaraux.driver (pre-fix lines): mount_slew_failed() line 877 (ALERT, indigo_update_property with message); mount_slew_finalizer stopping path after an abort line 908 (ALERT); arrival/stopped-short path line 943 (OK or ALERT); MOUNT_PARK start line 1125 (BUSY). Each published MOUNT_EQUATORIAL_COORDINATES without the horizontal coordinates in the same state, and the park start did not reset the kept-ALERT flag. Generator-owned code (parked guard in the generated handler) left out of scope.\nDefect 2: MOUNT_PARK on_change (pre-fix lines 1106-1107) wrote the park position into the targets of MOUNT_EQUATORIAL_COORDINATES; the finalizer (slow approaches, lines 919-921 and 956-958) and nexstaraux_reached_target() (lines 579-581) read the slew target back from those targets.\n\nFix (version 26 -> 27, 3.0.0.27): the four publications go through indigo_update_coordinates(); the JNow target of the goto or park in progress is kept in PRIVATE_DATA->target_ra/target_dec, set by the coordinates handler and by the park handler with the same conversion as before, and read by the slow approaches and the arrival check; the park no longer touches the equatorial targets.\n\nTests (indigo_test/integration/test_mount_nexstaraux_simulator.c): new helpers check_published_with_horizontal() and check_alert_kept(); extended coordinates_publish_the_mount_position (slew arrival, abort mid-slew), goto_stopped_short, goto_aborted_by_mount, abort_park; new case park_leaves_the_targets_alone (70 cases, was 69). Before the fix (unchanged driver, same test binary): all five failed - coordinates_publish_the_mount_position (slew: OK publication 12 not preceded by horizontal coordinates), goto_stopped_short (publication 10), goto_aborted_by_mount (publication 4), abort_park (publication 1), park_leaves_the_targets_alone (BUSY publication had targets 22.353630 h 90 deg instead of the request 5 h 20 deg). After the fix all five pass. MIGRATION_STATUS.md sim count 69 -> 70.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "bdda9a46bd24919adddc9bb3774b97d180625d8b",
+      "tree": "44b0bee3a2671d5585a20c80189b4b0b3b298a1d",
+      "base": "master",
+      "at": "2026-11-20T21:03:26.274767Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:04.188052Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T17:02:38.201523Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 10260956.7,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 26,
+    "sha256": "8e502eb7026523bbef0cb99f68852a3f94df8a656a88a8bd6983eef5fcd81034"
+  }
+}
