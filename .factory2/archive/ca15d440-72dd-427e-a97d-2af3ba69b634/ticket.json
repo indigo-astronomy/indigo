@@ -1,0 +1,970 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ca15d440-72dd-427e-a97d-2af3ba69b634",
+  "revision": 47,
+  "title": "indigo_agent_scheduler: replace the DEFER strength with a COMPACT / VISIBILITY strategy switch",
+  "description": "Owner report (2026-11-19, running server, DEFER = 100): tasks never get the better slot, they are moved to well before the meridian. Reproduced offline from the server's tasks (lat 42, lon 23, 2026-11-19): with DEFER 100 the plan is Soul 20:40, Pleiades 21:08 (transit 22:19), Jellyfish 21:29-23:30 (transit 00:49, 76 % of its transit altitude), Orion 23:30, Rosette 00:30, then nothing until the shutdown hook at 04:19.\n\nCause: decide() in indigo_agent_scheduler_plan.c weighs holding the best candidate alone against a greedy simulation in which every other task still starts as early as possible, so a hold only lets the next task into the slot and is rejected; holding the group is never evaluated. Every hold is also dropped when any run starts. The 0-100 DEFER strength (a threshold of a run-quality gain) is hard to understand.\n\nOwner decision: keep the old greedy algorithm and replace the DEFER number with a switch between two preferences, instead of patching the deferral further.\n\nProposal (to be settled in the design stage):\n- Replace AGENT_SCHEDULER_SETTINGS.DEFER with a switch property, e.g. AGENT_SCHEDULER_STRATEGY with items COMPACT (default, exactly the greedy plan and selection as before DEFER) and VISIBILITY (best visibility). Remove decide(), defer_release(), the holds, release_holds() and deferred_from logic, and the DEFER item and its docs.\n- VISIBILITY: build the greedy plan, add the runs it left out wherever they still fit, then choose the order and start times that maximize the summed run quality (mean altitude in % of transit altitude) without dropping any run: exact dynamic programming of start times on a 1-minute grid for a given order (eligibility of the whole run, repeat spacing, start before the night end), local search over the order (move one run to another position) seeded with the greedy order and the order by best-quality time. Urgent tasks and running runs stay fixed; priority still decides which runs are in the plan. The scheduler starts the plan's first run at its planned time and replans after each run as now; REASON names the task and slot it waits for.\n- Prototype in the session scratchpad (defer/b.c, b.h) measured on 1000 random nights (3-10 tasks, repeats, high priority) with replanning after every run: total quality +8.6 % against DEFER 100 (476.8k vs 439.1k), +2.9 % runs (5835 vs 5673), worse than DEFER on 17 nights with the same run count, fewer runs on 11 nights (5 against greedy; must become 0 by construction). On tonight's tasks: Pleiades 22:10 99.9 %, Orion 23:15 98 %, Jellyfish 23:46-01:47 98 %, Rosette 01:47 97 %, total 584 vs 558. Cost about 3 ms per decision on an i5 (re-measure worst case and on a Pi).\n- Open design questions: names of the property/items; whether run quality is weighted by run duration (a 2 h run counts like a 20 min run in the prototype); guarantees (never fewer runs than the greedy plan, fallback to the greedy plan when the optimizer finds no feasible arrangement); behaviour with nightly windows and hooks (a run delays a hook, it does not overlap-block it); keeping the plan stable across replans.\n- Update SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md (explain both modes well), PROPERTIES.md, indigo_names.h, tools/scheduler_sandbox.py, unit tests (plan) and integration tests; bump the driver version.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-19T15:29:38.099221Z",
+  "status": "closed",
+  "branch": "ticket/ca15d440-72dd-427e-a97d-2af3ba69b634",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "title": "Design",
+      "type": "planning",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "327be635-f5e8-401f-a1b6-0c4cdf416b5a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T15:58:26.410271Z",
+          "last_activity_at": "2026-11-19T18:00:14.538331Z",
+          "ended_at": "2026-11-19T18:00:14.538331Z",
+          "outcome": {
+            "summary": "Approved design.md",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 7308128.06,
+          "tokens": null
+        },
+        {
+          "attempt_id": "d2c8cbf2-4465-4873-ba2a-cfc9f29a2391",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T20:19:54.937900Z",
+          "last_activity_at": "2026-11-19T20:19:54.937939Z",
+          "ended_at": "2026-11-19T20:19:54.937939Z",
+          "outcome": {
+            "summary": "Approved design.md",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.039,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T15:58:26.410271Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design started"
+        },
+        {
+          "at": "2026-11-19T18:00:14.538331Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Approved design.md"
+        },
+        {
+          "at": "2026-11-19T20:19:54.937900Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design presented"
+        },
+        {
+          "at": "2026-11-19T20:19:54.937939Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Approved design.md"
+        }
+      ],
+      "result": {
+        "summary": "Approved design.md",
+        "source": "owner",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "phase": "design",
+      "action": "implement",
+      "workflow_step": "design/implement",
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 7308128.099,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "5210b9d3-ea13-4f09-b1aa-f35409e85d25",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T18:03:04.033652Z",
+          "last_activity_at": "2026-11-19T18:55:45.376743Z",
+          "ended_at": "2026-11-19T18:55:45.376743Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 3161343.091,
+          "tokens": null
+        },
+        {
+          "attempt_id": "baf362dd-5487-4142-8bab-2eefc566f1a0",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T19:01:16.287753Z",
+          "last_activity_at": "2026-11-19T19:06:29.157026Z",
+          "ended_at": "2026-11-19T19:06:29.157026Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 312869.273,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T18:03:04.033652Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/ca15d440-72dd-427e-a97d-2af3ba69b634"
+        },
+        {
+          "at": "2026-11-19T18:55:45.376743Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-19T19:01:16.287753Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-19T19:06:29.157026Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 3474212.364,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d3bd1dd3-72c6-4840-b6fa-92770ad1b146",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-19T18:55:45.376790Z",
+          "last_activity_at": "2026-11-19T19:01:16.287667Z",
+          "ended_at": "2026-11-19T19:01:16.287667Z",
+          "outcome": {
+            "summary": "Code, plan validity, COMPACT path, IDLE (Q5b), persistence, version 0x0300001D, Makefile/Xcode, formatting and tests are fine. Reviewer ran: unit test_agent_scheduler_plan/night/sky/header all passed; integration test_agent_scheduler 134/134 passed; bench_scheduler_plan 200 nights: 0 nights with fewer runs, 0 violations, max plan 34 ms. Only small documentation fixes are needed: (1) indigo_drivers/agent_scheduler/doc/SCHEDULER.md:28: the INDIGO column of the comparison table still describes DEFER ('optional look-ahead that holds a task back for a slot nearer its culmination when no run is lost'). It should describe the COMPACT/VISIBILITY strategies. (2) SCHEDULER.md:656 says 'per task the plan has at least the runs of the COMPACT plan', and INDIGO_SCHEDULER_GUIDE.md:249 says 'The plan keeps every run that COMPACT would make'. Both contradict SCHEDULER.md:662 and the code at plan.c:1006 together with vis_better(), which compares only total runs. The previous-plan seed can replace a COMPACT run with an earlier promised run of the same or higher class. Example: the previous plan has A and B (normal), the new COMPACT plan has A and C (normal), and C fits nowhere next to A and B. Both candidates have 2 runs, and S1 wins on J or the tie, so C is not planned. Reword both places to 'never fewer runs in total, and no run of a higher class is dropped', or similar. The owner should acknowledge this deviation from design 2.3 item 7. (3) indigo_test/unit/test_agent_scheduler_night.c:101 has a stale comment: 'the scheduler keeps a deferral wait then' should say that a VISIBILITY plan is kept. Observations, no change needed: Q5(b) suppresses IDLE for any idle period under VISIBILITY when the next planned run is within IDLE_PARK_AFTER, including waits for a window (integration test visibility_short_wait_keeps_the_idle_hook); this matches the documentation. A pinned urgent run's eligibility at its rounded-up minute is not checked; it is a forecast only, because select_urgent() decid",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 330910.877,
+          "tokens": null
+        },
+        {
+          "attempt_id": "9d2ff346-92f8-44a6-a2a8-c7a2769bbbdb",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T19:06:29.157048Z",
+          "last_activity_at": "2026-11-19T19:06:52.705941Z",
+          "ended_at": "2026-11-19T19:06:52.705941Z",
+          "outcome": {
+            "summary": "Re-review of 9fda4f477 against f7234066b. The diff touches 5 files with 8 lines changed, all of them documentation or comments: INDIGO_SCHEDULER_GUIDE.md (step 4, the VISIBILITY bullet and the 'What VISIBILITY respects' bullet), PROPERTIES.md (the AGENT_SCHEDULER_STRATEGY row), SCHEDULER.md (comparison table line 28 and constraint 6), the doc comment of indigo_scheduler_plan_visibility() in plan.h, and the comment at test_agent_scheduler_night.c:101. No code logic changed. All three earlier findings are fixed. The new wording is consistent and accurate against the code. The total run count is never below COMPACT, which the final check guarantees. A COMPACT run can be left out only by the previous-plan seed (plan.c:1006), never an urgent one and never one of a higher class: the code drops a run only when its class is at most the lowest class of the kept runs, which is stricter than the documented condition, so the docs do not overclaim. The earlier test results stand: unit plan/night/sky/header passed and the integration test passed 134/134. No retest was needed for these comment-only changes.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 23548.893,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T18:55:45.376790Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T19:01:16.287667Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Code, plan validity, COMPACT path, IDLE (Q5b), persistence, version 0x0300001D, Makefile/Xcode, formatting and tests are fine. Reviewer ran: unit test_agent_scheduler_plan/night/sky/header all passed; integration test_agent_scheduler 134/134 passed; bench_scheduler_plan 200 nights: 0 nights with fewer runs, 0 violations, max plan 34 ms. Only small documentation fixes are needed: (1) indigo_drivers/agent_scheduler/doc/SCHEDULER.md:28: the INDIGO column of the comparison table still describes DEFER ('optional look-ahead that holds a task back for a slot nearer its culmination when no run is lost'). It should describe the COMPACT/VISIBILITY strategies. (2) SCHEDULER.md:656 says 'per task the plan has at least the runs of the COMPACT plan', and INDIGO_SCHEDULER_GUIDE.md:249 says 'The plan keeps every run that COMPACT would make'. Both contradict SCHEDULER.md:662 and the code at plan.c:1006 together with vis_better(), which compares only total runs. The previous-plan seed can replace a COMPACT run with an earlier promised run of the same or higher class. Example: the previous plan has A and B (normal), the new COMPACT plan has A and C (normal), and C fits nowhere next to A and B. Both candidates have 2 runs, and S1 wins on J or the tie, so C is not planned. Reword both places to 'never fewer runs in total, and no run of a higher class is dropped', or similar. The owner should acknowledge this deviation from design 2.3 item 7. (3) indigo_test/unit/test_agent_scheduler_night.c:101 has a stale comment: 'the scheduler keeps a deferral wait then' should say that a VISIBILITY plan is kept. Observations, no change needed: Q5(b) suppresses IDLE for any idle period under VISIBILITY when the next planned run is within IDLE_PARK_AFTER, including waits for a window (integration test visibility_short_wait_keeps_the_idle_hook); this matches the documentation. A pinned urgent run's eligibility at its rounded-up minute is not checked; it is a forecast only, because select_urgent() decid"
+        },
+        {
+          "at": "2026-11-19T19:06:29.157048Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T19:06:52.705941Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review of 9fda4f477 against f7234066b. The diff touches 5 files with 8 lines changed, all of them documentation or comments: INDIGO_SCHEDULER_GUIDE.md (step 4, the VISIBILITY bullet and the 'What VISIBILITY respects' bullet), PROPERTIES.md (the AGENT_SCHEDULER_STRATEGY row), SCHEDULER.md (comparison table line 28 and constraint 6), the doc comment of indigo_scheduler_plan_visibility() in plan.h, and the comment at test_agent_scheduler_night.c:101. No code logic changed. All three earlier findings are fixed. The new wording is consistent and accurate against the code. The total run count is never below COMPACT, which the final check guarantees. A COMPACT run can be left out only by the previous-plan seed (plan.c:1006), never an urgent one and never one of a higher class: the code drops a run only when its class is at most the lowest class of the kept runs, which is stricter than the documented condition, so the docs do not overclaim. The earlier test results stand: unit plan/night/sky/header passed and the integration test passed 134/134. No retest was needed for these comment-only changes."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of 9fda4f477 against f7234066b. The diff touches 5 files with 8 lines changed, all of them documentation or comments: INDIGO_SCHEDULER_GUIDE.md (step 4, the VISIBILITY bullet and the 'What VISIBILITY respects' bullet), PROPERTIES.md (the AGENT_SCHEDULER_STRATEGY row), SCHEDULER.md (comparison table line 28 and constraint 6), the doc comment of indigo_scheduler_plan_visibility() in plan.h, and the comment at test_agent_scheduler_night.c:101. No code logic changed. All three earlier findings are fixed. The new wording is consistent and accurate against the code. The total run count is never below COMPACT, which the final check guarantees. A COMPACT run can be left out only by the previous-plan seed (plan.c:1006), never an urgent one and never one of a higher class: the code drops a run only when its class is at most the lowest class of the kept runs, which is stricter than the documented condition, so the docs do not overclaim. The earlier test results stand: unit plan/night/sky/header passed and the integration test passed 134/134. No retest was needed for these comment-only changes.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 354459.77,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "7b954361-8a1c-476b-828b-5a3d948bb617",
+      "event": "ticket/created",
+      "at": "2026-11-19T15:29:38.099843Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "full"
+    },
+    {
+      "event_id": "b22683fd-6108-4974-9785-b38e0a5cf3d4",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T15:58:10.403833Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "full",
+      "corrected": null
+    },
+    {
+      "event_id": "13b7d67d-23e4-4e44-b9a1-05f89326fe25",
+      "event": "ticket/note",
+      "at": "2026-11-19T15:58:26.293382Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Prototype tests of the open design questions (2026-11-19, scratchpad defer/v.c + v.h; 1000 random nights at lat 42 lon 23, 3-10 tasks, 25 % repeated twice every 60 min, 20 % high priority, replanning after every run; plus the owner's tasks of 2026-11-19).\n\nHow VISIBILITY works in the prototype: (1) greedy plan as COMPACT decides which runs; (2) runs greedy left out are inserted where they fit best; (3) for a given order, dynamic programming on a 1-minute grid picks the start times that maximize summed run quality (each run eligible over its whole length, repeat spacing, start before night end; runs may delay hooks, as in the scheduler); (4) local search moves one run to another position, seeded with the greedy order, the order by best-quality time and the rest of the previous plan; (5) the scheduler starts the first run at its planned time and replans after each run.\n\nResults (runs / mean quality per run / time-weighted quality / nights with fewer runs than greedy / same-run nights worse than DEFER 100, time-weighted):\n- greedy: 5595 / 68.8 % / 70.0 %\n- DEFER 100 (current): 5673 / 77.4 % / 76.8 %\n- VISIBILITY: 5836 / 81.7 % / 80.7 % / 5 / 21\n- + run length weighting: 5827 / 80.9 % / 80.8 % / 9 / 18\n- + previous plan as seed: 5844 / 81.8 % / 80.8 % / 0 / 18\n- + both: 5839 / 80.9 % / 80.9 % / 0 / 12\nOwner's tasks: all VISIBILITY variants 6 runs, mean 97.3 % (DEFER 100: 93.0 %, greedy 73.1 %); Jellyfish 23:46-01:47 at 98 % (transit 00:49).\n\nFindings for the design:\n1. Duration weighting changes little (+0.1 point time-weighted, -0.8 per run); recommended because it measures hours of data at good altitude.\n2. Keeping the rest of the previous plan as a seed (kept unless strictly better or more runs) removed every night with fewer runs than greedy. Remaining gap: about 2 % of decisions (120 of ~5800) found no arrangement and fell back to the greedy step, all with repeated tasks whose runs are not adjacent in the order (repeat spacing across other runs); the prototype's DP",
+      "tokens": null
+    },
+    {
+      "event_id": "f4d1eaaf-3dcd-46c6-8e97-4237452680e8",
+      "event": "task/progress",
+      "at": "2026-11-19T15:58:26.410350Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "text": "Design started"
+    },
+    {
+      "event_id": "8e040cff-c6d7-4775-863f-858f0f4fc796",
+      "event": "stage/started",
+      "at": "2026-11-19T15:58:26.410897Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d"
+    },
+    {
+      "event_id": "d3cfd2c3-6b25-40cf-ac7f-ed42d6d9bfe9",
+      "event": "task/progress",
+      "at": "2026-11-19T15:58:31.599520Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "text": "Design worker launched",
+      "attempt_id": "327be635-f5e8-401f-a1b6-0c4cdf416b5a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0f41c240-807e-438f-82bb-592a4121ede9",
+      "event": "task/progress",
+      "at": "2026-11-19T15:59:03.483612Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "text": "Design worker reading the scheduler sources and the prototype",
+      "attempt_id": "327be635-f5e8-401f-a1b6-0c4cdf416b5a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e1aa1a64-ccea-42bd-988e-ead9e2dd9b83",
+      "event": "task/progress",
+      "at": "2026-11-19T16:05:58.293682Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "text": "Prototyping exact repeat spacing (augmented DP) in the scratchpad to verify the design"
+    },
+    {
+      "event_id": "7e06bfd3-79af-4e0f-a22c-c2a38a16b22d",
+      "event": "task/progress",
+      "at": "2026-11-19T16:18:47.407100Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "text": "Writing design.md: property, VISIBILITY algorithm, runtime, tests, docs, owner questions"
+    },
+    {
+      "event_id": "1a57794d-5243-42e6-a346-5515e0e1f8c1",
+      "event": "task/progress",
+      "at": "2026-11-19T16:21:23.758739Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "text": "design.md written; prototype check: exact spacing 0 violations, never fewer runs than COMPACT"
+    },
+    {
+      "event_id": "633a6d8d-7ec3-4053-8ccf-dd955a650f51",
+      "event": "stage/presented",
+      "at": "2026-11-19T16:21:51.481834Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "9d4ed214-5026-42ee-bf20-b9d404b46353",
+      "event": "task/progress",
+      "at": "2026-11-19T18:00:14.538411Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "text": "Design approved: design.md"
+    },
+    {
+      "event_id": "3026f8d0-8706-40ea-9662-617d7736ac8c",
+      "event": "stage/approved",
+      "at": "2026-11-19T18:00:14.539223Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "file": "design.md"
+    },
+    {
+      "event_id": "a8fd03b5-ba05-41c5-bef0-055563bbac65",
+      "event": "ticket/note",
+      "at": "2026-11-19T18:02:54.946050Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions are in design.md section 7. Q10 changed: commit the randomized COMPACT/VISIBILITY comparison as indigo_test/benchmark/bench_scheduler_plan.c under make -C indigo_test benchmark, with Makefile and Xcode project entries.",
+      "tokens": null
+    },
+    {
+      "event_id": "c19ff8ff-8a06-41fe-a113-c7c0f18dca96",
+      "event": "task/progress",
+      "at": "2026-11-19T18:03:04.033767Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Implementation started on branch ticket/ca15d440-72dd-427e-a97d-2af3ba69b634"
+    },
+    {
+      "event_id": "36029b05-97ff-4aba-afc8-833967c6fbdc",
+      "event": "ticket/started",
+      "at": "2026-11-19T18:03:04.034382Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/ca15d440-72dd-427e-a97d-2af3ba69b634",
+      "base": "master"
+    },
+    {
+      "event_id": "7fbe85fa-0eba-4b2c-ace0-3ac5b254ba13",
+      "event": "task/progress",
+      "at": "2026-11-19T18:03:26.286635Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Implementer launched",
+      "attempt_id": "5210b9d3-ea13-4f09-b1aa-f35409e85d25",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f5983586-8e83-4102-a2f9-d05c42a0f58d",
+      "event": "task/progress",
+      "at": "2026-11-19T18:11:17.248122Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Writing the VISIBILITY plan (DP + local search) in the plan module"
+    },
+    {
+      "event_id": "f162eb75-5e84-4ea5-8762-2ed5821d8310",
+      "event": "task/progress",
+      "at": "2026-11-19T18:19:19.734974Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Writing the randomized benchmark bench_scheduler_plan.c"
+    },
+    {
+      "event_id": "99aa949d-c10e-4f0a-8afb-6eb7bd1d24ac",
+      "event": "task/progress",
+      "at": "2026-11-19T18:30:49.220812Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Running scheduler integration tests (strategy cases)"
+    },
+    {
+      "event_id": "5b0b67e6-71e2-46af-9f59-c6e71c7d2bf9",
+      "event": "task/progress",
+      "at": "2026-11-19T18:40:27.857253Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Updating PROPERTIES.md, SCHEDULER.md, the user guide and the sandbox"
+    },
+    {
+      "event_id": "737c200f-e0e1-433e-99b5-501b5d82705e",
+      "event": "task/progress",
+      "at": "2026-11-19T18:45:47.099092Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Running bench_scheduler_plan over 1000 nights"
+    },
+    {
+      "event_id": "45c44d44-ab61-44e1-8533-a226066d3fcc",
+      "event": "task/progress",
+      "at": "2026-11-19T18:46:16.478951Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9e35b8f3-09a2-458c-afad-31180efc43df",
+      "event": "task/progress",
+      "at": "2026-11-19T18:46:16.517398Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "bd65a651-7135-412f-a7ea-557d23a1b4dc",
+      "event": "task/progress",
+      "at": "2026-11-19T18:46:16.522450Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "0b6bff29-2709-412e-8639-3da47808c9f0",
+      "event": "task/progress",
+      "at": "2026-11-19T18:46:44.963168Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Check unit failed: exit code 2"
+    },
+    {
+      "event_id": "8521ed11-9631-4231-97a5-d2dd1387a8d4",
+      "event": "check/failed",
+      "at": "2026-11-19T18:46:44.968844Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "f7234066b38964ab263a0623a42302424d747e74",
+      "checks": "whitespace passed, unit FAILED"
+    },
+    {
+      "event_id": "69822230-d409-4485-8ec3-2fa82ab6a37c",
+      "event": "task/progress",
+      "at": "2026-11-19T18:47:29.259213Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Running every unit test binary after the unrelated indigocat bit-for-bit failure"
+    },
+    {
+      "event_id": "f76045fe-135c-4e07-9426-5a0b6a39481f",
+      "event": "task/progress",
+      "at": "2026-11-19T18:49:10.215106Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Check command-1 started: make -C indigo_test build/unit/test_agent_scheduler_plan build/unit/test_agent_scheduler_night build/unit/test_agent_scheduler_sky build/unit/test_age"
+    },
+    {
+      "event_id": "222cf197-d6b0-47ca-ac82-f0205caf550e",
+      "event": "ticket/note",
+      "at": "2026-11-19T18:52:25.839311Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Benchmark of the implementation: indigo_test/build/benchmark/bench_scheduler_plan final 1000 (make -C indigo_test benchmark), Intel Core i5-9400, Linux x64, 1000 seeded nights at latitude 42, longitude 23 on 2026-11-19 (3-10 tasks of 10-150 min, a quarter repeated twice every 60 min, a fifth high priority, night start and end hooks), every night executed with the plan computed again after every run.\n- COMPACT: 5626 runs, mean quality 68.7 %, time-weighted quality 69.7 %.\n- VISIBILITY: 5879 runs, mean quality 79.7 %, time-weighted quality 79.6 %; nights with fewer runs than COMPACT: 0; constraint violations of the executed runs (eligibility over the whole run, delays, repeat spacing, overlaps): 0; nights with the same runs and a lower time-weighted quality than COMPACT: 2; plan changes (remaining runs moved by more than 15 min or reordered): 88.\n- VISIBILITY plans: 5791 planned, 2087 kept the COMPACT plan (not worse), 0 without arrangement, 0 too large.\n- Plan time over 7866 plans (first night excluded as warm-up): min 0.00, mean 2.77, median 0.36, p95 14.47, p99 27.34, max 38.99 ms, stddev 5.44 ms; largest work of one plan 20 182 962 cells (budget 20 000 000, the last dynamic programme may overshoot it). Not measured on a Raspberry Pi.\n- Owner's night: COMPACT mean 73.1 % (Elephant 16:45, Soul 18:46, Pleiades 19:14, Jellyfish 19:35, Orion 21:36, Rosette 22:07); VISIBILITY 6 runs, mean 97.3 % (Elephant 16:45 91 %, Soul 21:15 100 %, Pleiades 22:10 100 %, Orion 23:20 98 %, Jellyfish 23:51-01:52 98 %, Rosette 01:52 96 %).\n- Design deviation found by the benchmark: with the seed from the previous plan required to take every COMPACT run it lacked (design 2.4), 4 of 1000 nights ended with fewer runs than COMPACT, because COMPACT from a later state chose another long run that did not fit with the previously planned ones and the seed was dropped. The seed now leaves out such a run when its priority class is not above the class of a run of the previous plan (an urgent or high",
+      "tokens": null
+    },
+    {
+      "event_id": "58570fdd-8bbf-4ab2-841a-c745c2bdf8c9",
+      "event": "task/progress",
+      "at": "2026-11-19T18:55:02.305686Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "18b0e6ae-a100-41f5-be00-0f25526a86e0",
+      "event": "check/passed",
+      "at": "2026-11-19T18:55:02.323180Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "f7234066b38964ab263a0623a42302424d747e74",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "997e8722-40dd-43f1-a9da-af7498e66a72",
+      "event": "ticket/note",
+      "at": "2026-11-19T18:55:16.167498Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Check limitation: the configured 'unit' check fails on this machine in its first binary, test_indigocat_corrections, case moon_sun_and_nutation_match_captured_values_bit_for_bit (JD 2451545.00 value 2: expected -0x1.5ce4d315256dp+3, got -0x1.5ce4d315256cfp+3, one ulp). The ticket does not touch indigo_libs/indigocat, the test or test_runner.h (git diff master is empty for them, and indigocat does not include indigo_names.h), so this is a baseline failure of the bit-for-bit capture added in 4c65d0cdb, unrelated to this change; make test-unit stops at it and runs no other binary. All other 38 unit binaries pass when run one by one. The scheduler tests passed through flow check --command: test_agent_scheduler_plan (34 cases), test_agent_scheduler_night, _sky, _header, and test_agent_scheduler integration 134 of 134; the plan unit test also passes under AddressSanitizer and UBSan.",
+      "tokens": null
+    },
+    {
+      "event_id": "2f559fc9-4a6b-4855-b980-b89df918ca6b",
+      "event": "task/progress",
+      "at": "2026-11-19T18:55:45.376862Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "text": "Review started"
+    },
+    {
+      "event_id": "09b30935-bf84-4876-89a5-a4fdbc32b443",
+      "event": "review/started",
+      "at": "2026-11-19T18:55:45.377671Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "6c54edb4-3672-4681-900f-1489dc38448c",
+      "event": "task/progress",
+      "at": "2026-11-19T18:56:02.671109Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "text": "Reviewer launched",
+      "attempt_id": "d3bd1dd3-72c6-4840-b6fa-92770ad1b146",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "65cdbbe9-7bfb-4b4e-9f85-a817271c4801",
+      "event": "task/progress",
+      "at": "2026-11-19T18:56:19.138693Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "text": "Reading the plan module and agent diff"
+    },
+    {
+      "event_id": "b8fb25c3-3420-4084-90a2-6bbe6a84da59",
+      "event": "task/progress",
+      "at": "2026-11-19T18:56:31.987173Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "text": "Building and running scheduler unit and integration tests"
+    },
+    {
+      "event_id": "4c9bf203-8a21-448e-9dad-a11e40450e4a",
+      "event": "task/progress",
+      "at": "2026-11-19T19:01:16.287743Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "7163c82f-9962-45a2-8e3d-14ded3c02cd1",
+      "event": "task/progress",
+      "at": "2026-11-19T19:01:16.287781Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "f402d4fc-1060-4cd4-ab82-0d07289cfe31",
+      "event": "review/changes_requested",
+      "at": "2026-11-19T19:01:16.288511Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "f7234066b38964ab263a0623a42302424d747e74"
+    },
+    {
+      "event_id": "ee4acfe5-8c3e-4fa4-bf09-4a26afb2ce26",
+      "event": "task/progress",
+      "at": "2026-11-19T19:01:43.331243Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Fixing review findings: SCHEDULER.md table and guarantee wording, guide, night test comment"
+    },
+    {
+      "event_id": "ecae6c29-2c53-4441-a66f-fff37e79de71",
+      "event": "task/progress",
+      "at": "2026-11-19T19:02:08.777432Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Repeating the scheduler flow check --command on the corrected tree"
+    },
+    {
+      "event_id": "2dfb79b9-5b8e-4522-b5f1-adfed456602f",
+      "event": "task/progress",
+      "at": "2026-11-19T19:02:08.999507Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -C indigo_test build/unit/test_agent_scheduler_plan build/unit/test_agent"
+    },
+    {
+      "event_id": "4853fc7c-eee8-4ab2-9890-417ba8e9593b",
+      "event": "task/progress",
+      "at": "2026-11-19T19:06:10.392405Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bde0eaa2-2170-49ef-8a0e-00480ecb244f",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "58148489-4533-4979-8b8e-09ecbeae1fd2",
+      "event": "check/passed",
+      "at": "2026-11-19T19:06:10.399831Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "9fda4f477922612b2e9825772dae69e5bb950b9b",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "2d06e6cd-6ec6-4b2e-8fb5-6f380b0fd3f7",
+      "event": "task/progress",
+      "at": "2026-11-19T19:06:29.157126Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "text": "Review started"
+    },
+    {
+      "event_id": "2d9b43be-e956-4a6c-addc-642d663b9730",
+      "event": "review/started",
+      "at": "2026-11-19T19:06:29.157867Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "5da2ef36-e1d3-4fb0-bd7d-122615f51816",
+      "event": "task/progress",
+      "at": "2026-11-19T19:06:52.706023Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "fd88a862-195f-4be8-932f-2ea302d6c861",
+      "event": "review/passed",
+      "at": "2026-11-19T19:06:52.706789Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0a3cbbfd-6bca-456f-92fa-0530393bed26",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "9fda4f477922612b2e9825772dae69e5bb950b9b"
+    },
+    {
+      "event_id": "93eef00d-1601-4c00-a2e7-5f964d7e356b",
+      "event": "ticket/title_changed",
+      "at": "2026-11-19T20:19:54.808789Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: replace the DEFER strength with a COMPACT / VISIBILITY switch, deferred tasks still ran well before their culmination",
+      "title": "indigo_agent_scheduler: replace the DEFER strength with a COMPACT / VISIBILITY strategy switch"
+    },
+    {
+      "event_id": "dbbcb34f-3bf4-425c-9527-8ec2895667fc",
+      "event": "task/progress",
+      "at": "2026-11-19T20:19:54.938058Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "text": "Design approved: design.md"
+    },
+    {
+      "event_id": "9a6d516a-6275-4752-a7eb-b7cc7a96c376",
+      "event": "stage/approved",
+      "at": "2026-11-19T20:19:54.938862Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "4dca734d-4020-4b83-aef1-007498a3327d",
+      "file": "design.md"
+    },
+    {
+      "event_id": "3a9f639b-a44b-49f8-b8bb-902520335b05",
+      "event": "ticket/note",
+      "at": "2026-11-19T20:19:55.076479Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner accepted (2026-11-19) the deviation from design 2.3 item 7: VISIBILITY never plans fewer runs in total than COMPACT and never drops an urgent or higher-class run; after replanning, the previous-plan seed may leave out a same-class COMPACT run. The indigocat bit-for-bit unit failure is unrelated and left out of this ticket.",
+      "tokens": null
+    },
+    {
+      "event_id": "9bb0d453-32f9-469b-b70f-80a83df246e0",
+      "event": "ticket/closed",
+      "at": "2026-11-19T20:20:03.763523Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T20:20:03.763494Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "69ce5dc28169a329dd93db90678c32f727e5cacf"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "high",
+  "flow": {
+    "profile": "full",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f7234066b38964ab263a0623a42302424d747e74",
+        "tree": "413b135743f8db9cc1c7150938fc8c1dead16917",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T18:46:16.516540Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ca15d440-72dd-427e-a97d-2af3ba69b634/413b135743f8-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "f7234066b38964ab263a0623a42302424d747e74",
+        "tree": "413b135743f8db9cc1c7150938fc8c1dead16917",
+        "exit_code": 2,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-19T18:46:44.962201Z",
+        "duration_s": 28.4,
+        "log": "/tmp/factory-flow/ca15d440-72dd-427e-a97d-2af3ba69b634/413b135743f8-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/unit/test_agent_scheduler_plan build/unit/test_agent_scheduler_night build/unit/test_agent_scheduler_sky build/unit/test_agent_scheduler_header build/integration/test_agent_scheduler && indigo_test/build/unit/test_agent_scheduler_plan && indigo_test/build/unit/test_agent_scheduler_night && indigo_test/build/unit/test_agent_scheduler_sky && indigo_test/build/unit/test_agent_scheduler_header && (cd indigo_test && ./build/integration/test_agent_scheduler)",
+        "commit": "f7234066b38964ab263a0623a42302424d747e74",
+        "tree": "413b135743f8db9cc1c7150938fc8c1dead16917",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T18:55:02.301091Z",
+        "duration_s": 352.1,
+        "log": "/tmp/factory-flow/ca15d440-72dd-427e-a97d-2af3ba69b634/413b135743f8-command-1.log"
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -C indigo_test build/unit/test_agent_scheduler_plan build/unit/test_agent_scheduler_night build/unit/test_agent_scheduler_sky build/unit/test_agent_scheduler_header build/integration/test_agent_scheduler && indigo_test/build/unit/test_agent_scheduler_plan && indigo_test/build/unit/test_agent_scheduler_night && indigo_test/build/unit/test_agent_scheduler_sky && indigo_test/build/unit/test_agent_scheduler_header && (cd indigo_test && ./build/integration/test_agent_scheduler)",
+        "commit": "9fda4f477922612b2e9825772dae69e5bb950b9b",
+        "tree": "201359bdc8c4682c493432003530586ca2a5d3ac",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T19:06:10.391002Z",
+        "duration_s": 241.4,
+        "log": "/tmp/factory-flow/ca15d440-72dd-427e-a97d-2af3ba69b634/201359bdc8c4-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Code, plan validity, COMPACT path, IDLE (Q5b), persistence, version 0x0300001D, Makefile/Xcode, formatting and tests are fine. Reviewer ran: unit test_agent_scheduler_plan/night/sky/header all passed; integration test_agent_scheduler 134/134 passed; bench_scheduler_plan 200 nights: 0 nights with fewer runs, 0 violations, max plan 34 ms. Only small documentation fixes are needed: (1) indigo_drivers/agent_scheduler/doc/SCHEDULER.md:28: the INDIGO column of the comparison table still describes DEFER ('optional look-ahead that holds a task back for a slot nearer its culmination when no run is lost'). It should describe the COMPACT/VISIBILITY strategies. (2) SCHEDULER.md:656 says 'per task the plan has at least the runs of the COMPACT plan', and INDIGO_SCHEDULER_GUIDE.md:249 says 'The plan keeps every run that COMPACT would make'. Both contradict SCHEDULER.md:662 and the code at plan.c:1006 together with vis_better(), which compares only total runs. The previous-plan seed can replace a COMPACT run with an earlier promised run of the same or higher class. Example: the previous plan has A and B (normal), the new COMPACT plan has A and C (normal), and C fits nowhere next to A and B. Both candidates have 2 runs, and S1 wins on J or the tie, so C is not planned. Reword both places to 'never fewer runs in total, and no run of a higher class is dropped', or similar. The owner should acknowledge this deviation from design 2.3 item 7. (3) indigo_test/unit/test_agent_scheduler_night.c:101 has a stale comment: 'the scheduler keeps a deferral wait then' should say that a VISIBILITY plan is kept. Observations, no change needed: Q5(b) suppresses IDLE for any idle period under VISIBILITY when the next planned run is within IDLE_PARK_AFTER, including waits for a window (integration test visibility_short_wait_keeps_the_idle_hook); this matches the documentation. A pinned urgent run's eligibility at its rounded-up minute is not checked; it is a forecast only, because select_urgent() decides.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "f7234066b38964ab263a0623a42302424d747e74",
+        "tree": "413b135743f8db9cc1c7150938fc8c1dead16917",
+        "at": "2026-11-19T19:01:16.287641Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of 9fda4f477 against f7234066b. The diff touches 5 files with 8 lines changed, all of them documentation or comments: INDIGO_SCHEDULER_GUIDE.md (step 4, the VISIBILITY bullet and the 'What VISIBILITY respects' bullet), PROPERTIES.md (the AGENT_SCHEDULER_STRATEGY row), SCHEDULER.md (comparison table line 28 and constraint 6), the doc comment of indigo_scheduler_plan_visibility() in plan.h, and the comment at test_agent_scheduler_night.c:101. No code logic changed. All three earlier findings are fixed. The new wording is consistent and accurate against the code. The total run count is never below COMPACT, which the final check guarantees. A COMPACT run can be left out only by the previous-plan seed (plan.c:1006), never an urgent one and never one of a higher class: the code drops a run only when its class is at most the lowest class of the kept runs, which is stricter than the documented condition, so the docs do not overclaim. The earlier test results stand: unit plan/night/sky/header passed and the integration test passed 134/134. No retest was needed for these comment-only changes.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "9fda4f477922612b2e9825772dae69e5bb950b9b",
+        "tree": "201359bdc8c4682c493432003530586ca2a5d3ac",
+        "at": "2026-11-19T19:06:52.705916Z"
+      }
+    ],
+    "approvals": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": true,
+        "text": "",
+        "sha256": "b8e57aabf78ef220c61a4a507a606efa852a44749cf489aaa0d0acd22095f24b",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-19T18:00:14.536699Z"
+      },
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": true,
+        "text": "",
+        "sha256": "a400a640b720d83577f04f34b6a477dc3ab3f827edd08d05a9556c4a14fc2bcd",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-19T20:19:54.936325Z"
+      }
+    ],
+    "notes": [
+      {
+        "at": "2026-11-19T15:58:26.292871Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Prototype tests of the open design questions (2026-11-19, scratchpad defer/v.c + v.h; 1000 random nights at lat 42 lon 23, 3-10 tasks, 25 % repeated twice every 60 min, 20 % high priority, replanning after every run; plus the owner's tasks of 2026-11-19).\n\nHow VISIBILITY works in the prototype: (1) greedy plan as COMPACT decides which runs; (2) runs greedy left out are inserted where they fit best; (3) for a given order, dynamic programming on a 1-minute grid picks the start times that maximize summed run quality (each run eligible over its whole length, repeat spacing, start before night end; runs may delay hooks, as in the scheduler); (4) local search moves one run to another position, seeded with the greedy order, the order by best-quality time and the rest of the previous plan; (5) the scheduler starts the first run at its planned time and replans after each run.\n\nResults (runs / mean quality per run / time-weighted quality / nights with fewer runs than greedy / same-run nights worse than DEFER 100, time-weighted):\n- greedy: 5595 / 68.8 % / 70.0 %\n- DEFER 100 (current): 5673 / 77.4 % / 76.8 %\n- VISIBILITY: 5836 / 81.7 % / 80.7 % / 5 / 21\n- + run length weighting: 5827 / 80.9 % / 80.8 % / 9 / 18\n- + previous plan as seed: 5844 / 81.8 % / 80.8 % / 0 / 18\n- + both: 5839 / 80.9 % / 80.9 % / 0 / 12\nOwner's tasks: all VISIBILITY variants 6 runs, mean 97.3 % (DEFER 100: 93.0 %, greedy 73.1 %); Jellyfish 23:46-01:47 at 98 % (transit 00:49).\n\nFindings for the design:\n1. Duration weighting changes little (+0.1 point time-weighted, -0.8 per run); recommended because it measures hours of data at good altitude.\n2. Keeping the rest of the previous plan as a seed (kept unless strictly better or more runs) removed every night with fewer runs than greedy. Remaining gap: about 2 % of decisions (120 of ~5800) found no arrangement and fell back to the greedy step, all with repeated tasks whose runs are not adjacent in the order (repeat spacing across other runs); the prototype's DP enforces spacing only between adjacent runs plus an iterated lower bound that does not converge. The design must enforce non-adjacent repeat spacing exactly (or keep greedy timing for such orders as a feasible candidate).\n3. Stability: about 14 % of runs started more than 15 min from the first plan of the night, on about 42 % of nights; the previous-plan seed hardly changes this because replacements are strict improvements or fallbacks. Option: replace the plan only for a minimum improvement, which also steadies the REASON shown to clients.\n4. Cost about 3 ms per decision on an i5 (measure worst case and a Raspberry Pi).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T18:02:54.945470Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions are in design.md section 7. Q10 changed: commit the randomized COMPACT/VISIBILITY comparison as indigo_test/benchmark/bench_scheduler_plan.c under make -C indigo_test benchmark, with Makefile and Xcode project entries.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T18:52:25.838655Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Benchmark of the implementation: indigo_test/build/benchmark/bench_scheduler_plan final 1000 (make -C indigo_test benchmark), Intel Core i5-9400, Linux x64, 1000 seeded nights at latitude 42, longitude 23 on 2026-11-19 (3-10 tasks of 10-150 min, a quarter repeated twice every 60 min, a fifth high priority, night start and end hooks), every night executed with the plan computed again after every run.\n- COMPACT: 5626 runs, mean quality 68.7 %, time-weighted quality 69.7 %.\n- VISIBILITY: 5879 runs, mean quality 79.7 %, time-weighted quality 79.6 %; nights with fewer runs than COMPACT: 0; constraint violations of the executed runs (eligibility over the whole run, delays, repeat spacing, overlaps): 0; nights with the same runs and a lower time-weighted quality than COMPACT: 2; plan changes (remaining runs moved by more than 15 min or reordered): 88.\n- VISIBILITY plans: 5791 planned, 2087 kept the COMPACT plan (not worse), 0 without arrangement, 0 too large.\n- Plan time over 7866 plans (first night excluded as warm-up): min 0.00, mean 2.77, median 0.36, p95 14.47, p99 27.34, max 38.99 ms, stddev 5.44 ms; largest work of one plan 20 182 962 cells (budget 20 000 000, the last dynamic programme may overshoot it). Not measured on a Raspberry Pi.\n- Owner's night: COMPACT mean 73.1 % (Elephant 16:45, Soul 18:46, Pleiades 19:14, Jellyfish 19:35, Orion 21:36, Rosette 22:07); VISIBILITY 6 runs, mean 97.3 % (Elephant 16:45 91 %, Soul 21:15 100 %, Pleiades 22:10 100 %, Orion 23:20 98 %, Jellyfish 23:51-01:52 98 %, Rosette 01:52 96 %).\n- Design deviation found by the benchmark: with the seed from the previous plan required to take every COMPACT run it lacked (design 2.4), 4 of 1000 nights ended with fewer runs than COMPACT, because COMPACT from a later state chose another long run that did not fit with the previously planned ones and the seed was dropped. The seed now leaves out such a run when its priority class is not above the class of a run of the previous plan (an urgent or higher-class run still drops the seed); with that 0 nights have fewer runs.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T18:55:16.166841Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Check limitation: the configured 'unit' check fails on this machine in its first binary, test_indigocat_corrections, case moon_sun_and_nutation_match_captured_values_bit_for_bit (JD 2451545.00 value 2: expected -0x1.5ce4d315256dp+3, got -0x1.5ce4d315256cfp+3, one ulp). The ticket does not touch indigo_libs/indigocat, the test or test_runner.h (git diff master is empty for them, and indigocat does not include indigo_names.h), so this is a baseline failure of the bit-for-bit capture added in 4c65d0cdb, unrelated to this change; make test-unit stops at it and runs no other binary. All other 38 unit binaries pass when run one by one. The scheduler tests passed through flow check --command: test_agent_scheduler_plan (34 cases), test_agent_scheduler_night, _sky, _header, and test_agent_scheduler integration 134 of 134; the plan unit test also passes under AddressSanitizer and UBSan.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-19T20:19:55.075706Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner accepted (2026-11-19) the deviation from design 2.3 item 7: VISIBILITY never plans fewer runs in total than COMPACT and never drops an urgent or higher-class run; after replanning, the previous-plan seed may leave out a same-class COMPACT run. The indigocat bit-for-bit unit failure is unrelated and left out of this ticket.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-19T16:21:51.481324Z"
+      }
+    ],
+    "landing": {
+      "commit": "69ce5dc28169a329dd93db90678c32f727e5cacf",
+      "tree": "201359bdc8c4682c493432003530586ca2a5d3ac",
+      "base": "master",
+      "at": "2026-11-19T20:20:03.633729Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "full",
+    "at": "2026-11-19T15:29:38.099221Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T15:58:10.403807Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 11136800.233,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 6
+    }
+  },
+  "journal": {
+    "entries": 66,
+    "sha256": "135bc307d8beaf252695b4ec3d822e5f971e65dd6df4bb7fcd2446b71d42d054"
+  }
+}

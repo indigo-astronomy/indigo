@@ -27,6 +27,7 @@ BENCHMARK_BUILD = $(TEST_BUILD)/benchmark
 BENCHMARKS = \
 	$(BENCHMARK_BUILD)/bench_timer \
 	$(BENCHMARK_BUILD)/bench_queue \
+	$(BENCHMARK_BUILD)/bench_scheduler_plan \
 	$(BENCHMARK_BUILD)/bench_guider_asi_timing \
 	$(BENCHMARK_BUILD)/bench_ccd_simulator_guider_timing \
 	$(BENCHMARK_BUILD)/bench_mount_simulator_timing \
@@ -452,6 +453,9 @@ $(BENCHMARK_BUILD)/bench_timer: benchmark/bench_timer.c | $(BENCHMARK_BUILD)
 
 $(BENCHMARK_BUILD)/bench_queue: benchmark/bench_queue.c | $(BENCHMARK_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(BENCHMARK_BUILD)/bench_scheduler_plan: benchmark/bench_scheduler_plan.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a | $(BENCHMARK_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(TEST_LDFLAGS) -lindigocat
 
 $(BENCHMARK_BUILD)/bench_ccd_simulator_guider_timing: integration/test_ccd_simulator.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o | $(BENCHMARK_BUILD)
 	$(CC) $(TEST_CFLAGS) -DCCD_SIMULATOR_TIMING_BENCHMARK -o $@ $< $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o $(CCD_SIMULATOR_TEST_LDFLAGS)

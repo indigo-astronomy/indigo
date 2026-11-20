@@ -421,6 +421,12 @@ static bool set_night_hooks(const char *night_start, const char *night_end, cons
 	return wait_property_state(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
 }
 
+static bool set_strategy(const char *item) {
+	unsigned before = revision(AGENT_SCHEDULER_STRATEGY_PROPERTY_NAME);
+	indigo_change_switch_property_1(&observer, AGENT, AGENT_SCHEDULER_STRATEGY_PROPERTY_NAME, item, true);
+	return wait_property_state(AGENT_SCHEDULER_STRATEGY_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
+}
+
 static bool set_night_limit(const char *item) {
 	unsigned before = revision(AGENT_SCHEDULER_NIGHT_PROPERTY_NAME);
 	indigo_change_switch_property_1(&observer, AGENT, AGENT_SCHEDULER_NIGHT_PROPERTY_NAME, item, true);
@@ -1246,7 +1252,7 @@ static void persistence_across_restart(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME, 2.5));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME, -30));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, 45));
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 69));
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
 	REQUIRE(set_night_hooks("Evening", "Morning", "Resume"));
 	REQUIRE(set_night_limit(AGENT_SCHEDULER_NIGHT_ASTRONOMICAL_ITEM_NAME));
 	// the save is delayed, the shutdown right after the last change still writes it
@@ -1268,8 +1274,12 @@ static void persistence_across_restart(void) {
 	ASSERT_NEAR(2.5, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME)->number.value, 1e-9);
 	ASSERT_NEAR(-30, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME)->number.value, 1e-9);
 	ASSERT_NEAR(45, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME)->number.value, 1e-9);
-	ASSERT_NEAR(69, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME)->number.value, 1e-9);
 	indigo_release_property(settings);
+	indigo_property *strategy = snapshot(AGENT_SCHEDULER_STRATEGY_PROPERTY_NAME);
+	REQUIRE(strategy != NULL);
+	ASSERT_TRUE(indigo_get_item(strategy, AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME)->sw.value);
+	ASSERT_FALSE(indigo_get_item(strategy, AGENT_SCHEDULER_STRATEGY_COMPACT_ITEM_NAME)->sw.value);
+	indigo_release_property(strategy);
 	indigo_property *hooks = snapshot(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME);
 	REQUIRE(hooks != NULL);
 	ASSERT_STREQ("Evening", indigo_get_text_item_value(indigo_get_item(hooks, AGENT_SCHEDULER_HOOKS_NIGHT_START_ITEM_NAME)));
@@ -1489,7 +1499,7 @@ static void hooks_run_at_start_idle_and_stop(void) {
 	char future[32];
 	time_t now = time(NULL);
 	utc(now - now % 60 + 7200, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
@@ -1540,7 +1550,7 @@ static void disabled_idle_hook_is_skipped_and_reported_once(void) {
 	char future[32], text[256];
 	time_t now = time(NULL);
 	utc(now - now % 60 + 7200, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
@@ -1630,7 +1640,7 @@ static void night_hooks_run_at_dusk_and_dawn(void) {
 	char start[32], future[32], text[256];
 	utc(dusk, start);
 	utc(dusk + 2 * 86400, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
@@ -1702,7 +1712,7 @@ static int count_plan_items(const char *text) {
 }
 
 static void running_startup_hook_is_in_the_plan(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(5)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	REQUIRE(set_hooks("Prepare", "", ""));
@@ -1887,7 +1897,7 @@ static void resume_hook_after_idle(void) {
 	char start[32], future[32], text[256];
 	utc(later, start);
 	utc(later + 2 * 86400, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
@@ -1919,7 +1929,7 @@ static void idle_without_resume_behaves_as_before(void) {
 	char start[32], future[32], text[256];
 	utc(later, start);
 	utc(later + 2 * 86400, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), start);
@@ -1955,7 +1965,7 @@ static void failed_resume_runs_the_shutdown_hook(void) {
 	time_t later = minute_ahead(20);
 	char start[32], text[256];
 	utc(later, start);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Bad resume\nif (!scheduler_task.estimate) { throw new Error(\"stuck\"); }\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
@@ -2038,7 +2048,7 @@ static void stop_at_night_runs_only_the_shutdown_hook(void) {
 }
 
 static void failed_night_end_is_reported(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Bad morning\nif (!scheduler_task.estimate) { throw new Error(\"roof stuck\"); }\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(start_in_night("Bad morning", ""));
@@ -2059,7 +2069,7 @@ static void failed_night_end_is_reported(void) {
 static void resume_before_an_urgent_task(void) {
 	char future[32], text[256];
 	utc(time(NULL) + 2 * 86400, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
 	snprintf(text, sizeof(text), "// @task Far\n// @window %s ..\n" BODY_WAIT(1), future);
@@ -2148,7 +2158,7 @@ static void missing_idle_hook_task_is_reported_once(void) {
 	char future[32];
 	time_t now = time(NULL);
 	utc(now - now % 60 + 7200, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	char text[256];
 	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
@@ -2362,7 +2372,7 @@ static void reset_all_keeps_running_task_and_urgent_order(void) {
 static void hook_priority_class_keeps_a_task_from_running(void) {
 	char label[INDIGO_VALUE_SIZE];
 	indigo_property_state light;
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	// uploaded to a running idle scheduler, the task is not started as an ordinary one
 	REQUIRE(upload("// @task Park\n// @priority hook\n" BODY_WAIT(1)));
@@ -2841,7 +2851,7 @@ static void sky_bonuses_order_equal_priorities(void) {
 	ASSERT_TRUE(started_before("Rising", "Setting"));
 }
 
-// -------------------------------------------------------------------------------- Deferral
+// -------------------------------------------------------------------------------- Strategies
 
 // a task two hours east of the meridian on the equator, 60 degrees high, two thirds of its transit altitude, at a site where the night lasts about ten more hours
 static bool upload_before_culmination(const char *name) {
@@ -2849,192 +2859,229 @@ static bool upload_before_culmination(const char *name) {
 	return upload_placed(name, -2, 0, "// @duration 5\n");
 }
 
-// the transit of the target of upload_before_culmination(): two hours later in sidereal time
-static void move_to_culmination(void) {
-	set_site(0, longitude_at_hour(20) + 30);
+// the target of upload_before_culmination() 20 minutes past its transit, setting: its earliest start is its best one
+static void move_past_culmination(void) {
+	set_site(0, longitude_at_hour(20) + 35);
 }
 
-// waits for the deferral reason of the task and returns its release in minutes of the day
-static bool wait_deferral(const char *name, int *release) {
+// waits for the VISIBILITY reason of the task and returns its planned start in minutes of the day
+static bool wait_planned(const char *name, int *start) {
 	char text[128], reason[INDIGO_VALUE_SIZE];
-	snprintf(text, sizeof(text), "%s waits until ", name);
+	snprintf(text, sizeof(text), "%s starts at ", name);
 	CHECK(wait_reason(text, 15));
 	CHECK(current_reason(reason));
-	CHECK(strstr(reason, " UTC, nearer its culmination") != NULL);
+	CHECK(strstr(reason, " UTC, planned for better visibility") != NULL);
 	int hour, minute;
-	CHECK(sscanf(strstr(reason, " waits until ") + 13, "%d:%d", &hour, &minute) == 2);
-	*release = hour * 60 + minute;
+	CHECK(sscanf(strstr(reason, " starts at ") + 11, "%d:%d", &hour, &minute) == 2);
+	*start = hour * 60 + minute;
 	return true;
 }
 
-static void deferral_off_starts_at_once(void) {
-	indigo_property *settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
-	REQUIRE(settings != NULL);
-	indigo_item *strength = indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME);
-	REQUIRE(strength != NULL);
-	ASSERT_NEAR(0, strength->number.value, 1e-9);
-	indigo_release_property(settings);
-	REQUIRE(upload_before_culmination("Deferred"));
-	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(wait_task_state("Deferred", "DONE", 15));
-	ASSERT_EQ_INT(0, count_plan_items("deferred from"));
+// the time of the next start of a task, 0 after the timeout
+static time_t wait_start(const char *name, int count, double timeout) {
+	char text[128];
+	snprintf(text, sizeof(text), "Starting task '%s'", name);
+	for (double t = 0; t < timeout; t += 0.05) {
+		if (count_messages(text) >= count) {
+			return time(NULL);
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "Timeout waiting for '%s'\n", text);
+	return 0;
 }
 
-static void deferral_waits_for_the_culmination(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
-	REQUIRE(upload_before_culmination("Deferred"));
+static void strategy_defaults_to_compact(void) {
+	indigo_property *strategy = snapshot(AGENT_SCHEDULER_STRATEGY_PROPERTY_NAME);
+	REQUIRE(strategy != NULL);
+	ASSERT_EQ_INT(2, strategy->count);
+	ASSERT_EQ_INT(INDIGO_ONE_OF_MANY_RULE, strategy->rule);
+	ASSERT_TRUE(indigo_get_item(strategy, AGENT_SCHEDULER_STRATEGY_COMPACT_ITEM_NAME)->sw.value);
+	ASSERT_FALSE(indigo_get_item(strategy, AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME)->sw.value);
+	indigo_release_property(strategy);
+	// the settings have no DEFER item any more
+	indigo_property *settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
+	REQUIRE(settings != NULL);
+	ASSERT_EQ_INT(10, settings->count);
+	ASSERT_TRUE(indigo_get_item(settings, "DEFER") == NULL);
+	indigo_release_property(settings);
+	// COMPACT starts a task two hours before its culmination at once
+	REQUIRE(upload_before_culmination("Target"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	int release;
-	ASSERT_TRUE(wait_deferral("Deferred", &release));
-	// a strength of 79 waits for a gain of 5 quality points: the release is about 1.7 hours ahead, where the target stands within 5 percent of its transit altitude
-	time_t now = time(NULL);
-	int minutes = (int)((now % 86400) / 60);
-	ASSERT_TRUE(minutes_between(minutes, release) > 60 && minutes_between(minutes, release) < 120);
-	// the task stays queued and the plan lists its run at the release, with the time it would have started
-	ASSERT_TRUE(wait_task_state("Deferred", "QUEUED", 5));
-	ASSERT_TRUE(wait_plan_contains("deferred from", true, 10));
-	int start, end;
+	ASSERT_TRUE(wait_task_state("Target", "DONE", 15));
+}
+
+static void visibility_waits_for_the_plan(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	REQUIRE(upload_before_culmination("Target"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	int start;
+	ASSERT_TRUE(wait_planned("Target", &start));
+	// the run of 5 minutes is planned at the culmination about two hours ahead
+	int minutes = (int)((time(NULL) % 86400) / 60);
+	ASSERT_TRUE(minutes_between(minutes, start) > 100 && minutes_between(minutes, start) < 130);
+	// the task stays queued and the plan lists its run at the planned start
+	ASSERT_TRUE(wait_task_state("Target", "QUEUED", 5));
+	ASSERT_TRUE(wait_plan_contains("Target", true, 10));
+	int plan_start, plan_end;
 	indigo_property_state state;
-	ASSERT_TRUE(find_plan_item("deferred from", &start, &end, &state));
-	ASSERT_EQ_INT(release, start);
-	ASSERT_TRUE(find_plan_item("Deferred", &start, &end, &state));
-	ASSERT_EQ_INT(release, start);
-	// while nothing changes the scheduler follows that plan and does not compute it again at every check: the time it was deferred from stays when the clock passes the next minute
-	char from[16];
-	char *deferred = NULL;
-	char labels[16][INDIGO_VALUE_SIZE];
-	indigo_property_state states[16];
-	int count = plan_items(labels, states, 16);
-	for (int i = 0; i < count && i < 16 && deferred == NULL; i++) {
-		deferred = strstr(labels[i], "deferred from ");
-	}
-	REQUIRE(deferred != NULL);
-	snprintf(from, sizeof(from), "%s", deferred + 14);
-	int hour, minute;
-	REQUIRE(sscanf(from, "%d:%d", &hour, &minute) == 2);
-	while ((int)((time(NULL) % 86400) / 60) == hour * 60 + minute) {
+	ASSERT_TRUE(find_plan_item("Target", &plan_start, &plan_end, &state));
+	ASSERT_EQ_INT(start, plan_start);
+	// while nothing changes the plan stays when the clock passes the next minute
+	while ((int)((time(NULL) % 86400) / 60) == minutes) {
 		indigo_usleep(100000);
 	}
 	indigo_usleep(2500000);
-	char text[64];
-	snprintf(text, sizeof(text), "deferred from %s", from);
-	ASSERT_EQ_INT(1, count_plan_items(text));
-	ASSERT_TRUE(wait_deferral("Deferred", &start));
-	ASSERT_EQ_INT(release, start);
-	ASSERT_EQ_INT(0, count_messages("Starting task 'Deferred'"));
-	// without the deferral it starts at the next decision
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 0));
-	ASSERT_TRUE(wait_task_state("Deferred", "DONE", 15));
+	int later;
+	ASSERT_TRUE(wait_planned("Target", &later));
+	ASSERT_EQ_INT(start, later);
+	ASSERT_TRUE(find_plan_item("Target", &plan_start, &plan_end, &state));
+	ASSERT_EQ_INT(start, plan_start);
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Target'"));
 }
 
-// waits until the deferral release of the task differs from previous and returns it in minutes of the day
-static bool wait_deferral_change(const char *name, int previous, int *release) {
-	for (double t = 0; t < 15; t += 0.1) {
-		if (wait_deferral(name, release) && *release != previous) {
-			return true;
-		}
-		indigo_usleep(100000);
+static void visibility_starts_at_the_planned_time(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	set_site(0, longitude_at_hour(20));
+	// a rising target and a window that ends two minutes after the next point of the 5 minute sky grid: the best start is that point, COMPACT starts in the grid step before it, lower
+	time_t now = time(NULL);
+	time_t best = now - now % 300 + 300;
+	if (best < now + 30) {
+		best += 300;
 	}
-	fprintf(stderr, "Timeout waiting for a release of %s other than %02d:%02d\n", name, previous / 60, previous % 60);
-	return false;
-}
-
-static void deferral_strength_waits_longer_when_higher(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 1));
-	REQUIRE(upload_before_culmination("Deferred"));
-	int minutes = (int)((time(NULL) % 86400) / 60);
+	char end[32], header[128];
+	utc(best + 120, end);
+	snprintf(header, sizeof(header), "// @duration 1\n// @window .. %s\n", end);
+	REQUIRE(upload_placed("Target", -2, 0, header));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	// the target gains about 33 quality points until its transit two hours ahead, so every strength from 1 holds it; a higher strength waits for a release nearer the transit
-	int strengths[] = { 1, 50, 79, 100 };
-	int releases[4];
-	int previous = -1;
-	for (int i = 0; i < 4; i++) {
-		if (i > 0) {
-			REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, strengths[i]));
-		}
-		int release;
-		ASSERT_TRUE(wait_deferral_change("Deferred", previous, &release));
-		previous = release;
-		releases[i] = minutes_between(minutes, release);
-		printf("strength %d: release in %d min\n", strengths[i], releases[i]);
-	}
-	// strength 1 waits only for a gain of 20 points, the release is about 48 minutes ahead where the target is within 20 percent of its transit altitude
-	ASSERT_TRUE(releases[0] >= 35 && releases[0] <= 60);
-	// strength 100 waits for any gain of 1 point or more, the release is a few minutes before the transit
-	ASSERT_TRUE(releases[3] >= 105 && releases[3] <= 125);
-	// a higher strength never waits less, the reported symptom was that 100 did not wait at all
-	ASSERT_TRUE(releases[0] < releases[1]);
-	ASSERT_TRUE(releases[1] < releases[2]);
-	ASSERT_TRUE(releases[2] < releases[3]);
-	ASSERT_EQ_INT(0, count_messages("Starting task 'Deferred'"));
-	ASSERT_TRUE(wait_task_state("Deferred", "QUEUED", 5));
+	int start;
+	ASSERT_TRUE(wait_planned("Target", &start));
+	ASSERT_EQ_INT((int)((best % 86400) / 60), start);
+	ASSERT_TRUE(wait_task_state("Target", "QUEUED", 5));
+	time_t started = wait_start("Target", 1, 400);
+	REQUIRE(started > 0);
+	printf("planned %ld, started %ld\n", (long)best, (long)started);
+	ASSERT_TRUE(started >= best && started <= best + 2);
+	ASSERT_TRUE(wait_task_state("Target", "DONE", 15));
 }
 
-static void deferral_releases_the_task_near_its_culmination(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
-	REQUIRE(upload_before_culmination("Deferred"));
-	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	int release;
-	ASSERT_TRUE(wait_deferral("Deferred", &release));
-	move_to_culmination();
-	ASSERT_TRUE(wait_task_state("Deferred", "DONE", 15));
-}
-
-static void deferral_wait_runs_the_idle_hook(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
+static void visibility_wait_runs_the_idle_hook(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
-	REQUIRE(upload_before_culmination("Deferred"));
+	REQUIRE(upload_before_culmination("Target"));
 	REQUIRE(set_hooks("", "", "Park"));
 	REQUIRE(set_night_hooks("", "", "Prepare"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	int release;
-	ASSERT_TRUE(wait_deferral("Deferred", &release));
-	// waiting for the release is idle time
+	int start;
+	ASSERT_TRUE(wait_planned("Target", &start));
+	// the planned run is two hours away, more than the idle time: the wait is idle time
 	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
-	ASSERT_TRUE(wait_deferral("Deferred", &release));
-	ASSERT_EQ_INT(0, count_messages("Starting task 'Deferred'"));
-	move_to_culmination();
-	ASSERT_TRUE(wait_task_state("Deferred", "DONE", 15));
+	ASSERT_TRUE(wait_planned("Target", &start));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Target'"));
+	move_past_culmination();
+	ASSERT_TRUE(wait_task_state("Target", "DONE", 130));
 	ASSERT_EQ_INT(1, count_messages("Starting hook 'Park'"));
 	ASSERT_TRUE(message_position("Hook 'Park' completed") < message_position("Starting hook 'Prepare'"));
-	ASSERT_TRUE(message_position("Hook 'Prepare' completed") < message_position("Starting task 'Deferred'"));
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") < message_position("Starting task 'Target'"));
 }
 
-static void deferral_wait_lets_urgent_and_untargeted_tasks_run(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
-	REQUIRE(upload_before_culmination("Deferred"));
-	// a task without @target is never deferred, it runs while the other one waits
+static void visibility_short_wait_keeps_the_idle_hook(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 1));
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("", "", "Park"));
+	// the run is planned 61 to 80 seconds ahead at a whole minute; when the idle time of a minute is reached it is less than a minute away
+	while (time(NULL) % 60 <= 40) {
+		indigo_usleep(100000);
+	}
+	char start[32], text[512];
+	time_t now = time(NULL);
+	time_t at = now - now % 60 + 120;
+	utc(at, start);
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n// @duration 1\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	time_t started = wait_start("Later", 1, 100);
+	REQUIRE(started > 0);
+	ASSERT_TRUE(started >= at);
+	ASSERT_TRUE(wait_task_state("Later", "DONE", 15));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Park'"));
+}
+
+static void visibility_wait_lets_urgent_and_untargeted_tasks_run(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	REQUIRE(upload_before_culmination("Target"));
+	// a task without @target has no visibility to wait for, the plan puts it where it fits
 	REQUIRE(upload("// @task Flats\n// @priority low\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(wait_task_state("Flats", "DONE", 15));
-	int release;
-	ASSERT_TRUE(wait_deferral("Deferred", &release));
+	ASSERT_TRUE(wait_reason(" UTC, planned for better visibility", 15));
+	ASSERT_TRUE(wait_plan_contains("Flats", true, 10));
 	// an urgent task starts at once
 	REQUIRE(urgent("// @task Now\n// @duration 5\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_message("Task 'Now' completed", 1, 15));
-	ASSERT_TRUE(wait_deferral("Deferred", &release));
-	ASSERT_TRUE(wait_task_state("Deferred", "QUEUED", 5));
-	ASSERT_EQ_INT(0, count_messages("Starting task 'Deferred'"));
-	move_to_culmination();
-	ASSERT_TRUE(wait_task_state("Deferred", "DONE", 15));
-	ASSERT_TRUE(started_before("Flats", "Deferred"));
+	ASSERT_TRUE(wait_reason(" UTC, planned for better visibility", 15));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Target'"));
+	move_past_culmination();
+	ASSERT_TRUE(wait_task_state("Target", "DONE", 130));
+	ASSERT_TRUE(wait_task_state("Flats", "DONE", 130));
+	ASSERT_TRUE(started_before("Now", "Target"));
 }
 
-static void deferral_wait_stops_with_the_shutdown_hook(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_DEFER_ITEM_NAME, 79));
+static void visibility_wait_stops_with_the_shutdown_hook(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
-	REQUIRE(upload_before_culmination("Deferred"));
+	REQUIRE(upload_before_culmination("Target"));
 	REQUIRE(set_hooks("", "Close", ""));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	int release;
-	ASSERT_TRUE(wait_deferral("Deferred", &release));
+	int start;
+	ASSERT_TRUE(wait_planned("Target", &start));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
-	ASSERT_EQ_INT(0, count_messages("Starting task 'Deferred'"));
-	ASSERT_TRUE(wait_task_state("Deferred", "QUEUED", 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Target'"));
+	ASSERT_TRUE(wait_task_state("Target", "QUEUED", 5));
+}
+
+static void strategy_switch_back_starts_at_once(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	REQUIRE(upload_before_culmination("Target"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	int start;
+	ASSERT_TRUE(wait_planned("Target", &start));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Target'"));
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_COMPACT_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Target", "DONE", 15));
+}
+
+static void visibility_replans_after_failure(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	set_site(0, longitude_at_hour(20));
+	// Failing is past its culmination and runs first; East and Farther culminate one and two hours ahead
+	REQUIRE(upload_placed("Failing", 0.3, 0, "// @duration 1\n// @retry 1 after 2\nif (!scheduler_task.estimate) { throw new Error(\"not yet\"); }\n"));
+	REQUIRE(upload_placed("East", -1, 0, "// @duration 5\n"));
+	REQUIRE(upload_placed("Farther", -2, 0, "// @duration 5\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_plan_contains("East", true, 15));
+	int east, farther, end;
+	indigo_property_state state;
+	ASSERT_TRUE(find_plan_item("East", &east, &end, &state));
+	ASSERT_TRUE(find_plan_item("Farther", &farther, &end, &state));
+	ASSERT_TRUE(minutes_between(east, farther) > 0 && minutes_between(east, farther) < 120);
+	ASSERT_TRUE(wait_message("Task 'Failing' failed", 1, 130));
+	time_t failed = time(NULL);
+	ASSERT_TRUE(wait_task_state("Failing", "RETRY", 5));
+	// the retry is planned after its delay, the other runs keep their order and starts
+	int retry;
+	ASSERT_TRUE(wait_plan_contains("Failing", true, 10));
+	ASSERT_TRUE(find_plan_item("Failing", &retry, &end, &state));
+	ASSERT_TRUE(minutes_between((int)((failed % 86400) / 60), retry) >= 2 && minutes_between((int)((failed % 86400) / 60), retry) <= 4);
+	int east_after, farther_after;
+	ASSERT_TRUE(find_plan_item("East", &east_after, &end, &state));
+	ASSERT_TRUE(find_plan_item("Farther", &farther_after, &end, &state));
+	ASSERT_EQ_INT(east, east_after);
+	ASSERT_EQ_INT(farther, farther_after);
 }
 
 static void largest_task_text_is_stored_and_restored(void) {
@@ -3539,7 +3586,7 @@ static void shared_idle_and_shutdown_hook_runs_once(void) {
 	char future[32];
 	time_t now = time(NULL);
 	utc(now - now % 60 + 7200, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(6)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	char text[256];
@@ -3557,7 +3604,7 @@ static void shared_idle_and_shutdown_hook_runs_once(void) {
 }
 
 static void shutdown_hook_does_not_run_without_regular_tasks(void) {
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(6)));
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
 	// the scheduler does not stop when only hooks exist
@@ -4194,13 +4241,15 @@ static const indigo_test_case cases[] = {
 	{ "unknown_site_blocks_only_sky_constraints", unknown_site_blocks_only_sky_constraints },
 	{ "disabled_in_the_header_stays_disabled", disabled_in_the_header_stays_disabled },
 	{ "sky_bonuses_order_equal_priorities", sky_bonuses_order_equal_priorities },
-	{ "deferral_off_starts_at_once", deferral_off_starts_at_once },
-	{ "deferral_waits_for_the_culmination", deferral_waits_for_the_culmination },
-	{ "deferral_strength_waits_longer_when_higher", deferral_strength_waits_longer_when_higher },
-	{ "deferral_releases_the_task_near_its_culmination", deferral_releases_the_task_near_its_culmination },
-	{ "deferral_wait_runs_the_idle_hook", deferral_wait_runs_the_idle_hook },
-	{ "deferral_wait_lets_urgent_and_untargeted_tasks_run", deferral_wait_lets_urgent_and_untargeted_tasks_run },
-	{ "deferral_wait_stops_with_the_shutdown_hook", deferral_wait_stops_with_the_shutdown_hook },
+	{ "strategy_defaults_to_compact", strategy_defaults_to_compact },
+	{ "visibility_waits_for_the_plan", visibility_waits_for_the_plan },
+	{ "visibility_starts_at_the_planned_time", visibility_starts_at_the_planned_time },
+	{ "visibility_wait_runs_the_idle_hook", visibility_wait_runs_the_idle_hook },
+	{ "visibility_short_wait_keeps_the_idle_hook", visibility_short_wait_keeps_the_idle_hook },
+	{ "visibility_wait_lets_urgent_and_untargeted_tasks_run", visibility_wait_lets_urgent_and_untargeted_tasks_run },
+	{ "visibility_wait_stops_with_the_shutdown_hook", visibility_wait_stops_with_the_shutdown_hook },
+	{ "strategy_switch_back_starts_at_once", strategy_switch_back_starts_at_once },
+	{ "visibility_replans_after_failure", visibility_replans_after_failure },
 	{ "largest_task_text_is_stored_and_restored", largest_task_text_is_stored_and_restored },
 	{ "task_count_limit", task_count_limit },
 	{ "repeat_interval_and_retry_delay", repeat_interval_and_retry_delay },
@@ -4259,6 +4308,10 @@ static bool case_selected(int index) {
 }
 
 static unsigned case_timeout(int index) {
+	// the planned start lies up to 5.5 minutes ahead
+	if (!strcmp(cases[index].name, "visibility_starts_at_the_planned_time")) {
+		return 480;
+	}
 	return 150;
 }
 

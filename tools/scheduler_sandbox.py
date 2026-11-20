@@ -49,7 +49,7 @@ import time
 AGENT = "Scheduler Agent"
 REPOSITORY = Path(__file__).resolve().parents[1]
 LIMITS = {"CIVIL": -6.0, "NAUTICAL": -12.0, "ASTRONOMICAL": -18.0}
-HOOK_ITEMS = ["STARTUP", "SHUTDOWN", "IDLE", "NIGHT_START", "NIGHT_END", "RESUME"]
+HOOK_ITEMS = ["STARTUP", "SHUTDOWN", "NIGHT_START", "NIGHT_END", "IDLE", "RESUME"]
 
 HELP = """Time of day (the site is on the equator, the scheduler sees the change within a second):
   night | day                     local midnight or noon
@@ -75,10 +75,12 @@ Tasks (the body only waits, so no equipment is needed):
                                   stopped, and this prompt does not ask for a confirmation
 Scheduler:
   start | stop | abort
-  hooks ITEM=NAME ...             set hook items, ITEM= clears one; items: startup shutdown idle
-                                  night_start night_end resume
+  hooks ITEM=NAME ...             set hook items, ITEM= clears one; items: startup shutdown night_start
+                                  night_end idle resume
   limit civil|nautical|astronomical
-  set ITEM=VALUE ...              settings, for example set NIGHT_START_OFFSET=-30 IDLE_PARK_AFTER=1
+  strategy compact|visibility     COMPACT starts tasks as soon as they can run, VISIBILITY plans
+                                  the runs nearer their culmination and may wait for them
+  set ITEM=VALUE ...              settings, for example set NIGHT_START_OFFSET=-30 IDLE_HOOK_DELAY=1
 Watching (new scheduler messages are printed after every command):
   status                          scheduler state, current task and the task list
   plan | history [N]
@@ -367,6 +369,8 @@ class Sandbox:
 		self.say("scheduler: %s, done %s, failed %s, urgent done %s, urgent failed %s, total %s" % (state.get("state"), counters.get("DONE"), counters.get("FAILED"), counters.get("URGENT_DONE"), counters.get("URGENT_FAILED"), counters.get("TOTAL")))
 		for item in ("CURRENT", "REASON"):
 			self.say("  %-10s %s" % (item, self.client.value(AGENT, "AGENT_SCHEDULER_CURRENT", item) or ""))
+		strategy = [i["name"] for i in (self.client.property(AGENT, "AGENT_SCHEDULER_STRATEGY") or {}).get("items", []) if i.get("value") is True]
+		self.say("  %-10s %s" % ("strategy", strategy[0] if strategy else "?"))
 		hooks = {i["name"]: i.get("value") for i in (self.client.property(AGENT, "AGENT_SCHEDULER_HOOKS") or {}).get("items", []) if i.get("value")}
 		self.say("  hooks      " + (", ".join("%s=%s" % h for h in hooks.items()) or "none"))
 		self.show_list("AGENT_SCHEDULER_TASK_STATE", "tasks")
@@ -445,6 +449,12 @@ class Sandbox:
 					raise ValueError("expected civil, nautical or astronomical")
 				self.client.change("Switch", AGENT, "AGENT_SCHEDULER_NIGHT", {item: True})
 				time.sleep(0.3)
+			elif verb == "strategy":
+				item = arguments[0].upper() if arguments else ""
+				if item not in ("COMPACT", "VISIBILITY"):
+					raise ValueError("expected compact or visibility")
+				self.client.change("Switch", AGENT, "AGENT_SCHEDULER_STRATEGY", {item: True})
+				time.sleep(0.3)
 			elif verb == "set":
 				items = {}
 				for argument in arguments:
@@ -506,7 +516,7 @@ def main():
 	parser.add_argument("--script", type=Path, help="read the commands from this file")
 	parser.add_argument("--name", default="Scheduler Sandbox", help="name announced by Bonjour, so that clients list the server (default: Scheduler Sandbox)")
 	parser.add_argument("--no-bonjour", action="store_true", help="do not announce the server on the network")
-	parser.add_argument("--fast", action=argparse.BooleanOptionalAction, default=True, help="IDLE_CHECK_INTERVAL 1 s and IDLE_PARK_AFTER 0 min at the start (default: on)")
+	parser.add_argument("--fast", action=argparse.BooleanOptionalAction, default=True, help="IDLE_CHECK_INTERVAL 1 s and IDLE_HOOK_DELAY 0 min at the start (default: on)")
 	args = parser.parse_args()
 	server = REPOSITORY / "build/bin/indigo_server"
 	if not server.is_file():
@@ -559,7 +569,7 @@ def main():
 			client.change("Switch", "Guider Agent", "FILTER_GUIDER_LIST", {"CCD Guider Simulator (guider)": True})
 			time.sleep(1)
 		if args.fast:
-			client.change("Number", AGENT, "AGENT_SCHEDULER_SETTINGS", {"IDLE_CHECK_INTERVAL": 1, "IDLE_PARK_AFTER": 0})
+			client.change("Number", AGENT, "AGENT_SCHEDULER_SETTINGS", {"IDLE_CHECK_INTERVAL": 1, "IDLE_HOOK_DELAY": 0})
 		sandbox.site(time_longitude(12))
 		client.new_messages()
 		print("Scheduler sandbox on port %d%s" % (port, "" if args.no_bonjour else ", announced as '%s'" % args.name))

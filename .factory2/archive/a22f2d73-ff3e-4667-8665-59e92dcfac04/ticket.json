@@ -1,0 +1,480 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a22f2d73-ff3e-4667-8665-59e92dcfac04",
+  "revision": 18,
+  "title": "indigo_docs: state how the scheduler weights and constraints act under the VISIBILITY strategy",
+  "description": "The user guide and PROPERTIES.md describe SETTING_WEIGHT and ALTITUDE_WEIGHT without saying which strategy uses them. Under VISIBILITY they do not enter the plan objective (run quality weighted by duration); they only shape the COMPACT plan that VISIBILITY starts from (which runs, the run-count floor, a seed order) and decide in COMPACT fallbacks (no better plan, more than 64 runs or a 24 h horizon, a planned start that cannot be kept). Task constraints such as @altitude stay hard limits over the whole run.\n\nDocumentation only, no code change:\n1. indigo_docs/INDIGO_SCHEDULER_GUIDE.md \"Choosing a strategy\": add a paragraph \"What the other settings do under VISIBILITY\": constraints are hard limits for the whole run, the altitude limit only rules out times and the quality is still relative to the culmination; priority decides which runs are in the plan but a high run may follow a normal one; SETTING_WEIGHT and ALTITUDE_WEIGHT do not move runs, they shape the starting COMPACT plan and decide in fallbacks; an early-setting target is still placed early because it is highest then.\n2. \"Priorities\": one sentence at the end of the weights paragraph saying the weights choose the next task under COMPACT and pointing to \"Choosing a strategy\" for VISIBILITY.\n3. \"Settings\" table: note \"(COMPACT; under VISIBILITY only for the starting plan and fallbacks)\" on both weights.\n4. indigo_docs/PROPERTIES.md AGENT_SCHEDULER_SETTINGS row: the same short note.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-19T21:32:53.452800Z",
+  "status": "closed",
+  "branch": "ticket/a22f2d73-ff3e-4667-8665-59e92dcfac04",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "85057a20-b341-42f9-bdbe-8bab6e835c3e",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "df2afd09-596b-418a-97a0-f8eefc9fe17c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:39:08.185838Z",
+          "last_activity_at": "2026-11-19T21:40:48.386074Z",
+          "ended_at": "2026-11-19T21:40:48.386074Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 100200.236,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T21:39:08.185838Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/a22f2d73-ff3e-4667-8665-59e92dcfac04"
+        },
+        {
+          "at": "2026-11-19T21:40:48.386074Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 100200.236,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "723f3684-df25-4ad7-b3fe-7d591e3dd250",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a168baf8-793e-45a4-a647-264d9ed49612",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:40:48.386114Z",
+          "last_activity_at": "2026-11-19T21:41:54.151709Z",
+          "ended_at": "2026-11-19T21:41:54.151709Z",
+          "outcome": {
+            "summary": "Verified against indigo_agent_scheduler_plan.c and indigo_agent_scheduler.c. Constraints over the whole run: vis_table checks indigo_scheduler_points_ok(start, start + duration); the named keys are covered by window_ok and the sky points. Quality relative to culmination: relative_altitude divides by transit_altitude; the value is quality x duration with no weights. The weights enter VISIBILITY only through indigo_scheduler_plan_with_hooks (the COMPACT plan that sets the runs, the seed and the urgent pins) and through score() in select_task when select_planned returns best. Fallbacks match the code: NOT_BETTER/NO_ARRANGEMENT; TOO_LARGE when there are more than SCHEDULER_VISIBILITY_MAX_RUNS (64) COMPACT runs or more than VIS_MAX_MINUTES (1440) minutes to the end; select_planned replans once and then returns best. The once-a-night message is sent only for TOO_LARGE, which matches the updated bullet. The #choosing-a-strategy anchor resolves, the bold lead-in follows the style of the surrounding paragraphs, and the table and PROPERTIES row are well formed. Non-blocking nits: (1) 'Priority decides which runs are in the plan' is approximate. COMPACT, which the weights also influence, chooses the runs; VISIBILITY then adds runs COMPACT left out by value (vis_fill), and the previous-plan seed drops runs by class. (2) The VIS_MAX_HOOKS > 8 TOO_LARGE condition is not mentioned, but update_plan cannot reach it. (3) In PROPERTIES.md the semicolon makes the COMPACT note read as if it qualified only the altitude weight.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 65765.595,
+          "tokens": null
+        },
+        {
+          "attempt_id": "07169cb7-12cc-4cf6-92f7-555315671f82",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:44:04.792940Z",
+          "last_activity_at": "2026-11-19T21:44:35.232204Z",
+          "ended_at": "2026-11-19T21:44:35.232204Z",
+          "outcome": {
+            "summary": "Re-review of 5212cf691, which changes 2 lines since 180f29486; this addresses findings 1 and 3. Guide: the claim that VISIBILITY 'adds the runs COMPACT leaves out where they still fit, by the quality they gain' matches vis_add_left_out. While any run fits, it inserts the non-urgent startable task and position that give the highest total duration-weighted quality, within runs_left and the 64-run limit. The claim that replanning 'never drops an urgent run or a run of a higher class than the runs it keeps' matches vis_previous_seed. A lacking COMPACT run that fits nowhere makes that seed fail when it is pinned (urgent) or of a class above the lowest class among the kept runs of the previous plan. The other seeds hold every COMPACT run, and a result with fewer runs than COMPACT falls back to COMPACT (NO_ARRANGEMENT). The documented guarantee ('higher than the runs it keeps') is weaker than the code's ('higher than the lowest of them'), so it is true. 'COMPACT, guided by priority and the weights, picks the runs' is accurate. PROPERTIES.md: the note now clearly covers both weights. Nit, not blocking: a comma after 'COMPACT' ('used by COMPACT and, under VISIBILITY, only for ...') would read more easily. git diff --check is clean.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 30439.264,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T21:40:48.386114Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T21:41:54.151709Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Verified against indigo_agent_scheduler_plan.c and indigo_agent_scheduler.c. Constraints over the whole run: vis_table checks indigo_scheduler_points_ok(start, start + duration); the named keys are covered by window_ok and the sky points. Quality relative to culmination: relative_altitude divides by transit_altitude; the value is quality x duration with no weights. The weights enter VISIBILITY only through indigo_scheduler_plan_with_hooks (the COMPACT plan that sets the runs, the seed and the urgent pins) and through score() in select_task when select_planned returns best. Fallbacks match the code: NOT_BETTER/NO_ARRANGEMENT; TOO_LARGE when there are more than SCHEDULER_VISIBILITY_MAX_RUNS (64) COMPACT runs or more than VIS_MAX_MINUTES (1440) minutes to the end; select_planned replans once and then returns best. The once-a-night message is sent only for TOO_LARGE, which matches the updated bullet. The #choosing-a-strategy anchor resolves, the bold lead-in follows the style of the surrounding paragraphs, and the table and PROPERTIES row are well formed. Non-blocking nits: (1) 'Priority decides which runs are in the plan' is approximate. COMPACT, which the weights also influence, chooses the runs; VISIBILITY then adds runs COMPACT left out by value (vis_fill), and the previous-plan seed drops runs by class. (2) The VIS_MAX_HOOKS > 8 TOO_LARGE condition is not mentioned, but update_plan cannot reach it. (3) In PROPERTIES.md the semicolon makes the COMPACT note read as if it qualified only the altitude weight."
+        },
+        {
+          "at": "2026-11-19T21:44:04.792940Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T21:44:35.232204Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review of 5212cf691, which changes 2 lines since 180f29486; this addresses findings 1 and 3. Guide: the claim that VISIBILITY 'adds the runs COMPACT leaves out where they still fit, by the quality they gain' matches vis_add_left_out. While any run fits, it inserts the non-urgent startable task and position that give the highest total duration-weighted quality, within runs_left and the 64-run limit. The claim that replanning 'never drops an urgent run or a run of a higher class than the runs it keeps' matches vis_previous_seed. A lacking COMPACT run that fits nowhere makes that seed fail when it is pinned (urgent) or of a class above the lowest class among the kept runs of the previous plan. The other seeds hold every COMPACT run, and a result with fewer runs than COMPACT falls back to COMPACT (NO_ARRANGEMENT). The documented guarantee ('higher than the runs it keeps') is weaker than the code's ('higher than the lowest of them'), so it is true. 'COMPACT, guided by priority and the weights, picks the runs' is accurate. PROPERTIES.md: the note now clearly covers both weights. Nit, not blocking: a comma after 'COMPACT' ('used by COMPACT and, under VISIBILITY, only for ...') would read more easily. git diff --check is clean."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of 5212cf691, which changes 2 lines since 180f29486; this addresses findings 1 and 3. Guide: the claim that VISIBILITY 'adds the runs COMPACT leaves out where they still fit, by the quality they gain' matches vis_add_left_out. While any run fits, it inserts the non-urgent startable task and position that give the highest total duration-weighted quality, within runs_left and the 64-run limit. The claim that replanning 'never drops an urgent run or a run of a higher class than the runs it keeps' matches vis_previous_seed. A lacking COMPACT run that fits nowhere makes that seed fail when it is pinned (urgent) or of a class above the lowest class among the kept runs of the previous plan. The other seeds hold every COMPACT run, and a result with fewer runs than COMPACT falls back to COMPACT (NO_ARRANGEMENT). The documented guarantee ('higher than the runs it keeps') is weaker than the code's ('higher than the lowest of them'), so it is true. 'COMPACT, guided by priority and the weights, picks the runs' is accurate. PROPERTIES.md: the note now clearly covers both weights. Nit, not blocking: a comma after 'COMPACT' ('used by COMPACT and, under VISIBILITY, only for ...') would read more easily. git diff --check is clean.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 96204.859,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "fb73489e-01bf-44fc-97e0-f43947e7929c",
+      "event": "ticket/created",
+      "at": "2026-11-19T21:32:53.453447Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "7b3bb4ec-1e93-4040-81b5-8bbac16e6a67",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T21:32:56.687849Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "1cedb9f2-8ff5-4023-adb2-5f5b605d50bb",
+      "event": "task/progress",
+      "at": "2026-11-19T21:39:08.185990Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85057a20-b341-42f9-bdbe-8bab6e835c3e",
+      "text": "Implementation started on branch ticket/a22f2d73-ff3e-4667-8665-59e92dcfac04"
+    },
+    {
+      "event_id": "06481073-9e7a-4d54-a819-65bfec1bccde",
+      "event": "ticket/started",
+      "at": "2026-11-19T21:39:08.186849Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/a22f2d73-ff3e-4667-8665-59e92dcfac04",
+      "base": "master"
+    },
+    {
+      "event_id": "cec749f1-e7f8-4ede-addb-d557f22aa40a",
+      "event": "task/progress",
+      "at": "2026-11-19T21:39:25.585324Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85057a20-b341-42f9-bdbe-8bab6e835c3e",
+      "text": "Implementer launched",
+      "attempt_id": "df2afd09-596b-418a-97a0-f8eefc9fe17c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "75996f60-94b2-4e89-8d47-b952ae07603f",
+      "event": "task/progress",
+      "at": "2026-11-19T21:40:29.140546Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85057a20-b341-42f9-bdbe-8bab6e835c3e",
+      "text": "Claims verified against the plan code; editing the guide and PROPERTIES.md"
+    },
+    {
+      "event_id": "c44d4a5b-613a-486f-b70e-363c55095c6c",
+      "event": "task/progress",
+      "at": "2026-11-19T21:40:32.636650Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85057a20-b341-42f9-bdbe-8bab6e835c3e",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9a08b3d3-ffe5-46a8-918e-5b5ece520a66",
+      "event": "task/progress",
+      "at": "2026-11-19T21:40:32.650345Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85057a20-b341-42f9-bdbe-8bab6e835c3e",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "1e7e90b3-04f6-459c-abb9-62d9cccd6da0",
+      "event": "check/passed",
+      "at": "2026-11-19T21:40:32.655029Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "180f29486086cdaccf8c9c1ba4865f888bd7dd2e",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "3480c5aa-9dfd-4ee3-87c3-e81852aa65d7",
+      "event": "task/progress",
+      "at": "2026-11-19T21:40:48.386183Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "723f3684-df25-4ad7-b3fe-7d591e3dd250",
+      "text": "Review started"
+    },
+    {
+      "event_id": "d1656139-6daf-4601-9012-fc0ae417c716",
+      "event": "review/started",
+      "at": "2026-11-19T21:40:48.386746Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "903a6438-0905-49f2-a450-a6c5a67a7ddc",
+      "event": "task/progress",
+      "at": "2026-11-19T21:41:01.342338Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "723f3684-df25-4ad7-b3fe-7d591e3dd250",
+      "text": "Reviewer launched",
+      "attempt_id": "a168baf8-793e-45a4-a647-264d9ed49612",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "4ee7b20f-11e6-45e8-b317-37d6ea7e85bf",
+      "event": "task/progress",
+      "at": "2026-11-19T21:41:54.151785Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "723f3684-df25-4ad7-b3fe-7d591e3dd250",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b3fa737d-ea38-4ab8-aa60-c0de7e28b2c2",
+      "event": "review/passed",
+      "at": "2026-11-19T21:41:54.152384Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "723f3684-df25-4ad7-b3fe-7d591e3dd250",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "180f29486086cdaccf8c9c1ba4865f888bd7dd2e"
+    },
+    {
+      "event_id": "da45c237-5a56-4501-83d7-aa79338f69cd",
+      "event": "task/progress",
+      "at": "2026-11-19T21:43:55.546666Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "4f0a6768-0026-412a-993b-dc928a573550",
+      "event": "task/progress",
+      "at": "2026-11-19T21:43:55.568982Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "8e6ea25d-af6c-48be-b6fb-d330ee9f78ed",
+      "event": "check/passed",
+      "at": "2026-11-19T21:43:55.574057Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5212cf691e2340a94413e08daa9cf1b9f4d07c1d",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "59b510fe-1d89-4a6f-ba28-9d043cddfa7f",
+      "event": "task/progress",
+      "at": "2026-11-19T21:44:04.793067Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "723f3684-df25-4ad7-b3fe-7d591e3dd250",
+      "text": "Review started"
+    },
+    {
+      "event_id": "7aef4d80-f3c4-4028-a9f1-9f9838bbcf3a",
+      "event": "review/started",
+      "at": "2026-11-19T21:44:04.793707Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "22632d76-4443-41bb-8b7d-7ef73173c482",
+      "event": "task/progress",
+      "at": "2026-11-19T21:44:35.232278Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "723f3684-df25-4ad7-b3fe-7d591e3dd250",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "502430e8-3aa7-4ab3-8144-bea29b3bfb55",
+      "event": "review/passed",
+      "at": "2026-11-19T21:44:35.232905Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "723f3684-df25-4ad7-b3fe-7d591e3dd250",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5212cf691e2340a94413e08daa9cf1b9f4d07c1d"
+    },
+    {
+      "event_id": "216b7c91-2da3-4e93-bc5e-98ec668494d9",
+      "event": "ticket/closed",
+      "at": "2026-11-19T22:40:11.700942Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T22:40:11.700914Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "c71353d757db06e22e56dfc81919fe66b4ec5a21"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T21:32:53.452800Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T21:32:56.687791Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 196405.095,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 28,
+    "sha256": "c2ba0acc413da885f135753056ec4086b1e5f55fefcc0d15a43c953019e1048e"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "180f29486086cdaccf8c9c1ba4865f888bd7dd2e",
+        "tree": "d89322b177c92cee417bc263bc2384c8c6c7e8e0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T21:40:32.649666Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/a22f2d73-ff3e-4667-8665-59e92dcfac04/d89322b177c9-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5212cf691e2340a94413e08daa9cf1b9f4d07c1d",
+        "tree": "9693586b907947acd1a721f9ccdbdd57f273ad9f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T21:43:55.568188Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/a22f2d73-ff3e-4667-8665-59e92dcfac04/9693586b9079-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Verified against indigo_agent_scheduler_plan.c and indigo_agent_scheduler.c. Constraints over the whole run: vis_table checks indigo_scheduler_points_ok(start, start + duration); the named keys are covered by window_ok and the sky points. Quality relative to culmination: relative_altitude divides by transit_altitude; the value is quality x duration with no weights. The weights enter VISIBILITY only through indigo_scheduler_plan_with_hooks (the COMPACT plan that sets the runs, the seed and the urgent pins) and through score() in select_task when select_planned returns best. Fallbacks match the code: NOT_BETTER/NO_ARRANGEMENT; TOO_LARGE when there are more than SCHEDULER_VISIBILITY_MAX_RUNS (64) COMPACT runs or more than VIS_MAX_MINUTES (1440) minutes to the end; select_planned replans once and then returns best. The once-a-night message is sent only for TOO_LARGE, which matches the updated bullet. The #choosing-a-strategy anchor resolves, the bold lead-in follows the style of the surrounding paragraphs, and the table and PROPERTIES row are well formed. Non-blocking nits: (1) 'Priority decides which runs are in the plan' is approximate. COMPACT, which the weights also influence, chooses the runs; VISIBILITY then adds runs COMPACT left out by value (vis_fill), and the previous-plan seed drops runs by class. (2) The VIS_MAX_HOOKS > 8 TOO_LARGE condition is not mentioned, but update_plan cannot reach it. (3) In PROPERTIES.md the semicolon makes the COMPACT note read as if it qualified only the altitude weight.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "180f29486086cdaccf8c9c1ba4865f888bd7dd2e",
+        "tree": "d89322b177c92cee417bc263bc2384c8c6c7e8e0",
+        "at": "2026-11-19T21:41:54.151684Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of 5212cf691, which changes 2 lines since 180f29486; this addresses findings 1 and 3. Guide: the claim that VISIBILITY 'adds the runs COMPACT leaves out where they still fit, by the quality they gain' matches vis_add_left_out. While any run fits, it inserts the non-urgent startable task and position that give the highest total duration-weighted quality, within runs_left and the 64-run limit. The claim that replanning 'never drops an urgent run or a run of a higher class than the runs it keeps' matches vis_previous_seed. A lacking COMPACT run that fits nowhere makes that seed fail when it is pinned (urgent) or of a class above the lowest class among the kept runs of the previous plan. The other seeds hold every COMPACT run, and a result with fewer runs than COMPACT falls back to COMPACT (NO_ARRANGEMENT). The documented guarantee ('higher than the runs it keeps') is weaker than the code's ('higher than the lowest of them'), so it is true. 'COMPACT, guided by priority and the weights, picks the runs' is accurate. PROPERTIES.md: the note now clearly covers both weights. Nit, not blocking: a comma after 'COMPACT' ('used by COMPACT and, under VISIBILITY, only for ...') would read more easily. git diff --check is clean.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "5212cf691e2340a94413e08daa9cf1b9f4d07c1d",
+        "tree": "9693586b907947acd1a721f9ccdbdd57f273ad9f",
+        "at": "2026-11-19T21:44:35.232179Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "c71353d757db06e22e56dfc81919fe66b4ec5a21",
+      "tree": "9693586b907947acd1a721f9ccdbdd57f273ad9f",
+      "base": "master",
+      "at": "2026-11-19T22:40:11.595837Z"
+    }
+  }
+}

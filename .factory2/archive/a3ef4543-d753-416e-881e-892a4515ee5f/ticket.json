@@ -1,0 +1,461 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a3ef4543-d753-416e-881e-892a4515ee5f",
+  "revision": 22,
+  "title": "indigo_agent_scripting: limit MERIDIAN_FLIP.USE_SOLVER to the solver exposure range",
+  "description": "Follow-up of ticket 5e7ef4f3 (review note). Sequencer.js declares MERIDIAN_FLIP.USE_SOLVER with max 3600 s and publishes a numeric enable_meridian_flip() use_solver unchanged, but the solver agents limit AGENT_PLATESOLVER_EXPOSURE.EXPOSURE to 0..60 s (indigo_libs/indigo_platesolver.c ~line 1004), so e.g. enable_meridian_flip(120, 0) publishes 120 while the solver uses 60. Clamp the published USE_SOLVER and the stored solver exposure to the solver's 60 s maximum (as OFFSET is clamped to the Imager's -2..2 h), declare the item range 0..60, keep true/false behaviour unchanged, regenerate indigo_drivers/agent_scheduler/Sequencer.js.dat, add a test in indigo_test/integration/test_agent_scripting_sequencer.c (e.g. 120 publishes 60 and the flip sets 60), and update Sequencer.md, indigo_docs/mcp/agents/sequencer.md and indigo_docs/PROPERTIES.md.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T12:16:50.759466Z",
+  "status": "closed",
+  "branch": "ticket/a3ef4543-d753-416e-881e-892a4515ee5f",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "6e7f779e-ee66-479d-b292-82a427b7d397",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T12:17:05.171964Z",
+          "last_activity_at": "2026-11-20T12:30:50.287213Z",
+          "ended_at": "2026-11-20T12:30:50.287213Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 825115.249,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T12:17:05.171964Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/a3ef4543-d753-416e-881e-892a4515ee5f"
+        },
+        {
+          "at": "2026-11-20T12:30:50.287213Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 825115.249,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "32c35c2d-8102-44a4-8af4-7be7fabbf3b7",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "aa5eb00f-d448-4561-bba0-d5f495aa3911",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T12:30:50.287261Z",
+          "last_activity_at": "2026-11-20T12:36:45.866380Z",
+          "ended_at": "2026-11-20T12:36:45.866380Z",
+          "outcome": {
+            "summary": "Pass. Sequencer.js:1772 clamps a numeric use_solver to Math.min(60, n) for both the stored solver_exposure and the published USE_SOLVER; :1778 clamps the true path (harmless, solver range already 0..60); false/0 unchanged. Item declaration :934 now min 0 max 60, matching indigo_platesolver.c:1004 (0..60). Sequencer.js.dat equals hexdump of the new Sequencer.js (cmp). New test meridian_flip_property_solver_exposure_limits checks range 0..60, publish 60 for 120, stored 60, and the flip sets 60 on the solver. Docs (Sequencer.md, mcp/agents/sequencer.md, PROPERTIES.md) updated consistently. git diff --check clean. make -C indigo_test test-agent-scripting-sequencer: 78/78 passed. No defects.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 355579.119,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T12:30:50.287261Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T12:36:45.866380Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Sequencer.js:1772 clamps a numeric use_solver to Math.min(60, n) for both the stored solver_exposure and the published USE_SOLVER; :1778 clamps the true path (harmless, solver range already 0..60); false/0 unchanged. Item declaration :934 now min 0 max 60, matching indigo_platesolver.c:1004 (0..60). Sequencer.js.dat equals hexdump of the new Sequencer.js (cmp). New test meridian_flip_property_solver_exposure_limits checks range 0..60, publish 60 for 120, stored 60, and the flip sets 60 on the solver. Docs (Sequencer.md, mcp/agents/sequencer.md, PROPERTIES.md) updated consistently. git diff --check clean. make -C indigo_test test-agent-scripting-sequencer: 78/78 passed. No defects."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Sequencer.js:1772 clamps a numeric use_solver to Math.min(60, n) for both the stored solver_exposure and the published USE_SOLVER; :1778 clamps the true path (harmless, solver range already 0..60); false/0 unchanged. Item declaration :934 now min 0 max 60, matching indigo_platesolver.c:1004 (0..60). Sequencer.js.dat equals hexdump of the new Sequencer.js (cmp). New test meridian_flip_property_solver_exposure_limits checks range 0..60, publish 60 for 120, stored 60, and the flip sets 60 on the solver. Docs (Sequencer.md, mcp/agents/sequencer.md, PROPERTIES.md) updated consistently. git diff --check clean. make -C indigo_test test-agent-scripting-sequencer: 78/78 passed. No defects.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 355579.119,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "5d5ec80c-88ea-4346-baaa-72d0cb852130",
+      "event": "ticket/created",
+      "at": "2026-11-20T12:16:50.760083Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "d4420a26-56da-48ef-8d60-9b678b45c01d",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T12:16:56.238073Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "9a9f38ba-978c-4731-bd8d-e3abfc63f0e7",
+      "event": "task/progress",
+      "at": "2026-11-20T12:17:05.172074Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Implementation started on branch ticket/a3ef4543-d753-416e-881e-892a4515ee5f"
+    },
+    {
+      "event_id": "a9e89fff-6246-47be-9d4a-3c2d6fb69fb0",
+      "event": "ticket/started",
+      "at": "2026-11-20T12:17:05.172876Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/a3ef4543-d753-416e-881e-892a4515ee5f",
+      "base": "master"
+    },
+    {
+      "event_id": "75fa6e02-5521-4079-8004-90a3f435d4b5",
+      "event": "task/progress",
+      "at": "2026-11-20T12:17:20.117454Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Implementer launched",
+      "attempt_id": "6e7f779e-ee66-479d-b292-82a427b7d397",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "78b35dbe-ff0e-463a-ace8-a0f1bde41448",
+      "event": "task/progress",
+      "at": "2026-11-20T12:18:07.901604Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Running flow checks and the sequencer/scheduler tests"
+    },
+    {
+      "event_id": "c2a237a3-342d-4ccc-87c6-eb846d6f8767",
+      "event": "task/progress",
+      "at": "2026-11-20T12:18:08.201549Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ff47ece8-5064-472f-8669-6b94dc920612",
+      "event": "task/progress",
+      "at": "2026-11-20T12:18:08.223212Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "20a798c8-34c4-46db-b82c-af6db2d72800",
+      "event": "check/passed",
+      "at": "2026-11-20T12:18:08.228052Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "660d059388e8008fe4bfac6ddd2ce675e6d8e46d",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "25f1a9e9-6813-4625-a574-b7236b641fcb",
+      "event": "task/progress",
+      "at": "2026-11-20T12:18:12.493296Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "41a74375-4623-4c3b-81b1-3bdb32b1d09e",
+      "event": "task/progress",
+      "at": "2026-11-20T12:18:12.514963Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Check command-1 failed: exit code 2"
+    },
+    {
+      "event_id": "4025e800-6f52-4e90-8c0a-e68580ac270a",
+      "event": "check/failed",
+      "at": "2026-11-20T12:18:12.520090Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "660d059388e8008fe4bfac6ddd2ce675e6d8e46d",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "55cef1a4-4b24-4e1e-a4fd-84143b959a6b",
+      "event": "task/progress",
+      "at": "2026-11-20T12:19:19.736261Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "4fe9e4b6-c5b8-4281-b68c-72442fb37777",
+      "event": "task/progress",
+      "at": "2026-11-20T12:25:18.147619Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "6f124ed6-4240-4c49-967f-5fc163ab3838",
+      "event": "check/passed",
+      "at": "2026-11-20T12:25:18.163519Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "660d059388e8008fe4bfac6ddd2ce675e6d8e46d",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "915b0a2a-ed0e-4426-a76f-5f2332631754",
+      "event": "task/progress",
+      "at": "2026-11-20T12:25:51.100228Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c505587-21ec-49f0-a8e2-d0f38eb058a8",
+      "text": "Running make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "321dcc5d-4858-4f01-b063-0413f9073317",
+      "event": "ticket/note",
+      "at": "2026-11-20T12:30:34.472602Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: new test 'meridian flip property solver exposure limits' run against master Sequencer.js (loaded at runtime) fails: USE_SOLVER max is 3600, expected 60. After the fix: test-agent-scripting-sequencer 78/78 passed (flow check --command), test-agent-scheduler 134/134 passed, whitespace check passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "a827c116-9fb4-4887-810f-350615de4caf",
+      "event": "task/progress",
+      "at": "2026-11-20T12:30:50.287337Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "32c35c2d-8102-44a4-8af4-7be7fabbf3b7",
+      "text": "Review started"
+    },
+    {
+      "event_id": "9e5d3b8a-a42d-48fb-8539-459d55868f30",
+      "event": "review/started",
+      "at": "2026-11-20T12:30:50.287948Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "f99c509d-e104-4a7c-a16a-ebe6d9f5a34b",
+      "event": "task/progress",
+      "at": "2026-11-20T12:31:02.124680Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "32c35c2d-8102-44a4-8af4-7be7fabbf3b7",
+      "text": "Reviewer launched",
+      "attempt_id": "aa5eb00f-d448-4561-bba0-d5f495aa3911",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f8a5f63b-d8d5-4590-a798-4d9868899477",
+      "event": "task/progress",
+      "at": "2026-11-20T12:31:10.076065Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "32c35c2d-8102-44a4-8af4-7be7fabbf3b7",
+      "text": "Running make -C indigo_test test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "8be3403f-d430-48a2-87a0-edffc56eca90",
+      "event": "task/progress",
+      "at": "2026-11-20T12:36:45.866455Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "32c35c2d-8102-44a4-8af4-7be7fabbf3b7",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "f7f901a4-da19-4199-800d-ef698e6757b9",
+      "event": "review/passed",
+      "at": "2026-11-20T12:36:45.867070Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "32c35c2d-8102-44a4-8af4-7be7fabbf3b7",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "660d059388e8008fe4bfac6ddd2ce675e6d8e46d"
+    },
+    {
+      "event_id": "b07c9f4b-9d05-4bd8-af23-1311412bcbae",
+      "event": "ticket/closed",
+      "at": "2026-11-20T15:09:43.331112Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-20T15:09:43.331077Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "47da62f95544281893994be283df92c88cb1f67e"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "660d059388e8008fe4bfac6ddd2ce675e6d8e46d",
+        "tree": "a129015d588147d0c97ebe86879d8bb544f87d7a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T12:18:08.222515Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/a3ef4543-d753-416e-881e-892a4515ee5f/a129015d5881-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scripting-sequencer",
+        "commit": "660d059388e8008fe4bfac6ddd2ce675e6d8e46d",
+        "tree": "a129015d588147d0c97ebe86879d8bb544f87d7a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T12:25:18.146791Z",
+        "duration_s": 358.4,
+        "log": "/tmp/factory-flow/a3ef4543-d753-416e-881e-892a4515ee5f/a129015d5881-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Sequencer.js:1772 clamps a numeric use_solver to Math.min(60, n) for both the stored solver_exposure and the published USE_SOLVER; :1778 clamps the true path (harmless, solver range already 0..60); false/0 unchanged. Item declaration :934 now min 0 max 60, matching indigo_platesolver.c:1004 (0..60). Sequencer.js.dat equals hexdump of the new Sequencer.js (cmp). New test meridian_flip_property_solver_exposure_limits checks range 0..60, publish 60 for 120, stored 60, and the flip sets 60 on the solver. Docs (Sequencer.md, mcp/agents/sequencer.md, PROPERTIES.md) updated consistently. git diff --check clean. make -C indigo_test test-agent-scripting-sequencer: 78/78 passed. No defects.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "660d059388e8008fe4bfac6ddd2ce675e6d8e46d",
+        "tree": "a129015d588147d0c97ebe86879d8bb544f87d7a",
+        "at": "2026-11-20T12:36:45.866355Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T12:30:34.472064Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: new test 'meridian flip property solver exposure limits' run against master Sequencer.js (loaded at runtime) fails: USE_SOLVER max is 3600, expected 60. After the fix: test-agent-scripting-sequencer 78/78 passed (flow check --command), test-agent-scheduler 134/134 passed, whitespace check passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "47da62f95544281893994be283df92c88cb1f67e",
+      "tree": "a129015d588147d0c97ebe86879d8bb544f87d7a",
+      "base": "master",
+      "at": "2026-11-20T15:09:43.236507Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T12:16:50.759466Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-20T12:16:56.238033Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1180694.368,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 28,
+    "sha256": "15fa2c73d1e5e3db29e88aad107f0b613db442d09bb7b25667b1fbe699427754"
+  }
+}

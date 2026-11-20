@@ -98,7 +98,7 @@ static void test_ends_lie_on_the_limit(void) {
 	ASSERT_TRUE(night->end - night->start > 11 * 3600 && night->end - night->start < 13 * 3600);
 }
 
-// the hourly rebuild of the nights changes only the time they were built for; the scheduler keeps a deferral wait then, and drops it when an input changed
+// the hourly rebuild of the nights changes only the time they were built for; the scheduler keeps a VISIBILITY plan then, and plans again when an input changed
 static void test_changed_inputs(void) {
 	memset(&nights, 0, sizeof(nights));
 	ASSERT_TRUE(indigo_scheduler_nights_changed(&nights, LATITUDE, LONGITUDE, ELEVATION, -12, 0, 0));

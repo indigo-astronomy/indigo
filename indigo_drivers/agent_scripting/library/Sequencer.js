@@ -322,11 +322,11 @@ Sequence.prototype.disable_dithering = function() {
 Sequence.prototype.enable_meridian_flip = function(use_solver, time) {
 	this.sequence.push({ execute: 'set_use_solver(' + use_solver + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_pause_after_transit(' + time + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'set_imager_feature("PAUSE_AFTER_TRANSIT", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_meridian_flip(true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.disable_meridian_flip = function() {
-	this.sequence.push({ execute: 'set_imager_feature("PAUSE_AFTER_TRANSIT", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_meridian_flip(false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.enable_filter_offsets = function() {
@@ -642,6 +642,16 @@ Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
 var indigo_sequencer_running = typeof indigo_sequencer !== "undefined" && indigo_sequencer != null && indigo_sequencer.sequence != null ? indigo_sequencer : null;
 var indigo_flipper_enabled = typeof indigo_flipper !== "undefined" && indigo_flipper != null && indigo_event_handlers.indigo_flipper === indigo_flipper ? indigo_flipper : null;
 
+// MARK: Meridian flip settings
+
+// published by MERIDIAN_FLIP and used by the flip, kept by a reload like the Imager Agent keeps the flip enabled;
+// use_solver is the published USE_SOLVER (0 = no solver), solver_exposure the exposure the flip sets before recentering (0 = the solver's current one)
+var indigo_meridian_flip = typeof indigo_meridian_flip !== "undefined" && indigo_meridian_flip != null ? indigo_meridian_flip : { enabled: false, use_solver: 0, solver_exposure: 0, offset: 0 };
+
+function indigo_meridian_flip_items() {
+	return { ENABLED: indigo_meridian_flip.enabled ? 1 : 0, USE_SOLVER: indigo_meridian_flip.use_solver, OFFSET: indigo_meridian_flip.offset };
+}
+
 // MARK: Flipper object
 
 var indigo_flipper = {
@@ -654,6 +664,7 @@ var indigo_flipper = {
 	resume_guiding: false,
 	resume_ha_limit: false,
 	use_solver: false,
+	solver_exposure: 0,
 	state: "Ok",
 
 	on_update: function(property) {
@@ -708,6 +719,9 @@ var indigo_flipper = {
 					}
 					this.devices[SOLVER_AGENT] = solver_agent;
 					this.waiting_for_sync_and_center = true;
+					if (this.solver_exposure > 0) {
+						indigo_change_number_property(this.devices[SOLVER_AGENT], "AGENT_PLATESOLVER_EXPOSURE", { EXPOSURE: this.solver_exposure });
+					}
 					indigo_change_switch_property(this.devices[SOLVER_AGENT], "AGENT_START_PROCESS", { CENTER: true});
 					indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "FLIPPER_STATE", { WAITING_FOR_TRANSIT: this.waiting_for_transit, WAITING_FOR_SLEW: this.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: this.waiting_for_sync_and_center, WAITING_FOR_GUIDING: this.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: this.waiting_for_settle_down, RESUME_GUIDING: this.resume_guiding, USE_SOLVER: this.use_solver }, this.state = "Busy");
 				} else if (this.resume_guiding) {
@@ -776,9 +790,10 @@ var indigo_flipper = {
 		indigo_sequencer.flip_failed(message);
 	},
 
-	start: function(use_solver) {
+	start: function(use_solver, solver_exposure) {
 		var guider_agent = indigo_devices[this.devices[GUIDER_AGENT]];
 		indigo_flipper.use_solver = use_solver;
+		indigo_flipper.solver_exposure = solver_exposure;
 		indigo_event_handlers.indigo_flipper = indigo_flipper;
 		this.waiting_for_transit = false;
 		this.waiting_for_slew = false;
@@ -786,7 +801,7 @@ var indigo_flipper = {
 		this.waiting_for_guiding = false;
 		this.waiting_for_settle_down = false;
 		indigo_send_message("Meridian flip waits for transit");
-		indigo_log("use_solver = " + this.use_solver);
+		indigo_log("use_solver = " + this.use_solver + ", solver_exposure = " + this.solver_exposure);
 		this.waiting_for_transit = true;
 		indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "FLIPPER_STATE", { WAITING_FOR_TRANSIT: this.waiting_for_transit, WAITING_FOR_SLEW: this.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: this.waiting_for_sync_and_center, WAITING_FOR_GUIDING: this.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: this.waiting_for_settle_down, RESUME_GUIDING: this.resume_guiding, USE_SOLVER: this.use_solver }, this.state = "Busy");
 	}
@@ -827,7 +842,6 @@ var indigo_sequencer = {
 	failure_message: "",
 	recovery_failure: "",
 	timer_generation: 0,
-	use_solver: false,
 	paused: false,
 	capturing_batch: false,
 	batch_exposure: 0,
@@ -853,7 +867,7 @@ var indigo_sequencer = {
 	on_update: function(property) {
 		if (property.device == this.devices[IMAGER_AGENT] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
 			indigo_flipper.devices = this.devices;
-			indigo_flipper.start(this.use_solver);
+			indigo_flipper.start(indigo_meridian_flip.use_solver > 0, indigo_meridian_flip.solver_exposure);
 		} else if (this.sequence != null) {
 			if (property.device == this.wait_for_device && property.name == this.wait_for_property) {
 				indigo_log("wait_for '" + property.device + " -> " + property.name + "' -> " + property.state);
@@ -915,6 +929,9 @@ var indigo_sequencer = {
 			}
 			if (property.name == null || property.name == "FLIPPER_STATE") {
 				indigo_define_switch_property(indigo_flipper.devices[SCRIPTING_AGENT], "FLIPPER_STATE", "Sequencer", "Flipper state", { WAITING_FOR_TRANSIT: indigo_flipper.waiting_for_transit, WAITING_FOR_SLEW: indigo_flipper.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: indigo_flipper.waiting_for_sync_and_center, WAITING_FOR_GUIDING: indigo_flipper.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: indigo_flipper.waiting_for_settle_down, RESUME_GUIDING: indigo_flipper.resume_guiding, USE_SOLVER: indigo_flipper.use_solver }, { WAITING_FOR_TRANSIT: { label: "Waiting for transit" }, WAITING_FOR_SLEW: { label: "Waiting for slew" }, WAITING_FOR_SYNC_AND_CENTER: { label: "Waiting for sync & center" }, WAITING_FOR_GUIDING: { label: "Waiting for guiding" }, WAITING_FOR_SETTLE_DOWN: { label: "Waiting for settle down" }, RESUME_GUIDING: { label: "Resume guiding" }, USE_SOLVER: { label: "Use solver" }}, indigo_flipper.state, "RO", "AnyOfMany");
+			}
+			if (property.name == null || property.name == "MERIDIAN_FLIP") {
+				indigo_define_number_property(this.devices[SCRIPTING_AGENT], "MERIDIAN_FLIP", "Sequencer", "Meridian flip", indigo_meridian_flip_items(), { ENABLED: { label: "Enabled", format: "%g", min: 0, max: 1, step: 1 }, USE_SOLVER: { label: "Use solver (exposure s)", format: "%g", min: 0, max: 60, step: 0 }, OFFSET: { label: "Offset to meridian (h)", format: "%g", min: -2, max: 2, step: 0 }}, "Ok", "RO");
 			}
 		}
 	},
@@ -1748,12 +1765,27 @@ var indigo_sequencer = {
 		this.change_numbers(this.devices[IMAGER_AGENT], "CCD_TEMPERATURE", { TEMPERATURE: temperature });
 	},
 
+	// a number is the solver exposure the flip sets before recentering, true keeps the solver's current exposure, which is published then (1 when no solver agent is loaded)
 	set_use_solver: function(use_solver) {
-		this.use_solver = use_solver;
+		// the solver agents limit AGENT_PLATESOLVER_EXPOSURE.EXPOSURE to 0..60 s, the published and stored exposure is the one they use
+		if (typeof use_solver === "number") {
+			indigo_meridian_flip.solver_exposure = use_solver > 0 ? Math.min(60, use_solver) : 0;
+			indigo_meridian_flip.use_solver = indigo_meridian_flip.solver_exposure;
+		} else if (use_solver) {
+			var agent = sequencer_loaded_solver_agent(this.devices[SOLVER_AGENT], this.devices[IMAGER_AGENT]);
+			var exposure = agent != null ? indigo_devices[agent].AGENT_PLATESOLVER_EXPOSURE.items.EXPOSURE : 0;
+			indigo_meridian_flip.solver_exposure = 0;
+			indigo_meridian_flip.use_solver = exposure > 0 ? Math.min(60, exposure) : 1;
+		} else {
+			indigo_meridian_flip.solver_exposure = 0;
+			indigo_meridian_flip.use_solver = 0;
+		}
 		indigo_sequencer_set_step_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
 	set_pause_after_transit: function(time) {
+		// the Imager Agent limits AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT to -2..2 h, the published offset is the one it uses
+		indigo_meridian_flip.offset = Math.min(2, Math.max(-2, time));
 		this.change_numbers(this.devices[IMAGER_AGENT], "AGENT_IMAGER_BATCH", { PAUSE_AFTER_TRANSIT: time });
 	},
 
@@ -1775,6 +1807,13 @@ var indigo_sequencer = {
 
 	set_imager_feature: function(name, value) {
 		this.set_switch(this.devices[IMAGER_AGENT], "AGENT_PROCESS_FEATURES", name, value);
+	},
+
+	// the last step of enable_meridian_flip() and disable_meridian_flip(), MERIDIAN_FLIP keeps the solver and the offset of the last enable_meridian_flip()
+	set_meridian_flip: function(enabled) {
+		indigo_meridian_flip.enabled = enabled;
+		indigo_update_number_property(this.devices[SCRIPTING_AGENT], "MERIDIAN_FLIP", indigo_meridian_flip_items(), "Ok");
+		this.set_imager_feature("PAUSE_AFTER_TRANSIT", enabled);
 	},
 
 	select_filter: function(filter) {

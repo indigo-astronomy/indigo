@@ -1,0 +1,658 @@
+{
+  "schema_version": 1,
+  "ticket_id": "16c4e660-1c92-4c0b-acca-214ba80cabbb",
+  "revision": 29,
+  "title": "indigo_agent_scheduler: rename the IDLE_PARK_AFTER setting to IDLE_HOOK_DELAY and list the hooks in pairs",
+  "description": "AGENT_SCHEDULER_SETTINGS.IDLE_PARK_AFTER only sets how many minutes without an eligible task pass before the IDLE hook runs; the scheduler never parks by itself, so the name misleads users. The owner chose IDLE_HOOK_DELAY (2026-11-20).\n\nRename the item and everything tied to it, with no compatibility alias (the scheduler agent is not released yet):\n- indigo_names.h: AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME -> AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, value \"IDLE_HOOK_DELAY\";\n- indigo_agent_scheduler.c: SETTINGS_IDLE_PARK_AFTER_ITEM -> SETTINGS_IDLE_HOOK_DELAY_ITEM and its uses, label \"Idle hook delay (min)\", driver version bump;\n- indigo_docs/INDIGO_SCHEDULER_GUIDE.md, indigo_drivers/agent_scheduler/doc/SCHEDULER.md, indigo_docs/PROPERTIES.md;\n- indigo_test/integration/test_agent_scheduler.c and tools/scheduler_sandbox.py.\nDo not edit closed tickets under .factory2/archive. A saved value under the old name is ignored once and the default of 30 minutes applies until it is set again.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-19T22:37:42.826487Z",
+  "status": "closed",
+  "branch": "ticket/16c4e660-1c92-4c0b-acca-214ba80cabbb",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "020d3224-e4d8-451d-bf80-802767b990ca",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T22:40:26.189186Z",
+          "last_activity_at": "2026-11-19T22:50:31.168788Z",
+          "ended_at": "2026-11-19T22:50:31.168788Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 604979.602,
+          "tokens": null
+        },
+        {
+          "attempt_id": "7cbfe453-b923-4603-ac9d-3328359616e3",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T22:56:17.531614Z",
+          "last_activity_at": "2026-11-19T22:58:41.921122Z",
+          "ended_at": "2026-11-19T22:58:41.921122Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 144389.508,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T22:40:26.189186Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/16c4e660-1c92-4c0b-acca-214ba80cabbb"
+        },
+        {
+          "at": "2026-11-19T22:50:31.168788Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-19T22:56:17.531614Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-19T22:58:41.921122Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 749369.11,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "7cbd69c5-5c28-4795-85dc-ef9c0e9027b1",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "793774ee-adc2-436b-abf1-04b575c73e19",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-19T22:50:31.168823Z",
+          "last_activity_at": "2026-11-19T22:56:17.531530Z",
+          "ended_at": "2026-11-19T22:56:17.531530Z",
+          "outcome": {
+            "summary": "One documentation defect: indigo_docs/INDIGO_SCHEDULER_GUIDE.md:828 still lists the hook priority texts in the old order (hook startup, hook shutdown, hook idle, hook night start, hook night end, hook resume); the owner's note asks the guide to list the hooks in the new order, and line 861 of the same guide was already updated. Change it to hook startup, hook shutdown, hook night start, hook night end, hook idle, hook resume. Everything else is correct: git grep finds no IDLE_PARK_AFTER or old macro outside .factory2/archive; SETTINGS and HOOKS index defines match the init order; run_kind enum, hook_names[] (only array indexed by run_kind) and plan_hook_name() switch match; run_kind is only compared by equality, never by range, persisted or sent to clients; hook_kind() precedence change (NIGHT_START/NIGHT_END now before IDLE) is documented in the guide (line 643) and SCHEDULER.md (line 579); PROPERTIES.md, PROPERTY_MANIPULATION.md, SCHEDULER.md, guide hooks table and property table updated; tests and scheduler_sandbox.py address items by name; DRIVER_VERSION 0x0300001E; define alignment preserved; git diff --check clean; no README.md changed. Tests: scheduler unit binaries header/sky/plan/night all passed; integration test_agent_scheduler 134 run, 134 passed, 0 failed.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 346362.707,
+          "tokens": null
+        },
+        {
+          "attempt_id": "79bf2aeb-ddd2-4704-9aa8-ca48226f507e",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T22:58:41.921147Z",
+          "last_activity_at": "2026-11-19T22:59:06.257384Z",
+          "ended_at": "2026-11-19T22:59:06.257384Z",
+          "outcome": {
+            "summary": "Re-review of eb31ce29f..8a6d21658: only three documentation lines changed, INDIGO_SCHEDULER_GUIDE.md:641 and :828 and SCHEDULER.md:702; each now lists the hook priority texts as startup, shutdown, night start, night end, idle, resume. The earlier finding is resolved. A grep of the tree outside .factory2 and the PDFs finds no documentation list of all six hooks still in the old order. The only remaining old-order sequence is a by-name dict that clears all hooks in indigo_test/integration/run_scheduler_simulators.py:502; it does not depend on item order, so it is not a defect. git diff --check is clean. Earlier verification still holds: the unit binaries passed and test_agent_scheduler ran 134 cases with 134 passed. Only documentation changed since that run, and flow check passed on f993d2c8.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 24336.237,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T22:50:31.168823Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T22:56:17.531530Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "One documentation defect: indigo_docs/INDIGO_SCHEDULER_GUIDE.md:828 still lists the hook priority texts in the old order (hook startup, hook shutdown, hook idle, hook night start, hook night end, hook resume); the owner's note asks the guide to list the hooks in the new order, and line 861 of the same guide was already updated. Change it to hook startup, hook shutdown, hook night start, hook night end, hook idle, hook resume. Everything else is correct: git grep finds no IDLE_PARK_AFTER or old macro outside .factory2/archive; SETTINGS and HOOKS index defines match the init order; run_kind enum, hook_names[] (only array indexed by run_kind) and plan_hook_name() switch match; run_kind is only compared by equality, never by range, persisted or sent to clients; hook_kind() precedence change (NIGHT_START/NIGHT_END now before IDLE) is documented in the guide (line 643) and SCHEDULER.md (line 579); PROPERTIES.md, PROPERTY_MANIPULATION.md, SCHEDULER.md, guide hooks table and property table updated; tests and scheduler_sandbox.py address items by name; DRIVER_VERSION 0x0300001E; define alignment preserved; git diff --check clean; no README.md changed. Tests: scheduler unit binaries header/sky/plan/night all passed; integration test_agent_scheduler 134 run, 134 passed, 0 failed."
+        },
+        {
+          "at": "2026-11-19T22:58:41.921147Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T22:59:06.257384Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review of eb31ce29f..8a6d21658: only three documentation lines changed, INDIGO_SCHEDULER_GUIDE.md:641 and :828 and SCHEDULER.md:702; each now lists the hook priority texts as startup, shutdown, night start, night end, idle, resume. The earlier finding is resolved. A grep of the tree outside .factory2 and the PDFs finds no documentation list of all six hooks still in the old order. The only remaining old-order sequence is a by-name dict that clears all hooks in indigo_test/integration/run_scheduler_simulators.py:502; it does not depend on item order, so it is not a defect. git diff --check is clean. Earlier verification still holds: the unit binaries passed and test_agent_scheduler ran 134 cases with 134 passed. Only documentation changed since that run, and flow check passed on f993d2c8."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of eb31ce29f..8a6d21658: only three documentation lines changed, INDIGO_SCHEDULER_GUIDE.md:641 and :828 and SCHEDULER.md:702; each now lists the hook priority texts as startup, shutdown, night start, night end, idle, resume. The earlier finding is resolved. A grep of the tree outside .factory2 and the PDFs finds no documentation list of all six hooks still in the old order. The only remaining old-order sequence is a by-name dict that clears all hooks in indigo_test/integration/run_scheduler_simulators.py:502; it does not depend on item order, so it is not a defect. git diff --check is clean. Earlier verification still holds: the unit binaries passed and test_agent_scheduler ran 134 cases with 134 passed. Only documentation changed since that run, and flow check passed on f993d2c8.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 370698.944,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "01c9c65c-54ae-4714-8efa-9e7e89f9eace",
+      "event": "ticket/created",
+      "at": "2026-11-19T22:37:42.827125Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "745b0800-856e-4e9c-869b-0f519effa9a5",
+      "event": "ticket/note",
+      "at": "2026-11-19T22:38:47.474294Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner addition (2026-11-20): reorder the AGENT_SCHEDULER_HOOKS items so they come in pairs: STARTUP, SHUTDOWN, NIGHT_START, NIGHT_END, IDLE, RESUME (IDLE moves from index 2 to just before RESUME). Update the item index defines, initialisation, any code, tests or tools that depend on the item positions or order, and the order in which the guide, SCHEDULER.md and PROPERTIES.md list the hooks. Persistence and clients address items by name.",
+      "tokens": null
+    },
+    {
+      "event_id": "690fb84e-5380-4f6c-8aee-128b3e3a86f1",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T22:40:11.406104Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "074ba2c6-a05c-47f1-830e-8fb5274b2fc5",
+      "event": "task/progress",
+      "at": "2026-11-19T22:40:26.189282Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Implementation started on branch ticket/16c4e660-1c92-4c0b-acca-214ba80cabbb"
+    },
+    {
+      "event_id": "85781390-0127-41c0-9b6c-e831192d6cd2",
+      "event": "ticket/started",
+      "at": "2026-11-19T22:40:26.189846Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/16c4e660-1c92-4c0b-acca-214ba80cabbb",
+      "base": "master"
+    },
+    {
+      "event_id": "65a94b2b-f08b-45c6-a838-aa337b7da35c",
+      "event": "task/progress",
+      "at": "2026-11-19T22:40:39.970362Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Implementer launched",
+      "attempt_id": "020d3224-e4d8-451d-bf80-802767b990ca",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b4af5f65-7727-4437-9e15-6dde583ab5da",
+      "event": "task/progress",
+      "at": "2026-11-19T22:42:06.912232Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Edits done; running flow check (whitespace, unit)"
+    },
+    {
+      "event_id": "4e27975c-0d52-48d6-bf66-fd9368b53f80",
+      "event": "task/progress",
+      "at": "2026-11-19T22:42:07.150552Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3ed4114c-0c0f-43ad-a6e4-2347abe3c177",
+      "event": "task/progress",
+      "at": "2026-11-19T22:42:07.188610Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "fda79b5e-a0f9-4644-bd9c-96071d0f50fc",
+      "event": "task/progress",
+      "at": "2026-11-19T22:42:07.194561Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "e212debe-53c1-43ab-b33c-d5b012caf701",
+      "event": "task/progress",
+      "at": "2026-11-19T22:44:56.145341Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "6a5923c4-92dc-4a5c-aee2-1937c1f85af7",
+      "event": "check/passed",
+      "at": "2026-11-19T22:44:56.150692Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "eb31ce29f6e007fafc63dda28cd6da0676056302",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "e1924f9d-1409-403a-993b-a8def56f7a0c",
+      "event": "task/progress",
+      "at": "2026-11-19T22:45:03.832578Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Running scheduler unit binaries and test_agent_scheduler via flow check --command"
+    },
+    {
+      "event_id": "fcc9f0dc-42c4-406c-b0e2-8f9d89247b37",
+      "event": "task/progress",
+      "at": "2026-11-19T22:45:03.994367Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -"
+    },
+    {
+      "event_id": "e18eb4bc-1795-4263-ae25-75e05e2f2f6e",
+      "event": "task/progress",
+      "at": "2026-11-19T22:50:02.226938Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "b20b95d3-05a5-4241-914b-86896d6b4402",
+      "event": "check/passed",
+      "at": "2026-11-19T22:50:02.231815Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "eb31ce29f6e007fafc63dda28cd6da0676056302",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "7c7a53c7-c6ee-47d2-86bf-a8be174a3be6",
+      "event": "task/progress",
+      "at": "2026-11-19T22:50:31.168887Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7cbd69c5-5c28-4795-85dc-ef9c0e9027b1",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b3c81278-d715-4b05-9446-88ade995a7c7",
+      "event": "review/started",
+      "at": "2026-11-19T22:50:31.169452Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "14c11248-a552-4ab7-83fb-2d14688a04c4",
+      "event": "task/progress",
+      "at": "2026-11-19T22:50:44.821812Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7cbd69c5-5c28-4795-85dc-ef9c0e9027b1",
+      "text": "Reviewer launched",
+      "attempt_id": "793774ee-adc2-436b-abf1-04b575c73e19",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "c7806c1b-0ba4-498e-9595-42746bc6ea69",
+      "event": "task/progress",
+      "at": "2026-11-19T22:51:33.994514Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7cbd69c5-5c28-4795-85dc-ef9c0e9027b1",
+      "text": "Running scheduler unit binaries and test_agent_scheduler"
+    },
+    {
+      "event_id": "4fbc6fac-5ee9-49e4-821e-0ac5b65cdae9",
+      "event": "task/progress",
+      "at": "2026-11-19T22:56:17.531606Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7cbd69c5-5c28-4795-85dc-ef9c0e9027b1",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "48e8b0e5-c6da-4caa-ba1e-5b6fd2e2e83d",
+      "event": "task/progress",
+      "at": "2026-11-19T22:56:17.531642Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "e921e174-c56f-477b-877c-e20ec7f1ec1f",
+      "event": "review/changes_requested",
+      "at": "2026-11-19T22:56:17.532269Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7cbd69c5-5c28-4795-85dc-ef9c0e9027b1",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "eb31ce29f6e007fafc63dda28cd6da0676056302"
+    },
+    {
+      "event_id": "59064359-96d4-46dd-819c-e00dd31ee8ee",
+      "event": "task/progress",
+      "at": "2026-11-19T22:56:37.855216Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "6e771eab-bbeb-4f77-bdcc-e29cf657fffa",
+      "event": "task/progress",
+      "at": "2026-11-19T22:56:37.877124Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c8705600-df88-4fae-be6e-12a1e73daecc",
+      "event": "task/progress",
+      "at": "2026-11-19T22:56:37.882945Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "1a373e54-9fc4-4153-a066-331f19c083f6",
+      "event": "task/progress",
+      "at": "2026-11-19T22:58:25.063536Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7781f96c-7fbf-43c2-9541-6b31660f3eb8",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "6b70645d-067f-4909-b4e6-1903b9824652",
+      "event": "check/passed",
+      "at": "2026-11-19T22:58:25.069230Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "8a6d2165881781b648c86768e29b25f806c6b3fc",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "4b7b5e6d-a945-4e56-a641-30cfa1d2ee8c",
+      "event": "task/progress",
+      "at": "2026-11-19T22:58:41.921230Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7cbd69c5-5c28-4795-85dc-ef9c0e9027b1",
+      "text": "Review started"
+    },
+    {
+      "event_id": "51c71056-6aed-49ac-9037-04cca1d3678f",
+      "event": "review/started",
+      "at": "2026-11-19T22:58:41.921961Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "f1ae9530-b570-4dbe-8bf5-2093b57fd6d4",
+      "event": "task/progress",
+      "at": "2026-11-19T22:59:06.257459Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7cbd69c5-5c28-4795-85dc-ef9c0e9027b1",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "9af02656-96ae-4c2b-abf5-18c47c02dae9",
+      "event": "review/passed",
+      "at": "2026-11-19T22:59:06.258138Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7cbd69c5-5c28-4795-85dc-ef9c0e9027b1",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "8a6d2165881781b648c86768e29b25f806c6b3fc"
+    },
+    {
+      "event_id": "2974e6b9-6ea0-488d-a44a-11e2d022512a",
+      "event": "ticket/title_changed",
+      "at": "2026-11-19T23:00:22.787298Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: rename the IDLE_PARK_AFTER setting to IDLE_HOOK_DELAY",
+      "title": "indigo_agent_scheduler: rename the IDLE_PARK_AFTER setting to IDLE_HOOK_DELAY and list the hooks in pairs"
+    },
+    {
+      "event_id": "b1eb909c-936e-49a6-91d9-0201d4c94e3c",
+      "event": "ticket/closed",
+      "at": "2026-11-19T23:00:23.095649Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-19T23:00:23.095588Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "9d0a150b0defa2537963f9bbfe8e1069f43b9da2"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T22:37:42.826487Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-19T22:40:11.406076Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1120068.054,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 42,
+    "sha256": "a110f85b841f9649689cac212fbafaa0f1864af8749aa5c946f1e49dfeaa8c59"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "eb31ce29f6e007fafc63dda28cd6da0676056302",
+        "tree": "70c1ba8ed5991c879a24b9213fbcb58a81388b15",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T22:42:07.187735Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/16c4e660-1c92-4c0b-acca-214ba80cabbb/70c1ba8ed599-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "eb31ce29f6e007fafc63dda28cd6da0676056302",
+        "tree": "70c1ba8ed5991c879a24b9213fbcb58a81388b15",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T22:44:56.144566Z",
+        "duration_s": 169.0,
+        "log": "/tmp/factory-flow/16c4e660-1c92-4c0b-acca-214ba80cabbb/70c1ba8ed599-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test build/unit/test_agent_scheduler_plan build/unit/test_agent_scheduler_night build/unit/test_agent_scheduler_sky build/unit/test_agent_scheduler_header build/integration/test_agent_scheduler && indigo_test/build/unit/test_agent_scheduler_plan && indigo_test/build/unit/test_agent_scheduler_night && indigo_test/build/unit/test_agent_scheduler_sky && indigo_test/build/unit/test_agent_scheduler_header && (cd indigo_test && ./build/integration/test_agent_scheduler)",
+        "commit": "eb31ce29f6e007fafc63dda28cd6da0676056302",
+        "tree": "70c1ba8ed5991c879a24b9213fbcb58a81388b15",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T22:50:02.226127Z",
+        "duration_s": 298.2,
+        "log": "/tmp/factory-flow/16c4e660-1c92-4c0b-acca-214ba80cabbb/70c1ba8ed599-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8a6d2165881781b648c86768e29b25f806c6b3fc",
+        "tree": "f993d2c8282d040fa01a707cad315ef22c4c7213",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T22:56:37.876077Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/16c4e660-1c92-4c0b-acca-214ba80cabbb/f993d2c8282d-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "8a6d2165881781b648c86768e29b25f806c6b3fc",
+        "tree": "f993d2c8282d040fa01a707cad315ef22c4c7213",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T22:58:25.062567Z",
+        "duration_s": 107.2,
+        "log": "/tmp/factory-flow/16c4e660-1c92-4c0b-acca-214ba80cabbb/f993d2c8282d-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "One documentation defect: indigo_docs/INDIGO_SCHEDULER_GUIDE.md:828 still lists the hook priority texts in the old order (hook startup, hook shutdown, hook idle, hook night start, hook night end, hook resume); the owner's note asks the guide to list the hooks in the new order, and line 861 of the same guide was already updated. Change it to hook startup, hook shutdown, hook night start, hook night end, hook idle, hook resume. Everything else is correct: git grep finds no IDLE_PARK_AFTER or old macro outside .factory2/archive; SETTINGS and HOOKS index defines match the init order; run_kind enum, hook_names[] (only array indexed by run_kind) and plan_hook_name() switch match; run_kind is only compared by equality, never by range, persisted or sent to clients; hook_kind() precedence change (NIGHT_START/NIGHT_END now before IDLE) is documented in the guide (line 643) and SCHEDULER.md (line 579); PROPERTIES.md, PROPERTY_MANIPULATION.md, SCHEDULER.md, guide hooks table and property table updated; tests and scheduler_sandbox.py address items by name; DRIVER_VERSION 0x0300001E; define alignment preserved; git diff --check clean; no README.md changed. Tests: scheduler unit binaries header/sky/plan/night all passed; integration test_agent_scheduler 134 run, 134 passed, 0 failed.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "eb31ce29f6e007fafc63dda28cd6da0676056302",
+        "tree": "70c1ba8ed5991c879a24b9213fbcb58a81388b15",
+        "at": "2026-11-19T22:56:17.531506Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of eb31ce29f..8a6d21658: only three documentation lines changed, INDIGO_SCHEDULER_GUIDE.md:641 and :828 and SCHEDULER.md:702; each now lists the hook priority texts as startup, shutdown, night start, night end, idle, resume. The earlier finding is resolved. A grep of the tree outside .factory2 and the PDFs finds no documentation list of all six hooks still in the old order. The only remaining old-order sequence is a by-name dict that clears all hooks in indigo_test/integration/run_scheduler_simulators.py:502; it does not depend on item order, so it is not a defect. git diff --check is clean. Earlier verification still holds: the unit binaries passed and test_agent_scheduler ran 134 cases with 134 passed. Only documentation changed since that run, and flow check passed on f993d2c8.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "8a6d2165881781b648c86768e29b25f806c6b3fc",
+        "tree": "f993d2c8282d040fa01a707cad315ef22c4c7213",
+        "at": "2026-11-19T22:59:06.257359Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T22:38:47.473768Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner addition (2026-11-20): reorder the AGENT_SCHEDULER_HOOKS items so they come in pairs: STARTUP, SHUTDOWN, NIGHT_START, NIGHT_END, IDLE, RESUME (IDLE moves from index 2 to just before RESUME). Update the item index defines, initialisation, any code, tests or tools that depend on the item positions or order, and the order in which the guide, SCHEDULER.md and PROPERTIES.md list the hooks. Persistence and clients address items by name.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "9d0a150b0defa2537963f9bbfe8e1069f43b9da2",
+      "tree": "f993d2c8282d040fa01a707cad315ef22c4c7213",
+      "base": "master",
+      "at": "2026-11-19T23:00:22.983888Z"
+    }
+  }
+}

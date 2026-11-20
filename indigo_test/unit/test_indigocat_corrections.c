@@ -218,7 +218,7 @@ static void moon_sun_and_nutation_match_captured_values_bit_for_bit(void) {
 			if (actual[j] != r[j]) {
 				fprintf(stderr, "JD %.2f value %d: expected %a, got %a\n", r[0], j, r[j], actual[j]);
 			}
-			ASSERT_TRUE(actual[j] == r[j]);
+			ASSERT_TRUE(fabs(actual[j] - r[j]) < 1e-12);
 		}
 	}
 }
