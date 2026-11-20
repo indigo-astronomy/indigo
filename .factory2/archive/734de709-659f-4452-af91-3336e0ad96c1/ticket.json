@@ -1,0 +1,932 @@
+{
+  "schema_version": 1,
+  "ticket_id": "734de709-659f-4452-af91-3336e0ad96c1",
+  "revision": 47,
+  "title": "indigo_docs: add busy and sparse night examples with altitude charts to the scheduler guide",
+  "description": "Owner request (2026-11-21): add two worked examples to indigo_docs/INDIGO_SCHEDULER_GUIDE.md that illustrate how the strategies work: one busy night (more tasks than the night can hold, competing targets) and one sparse night (few tasks, plenty of free time). Each example shows, for the same task list and site, the plans of COMPACT, VISIBILITY with VISIBILITY_FLIP_PENALTY 0 and VISIBILITY with VISIBILITY_FLIP_PENALTY 10 (meridian flip enabled, OFFSET 0): an altitude (visibility) chart of every target over the night (altitude vs time, with twilight/night limits, altitude limits and the meridian/culmination of each target) with the observation periods of each planned run drawn on its target's curve (and flips marked), plus a short table of runs (start-end, target, quality, flip) and a few sentences explaining why each strategy placed the runs as it did.\n\nThe plans must come from the real planner (indigo_agent_scheduler_plan.c via indigo_test/benchmark/bench_scheduler_plan.c or a small harness built on it), not be drawn by hand, and the charts must be reproducible: add a generator (e.g. a bench option that dumps the night grids and runs, and a script under tools/ that renders the charts) and document how to regenerate them. Prefer SVG images (text, diff-friendly, readable in light and dark themes) stored in indigo_docs/INDIGO_SCHEDULER_GUIDE/, embedded like indigo_docs/GUIDING_MISCONCEPTIONS.md does (![](INDIGO_SCHEDULER_GUIDE/...)). Choose the nights so the differences are visible: in the busy night VISIBILITY trades runs/placement against quality differently from COMPACT, and the flip penalty moves short runs off the meridian; in the sparse night VISIBILITY waits for culmination while COMPACT starts early. Place the examples in or right after the strategy material (Choosing a strategy / Meridian flips) and keep the existing worked example consistent. Follow the repository rules for new files (Xcode project group per AGENTS.md; check how existing doc images are handled), English, no README.md changes. Charts must be checked visually (render them and look) for overlapping labels and readability.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T22:38:21.570977Z",
+  "status": "closed",
+  "branch": "ticket/734de709-659f-4452-af91-3336e0ad96c1",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "18f816b8-353b-4a74-a44a-6a43fbebf4f2",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T22:53:15.427705Z",
+          "last_activity_at": "2026-11-20T23:02:21.686183Z",
+          "ended_at": "2026-11-20T23:02:21.686183Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 546258.478,
+          "tokens": null
+        },
+        {
+          "attempt_id": "9d4448b4-bb69-4e2a-b2f5-f3f2c8abe37f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-20T23:03:53.482159Z",
+          "last_activity_at": "2026-11-20T23:04:58.789043Z",
+          "ended_at": "2026-11-20T23:04:58.789043Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 65306.884,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T22:53:15.427705Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/734de709-659f-4452-af91-3336e0ad96c1"
+        },
+        {
+          "at": "2026-11-20T23:02:21.686183Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-20T23:03:53.482159Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-20T23:04:58.789043Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 611565.362,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "ece67a49-e7af-4ca1-ba47-4a26273391c6",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-20T23:02:21.686233Z",
+          "last_activity_at": "2026-11-20T23:03:53.482071Z",
+          "ended_at": "2026-11-20T23:03:53.482071Z",
+          "outcome": {
+            "summary": "One factual error, otherwise good. DEFECT indigo_docs/INDIGO_SCHEDULER_GUIDE.md:312: 'Nine tasks need 870 minutes' is wrong; the busy tasks in bench_scheduler_plan.c (60+120+120+30+90+30+120+120+60) total 750 minutes. This is consistent with the guide's own later statement that the other eight runs take 630 minutes plus Bode's 120. 750 against 665 dark minutes is 85 minutes over, so 'far more than the night holds' overstates it. Fix: '750 minutes, more than the 665 dark minutes'. VERIFIED: rebuilt the bench in the worktree and ran --examples. Every run time, quality, flip flag, culmination time, run count and weighted quality in both guide tables matches the planner output; rounding 91.5 to 92 % gives the same chart title. Dusk 16:45 and dawn 03:50 give 665 minutes. Bode rises above 25 deg at 19:15, Orion at 20:55; the 95, 630 and 35 minutes are correct. The explanations of COMPACT, VISIBILITY and the flip penalty agree with indigo_agent_scheduler_plan.c:145-153 and the Meridian flips section. Placement under Meridian flips with a link from Choosing a strategy is fine. The PNGs (and a scratch re-render) show the runs, flip crosses, culminations, 25 deg limit and twilight bands as the tables give them. No labels overlap and the legend is readable. Normal bench output (x 50 1) is identical to the master build. The license header matches tools/scheduler_sandbox.py. The script is added to the tools group, and no existing indigo_docs PNG is in the Xcode project, so leaving the new PNGs out follows the convention. MINOR (non-blocking): project.pbxproj:5121 puts the new PBXFileReference A35A660F... between 812D... and 83BD..., out of the ID order Xcode keeps, so Xcode will move it on its next save. bench_scheduler_plan.c:453 runs '--examples' with no file name silently as the normal benchmark labelled '--examples'.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 91795.838,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1d96c8f7-3b44-4ec6-9ee8-0ab318102a75",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T23:04:58.789068Z",
+          "last_activity_at": "2026-11-20T23:06:38.028473Z",
+          "ended_at": "2026-11-20T23:06:38.028473Z",
+          "outcome": {
+            "summary": "Pass. Reproduced: built bench_scheduler_plan in the worktree, --examples wrote JSON, tools/scheduler_plan_charts.py re-rendered busy_night.png and sparse_night.png pixel-identical to the committed PNGs (PIL diff bbox None). Every run time, quality, flip and night total in the two tables of INDIGO_SCHEDULER_GUIDE.md 'Two nights compared' matches the planner output (busy 88.9/92.3/91.5 %, 2/4/1 flips; sparse 67.8/97.0/95.2 %, 0/3/0 flips); culminations match the script; totals 750 and 285 min, 630 of 665, 95 dark minutes after 02:15, Bode crossing 25 deg at 19:15 and Orion at 20:55, idle gaps all verified. Explanations agree with COMPACT/VISIBILITY/flip-penalty semantics. Earlier findings fixed: 750 vs 665 wording, PBXFileReference ID order (A057 < A35A < A3C5), --examples without a file prints usage and exits 1. Normal benchmark output unchanged (owner's night still matches the existing example). Charts inspected: runs, flips, culminations, limits match tables; labels readable without overlaps. PNGs not in Xcode, matching GUIDING_MISCONCEPTIONS images; script has the INDIGO license header. Non-blocking: chart dusk/dawn lines are interpolated at about 16:41/03:46 while the text (and the pre-existing example) give 16:45/03:50, the scheduler's 5-minute grid; busy penalty-0 and penalty-10 both show 92 % (92.3 vs 91.5), which the text's 'less than one percentage point' already explains. Build products cleaned with make -C indigo_test test-clean.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 99239.405,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1b780c2a-a2c6-45b9-a2d6-e97bc9546ab1",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T23:15:45.701807Z",
+          "last_activity_at": "2026-11-20T23:16:56.901235Z",
+          "ended_at": "2026-11-20T23:16:56.901235Z",
+          "outcome": {
+            "summary": "Pass. Owner change request implemented: tools/scheduler_plan_charts.py:166-167 run segments thinner (lw 4.5 over a 6.5 white halo, was 6/8.5); :169 adds one bar per run in a 'runs' strip between the horizon line and the time axis (STRIP -9.5..-3.5, ylim -11, y tick labelled 'runs'); :174 repeats the flip cross in the strip; :153 clips the thin curves at altitude 0 so they do not cross the strip. Reproduced: rebuilt bench_scheduler_plan in the worktree, --examples wrote JSON, the script re-rendered busy_night.png and sparse_night.png pixel-identical to the committed PNGs (PIL diff bbox None). --examples without a file prints usage, exit 1. Inspected both PNGs: every bar starts and ends with its curve segment and the run times in the tables (e.g. busy F=10 gap 17:50-18:05, sparse idle stretches), flip crosses in the strip line up with those on the curves (busy 2/4/1, sparse 0/3/0), no overlapping labels, readable. Guide tables in INDIGO_SCHEDULER_GUIDE.md 'Two nights compared' match the planner output (times, qualities, flips, 88.9/92.3/91.5 and 67.8/97.0/95.2 %); the updated 'how to read the charts' paragraph (line 310) matches the new drawing. bench_scheduler_plan.c and project.pbxproj unchanged since the previous passing review. Build products cleaned (make -C indigo_test test-clean), scratch charts removed. No defects.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 71199.428,
+          "tokens": null
+        },
+        {
+          "attempt_id": "027162b0-04f0-4623-b547-ad5c78325263",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T23:35:53.652314Z",
+          "last_activity_at": "2026-11-20T23:36:52.733880Z",
+          "ended_at": "2026-11-20T23:36:52.733880Z",
+          "outcome": {
+            "summary": "Reviewed full diff master...HEAD (ee18f01a2). Script change (tools/scheduler_plan_charts.py:61,169,174,188): strip -4.5..-2.3 deg sits between horizon line and x-axis (ylim -5.5), strip bars drawn from the same rx endpoints as the curve segments, strip flip crosses at the strip centre at the same x as the curve crosses; tab style consistent. Reproducibility: rebuilt bench_scheduler_plan in the worktree, ran --examples, rendered with the script: both PNGs byte-identical to the committed ones; printed tables match both guide tables (INDIGO_SCHEDULER_GUIDE.md busy/sparse tables, runs, qualities, flips, night totals). Visual check of busy_night.png and sparse_night.png: thin strip bars match run segments and table times, flip crosses aligned on curve and strip and readable, no overlapping labels, 'runs' tick label does not collide with '0'. Guide 'how to read the charts' paragraph (strip above the time axis, cross on curve and strip) matches the drawing. Bench --examples, Xcode entry for the script, guide link and regeneration note unchanged since last passing review and still consistent. git diff --check clean. No defects found. Build products cleaned (make -C indigo_test test-clean), scratch files removed.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 59081.566,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T23:02:21.686233Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T23:03:53.482071Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "One factual error, otherwise good. DEFECT indigo_docs/INDIGO_SCHEDULER_GUIDE.md:312: 'Nine tasks need 870 minutes' is wrong; the busy tasks in bench_scheduler_plan.c (60+120+120+30+90+30+120+120+60) total 750 minutes. This is consistent with the guide's own later statement that the other eight runs take 630 minutes plus Bode's 120. 750 against 665 dark minutes is 85 minutes over, so 'far more than the night holds' overstates it. Fix: '750 minutes, more than the 665 dark minutes'. VERIFIED: rebuilt the bench in the worktree and ran --examples. Every run time, quality, flip flag, culmination time, run count and weighted quality in both guide tables matches the planner output; rounding 91.5 to 92 % gives the same chart title. Dusk 16:45 and dawn 03:50 give 665 minutes. Bode rises above 25 deg at 19:15, Orion at 20:55; the 95, 630 and 35 minutes are correct. The explanations of COMPACT, VISIBILITY and the flip penalty agree with indigo_agent_scheduler_plan.c:145-153 and the Meridian flips section. Placement under Meridian flips with a link from Choosing a strategy is fine. The PNGs (and a scratch re-render) show the runs, flip crosses, culminations, 25 deg limit and twilight bands as the tables give them. No labels overlap and the legend is readable. Normal bench output (x 50 1) is identical to the master build. The license header matches tools/scheduler_sandbox.py. The script is added to the tools group, and no existing indigo_docs PNG is in the Xcode project, so leaving the new PNGs out follows the convention. MINOR (non-blocking): project.pbxproj:5121 puts the new PBXFileReference A35A660F... between 812D... and 83BD..., out of the ID order Xcode keeps, so Xcode will move it on its next save. bench_scheduler_plan.c:453 runs '--examples' with no file name silently as the normal benchmark labelled '--examples'."
+        },
+        {
+          "at": "2026-11-20T23:04:58.789068Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T23:06:38.028473Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Reproduced: built bench_scheduler_plan in the worktree, --examples wrote JSON, tools/scheduler_plan_charts.py re-rendered busy_night.png and sparse_night.png pixel-identical to the committed PNGs (PIL diff bbox None). Every run time, quality, flip and night total in the two tables of INDIGO_SCHEDULER_GUIDE.md 'Two nights compared' matches the planner output (busy 88.9/92.3/91.5 %, 2/4/1 flips; sparse 67.8/97.0/95.2 %, 0/3/0 flips); culminations match the script; totals 750 and 285 min, 630 of 665, 95 dark minutes after 02:15, Bode crossing 25 deg at 19:15 and Orion at 20:55, idle gaps all verified. Explanations agree with COMPACT/VISIBILITY/flip-penalty semantics. Earlier findings fixed: 750 vs 665 wording, PBXFileReference ID order (A057 < A35A < A3C5), --examples without a file prints usage and exits 1. Normal benchmark output unchanged (owner's night still matches the existing example). Charts inspected: runs, flips, culminations, limits match tables; labels readable without overlaps. PNGs not in Xcode, matching GUIDING_MISCONCEPTIONS images; script has the INDIGO license header. Non-blocking: chart dusk/dawn lines are interpolated at about 16:41/03:46 while the text (and the pre-existing example) give 16:45/03:50, the scheduler's 5-minute grid; busy penalty-0 and penalty-10 both show 92 % (92.3 vs 91.5), which the text's 'less than one percentage point' already explains. Build products cleaned with make -C indigo_test test-clean."
+        },
+        {
+          "at": "2026-11-20T23:15:45.701807Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T23:16:56.901235Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Owner change request implemented: tools/scheduler_plan_charts.py:166-167 run segments thinner (lw 4.5 over a 6.5 white halo, was 6/8.5); :169 adds one bar per run in a 'runs' strip between the horizon line and the time axis (STRIP -9.5..-3.5, ylim -11, y tick labelled 'runs'); :174 repeats the flip cross in the strip; :153 clips the thin curves at altitude 0 so they do not cross the strip. Reproduced: rebuilt bench_scheduler_plan in the worktree, --examples wrote JSON, the script re-rendered busy_night.png and sparse_night.png pixel-identical to the committed PNGs (PIL diff bbox None). --examples without a file prints usage, exit 1. Inspected both PNGs: every bar starts and ends with its curve segment and the run times in the tables (e.g. busy F=10 gap 17:50-18:05, sparse idle stretches), flip crosses in the strip line up with those on the curves (busy 2/4/1, sparse 0/3/0), no overlapping labels, readable. Guide tables in INDIGO_SCHEDULER_GUIDE.md 'Two nights compared' match the planner output (times, qualities, flips, 88.9/92.3/91.5 and 67.8/97.0/95.2 %); the updated 'how to read the charts' paragraph (line 310) matches the new drawing. bench_scheduler_plan.c and project.pbxproj unchanged since the previous passing review. Build products cleaned (make -C indigo_test test-clean), scratch charts removed. No defects."
+        },
+        {
+          "at": "2026-11-20T23:35:53.652314Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T23:36:52.733880Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Reviewed full diff master...HEAD (ee18f01a2). Script change (tools/scheduler_plan_charts.py:61,169,174,188): strip -4.5..-2.3 deg sits between horizon line and x-axis (ylim -5.5), strip bars drawn from the same rx endpoints as the curve segments, strip flip crosses at the strip centre at the same x as the curve crosses; tab style consistent. Reproducibility: rebuilt bench_scheduler_plan in the worktree, ran --examples, rendered with the script: both PNGs byte-identical to the committed ones; printed tables match both guide tables (INDIGO_SCHEDULER_GUIDE.md busy/sparse tables, runs, qualities, flips, night totals). Visual check of busy_night.png and sparse_night.png: thin strip bars match run segments and table times, flip crosses aligned on curve and strip and readable, no overlapping labels, 'runs' tick label does not collide with '0'. Guide 'how to read the charts' paragraph (strip above the time axis, cross on curve and strip) matches the drawing. Bench --examples, Xcode entry for the script, guide link and regeneration note unchanged since last passing review and still consistent. git diff --check clean. No defects found. Build products cleaned (make -C indigo_test test-clean), scratch files removed."
+        }
+      ],
+      "result": {
+        "summary": "Reviewed full diff master...HEAD (ee18f01a2). Script change (tools/scheduler_plan_charts.py:61,169,174,188): strip -4.5..-2.3 deg sits between horizon line and x-axis (ylim -5.5), strip bars drawn from the same rx endpoints as the curve segments, strip flip crosses at the strip centre at the same x as the curve crosses; tab style consistent. Reproducibility: rebuilt bench_scheduler_plan in the worktree, ran --examples, rendered with the script: both PNGs byte-identical to the committed ones; printed tables match both guide tables (INDIGO_SCHEDULER_GUIDE.md busy/sparse tables, runs, qualities, flips, night totals). Visual check of busy_night.png and sparse_night.png: thin strip bars match run segments and table times, flip crosses aligned on curve and strip and readable, no overlapping labels, 'runs' tick label does not collide with '0'. Guide 'how to read the charts' paragraph (strip above the time axis, cross on curve and strip) matches the drawing. Bench --examples, Xcode entry for the script, guide link and regeneration note unchanged since last passing review and still consistent. git diff --check clean. No defects found. Build products cleaned (make -C indigo_test test-clean), scratch files removed.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 321316.237,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 4
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "288059c2-6d54-4d93-8f91-705bf0aa061d",
+      "event": "ticket/created",
+      "at": "2026-11-20T22:38:21.571601Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "6d3cc80f-042a-4c02-a49c-a1684e7270b3",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T22:53:06.276088Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "b5e49d77-6cc8-4441-adbc-17d525a618a3",
+      "event": "ticket/note",
+      "at": "2026-11-20T22:53:06.392060Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (2026-11-21): charts are PNG images (like the existing guiding docs images), not SVG. Stored in indigo_docs/INDIGO_SCHEDULER_GUIDE/, embedded as ![](INDIGO_SCHEDULER_GUIDE/...). Render them at a resolution that stays sharp in the guide and its PDF; keep the generator in the repo so they can be regenerated.",
+      "tokens": null
+    },
+    {
+      "event_id": "4f85b413-bb19-4ecd-aaac-8e256bdec9e4",
+      "event": "task/progress",
+      "at": "2026-11-20T22:53:15.427808Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Implementation started on branch ticket/734de709-659f-4452-af91-3336e0ad96c1"
+    },
+    {
+      "event_id": "784cbefb-0b92-440e-b560-729063179852",
+      "event": "ticket/started",
+      "at": "2026-11-20T22:53:15.428594Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/734de709-659f-4452-af91-3336e0ad96c1",
+      "base": "master"
+    },
+    {
+      "event_id": "ab3f0811-1753-4b06-acc4-2e637411538e",
+      "event": "task/progress",
+      "at": "2026-11-20T22:53:36.777440Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Implementer launched",
+      "attempt_id": "18f816b8-353b-4a74-a44a-6a43fbebf4f2",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "c858bae0-1ef2-43f5-b7a6-f4e6905c3b15",
+      "event": "task/progress",
+      "at": "2026-11-20T22:54:12.987679Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Building library and scheduler archive in the worktree"
+    },
+    {
+      "event_id": "8bc1fd9b-6678-47ec-b20f-aa73eaa91f46",
+      "event": "task/progress",
+      "at": "2026-11-20T22:55:53.118239Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Adding example-night JSON dump to bench_scheduler_plan"
+    },
+    {
+      "event_id": "9db70566-7dc3-4d15-8827-4229bedc87f8",
+      "event": "task/progress",
+      "at": "2026-11-20T23:00:42.430956Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Charts rendered and checked; writing the guide section"
+    },
+    {
+      "event_id": "240b8563-2f49-479b-ab5d-a63325643b0a",
+      "event": "task/progress",
+      "at": "2026-11-20T23:01:46.617398Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "6e79c101-acb9-4701-9afb-616f428a0d10",
+      "event": "task/progress",
+      "at": "2026-11-20T23:01:46.655157Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "68d48e47-ab75-473c-b86f-f3b71ed90c0d",
+      "event": "check/passed",
+      "at": "2026-11-20T23:01:46.660084Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "2ce651d6dd270b1f65df2367b03b33b037d150c4",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "da7aa0da-2a4a-4fe8-878e-72aa76d8d464",
+      "event": "task/progress",
+      "at": "2026-11-20T23:01:51.698013Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Implementation done; flow check passed (whitespace)"
+    },
+    {
+      "event_id": "7e03ecd2-5ff7-4461-b4f2-ba4d517e157d",
+      "event": "task/progress",
+      "at": "2026-11-20T23:02:21.686297Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Review started"
+    },
+    {
+      "event_id": "bf1c825d-52b8-49a6-b5de-e51e587e9c33",
+      "event": "review/started",
+      "at": "2026-11-20T23:02:21.686846Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "9dd010bd-e1f1-4fa5-989c-0745a99020a5",
+      "event": "task/progress",
+      "at": "2026-11-20T23:02:37.772731Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Reviewer launched",
+      "attempt_id": "ece67a49-e7af-4ca1-ba47-4a26273391c6",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7bc27c83-9941-4704-9f67-328dc853659d",
+      "event": "task/progress",
+      "at": "2026-11-20T23:02:48.500882Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Building bench_scheduler_plan in the worktree to reproduce the examples"
+    },
+    {
+      "event_id": "b35725e1-d77d-47ca-9c1c-b4c857e17be6",
+      "event": "task/progress",
+      "at": "2026-11-20T23:03:53.482150Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "e971c5f1-ec6b-4ad9-abcb-9f508d911009",
+      "event": "task/progress",
+      "at": "2026-11-20T23:03:53.482188Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "194b357d-112c-43eb-a996-9fb2e9d92451",
+      "event": "review/changes_requested",
+      "at": "2026-11-20T23:03:53.482799Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "2ce651d6dd270b1f65df2367b03b33b037d150c4"
+    },
+    {
+      "event_id": "9769fa1f-12b7-44d5-a3f5-86c4b92030e9",
+      "event": "task/progress",
+      "at": "2026-11-20T23:04:29.122180Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Fixing review notes; rebuilding benchmark and rechecking tables"
+    },
+    {
+      "event_id": "18d16713-18f5-4d0f-956a-e17f901d13f7",
+      "event": "task/progress",
+      "at": "2026-11-20T23:04:47.444299Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "358a68e8-7d08-4492-9479-1c04698c7475",
+      "event": "task/progress",
+      "at": "2026-11-20T23:04:47.483712Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "dfe54daa-b196-4673-ba6a-26383857eae7",
+      "event": "check/passed",
+      "at": "2026-11-20T23:04:47.489109Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "18efa396fbee3147a36f47cca34fe808cf9d25e7",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "58d8a366-19cc-4b57-8885-7976d1442619",
+      "event": "task/progress",
+      "at": "2026-11-20T23:04:47.610715Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8ee8d2ee-e76c-45a1-b5ac-9cfef1669b91",
+      "text": "Review fixes done; tables re-verified, flow check passed"
+    },
+    {
+      "event_id": "1401476f-ff9e-4c2e-888c-97678c0683f2",
+      "event": "task/progress",
+      "at": "2026-11-20T23:04:58.789150Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Review started"
+    },
+    {
+      "event_id": "3fbdd16a-b4a8-4d52-85d2-39c7be93697b",
+      "event": "review/started",
+      "at": "2026-11-20T23:04:58.789865Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "b3816c4f-6917-476f-96d8-ae347a7f148b",
+      "event": "task/progress",
+      "at": "2026-11-20T23:05:14.746289Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Reviewer launched",
+      "attempt_id": "1d96c8f7-3b44-4ec6-9ee8-0ab318102a75",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "8c4dc0c5-13f3-4bd9-bcc0-bf7e4a9f25c7",
+      "event": "task/progress",
+      "at": "2026-11-20T23:05:37.973768Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Building bench_scheduler_plan and regenerating example charts"
+    },
+    {
+      "event_id": "a58df779-1c30-4e0a-aac6-004da9221067",
+      "event": "task/progress",
+      "at": "2026-11-20T23:06:38.028554Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "0926690b-74a7-47ff-b10e-9c81acbf6c6b",
+      "event": "review/passed",
+      "at": "2026-11-20T23:06:38.029238Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "18efa396fbee3147a36f47cca34fe808cf9d25e7"
+    },
+    {
+      "event_id": "529a66f1-4211-4c88-813a-a90b6c9cd269",
+      "event": "ticket/note",
+      "at": "2026-11-20T23:14:25.131914Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner change request (2026-11-21) for the charts: make the highlighted observation segments on the target altitude curves a bit thinner, and on the time axis show each run's observation time as a thick bar (a timeline strip along the time axis of each panel, in the run's colour, so the observation periods read directly against the time scale).",
+      "tokens": null
+    },
+    {
+      "event_id": "28dbe179-7948-455c-8c3d-c9fd128af29e",
+      "event": "task/progress",
+      "at": "2026-11-20T23:14:39.447635Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Owner change: thinner run segments and a timeline strip of runs on the time axis"
+    },
+    {
+      "event_id": "c0fd11b1-106e-40fb-b6a0-615a58b02b1f",
+      "event": "task/progress",
+      "at": "2026-11-20T23:15:30.059542Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9e300953-b523-43ef-92bb-1c080315828c",
+      "event": "task/progress",
+      "at": "2026-11-20T23:15:30.097578Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "3fb18b4c-b3c0-47a8-b1f3-526e2327450c",
+      "event": "check/passed",
+      "at": "2026-11-20T23:15:30.103192Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "fea8eba1aa34b7a03f6531e04a6cd271c86e6db6",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "4fa1db10-6675-4afb-92d0-8514a9ade0bf",
+      "event": "task/progress",
+      "at": "2026-11-20T23:15:30.228436Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Charts updated (thinner segments, runs strip), regenerated and checked; flow check passed"
+    },
+    {
+      "event_id": "9221cd38-5532-4e43-9984-057311a96ffe",
+      "event": "task/progress",
+      "at": "2026-11-20T23:15:45.701889Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b45f9dbe-dcf7-4776-802f-5ac3b6bb6629",
+      "event": "review/started",
+      "at": "2026-11-20T23:15:45.702576Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "b2a658ed-d059-4acf-9519-327085a13c4c",
+      "event": "task/progress",
+      "at": "2026-11-20T23:16:00.829854Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Reviewer launched",
+      "attempt_id": "1b780c2a-a2c6-45b9-a2d6-e97bc9546ab1",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5323365a-c26a-4186-acef-5c56c8383bdc",
+      "event": "task/progress",
+      "at": "2026-11-20T23:16:24.091895Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Building bench_scheduler_plan and re-rendering the charts"
+    },
+    {
+      "event_id": "e28e1d91-8f6a-47e7-a9fc-72e820e03983",
+      "event": "task/progress",
+      "at": "2026-11-20T23:16:56.901311Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "212e6d3a-9219-422b-a318-57d374cd10ed",
+      "event": "review/passed",
+      "at": "2026-11-20T23:16:56.902030Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "fea8eba1aa34b7a03f6531e04a6cd271c86e6db6"
+    },
+    {
+      "event_id": "48948cb1-172d-4928-bfbd-fbad5e3820dc",
+      "event": "task/progress",
+      "at": "2026-11-20T23:20:12.844390Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Owner change: thinner runs strip bars"
+    },
+    {
+      "event_id": "21c8d995-6af8-4b90-ae27-ba6adc8d5529",
+      "event": "task/progress",
+      "at": "2026-11-20T23:20:38.777144Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "86230cff-a493-4f3b-be8b-200f858056a5",
+      "event": "task/progress",
+      "at": "2026-11-20T23:20:38.815574Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5968ddc2-162b-4e31-8a89-6e9ebf85a9c9",
+      "event": "check/passed",
+      "at": "2026-11-20T23:20:38.821491Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "ee18f01a25f016a528f411a71052dc823fcaa806",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "3c026eb8-8d63-43bb-9f8e-5b4940d333c7",
+      "event": "task/progress",
+      "at": "2026-11-20T23:20:38.943442Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Runs strip bars thinned, charts regenerated and checked; flow check passed"
+    },
+    {
+      "event_id": "1e8dfc85-9f65-4b32-b617-a9f082f4dfe5",
+      "event": "task/progress",
+      "at": "2026-11-20T23:35:53.652396Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b8630ec1-28e4-46f0-917f-37d87be8ccd6",
+      "event": "review/started",
+      "at": "2026-11-20T23:35:53.653103Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "37597595-57bf-483b-8104-c931ad488242",
+      "event": "task/progress",
+      "at": "2026-11-20T23:36:08.210755Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Reviewer launched",
+      "attempt_id": "027162b0-04f0-4623-b547-ad5c78325263",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f430f9c0-a044-4c5a-ac6c-094dde9d4fdb",
+      "event": "task/progress",
+      "at": "2026-11-20T23:36:25.713552Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Building bench_scheduler_plan and regenerating charts for comparison"
+    },
+    {
+      "event_id": "ebc3c9a3-35e3-41e7-8c63-16a68be09dd8",
+      "event": "task/progress",
+      "at": "2026-11-20T23:36:52.733956Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "e606756f-ef7f-481c-857d-2ea1e71fb076",
+      "event": "review/passed",
+      "at": "2026-11-20T23:36:52.734715Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7dbfa3a1-b6a8-4764-a7a4-6f2cae353462",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "ee18f01a25f016a528f411a71052dc823fcaa806"
+    },
+    {
+      "event_id": "4de56504-0503-473c-8396-0e2d216fa537",
+      "event": "ticket/title_changed",
+      "at": "2026-11-20T23:37:08.365217Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_docs: add busy and sparse night examples with altitude charts and planned runs for COMPACT, VISIBILITY and VISIBILITY with the flip penalty to the scheduler guide",
+      "title": "indigo_docs: add busy and sparse night examples with altitude charts to the scheduler guide"
+    },
+    {
+      "event_id": "c1225560-6590-40d6-ac03-13696dc02e43",
+      "event": "ticket/closed",
+      "at": "2026-11-20T23:37:08.666953Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-20T23:37:08.666924Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "900257ab49793282382fbc0a5ca73f591515c367"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "2ce651d6dd270b1f65df2367b03b33b037d150c4",
+        "tree": "3a82a84c175885eb026572ca5e34b60ce50f348b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T23:01:46.654454Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/734de709-659f-4452-af91-3336e0ad96c1/3a82a84c1758-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "18efa396fbee3147a36f47cca34fe808cf9d25e7",
+        "tree": "aaf9fd5c83ddf9f1a7d9e6a50b86b49dc5f452c5",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T23:04:47.482699Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/734de709-659f-4452-af91-3336e0ad96c1/aaf9fd5c83dd-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "fea8eba1aa34b7a03f6531e04a6cd271c86e6db6",
+        "tree": "2412357db2869c1dafe3df29eee0aa15c6e1451a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T23:15:30.096564Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/734de709-659f-4452-af91-3336e0ad96c1/2412357db286-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ee18f01a25f016a528f411a71052dc823fcaa806",
+        "tree": "cd173dccf9160e521bf8ba9ea63b213664edc438",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T23:20:38.814466Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/734de709-659f-4452-af91-3336e0ad96c1/cd173dccf916-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "One factual error, otherwise good. DEFECT indigo_docs/INDIGO_SCHEDULER_GUIDE.md:312: 'Nine tasks need 870 minutes' is wrong; the busy tasks in bench_scheduler_plan.c (60+120+120+30+90+30+120+120+60) total 750 minutes. This is consistent with the guide's own later statement that the other eight runs take 630 minutes plus Bode's 120. 750 against 665 dark minutes is 85 minutes over, so 'far more than the night holds' overstates it. Fix: '750 minutes, more than the 665 dark minutes'. VERIFIED: rebuilt the bench in the worktree and ran --examples. Every run time, quality, flip flag, culmination time, run count and weighted quality in both guide tables matches the planner output; rounding 91.5 to 92 % gives the same chart title. Dusk 16:45 and dawn 03:50 give 665 minutes. Bode rises above 25 deg at 19:15, Orion at 20:55; the 95, 630 and 35 minutes are correct. The explanations of COMPACT, VISIBILITY and the flip penalty agree with indigo_agent_scheduler_plan.c:145-153 and the Meridian flips section. Placement under Meridian flips with a link from Choosing a strategy is fine. The PNGs (and a scratch re-render) show the runs, flip crosses, culminations, 25 deg limit and twilight bands as the tables give them. No labels overlap and the legend is readable. Normal bench output (x 50 1) is identical to the master build. The license header matches tools/scheduler_sandbox.py. The script is added to the tools group, and no existing indigo_docs PNG is in the Xcode project, so leaving the new PNGs out follows the convention. MINOR (non-blocking): project.pbxproj:5121 puts the new PBXFileReference A35A660F... between 812D... and 83BD..., out of the ID order Xcode keeps, so Xcode will move it on its next save. bench_scheduler_plan.c:453 runs '--examples' with no file name silently as the normal benchmark labelled '--examples'.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "2ce651d6dd270b1f65df2367b03b33b037d150c4",
+        "tree": "3a82a84c175885eb026572ca5e34b60ce50f348b",
+        "at": "2026-11-20T23:03:53.482045Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Reproduced: built bench_scheduler_plan in the worktree, --examples wrote JSON, tools/scheduler_plan_charts.py re-rendered busy_night.png and sparse_night.png pixel-identical to the committed PNGs (PIL diff bbox None). Every run time, quality, flip and night total in the two tables of INDIGO_SCHEDULER_GUIDE.md 'Two nights compared' matches the planner output (busy 88.9/92.3/91.5 %, 2/4/1 flips; sparse 67.8/97.0/95.2 %, 0/3/0 flips); culminations match the script; totals 750 and 285 min, 630 of 665, 95 dark minutes after 02:15, Bode crossing 25 deg at 19:15 and Orion at 20:55, idle gaps all verified. Explanations agree with COMPACT/VISIBILITY/flip-penalty semantics. Earlier findings fixed: 750 vs 665 wording, PBXFileReference ID order (A057 < A35A < A3C5), --examples without a file prints usage and exits 1. Normal benchmark output unchanged (owner's night still matches the existing example). Charts inspected: runs, flips, culminations, limits match tables; labels readable without overlaps. PNGs not in Xcode, matching GUIDING_MISCONCEPTIONS images; script has the INDIGO license header. Non-blocking: chart dusk/dawn lines are interpolated at about 16:41/03:46 while the text (and the pre-existing example) give 16:45/03:50, the scheduler's 5-minute grid; busy penalty-0 and penalty-10 both show 92 % (92.3 vs 91.5), which the text's 'less than one percentage point' already explains. Build products cleaned with make -C indigo_test test-clean.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "18efa396fbee3147a36f47cca34fe808cf9d25e7",
+        "tree": "aaf9fd5c83ddf9f1a7d9e6a50b86b49dc5f452c5",
+        "at": "2026-11-20T23:06:38.028444Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Owner change request implemented: tools/scheduler_plan_charts.py:166-167 run segments thinner (lw 4.5 over a 6.5 white halo, was 6/8.5); :169 adds one bar per run in a 'runs' strip between the horizon line and the time axis (STRIP -9.5..-3.5, ylim -11, y tick labelled 'runs'); :174 repeats the flip cross in the strip; :153 clips the thin curves at altitude 0 so they do not cross the strip. Reproduced: rebuilt bench_scheduler_plan in the worktree, --examples wrote JSON, the script re-rendered busy_night.png and sparse_night.png pixel-identical to the committed PNGs (PIL diff bbox None). --examples without a file prints usage, exit 1. Inspected both PNGs: every bar starts and ends with its curve segment and the run times in the tables (e.g. busy F=10 gap 17:50-18:05, sparse idle stretches), flip crosses in the strip line up with those on the curves (busy 2/4/1, sparse 0/3/0), no overlapping labels, readable. Guide tables in INDIGO_SCHEDULER_GUIDE.md 'Two nights compared' match the planner output (times, qualities, flips, 88.9/92.3/91.5 and 67.8/97.0/95.2 %); the updated 'how to read the charts' paragraph (line 310) matches the new drawing. bench_scheduler_plan.c and project.pbxproj unchanged since the previous passing review. Build products cleaned (make -C indigo_test test-clean), scratch charts removed. No defects.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "fea8eba1aa34b7a03f6531e04a6cd271c86e6db6",
+        "tree": "2412357db2869c1dafe3df29eee0aa15c6e1451a",
+        "at": "2026-11-20T23:16:56.901211Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed full diff master...HEAD (ee18f01a2). Script change (tools/scheduler_plan_charts.py:61,169,174,188): strip -4.5..-2.3 deg sits between horizon line and x-axis (ylim -5.5), strip bars drawn from the same rx endpoints as the curve segments, strip flip crosses at the strip centre at the same x as the curve crosses; tab style consistent. Reproducibility: rebuilt bench_scheduler_plan in the worktree, ran --examples, rendered with the script: both PNGs byte-identical to the committed ones; printed tables match both guide tables (INDIGO_SCHEDULER_GUIDE.md busy/sparse tables, runs, qualities, flips, night totals). Visual check of busy_night.png and sparse_night.png: thin strip bars match run segments and table times, flip crosses aligned on curve and strip and readable, no overlapping labels, 'runs' tick label does not collide with '0'. Guide 'how to read the charts' paragraph (strip above the time axis, cross on curve and strip) matches the drawing. Bench --examples, Xcode entry for the script, guide link and regeneration note unchanged since last passing review and still consistent. git diff --check clean. No defects found. Build products cleaned (make -C indigo_test test-clean), scratch files removed.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "ee18f01a25f016a528f411a71052dc823fcaa806",
+        "tree": "cd173dccf9160e521bf8ba9ea63b213664edc438",
+        "at": "2026-11-20T23:36:52.733856Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T22:53:06.391559Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision (2026-11-21): charts are PNG images (like the existing guiding docs images), not SVG. Stored in indigo_docs/INDIGO_SCHEDULER_GUIDE/, embedded as ![](INDIGO_SCHEDULER_GUIDE/...). Render them at a resolution that stays sharp in the guide and its PDF; keep the generator in the repo so they can be regenerated.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T23:14:25.131265Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner change request (2026-11-21) for the charts: make the highlighted observation segments on the target altitude curves a bit thinner, and on the time axis show each run's observation time as a thick bar (a timeline strip along the time axis of each panel, in the run's colour, so the observation periods read directly against the time scale).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "900257ab49793282382fbc0a5ca73f591515c367",
+      "tree": "cd173dccf9160e521bf8ba9ea63b213664edc438",
+      "base": "master",
+      "at": "2026-11-20T23:37:08.561179Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T22:38:21.570977Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-20T22:53:06.276053Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 932881.599,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 6
+    }
+  },
+  "journal": {
+    "entries": 68,
+    "sha256": "d60f9ca1daa7cead51eeffdc0ffeed53b1543ce2d084615b2f38662155404637"
+  }
+}
