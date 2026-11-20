@@ -1898,6 +1898,104 @@ cleanup:
 	}
 }
 
+// Every coordinates publication from the first ALERT after the BUSY on is ALERT, the polls included.
+static bool check_alert_kept(const char *label, const coordinates_publication *events, int count, int busy) {
+	int alert = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_ALERT_STATE);
+	int polls = 0;
+	bool ok = alert > busy;
+	for (int i = alert + 1; ok && i < count; i++) {
+		if (events[i].kind == 'E') {
+			ok = events[i].state == INDIGO_ALERT_STATE;
+			polls++;
+		}
+	}
+	if (!ok || polls < 2) {
+		fprintf(stderr, "    %s: expected an ALERT after the BUSY publication %d kept by at least two later publications (%d)\n", label, busy, polls);
+		print_coordinates_publications(label, events, count);
+		return false;
+	}
+	return true;
+}
+
+// The Mount Agent compares the values of the OK publication of a sync with its request, so that publication carries
+// the position the mount reports after D: the request finer than the mount's units is published as the mount rounded
+// it, the same values the polls read afterwards, and the request stays the target. A sync the mount refuses or leaves
+// unanswered ends ALERT with the position before it and the polls keep that ALERT until the next request, which
+// starts BUSY again and ends OK.
+static void temma_sync_result_and_refusals(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = "";
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// accepted: D carries 20h 12.01m and +61 00.0', a hundredth of a minute and a tenth of an arc minute being the units
+	double ra = 20.20013, dec = 61.00042;
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(temma_mount.device_name);
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	int mark = trace_count(trace_path);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(ra, dec));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_position_polls(trace_path, 2));
+	int count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(trace_contains_after(trace_path, "D201201+61000", mark));
+	int busy = check_request_publication("SYNC", events, count, 0, ra0, dec0, alt0, az0, ra, dec, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	int result = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(check_sync_result("SYNC", events, count, busy, result, ra, dec, 0.01));
+	if (!coordinates_near(events[result].value[0], events[result].value[1], events[count - 1].value[0], events[count - 1].value[1], 1e-6) || fabs(events[result].value[0] - ra) < 1e-5 || fabs(events[result].value[1] - dec) < 1e-4) {
+		fprintf(stderr, "    SYNC: the OK publication %d is not the position the polls read but the request\n", result);
+		print_coordinates_publications("SYNC", events, count);
+		SERIAL_CHECK_TRUE(false);
+	}
+	SERIAL_CHECK_TRUE(fabs(events[result].target[0] - ra) < 1e-9 && fabs(events[result].target[1] - dec) < 1e-9);
+	for (int i = busy + 1; i < count; i++) {
+		SERIAL_CHECK_TRUE(events[i].kind != 'E' || i >= result || events[i].state == INDIGO_BUSY_STATE);
+		SERIAL_CHECK_TRUE(events[i].kind != 'E' || i < result || events[i].state == INDIGO_OK_STATE);
+	}
+	// refused with R1, the RA error, and unanswered
+	static const char *refusals[] = { "fault D* R1", "drop D*" };
+	for (int r = 0; r < ARRAY_SIZE(refusals); r++) {
+		SERIAL_CHECK_TRUE(simulator_control(&simulator, refusals[r]));
+		cached_coordinates(&ra0, &dec0, &alt0, &az0);
+		start_coordinates_publications(temma_mount.device_name);
+		revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		mark = trace_count(trace_path);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(5, 15));
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+		SERIAL_CHECK_TRUE(wait_for_position_polls(trace_path, 3));
+		count = stop_coordinates_publications(events);
+		SERIAL_CHECK_EQ_INT(1, trace_count_matching(trace_path, "D*", mark));
+		busy = check_request_publication(refusals[r], events, count, 0, ra0, dec0, alt0, az0, 5, 15, 0.01);
+		SERIAL_CHECK_TRUE(busy >= 0);
+		SERIAL_CHECK_TRUE(check_alert_kept(refusals[r], events, count, busy));
+		SERIAL_CHECK_TRUE(check_position_kept(refusals[r], events, count, busy, ra0, dec0, 0.01));
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	}
+	// the next sync starts BUSY again and ends OK at the synced position
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(5, 15, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 5) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 15) < 0.01);
+cleanup:
+	stop_coordinates_publications(NULL);
+	if (driver_started) {
+		stop_serial_driver(&temma_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
 // Disconnecting during manual motion clears the relay mask with MA before the port closes, and
 // disconnecting during a park stops it with PS; the next session reads both motion axes OFF and not
 // BUSY, the park released, and a fresh GOTO completes.
@@ -2341,6 +2439,7 @@ int main(void) {
 		{ "temma_goto_refusals_keep_position_and_report_reason", temma_goto_refusals_keep_position_and_report_reason },
 		{ "temma_abort_mid_slew_stops_short_and_idle_abort_keeps_state", temma_abort_mid_slew_stops_short_and_idle_abort_keeps_state },
 		{ "temma_coordinates_publish_the_mount_position", temma_coordinates_publish_the_mount_position },
+		{ "temma_sync_result_and_refusals", temma_sync_result_and_refusals },
 		{ "temma_park_position_and_pending_tracking_request", temma_park_position_and_pending_tracking_request },
 		{ "temma_refused_switch_requests_show_device_state", temma_refused_switch_requests_show_device_state },
 		{ "temma_site_changes_resend_latitude_and_sidereal_time", temma_site_changes_resend_latitude_and_sidereal_time },
