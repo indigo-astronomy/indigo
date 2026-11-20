@@ -66,7 +66,7 @@ as returned by the ESA Gaia archive TAP service (about 16.8 million stars; prope
 The index files (version 2) are memory mapped: an index opens at once, only the parts a solve touches are read from the
 disk and the memory they occupy is the page cache of the system, so even the 0.5° index solves in about 300 MB of
 memory. Index files of the former version 1 are refused and must be downloaded or built again. The format is described
-in [Solver Index Format](../../indigo_docs/SOLVER_INDEX_FORMAT.md).
+in [Native solver and index reference](doc/PLATESOLVER.md#isix-version-2-file-format).
 
 ### Agent configuration
 

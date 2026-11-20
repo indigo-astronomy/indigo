@@ -4975,7 +4975,7 @@
 		59E86E5C236CE83C00727D18 /* USB_Video_Class_1.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = USB_Video_Class_1.1.pdf; sourceTree = "<group>"; };
 		59E9D55D2DBD48E000D1534A /* indigo_guider_cgusbst4.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_guider_cgusbst4.driver; sourceTree = "<group>"; };
 		59EA12822F66DA1200E29EDD /* Protocol_Special_Mode.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_Special_Mode.pdf; sourceTree = "<group>"; };
-		59ECA503B2CD35CEF6E3094C /* SOLVER_INDEX_FORMAT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SOLVER_INDEX_FORMAT.md; sourceTree = "<group>"; };
+		59ECA503B2CD35CEF6E3094C /* PLATESOLVER.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = doc/PLATESOLVER.md; sourceTree = "<group>"; };
 		59EF8BC024683B10009D75C5 /* indigo_dome_baader.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_dome_baader.c; sourceTree = "<group>"; };
 		59EF8BC224683B10009D75C5 /* dome_baader_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = dome_baader_simulator.ino; sourceTree = "<group>"; };
 		59EF8BC324683B10009D75C5 /* baader_command_set.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = baader_command_set.txt; sourceTree = "<group>"; };
@@ -6464,7 +6464,6 @@
 				599EB1562B52EC3900B333E4 /* CCD_DRIVER_SAVED_IMAGES.md */,
 				599EB1542B52EC3900B333E4 /* GUIDING_MISCONCEPTIONS.md */,
 				599EB1552B52EC3900B333E4 /* INDIGO_RAW_IMAGE_FORMAT.md */,
-				59ECA503B2CD35CEF6E3094C /* SOLVER_INDEX_FORMAT.md */,
 				599EB1572B52EC3900B333E4 /* PLATE_SOLVING.md */,
 				599EB1582B52EC3900B333E4 /* SCRIPTING_BASICS.md */,
 				59CEDA6127D514B700D9277A /* MULTI-INSTANCE_SUPPORT.md */,
@@ -14998,6 +14997,7 @@
 			isa = PBXGroup;
 			children = (
 				9D1541EA2F2A0ACD00B7045F /* README.md */,
+				59ECA503B2CD35CEF6E3094C /* PLATESOLVER.md */,
 				9D1541E72F2A0ACD00B7045F /* indigo_agent_platesolver.h */,
 				9D1541E82F2A0ACD00B7045F /* indigo_agent_platesolver.c */,
 				599687E2AACCCA3CB9F0237E /* indigo_solver.h */,
