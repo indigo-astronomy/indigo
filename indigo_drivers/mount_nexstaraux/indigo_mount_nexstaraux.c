@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001A
+#define DRIVER_VERSION       0x0300001B
 #define DRIVER_NAME          "indigo_mount_nexstaraux"
 #define DRIVER_LABEL         "NexStar AUX Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar AUX"
@@ -137,6 +137,10 @@ typedef struct {
 	// The slow approaches made of the goto in progress, and whether the stall watch stopped it.
 	int approaches;
 	bool stalled;
+	// The JNow target of the goto or park in progress. A park is no request for coordinates, so its
+	// position is kept here and never in the targets of MOUNT_EQUATORIAL_COORDINATES, which hold only
+	// what the client asked for.
+	double target_ra, target_dec;
 	// Where the axes stood when they were last seen to move, and when that was, so a
 	// goto that stops making progress can be given up on instead of polled forever.
 	double stall_hour_angle, stall_dec, stall_since;
@@ -603,9 +607,8 @@ static bool nexstaraux_reached_target(indigo_device *device) {
 	if (!nextstar_get_coordinates(device, &ra, &dec)) {
 		return false;
 	}
-	double target_ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-	double target_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &target_ra, &target_dec);
+	double target_ra = PRIVATE_DATA->target_ra;
+	double target_dec = PRIVATE_DATA->target_dec;
 	if (fabs(dec - target_dec) > ARRIVAL_TOLERANCE) {
 		return false;
 	}
@@ -894,12 +897,14 @@ static void nexstar_update_mount_state(indigo_device *device) {
 // A goto that loses an answer must not be abandoned in BUSY. The poll is retried while
 // the axes are still turning and the stall watch bounds the retrying, so a controller
 // that stops answering ends the operation instead of leaving the mount busy for ever
-// with the parked guard refusing every other request.
+// with the parked guard refusing every other request. The coordinates are published by
+// indigo_update_coordinates() here and at every other end of a goto or park, which publishes
+// the horizontal coordinates with them and keeps the ALERT until the next request.
 static void mount_slew_failed(indigo_device *device, const char *message) {
 	PRIVATE_DATA->centering = PRIVATE_DATA->slewing = PRIVATE_DATA->stopping = false;
 	MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "%s", message);
+	indigo_update_coordinates(device, message);
 	if (PRIVATE_DATA->parking) {
 		PRIVATE_DATA->parking = PRIVATE_DATA->parked = false;
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -930,7 +935,7 @@ static void mount_slew_finalizer(indigo_device *device) {
 			if (PRIVATE_DATA->stopping) {
 				PRIVATE_DATA->centering = PRIVATE_DATA->slewing = PRIVATE_DATA->stopping = false;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+				indigo_update_coordinates(device, NULL);
 				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
 				if (PRIVATE_DATA->parking) {
 					PRIVATE_DATA->parking = false;
@@ -941,10 +946,7 @@ static void mount_slew_finalizer(indigo_device *device) {
 				}
 				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			} else if (PRIVATE_DATA->centering && !PRIVATE_DATA->stalled && PRIVATE_DATA->approaches < APPROACHES) {
-				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-				indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-				if (nexstaraux_slew(device, ra, dec, false)) {
+				if (nexstaraux_slew(device, PRIVATE_DATA->target_ra, PRIVATE_DATA->target_dec, false)) {
 					PRIVATE_DATA->approaches++;
 					indigo_execute_handler_in(device, SLEW_POLL, mount_slew_finalizer);
 				} else {
@@ -965,7 +967,7 @@ static void mount_slew_finalizer(indigo_device *device) {
 				PRIVATE_DATA->centering = PRIVATE_DATA->slewing = false;
 				MOUNT_STATE_SLEW_ITEM->light.value = arrived ? INDIGO_IDLE_STATE : INDIGO_ALERT_STATE;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = arrived ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, arrived ? NULL : "Mount stopped short of the target");
+				indigo_update_coordinates(device, arrived ? NULL : "Mount stopped short of the target");
 				if (PRIVATE_DATA->parking) {
 					PRIVATE_DATA->parking = false;
 					PRIVATE_DATA->parked = arrived;
@@ -978,11 +980,8 @@ static void mount_slew_finalizer(indigo_device *device) {
 				}
 				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			} else {
-				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-				indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 				PRIVATE_DATA->stall_since = 0;
-				if (nexstaraux_slew(device, ra, dec, false)) {
+				if (nexstaraux_slew(device, PRIVATE_DATA->target_ra, PRIVATE_DATA->target_dec, false)) {
 					PRIVATE_DATA->centering = PRIVATE_DATA->slewing = true;
 					PRIVATE_DATA->approaches = 1;
 					indigo_execute_handler_in(device, SLEW_POLL, mount_slew_finalizer);
@@ -1170,6 +1169,8 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		PRIVATE_DATA->stall_since = 0;
 		PRIVATE_DATA->approaches = 0;
 		PRIVATE_DATA->stalled = false;
+		PRIVATE_DATA->target_ra = ra;
+		PRIVATE_DATA->target_dec = dec;
 		if (nexstaraux_set_tracking(device, false) && nexstaraux_slew(device, ra, dec, true)) {
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
@@ -1212,9 +1213,10 @@ static void mount_park_handler(indigo_device *device) {
 	// meridian with the OTA west of the pier; a fork parks at the pole on the meridian.
 	double ra = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) + (PRIVATE_DATA->german ? 6 : 0) + 24, 24);
 	double dec = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value > 0 ? 90 : -90;
-	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = ra;
-	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = dec;
+	// The park position is the driver's, the targets of MOUNT_EQUATORIAL_COORDINATES keep the client's request.
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+	PRIVATE_DATA->target_ra = ra;
+	PRIVATE_DATA->target_dec = dec;
 	PRIVATE_DATA->stall_since = 0;
 	PRIVATE_DATA->approaches = 0;
 	PRIVATE_DATA->stalled = false;
@@ -1231,7 +1233,7 @@ static void mount_park_handler(indigo_device *device) {
 	}
 	if (stopped && nexstaraux_slew(device, ra, dec, true)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		indigo_update_coordinates(device, NULL);
 		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 		MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);

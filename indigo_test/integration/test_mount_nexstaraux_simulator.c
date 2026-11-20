@@ -731,10 +731,51 @@ cleanup:
 	driver_stop();
 }
 
+// Every publication of the equatorial coordinates goes through indigo_update_coordinates(), which publishes the
+// horizontal coordinates of the same position in the same state right before it. The arrival, the failure and the stop
+// of a goto and the start of a park used to be published with indigo_update_property(), and the client then saw them
+// next to the horizontal coordinates of the previous poll in another state. A publication that opens the record is
+// skipped, its horizontal coordinates can have arrived before the recording started.
+static bool check_published_with_horizontal(const char *label, const coordinates_publication *events, int count) {
+	for (int i = 1; i < count; i++) {
+		if (events[i].kind == 'E' && (events[i - 1].kind != 'H' || events[i - 1].state != events[i].state)) {
+			fprintf(stderr, "    %s: publication %d of the coordinates is not preceded by the horizontal coordinates in the same state\n", label, i);
+			print_coordinates_publications(label, events, count);
+			return false;
+		}
+	}
+	return true;
+}
+
+// The ALERT that ends a goto or a park stays until the next request: from the first ALERT publication of the coordinates
+// on, every one of them is ALERT, including at least `polls` publications of the position poll that follow it.
+static bool check_alert_kept(const char *label, const coordinates_publication *events, int count, int polls) {
+	int first = find_coordinates_publication(events, count, 0, 'E', INDIGO_ALERT_STATE);
+	int alerts = 0;
+	bool ok = first >= 0;
+	for (int i = first; ok && i < count; i++) {
+		if (events[i].kind != 'E') {
+			continue;
+		}
+		if (events[i].state != INDIGO_ALERT_STATE) {
+			fprintf(stderr, "    %s: publication %d of the coordinates after the ALERT is not ALERT\n", label, i);
+			ok = false;
+		}
+		alerts++;
+	}
+	ok = ok && alerts > polls;
+	if (!ok) {
+		fprintf(stderr, "    %s: expected the ALERT and at least %d polls in ALERT (first %d, publications %d)\n", label, polls, first, alerts);
+		print_coordinates_publications(label, events, count);
+	}
+	return ok;
+}
+
 // The coordinate values are the position the motor controllers report and the request lives in the targets: a slew
 // publishes BUSY with the position before it and the horizontal coordinates of that position, then the positions on the
 // way and the target with OK; a sync publishes BUSY with the old position, then the synced one; an abort mid-slew
-// publishes a position the mount reached, never the target; a slew the controller refuses keeps the real position.
+// publishes a position the mount reached, never the target, and the ALERT stays; a slew the controller refuses keeps the
+// real position. The horizontal coordinates are published with each of them.
 static void coordinates_publish_the_mount_position(void) {
 	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
 	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
@@ -751,6 +792,7 @@ static void coordinates_publish_the_mount_position(void) {
 	int busy = check_request_publication("slew", events, count, 0, ra0, dec0, alt0, az0, 4, 35, 0.05);
 	SERIAL_CHECK_TRUE(busy >= 0);
 	SERIAL_CHECK_TRUE(check_motion_publications("slew", events, count, busy, ra0, dec0, 4, 35, 0.5, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(check_published_with_horizontal("slew", events, count));
 	// sync
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
@@ -781,6 +823,8 @@ static void coordinates_publish_the_mount_position(void) {
 	int aborted = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(aborted > busy);
 	SERIAL_CHECK_TRUE(check_reported_position("abort", events, count, busy, aborted, 14, -20, 0.5));
+	SERIAL_CHECK_TRUE(check_published_with_horizontal("aborted slew", events, count));
+	SERIAL_CHECK_TRUE(check_alert_kept("aborted slew", events, count, 2));
 	// a slew the controller refuses
 	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
 	cached_coordinates(&ra0, &dec0, &alt0, &az0);
@@ -957,24 +1001,77 @@ cleanup:
 	driver_stop();
 }
 
-// Aborting a park leaves the mount unparked instead of pretending it arrived.
+// Aborting a park leaves the mount unparked instead of pretending it arrived, and the coordinates in ALERT.
 static void abort_park(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
 	unsigned int alerts = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	unsigned int coordinates_alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	start_coordinates_publications(nexstaraux_mount.device_name);
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, 1));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_payload(AZM_MOVE_POS, "00"));
 	SERIAL_CHECK_TRUE(wait_for_payload(ALT_MOVE_POS, "00"));
 	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates_alerts));
 	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
 	// No later poll latches the mount as parked, and nothing is left busy.
 	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	int count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(check_published_with_horizontal("aborted park", events, count));
+	SERIAL_CHECK_TRUE(check_alert_kept("aborted park", events, count, 2));
 	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
 cleanup:
+	stop_coordinates_publications(NULL);
+	driver_stop();
+}
+
+// A park is no request for coordinates: the targets of MOUNT_EQUATORIAL_COORDINATES keep the client's last request and
+// the values the position the mount reports. The park used to write the park position into the targets and publish its
+// start with indigo_update_property(), without the horizontal coordinates.
+static void park_leaves_the_targets_alone(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	unsigned int parked = property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE);
+	start_coordinates_publications(nexstaraux_mount.device_name);
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, parked));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	int count = stop_coordinates_publications(events);
+	// The start of the park carries the position before it, the horizontal coordinates of that position, and the
+	// targets of the sync that pointed the mount at 5 h 20 deg.
+	int busy = check_request_publication("park", events, count, 0, ra0, dec0, alt0, az0, 5, 20, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	for (int i = 0; i < count; i++) {
+		if (events[i].kind == 'E' && (fabs(events[i].target[0] - 5) > 1e-6 || fabs(events[i].target[1] - 20) > 1e-6)) {
+			fprintf(stderr, "    park: publication %d has targets %.6f h %.6f deg, not the request 5 h 20 deg\n", i, events[i].target[0], events[i].target[1]);
+			print_coordinates_publications("park", events, count);
+			SERIAL_CHECK_TRUE(false);
+		}
+	}
+	SERIAL_CHECK_TRUE(check_published_with_horizontal("park", events, count));
+	// The mount arrived at the pole, which only the values report.
+	int arrived = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(arrived > busy);
+	SERIAL_CHECK_TRUE(fabs(events[arrived].value[1] - 90) < 1);
+	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	// Unparked, the targets are still the client's.
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, INDIGO_OK_STATE));
+	indigo_item *ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	indigo_item *dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(ra_item != NULL && dec_item != NULL);
+	SERIAL_CHECK_TRUE(fabs(ra_item->number.target - 5) < 1e-6 && fabs(dec_item->number.target - 20) < 1e-6);
+cleanup:
+	stop_coordinates_publications(NULL);
 	driver_stop();
 }
 
@@ -1038,17 +1135,22 @@ cleanup:
 
 // A motor controller can answer MC_SLEW_DONE with 0xff while the axis stands short of the target.
 // A NexStar SE asked for 90 degrees of declination stopped at 59.9 and reported the goto complete,
-// and the driver published the mount as parked there. Arrival has to be judged by the position.
+// and the driver published the mount as parked there. Arrival has to be judged by the position, and the ALERT stays.
 static void goto_stopped_short(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
 	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	start_coordinates_publications(nexstaraux_mount.device_name);
 	SERIAL_CHECK_TRUE(coordinates_change(5, 50, INDIGO_BUSY_STATE));
 	// The controller gives up a third of the way and calls the goto done; the driver has to
 	// report the failure instead of publishing the target as reached.
 	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
 	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	int count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(check_published_with_horizontal("stopped short", events, count));
+	SERIAL_CHECK_TRUE(check_alert_kept("stopped short", events, count, 2));
 	indigo_item *reached = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
 	SERIAL_CHECK_TRUE(reached != NULL);
 	printf("    the goto was called done at declination %.3f instead of 50\n", reached->number.value);
@@ -1059,6 +1161,7 @@ static void goto_stopped_short(void) {
 	SERIAL_CHECK_TRUE(state_seen(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, park_alerts));
 	SERIAL_CHECK_TRUE(switch_is(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
 cleanup:
+	stop_coordinates_publications(NULL);
 	driver_stop();
 }
 
@@ -1489,21 +1592,28 @@ cleanup:
 }
 
 // MC_SLEW_DONE answers 0xfe when the controller gave a goto up. That is not an arrival, and the
-// driver used to take it for one and go on to the slow approach.
+// driver used to take it for one and go on to the slow approach. The ALERT stays until the next goto.
 static void goto_aborted_by_mount(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
 	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(fault(AZM_SLEW_DONE, "aborted"));
+	start_coordinates_publications(nexstaraux_mount.device_name);
 	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	int count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(check_published_with_horizontal("goto given up", events, count));
+	SERIAL_CHECK_TRUE(check_alert_kept("goto given up", events, count, 2));
 	SERIAL_CHECK_EQ_INT(0, requests(AZM_GOTO_SLOW));
 	SERIAL_CHECK_TRUE(switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
 	// The mount takes the next goto.
 	SERIAL_CHECK_TRUE(coordinates_change(3, 20, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .1));
 cleanup:
+	stop_coordinates_publications(NULL);
 	driver_stop();
 }
 
@@ -2610,6 +2720,7 @@ int main(void) {
 		{ "tracking_failure", tracking_failure, "normal" },
 		{ "park_and_unpark", park_and_unpark, "normal" },
 		{ "abort_park", abort_park, "normal" },
+		{ "park_leaves_the_targets_alone", park_leaves_the_targets_alone, "normal" },
 		{ "guide_rate", guide_rate, "normal" },
 		{ "guide_rate_full_scale", guide_rate_full_scale, "normal" },
 		{ "southern_declination", southern_declination, "normal" },
