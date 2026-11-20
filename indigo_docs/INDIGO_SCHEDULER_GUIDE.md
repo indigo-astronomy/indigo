@@ -270,6 +270,8 @@ With `COMPACT` everything runs from dusk: Jellyfish more than three hours before
 - `COMPACT` for a queue that fills the night, for many short tasks, or when the weather is uncertain and you prefer data early in the night.
 - `VISIBILITY` for a queue shorter than the night, so the targets can wait for their culmination. When the queue fills the night, there is little room to move runs, and both strategies give nearly the same plan.
 
+[Two nights compared](#two-nights-compared) shows both cases in charts.
+
 **What `VISIBILITY` respects.**
 
 - It never plans fewer runs in total than `COMPACT`. Priority decides which runs are in the plan: it starts from the runs of `COMPACT`, and to keep the runs it planned before it may leave out a `COMPACT` run whose priority class is not above theirs, never a run of a higher class or an urgent one; within the plan a `high` run may come after a `normal` one when that puts both higher in the sky.
@@ -300,6 +302,53 @@ A German equatorial mount has to flip when a run crosses the meridian. The sched
 - **Durations stay the same.** The time a flip takes is not added to the planned run; the measured duration of a task already includes the flips of earlier runs, see [Task duration](#task-duration).
 
 On a simulated set of 1000 random nights at 42° N with `OFFSET` 0, the default penalty of 10 minutes reduced the flips of `VISIBILITY` from 1436 to 269 (`COMPACT`: 645) and the duration-weighted quality from 79.6 % to 78.9 % (`COMPACT`: 69.7 %), with the same number of runs.
+
+#### Two nights compared
+
+The two nights below show the plans of the three settings side by side: `COMPACT`, `VISIBILITY` with `VISIBILITY_FLIP_PENALTY` 0 and `VISIBILITY` with the default penalty of 10 minutes, both with the meridian flip enabled at `OFFSET` 0. The site and date are those of the example above: 42° N, 23° E, the night of 19 November 2026, astronomical dusk at 16:45 UTC and astronomical dawn at 03:50 UTC, 665 dark minutes. Every task has `@twilight astronomical` and `@altitude > 25`. The plans are made by the scheduler's own planner, executed run by run as the scheduler runs a night.
+
+In the charts each panel is one setting. The thin curves are the altitudes of all targets over the night, the triangles their culminations, the dashed line the altitude limit, the shaded bands twilight and the dotted lines astronomical dusk and dawn. A thick stretch of a curve is a planned run, labelled with its target and start time, and the bar of the same colour in the `runs` strip above the time axis shows when it runs. A cross marks a meridian flip during a run, on the curve and in the strip. The quality is the duration-weighted mean, as in [Choosing a strategy](#choosing-a-strategy).
+
+**A busy night.** Nine tasks need 750 minutes, more than the 665 dark minutes; Horsehead has `@priority high`. Several targets culminate close together: Heart, California and Pleiades between 21:00 and 22:40, Crab, Horsehead and Rosette between 00:00 and 01:10.
+
+![](INDIGO_SCHEDULER_GUIDE/busy_night.png)
+
+| Target | Length | Culmination (UTC) | `COMPACT` | `VISIBILITY`, penalty 0 | `VISIBILITY`, penalty 10 |
+|---|---|---|---|---|---|
+| Bubble | 60 min | 17:54 | 16:45–17:45, 98 % | 17:15–18:15, 100 %, flip | 16:50–17:50, 99 % |
+| Heart | 120 min | 21:07 | 17:45–19:45, 86 % | 18:15–20:15, 91 % | 18:05–20:05, 89 % |
+| Pleiades | 30 min | 22:21 | 19:45–20:15, 77 % | 20:15–20:45, 84 % | 20:05–20:35, 82 % |
+| California | 120 min | 22:37 | 20:15–22:15, 86 % | 20:45–22:45, 92 %, flip | 20:35–22:35, 90 % |
+| Horsehead (high) | 90 min | 00:14 | 22:15–23:45, 92 % | 23:15–00:45, 99 %, flip | 22:40–00:10, 96 % |
+| Crab | 30 min | 00:08 | 23:45–00:15, 100 %, flip | 22:45–23:15, 93 % | 00:10–00:40, 99 % |
+| Rosette | 120 min | 01:06 | 00:15–02:15, 98 %, flip | 00:45–02:45, 97 %, flip | 00:40–02:40, 97 %, flip |
+| Leo Triplet | 60 min | after dawn | 02:15–03:15, 66 % | 02:45–03:45, 74 % | 02:45–03:45, 74 % |
+| Bode | 120 min | 04:28 | not planned | not planned | not planned |
+| Night | | | 8 runs, 89 %, 2 flips | 8 runs, 92 %, 4 flips | 8 runs, 92 %, 1 flip |
+
+- `COMPACT` fills the night from dusk without a gap, always with the best-scoring task that can run. Once Rosette ends at 02:15 only 95 dark minutes are left, too few for the 120 minutes of Bode, so Leo Triplet runs low in the east. Two runs, Crab and Rosette, happen to cross the meridian.
+- `VISIBILITY` with penalty 0 keeps the same eight runs, since Bode fits nowhere: the other runs already take 630 of the 665 minutes. With only 35 spare minutes it can shift the runs a little and reorder them. It spends half an hour of them at dusk, so Bubble is centred on its culmination and every later run starts later, Horsehead close to its culmination and Leo Triplet higher in the sky; it also moves Crab before Horsehead. A high-priority run (Horsehead) may come after a normal one (Crab) when that is better for both. The quality rises from 89 % to 92 %, at the price of four flips, because a run centred on its culmination crosses the meridian.
+- `VISIBILITY` with penalty 10 makes almost the same night without the short flips. Bubble ends before its culmination, California and Horsehead end just before the meridian, and Crab starts just after it. Only Rosette keeps its flip: the 120-minute run stays centred on the culmination, because moving it off the meridian would cost more than ten minutes of full-quality imaging. One flip instead of four costs less than one percentage point of quality.
+
+When the queue fills the night, both strategies run the same tasks and `VISIBILITY` only fine-tunes the times. The flip penalty matters more here than the strategy.
+
+**A sparse night.** Four tasks need 285 minutes, less than half of the night.
+
+![](INDIGO_SCHEDULER_GUIDE/sparse_night.png)
+
+| Target | Length | Culmination (UTC) | `COMPACT` | `VISIBILITY`, penalty 0 | `VISIBILITY`, penalty 10 |
+|---|---|---|---|---|---|
+| Andromeda | 90 min | 19:16 | 16:45–18:15, 78 % | 18:25–19:55, 96 %, flip | 17:45–19:15, 91 % |
+| Triangulum | 60 min | 20:07 | 18:15–19:15, 89 % | 19:55–20:55, 99 %, flip | 20:08–21:08, 98 % |
+| Bode | 90 min | 04:28 | 19:15–20:45, 44 % | 02:15–03:45, 96 % | 02:15–03:45, 96 % |
+| Orion | 45 min | 00:08 | 20:55–21:40, 67 % | 23:45–00:30, 100 %, flip | 00:09–00:54, 99 % |
+| Night | | | 4 runs, 68 %, no flip | 4 runs, 97 %, 3 flips | 4 runs, 95 %, no flip |
+
+- `COMPACT` starts at dusk and runs every task as soon as it can. Bode starts at 19:15, as soon as it climbs above 25° and nine hours before its culmination, and Orion starts when it rises above the limit at 20:55. After 21:40 the equipment is idle for the rest of the night.
+- `VISIBILITY` with penalty 0 waits for each target. Andromeda and Triangulum are centred on their culminations, Orion runs around its culmination at midnight and Bode runs at the end of the night, as high as it gets before dawn. The scheduler is idle from dusk to 18:25, from 20:55 to 23:45 and from 00:30 to 02:15. The quality rises from 68 % to 97 %, but three runs cross the meridian.
+- `VISIBILITY` with penalty 10 keeps the waits and moves each short run to one side of the meridian. Andromeda ends at its culmination, while Triangulum and Orion start just after theirs. Bode stays where it is, because its run ends before its culmination at 04:28. Three flips are avoided for two percentage points of quality.
+
+**Regenerating the charts.** The task lists are in `indigo_test/benchmark/bench_scheduler_plan.c`; `bench_scheduler_plan --examples` writes the plans and the target altitudes as JSON, and `tools/scheduler_plan_charts.py` draws the charts and prints the run tables. Its header lists the commands.
 
 ### Time windows
 
