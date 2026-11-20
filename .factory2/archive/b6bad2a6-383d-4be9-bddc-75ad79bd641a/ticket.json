@@ -1,0 +1,431 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b6bad2a6-383d-4be9-bddc-75ad79bd641a",
+  "revision": 19,
+  "title": "indigo_mount_nexstar: a position readback failure during motion can end a successful GoTo in ALERT",
+  "description": "nexstar_read_position() failing once while the mount is slewing publishes ALERT after BUSY, which is then kept, so a GoTo that completes correctly ends as ALERT. Found while working on ticket 42b85be0-1f19-4607-b3c3-746e60317d17 (closed, commit a09e0f878), which introduced the kept coordinates ALERT in indigo_update_coordinates(): an ALERT published after a BUSY stays until the next BUSY. Reproduce in the driver's simulator suite before changing code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:04.927202Z",
+  "status": "closed",
+  "branch": "ticket/b6bad2a6-383d-4be9-bddc-75ad79bd641a",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "6d7c7dd7-6511-407f-8c69-8fdcdfece499",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c6a177e0-8a01-4c13-a5ba-228d34508485",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T17:35:39.545042Z",
+          "last_activity_at": "2026-11-20T18:02:19.733846Z",
+          "ended_at": "2026-11-20T18:02:19.733846Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1600188.804,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T17:35:39.545042Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/b6bad2a6-383d-4be9-bddc-75ad79bd641a"
+        },
+        {
+          "at": "2026-11-20T18:02:19.733846Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1600188.804,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "6287aba6-bab3-4133-a2f4-1b7301732f2b",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "0503e1ba-7c1b-43d6-ac08-0cce15a34180",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:02:19.734039Z",
+          "last_activity_at": "2026-11-20T18:11:20.583603Z",
+          "ended_at": "2026-11-20T18:11:20.583603Z",
+          "outcome": {
+            "summary": "Pass. Fix (indigo_mount_nexstar.driver:353-359, 434-442; regenerated .c:402-410, 480-491) is correct and bounded: position_failures counts consecutive polls without a valid readback, is reset on a valid read and in nexstar_configure_mount (connect); while goto_active or coordinates_busy, failures 1-2 keep BUSY with the values untouched (last real read), the 3rd publishes ALERT as before. The GOTO deadline check at the top of each poll still applies, so no path stays BUSY indefinitely; idle failures, refused GOTO (on_change ALERT), deadline timeout, short GOTO tolerance check and abort branches are unchanged. Targets untouched (preserve_values). Verified: regenerating the .driver with the worktree generator built from unchanged indigo_tools/indigo_generator.c reproduces .c/.h/_main.c byte-identically; no indigo_libs/indigo_tools change; version 52->53 / 0x03000035; README line replaces the same-configuration run per indigo_test/AGENTS.md recording rules and matches TEST_SUMMARY.md and the version; MIGRATION_STATUS 43 = 41 simulator + 2 deadline cases, Comment column unchanged. Simulator 'arrive' (mount_nexstar_simulator.c:385-394) is a one-shot opt-in control action, only active when a test writes it, consistent with SERIAL_DEVICE_SIMULATORS.md (deterministic unless a test enables variation). Tests: built the new test source against the master driver -> nexstar_goto_survives_failed_position_readback FAILs (final ALERT); built against the fix with POSITION_READ_RETRIES=1000000 -> nexstar_goto_ends_alert_when_position_readback_keeps_failing FAILs, so the second case pins the bound. Ordering in case 1 is event-driven (control consumed, poll counts); the arrive control is written while the driver waits out the malformed 'e' reply, so no race. Full suites on this tree: test_mount_nexstar_simulator 41/41, test_mount_nexstar_deadline 2/2 (mac arm64). Non-blocking nit: test_mount_nexstar_simulator.c:1975 prints a difference of property_state_revision values as 'ALERT publica",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 540849.564,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:02:19.734039Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T18:11:20.583603Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass. Fix (indigo_mount_nexstar.driver:353-359, 434-442; regenerated .c:402-410, 480-491) is correct and bounded: position_failures counts consecutive polls without a valid readback, is reset on a valid read and in nexstar_configure_mount (connect); while goto_active or coordinates_busy, failures 1-2 keep BUSY with the values untouched (last real read), the 3rd publishes ALERT as before. The GOTO deadline check at the top of each poll still applies, so no path stays BUSY indefinitely; idle failures, refused GOTO (on_change ALERT), deadline timeout, short GOTO tolerance check and abort branches are unchanged. Targets untouched (preserve_values). Verified: regenerating the .driver with the worktree generator built from unchanged indigo_tools/indigo_generator.c reproduces .c/.h/_main.c byte-identically; no indigo_libs/indigo_tools change; version 52->53 / 0x03000035; README line replaces the same-configuration run per indigo_test/AGENTS.md recording rules and matches TEST_SUMMARY.md and the version; MIGRATION_STATUS 43 = 41 simulator + 2 deadline cases, Comment column unchanged. Simulator 'arrive' (mount_nexstar_simulator.c:385-394) is a one-shot opt-in control action, only active when a test writes it, consistent with SERIAL_DEVICE_SIMULATORS.md (deterministic unless a test enables variation). Tests: built the new test source against the master driver -> nexstar_goto_survives_failed_position_readback FAILs (final ALERT); built against the fix with POSITION_READ_RETRIES=1000000 -> nexstar_goto_ends_alert_when_position_readback_keeps_failing FAILs, so the second case pins the bound. Ordering in case 1 is event-driven (control consumed, poll counts); the arrive control is written while the driver waits out the malformed 'e' reply, so no race. Full suites on this tree: test_mount_nexstar_simulator 41/41, test_mount_nexstar_deadline 2/2 (mac arm64). Non-blocking nit: test_mount_nexstar_simulator.c:1975 prints a difference of property_state_revision values as 'ALERT publica"
+        }
+      ],
+      "result": {
+        "summary": "Pass. Fix (indigo_mount_nexstar.driver:353-359, 434-442; regenerated .c:402-410, 480-491) is correct and bounded: position_failures counts consecutive polls without a valid readback, is reset on a valid read and in nexstar_configure_mount (connect); while goto_active or coordinates_busy, failures 1-2 keep BUSY with the values untouched (last real read), the 3rd publishes ALERT as before. The GOTO deadline check at the top of each poll still applies, so no path stays BUSY indefinitely; idle failures, refused GOTO (on_change ALERT), deadline timeout, short GOTO tolerance check and abort branches are unchanged. Targets untouched (preserve_values). Verified: regenerating the .driver with the worktree generator built from unchanged indigo_tools/indigo_generator.c reproduces .c/.h/_main.c byte-identically; no indigo_libs/indigo_tools change; version 52->53 / 0x03000035; README line replaces the same-configuration run per indigo_test/AGENTS.md recording rules and matches TEST_SUMMARY.md and the version; MIGRATION_STATUS 43 = 41 simulator + 2 deadline cases, Comment column unchanged. Simulator 'arrive' (mount_nexstar_simulator.c:385-394) is a one-shot opt-in control action, only active when a test writes it, consistent with SERIAL_DEVICE_SIMULATORS.md (deterministic unless a test enables variation). Tests: built the new test source against the master driver -> nexstar_goto_survives_failed_position_readback FAILs (final ALERT); built against the fix with POSITION_READ_RETRIES=1000000 -> nexstar_goto_ends_alert_when_position_readback_keeps_failing FAILs, so the second case pins the bound. Ordering in case 1 is event-driven (control consumed, poll counts); the arrive control is written while the driver waits out the malformed 'e' reply, so no race. Full suites on this tree: test_mount_nexstar_simulator 41/41, test_mount_nexstar_deadline 2/2 (mac arm64). Non-blocking nit: test_mount_nexstar_simulator.c:1975 prints a difference of property_state_revision values as 'ALERT publica",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 540849.564,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "ecc1c3fb-5673-4720-921f-04f507a0703d",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:04.927972Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "6c27ccda-1378-4cb5-9276-7119d3812ab0",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T17:02:38.640789Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "32528ae9-0ac5-4791-a578-743210d5391e",
+      "event": "task/progress",
+      "at": "2026-11-20T17:35:39.545701Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d7c7dd7-6511-407f-8c69-8fdcdfece499",
+      "text": "Implementation started on branch ticket/b6bad2a6-383d-4be9-bddc-75ad79bd641a"
+    },
+    {
+      "event_id": "5c1d51fe-bb01-4cd9-9826-e49a15b3a69d",
+      "event": "ticket/started",
+      "at": "2026-11-20T17:35:39.549387Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/b6bad2a6-383d-4be9-bddc-75ad79bd641a",
+      "base": "master"
+    },
+    {
+      "event_id": "62380877-c0d3-4b0d-9e1a-b76f4abcafef",
+      "event": "task/progress",
+      "at": "2026-11-20T17:36:28.743867Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d7c7dd7-6511-407f-8c69-8fdcdfece499",
+      "text": "Implementer launched",
+      "attempt_id": "c6a177e0-8a01-4c13-a5ba-228d34508485",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f329b17b-1959-4fb6-9e6f-5cf5056e55b7",
+      "event": "task/progress",
+      "at": "2026-11-20T17:38:58.549086Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d7c7dd7-6511-407f-8c69-8fdcdfece499",
+      "text": "Writing failed-readback-during-GOTO reproducer in the nexstar simulator suite"
+    },
+    {
+      "event_id": "8087b757-4d59-4ff2-81fe-921c8b9fc861",
+      "event": "task/progress",
+      "at": "2026-11-20T17:40:38.152831Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d7c7dd7-6511-407f-8c69-8fdcdfece499",
+      "text": "Running new nexstar readback cases against the unchanged driver (reproduction)"
+    },
+    {
+      "event_id": "04f9ea75-d2ad-4318-9912-4e676eeb7369",
+      "event": "ticket/note",
+      "at": "2026-11-20T17:41:04.330739Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction (driver 3.0.0.52, unchanged): new case nexstar_goto_survives_failed_position_readback - GOTO stalled in progress, one malformed 'e' reply, next 'L' reports the slew completed at the target. Result FAIL: coordinates published ALERT on the failed poll and the correct completion was then kept ALERT by indigo_update_coordinates() (6 ALERT publications, final state ALERT). Cause: nexstar_update_position() !position_valid branch sets ALERT also while a slew is BUSY.",
+      "tokens": null
+    },
+    {
+      "event_id": "c0245567-62e9-4cbb-b183-cf580671eb7f",
+      "event": "task/progress",
+      "at": "2026-11-20T17:46:07.923293Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d7c7dd7-6511-407f-8c69-8fdcdfece499",
+      "text": "Running full nexstar simulator and deadline suites after the fix"
+    },
+    {
+      "event_id": "b2268592-fc31-4fa6-96d1-1f7ccacd2da7",
+      "event": "task/progress",
+      "at": "2026-11-20T17:57:15.764778Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d7c7dd7-6511-407f-8c69-8fdcdfece499",
+      "text": "Recorded run: tools/run_driver_test.py mount_nexstar"
+    },
+    {
+      "event_id": "e6ec234c-3082-4fdb-8335-f51915319f55",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:01:44.406755Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Fix (driver 3.0.0.53): nexstar_update_position() counts consecutive failed position polls (position_failures, reset on a valid readback and on connect). While a GOTO or a motion owns the coordinates (goto_active or coordinates_busy), up to POSITION_READ_RETRIES = 2 consecutive failed polls keep BUSY with the last position read and the next poll retries; the third consecutive failure, or any failure while idle, publishes ALERT as before (kept by indigo_update_coordinates). Refused GOTO, timed-out GOTO, GOTO ended short of target and abort are unchanged. Library and generator untouched. Simulator: new one-shot control action 'arrive' (the goto in progress ends at its target now). Tests: nexstar_goto_survives_failed_position_readback (was FAIL with 6 ALERT publications and final ALERT, now PASS: 0 ALERT, final OK at 5 h / 35 deg) and nexstar_goto_ends_alert_when_position_readback_keeps_failing (transport closed during a stalled GOTO: ALERT published and kept, value = last real position 3 h / 20 deg, target = request 5 h / 35 deg). Full suites after the fix: test_mount_nexstar_simulator 41/41, test_mount_nexstar_deadline 2/2; recorded run 2026-11-20 18:57 3.0.0.53 mac arm64 simulator 43/43 OK. Not covered by a dedicated case: the same tolerance during manual motion (coordinates_busy path); malformed replies cost the 5 s libnexstar read timeout each, so a mount answering garbage stays BUSY up to about 3 polls plus timeouts before ALERT.",
+      "tokens": null
+    },
+    {
+      "event_id": "6039bd29-9847-463f-9e10-54610179ff6e",
+      "event": "task/progress",
+      "at": "2026-11-20T18:01:51.407032Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d7c7dd7-6511-407f-8c69-8fdcdfece499",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "adc91c5e-dc52-4fe2-81c2-791eaafe2333",
+      "event": "task/progress",
+      "at": "2026-11-20T18:01:51.428923Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d7c7dd7-6511-407f-8c69-8fdcdfece499",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "0cecf148-f6b2-4ec9-b37c-6d74543a69f1",
+      "event": "check/passed",
+      "at": "2026-11-20T18:01:51.430977Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "929ee161c6878eac2b5db1008c6a91b5da3f17cc",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "4748c6ca-1025-4e08-82ec-bfb2784dd042",
+      "event": "task/progress",
+      "at": "2026-11-20T18:02:19.734113Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6287aba6-bab3-4133-a2f4-1b7301732f2b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "3147d577-4d60-484e-9906-b159dccd1112",
+      "event": "review/started",
+      "at": "2026-11-20T18:02:19.735396Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "e96fddef-88c4-4010-b723-c5c0890d9308",
+      "event": "task/progress",
+      "at": "2026-11-20T18:02:37.019455Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6287aba6-bab3-4133-a2f4-1b7301732f2b",
+      "text": "Reviewer launched",
+      "attempt_id": "0503e1ba-7c1b-43d6-ac08-0cce15a34180",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "086c6666-05d6-426e-aad4-547f12832652",
+      "event": "task/progress",
+      "at": "2026-11-20T18:04:30.383024Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6287aba6-bab3-4133-a2f4-1b7301732f2b",
+      "text": "Building and running nexstar simulator and deadline suites"
+    },
+    {
+      "event_id": "831c5078-3d3c-4c2f-9311-2ad80217698b",
+      "event": "task/progress",
+      "at": "2026-11-20T18:11:20.583697Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6287aba6-bab3-4133-a2f4-1b7301732f2b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "2c9165a2-3560-4799-a2a0-ff181fc35d81",
+      "event": "review/passed",
+      "at": "2026-11-20T18:11:20.584921Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6287aba6-bab3-4133-a2f4-1b7301732f2b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "929ee161c6878eac2b5db1008c6a91b5da3f17cc"
+    },
+    {
+      "event_id": "db24a4bc-194b-43c4-880b-3e714d35de9f",
+      "event": "ticket/closed",
+      "at": "2026-11-20T18:11:50.130119Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T18:11:50.130094Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "82a1098a17ff699cfdb2d4b7a00b5a7e4e63e466"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "929ee161c6878eac2b5db1008c6a91b5da3f17cc",
+        "tree": "4c4e97bad8bcec40976e780aea7b8e9dc6e10360",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:01:51.428102Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/b6bad2a6-383d-4be9-bddc-75ad79bd641a/4c4e97bad8bc-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Fix (indigo_mount_nexstar.driver:353-359, 434-442; regenerated .c:402-410, 480-491) is correct and bounded: position_failures counts consecutive polls without a valid readback, is reset on a valid read and in nexstar_configure_mount (connect); while goto_active or coordinates_busy, failures 1-2 keep BUSY with the values untouched (last real read), the 3rd publishes ALERT as before. The GOTO deadline check at the top of each poll still applies, so no path stays BUSY indefinitely; idle failures, refused GOTO (on_change ALERT), deadline timeout, short GOTO tolerance check and abort branches are unchanged. Targets untouched (preserve_values). Verified: regenerating the .driver with the worktree generator built from unchanged indigo_tools/indigo_generator.c reproduces .c/.h/_main.c byte-identically; no indigo_libs/indigo_tools change; version 52->53 / 0x03000035; README line replaces the same-configuration run per indigo_test/AGENTS.md recording rules and matches TEST_SUMMARY.md and the version; MIGRATION_STATUS 43 = 41 simulator + 2 deadline cases, Comment column unchanged. Simulator 'arrive' (mount_nexstar_simulator.c:385-394) is a one-shot opt-in control action, only active when a test writes it, consistent with SERIAL_DEVICE_SIMULATORS.md (deterministic unless a test enables variation). Tests: built the new test source against the master driver -> nexstar_goto_survives_failed_position_readback FAILs (final ALERT); built against the fix with POSITION_READ_RETRIES=1000000 -> nexstar_goto_ends_alert_when_position_readback_keeps_failing FAILs, so the second case pins the bound. Ordering in case 1 is event-driven (control consumed, poll counts); the arrive control is written while the driver waits out the malformed 'e' reply, so no race. Full suites on this tree: test_mount_nexstar_simulator 41/41, test_mount_nexstar_deadline 2/2 (mac arm64). Non-blocking nit: test_mount_nexstar_simulator.c:1975 prints a difference of property_state_revision values as 'ALERT publications', which is a revision delta, not a publication count (the ticket note's '6 ALERT publications' has the same meaning). Not covered, as the note states: the coordinates_busy (manual motion) branch of the tolerance has no dedicated case.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "929ee161c6878eac2b5db1008c6a91b5da3f17cc",
+        "tree": "4c4e97bad8bcec40976e780aea7b8e9dc6e10360",
+        "at": "2026-11-20T18:11:20.583439Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T17:41:04.329508Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction (driver 3.0.0.52, unchanged): new case nexstar_goto_survives_failed_position_readback - GOTO stalled in progress, one malformed 'e' reply, next 'L' reports the slew completed at the target. Result FAIL: coordinates published ALERT on the failed poll and the correct completion was then kept ALERT by indigo_update_coordinates() (6 ALERT publications, final state ALERT). Cause: nexstar_update_position() !position_valid branch sets ALERT also while a slew is BUSY.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T18:01:44.405325Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Fix (driver 3.0.0.53): nexstar_update_position() counts consecutive failed position polls (position_failures, reset on a valid readback and on connect). While a GOTO or a motion owns the coordinates (goto_active or coordinates_busy), up to POSITION_READ_RETRIES = 2 consecutive failed polls keep BUSY with the last position read and the next poll retries; the third consecutive failure, or any failure while idle, publishes ALERT as before (kept by indigo_update_coordinates). Refused GOTO, timed-out GOTO, GOTO ended short of target and abort are unchanged. Library and generator untouched. Simulator: new one-shot control action 'arrive' (the goto in progress ends at its target now). Tests: nexstar_goto_survives_failed_position_readback (was FAIL with 6 ALERT publications and final ALERT, now PASS: 0 ALERT, final OK at 5 h / 35 deg) and nexstar_goto_ends_alert_when_position_readback_keeps_failing (transport closed during a stalled GOTO: ALERT published and kept, value = last real position 3 h / 20 deg, target = request 5 h / 35 deg). Full suites after the fix: test_mount_nexstar_simulator 41/41, test_mount_nexstar_deadline 2/2; recorded run 2026-11-20 18:57 3.0.0.53 mac arm64 simulator 43/43 OK. Not covered by a dedicated case: the same tolerance during manual motion (coordinates_busy path); malformed replies cost the 5 s libnexstar read timeout each, so a mount answering garbage stays BUSY up to about 3 polls plus timeouts before ALERT.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "82a1098a17ff699cfdb2d4b7a00b5a7e4e63e466",
+      "tree": "4c4e97bad8bcec40976e780aea7b8e9dc6e10360",
+      "base": "master",
+      "at": "2026-11-20T18:11:50.026129Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:04.927202Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T17:02:38.640644Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 2141038.368,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 25,
+    "sha256": "74a267f8d70f505f38b717809cef50632af8de623e19a477281c4ff1c2c14cce"
+  }
+}
