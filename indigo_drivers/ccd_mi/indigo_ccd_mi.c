@@ -48,7 +48,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000027
+#define DRIVER_VERSION       0x03000028
 #define DRIVER_NAME          "indigo_ccd_mi"
 #define DRIVER_LABEL         "Moravian Instruments Camera"
 #define CCD_DEVICE_NAME      "%s"
