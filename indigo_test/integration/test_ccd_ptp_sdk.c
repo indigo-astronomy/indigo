@@ -86,6 +86,8 @@ static bool canon_transfer_large;
 static atomic_int canon_transfer_received, canon_transfer_first_request, canon_transfer_protocol_errors;
 static char canon_transfer_blob_format[16];
 static atomic_int mirror_reject, mirror_writes, mirror_value;
+// 1 = DeviceBusy for a DriveMode write of the value the camera already has.
+static atomic_int drive_reject, drive_writes;
 static atomic_bool mirror_suppress_events;
 static bool mirror_unknown_profile;
 static bool olympus_native_events;
@@ -1019,6 +1021,14 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 				}
 				atomic_store(&mirror_value, v);
 			}
+			if (c->command.code == ptp_operation_canon_SetDevicePropValueEx && code == ptp_property_canon_DriveMode) {
+				atomic_fetch_add(&drive_writes, 1);
+				if (atomic_load(&drive_reject) == 1 && target && *target == v) {
+					c->response = ptp_response_DeviceBusy;
+					*length = size;
+					return LIBUSB_SUCCESS;
+				}
+			}
 			// The ILCE-7RM4 acknowledges a SetControlDeviceA it drops while busy after a capture.
 			if (c->command.code == ptp_operation_sony_SetControlDeviceA && atomic_load(&sony_dropped_writes) > 0) {
 				atomic_fetch_sub(&sony_dropped_writes, 1);
@@ -1270,6 +1280,8 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 	atomic_store(&mirror_writes, 0);
 	atomic_store(&mirror_value, 0);
 	atomic_store(&mirror_suppress_events, mirror_unknown_profile);
+	atomic_store(&drive_reject, 0);
+	atomic_store(&drive_writes, 0);
 	memset(cameras, 0, sizeof(cameras));
 	memset(logical, 0, sizeof(logical));
 	atomic_store(&blobs, 0);
@@ -2143,22 +2155,42 @@ cleanup:
 	end_profile();
 }
 
-static void canon_mirror_unknown_value(void) {
-	// Advertisement alone must not be treated as a readback of Off.
+static void canon_mirror_unreported_off(void) {
+	// EOS R6 Mark II: lists MirrorUpSetting, never reports its value and answers DeviceBusy to writing it,
+	// while DriveMode already reports Single shot. Without mirror lockup neither is written before the release.
 	mirror_unknown_profile = true;
 	PTP_CHECK(begin_profile(0x04a9, 0x3218));
 	atomic_store(&mirror_reject, 2);
-	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
-	PTP_CHECK(wait_value(&exposure_state, INDIGO_ALERT_STATE));
-	PTP_CHECK(atomic_load(&mirror_writes) == 1);
-	PTP_CHECK(atomic_load(command_count + ptp_operation_canon_RemoteReleaseOn) == 0);
-	atomic_store(&mirror_reject, 0);
+	atomic_store(&drive_reject, 1);
 	for (int i = 0; i < 2; i++) {
 		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
 		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
 		PTP_CHECK(atomic_load(&blobs) == i + 1);
-		PTP_CHECK(atomic_load(&mirror_writes) == 2);
 	}
+	PTP_CHECK(atomic_load(&mirror_writes) == 0);
+	PTP_CHECK(atomic_load(&drive_writes) == 0);
+	PTP_CHECK(atomic_load(command_count + ptp_operation_canon_RemoteReleaseOn) == 2);
+cleanup:
+	end_profile();
+}
+
+static void canon_mirror_unreported_lockup(void) {
+	// A requested mirror lockup is written even when the body never reported the setting, and released again.
+	mirror_unknown_profile = true;
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	atomic_store(&drive_reject, 1);
+	for (int i = 0; i < 2; i++) {
+		bool enabled = i == 0;
+		indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_MIRROR_LOCKUP_PROPERTY_NAME, enabled ? DSLR_MIRROR_LOCKUP_LOCK_ITEM_NAME : DSLR_MIRROR_LOCKUP_UNLOCK_ITEM_NAME, true);
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&blobs) == i + 1);
+		PTP_CHECK(atomic_load(&mirror_value) == enabled);
+		PTP_CHECK(atomic_load(&mirror_writes) == i + 1);
+		PTP_CHECK(*value(cameras, ptp_property_canon_DriveMode) == (enabled ? 0x11 : 0));
+		PTP_CHECK(atomic_load(&drive_writes) == i + 1);
+	}
+	PTP_CHECK(atomic_load(command_count + ptp_operation_canon_RemoteReleaseOn) == 2);
 cleanup:
 	end_profile();
 }
@@ -4026,7 +4058,8 @@ int main(void) {
 		{ "canon_missing_dual_native", canon_missing_dual_native },
 		{ "canon_controls", canon_controls },
 		{ "canon_mirror_redundant_off", canon_mirror_redundant_off },
-		{ "canon_mirror_unknown_value", canon_mirror_unknown_value },
+		{ "canon_mirror_unreported_off", canon_mirror_unreported_off },
+		{ "canon_mirror_unreported_lockup", canon_mirror_unreported_lockup },
 		{ "canon_mirror_transitions", canon_mirror_transitions },
 		{ "canon_mirror_write_recovery", canon_mirror_write_recovery },
 		{ "canon_stream_error", canon_stream_error },

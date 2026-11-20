@@ -61,7 +61,7 @@
 | ccd_omegonpro           | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_pentax              | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ Sim | 45 / 1 | |
 | ccd_playerone           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 52 / 33 | |
-| ccd_ptp                 | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ HW  | 183 / 16 | |
+| ccd_ptp                 | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ HW  | 184 / 16 | |
 | ccd_qhy                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ⚠️ HW  | 39 / 10 | ⏰ TODO - make libqhy for Windows |
 | ccd_qhy2                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 42 / 10 | |
 | ccd_qsi                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ Sim | 61 / 0 | ⏰ TODO - find SDK for windows |

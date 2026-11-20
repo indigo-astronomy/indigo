@@ -1752,8 +1752,9 @@ bool ptp_canon_exposure(indigo_device *device) {
 			ptp_property *mirror_property = ptp_property_supported(device, mirror);
 			bool mirror_supported = mirror_property != NULL;
 			int64_t mirror_value = DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 1 : 0;
-			// Some EOS bodies reject even an Off write when the setting is already Off.
-			if (mirror_supported && (mirror_property->code != mirror || mirror_property->value.number.value != mirror_value)) {
+			// Some EOS bodies reject even an Off write when the setting is already Off, and some (EOS R6 Mark II)
+			// list the setting without ever reporting it and reject any write, so Off is written only over a reported On.
+			if (mirror_supported && (mirror_property->code == mirror ? mirror_property->value.number.value != mirror_value : mirror_value != 0)) {
 				if (!set_number_property(device, mirror, mirror_value)) {
 					return false;
 				}
@@ -1761,8 +1762,16 @@ bool ptp_canon_exposure(indigo_device *device) {
 				mirror_property->code = mirror;
 				mirror_property->value.number.value = mirror_value;
 			}
-			if (ptp_property_supported(device, ptp_property_canon_DriveMode) && !set_number_property(device, ptp_property_canon_DriveMode, mirror_supported && DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 0x11 : 0)) {
-				return false;
+			ptp_property *drive_property = ptp_property_supported(device, ptp_property_canon_DriveMode);
+			int64_t drive_value = mirror_supported && DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 0x11 : 0;
+			// DriveMode is written only when the reported value differs, for the same reason.
+			if (drive_property && (drive_property->code != ptp_property_canon_DriveMode || drive_property->value.number.value != drive_value)) {
+				if (!set_number_property(device, ptp_property_canon_DriveMode, drive_value)) {
+					return false;
+				}
+				if (drive_property->code == ptp_property_canon_DriveMode) {
+					drive_property->value.number.value = drive_value;
+				}
 			}
 			delay = mirror_supported && DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 2 : 0;
 			ptp_canon_get_event(device);
