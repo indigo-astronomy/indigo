@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "32c9bae5-217c-40df-b764-7e7fe89b8bee",
+  "revision": 1,
+  "title": "indigo_ccd_ptp: exposure fails on Canon EOS R6 Mark II, pre-shutter property write returns DeviceBusy",
+  "description": "User report (INDIGO A1 6.1_1050, INDIGO 3.0_10, macOS ICA transport, indigo_ccd_ptp 3.0.0.62, Canon EOS R6 Mark II in Bulb mode): every exposure ends with 'CCD_EXPOSURE_PROPERTY didn't become OK' / 'Exposure failed'.\n\nEvidence from the debug log: in ptp_canon_exposure() SetUILock_Canon (911b) returns OK, the following SetDevicePropValueEx_Canon (9110) returns DeviceBusy (2019), the driver issues ResetUILock_Canon and CCD_EXPOSURE goes to Alert. RemoteReleaseOn is never sent. The same sequence repeats for all three agent retries.\n\nOnly two property writes sit between the UI lock and the shutter release (indigo_ptp_canon.c, RemoteReleaseOn branch): the mirror setting and DriveMode. The log does not show the payload, so the rejected write is not proven.\n- Most likely the mirror write: the camera lists d13a MirrorUpSetting_Canon in its device info but never sends a PropValueChanged event for it, so the property slot keeps code == 0, the condition 'mirror_property->code != mirror' is true and MirrorUpSetting = 0 is written. The guard added for #778 (2d5f2e7ed) only covers bodies that report the value.\n- Second candidate: the unconditional DriveMode (d106) = 0 write; the camera already reports DriveMode = 0.\n\nExpected: an exposure on a body that advertises MirrorUpSetting without ever reporting its value starts the shutter. Proposed fix: do not write the mirror setting when mirror lockup is not requested and the camera has not reported a value for it; write DriveMode only when the requested value differs from the reported one. Reproduce in the Canon simulator/fake backend first (camera that lists d13a, sends no event for it and answers DeviceBusy to the write), add the regression test, bump the driver version.\n\nAlso seen in the same log, to be assessed while there: ResetUILock_Canon at the end of ptp_canon_initialise returns DeviceBusy and is ignored; three ICA ptp_transaction timeouts during the first connection attempt (cause not visible in the log, second connection was clean).\n\nHardware gap: no EOS R6 Mark II available; the fix needs confirmation from the reporter with a test build.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T18:24:48.370781Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "cb599e53-61e3-4549-9711-2a98fc93ac6c",
+      "event": "ticket/created",
+      "at": "2026-11-20T18:24:48.371636Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "high",
+  "severity": "high",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "high",
+    "profile": "simple",
+    "at": "2026-11-20T18:24:48.370781Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "fb1ee86444eb5adbff5d39febdefa51ff31d65d83b1201f3607d7dd7a20eb381"
+  }
+}
