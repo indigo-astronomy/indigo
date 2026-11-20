@@ -1,0 +1,417 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3d024439-bfdc-46a8-966b-75cc1af824b2",
+  "revision": 18,
+  "title": "test_mount_starbook_simulator: starbook_firmware_thresholds_select_commands is load-sensitive",
+  "description": "starbook_firmware_thresholds_select_commands failed intermittently when other suites ran on the same machine and passed in sequential runs (28/28 in the recorded run of 2026-11-20). Find the timing assumption and make the case independent of machine load.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:05.229174Z",
+  "status": "closed",
+  "branch": "ticket/3d024439-bfdc-46a8-966b-75cc1af824b2",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "39404a8c-4c86-4057-94a0-aeca33d94d63",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "7c9bcdba-ea1b-4e90-8e98-c0d9bd6fb8a8",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:12:06.851106Z",
+          "last_activity_at": "2026-11-20T18:42:50.096403Z",
+          "ended_at": "2026-11-20T18:42:50.096403Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1843245.297,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:12:06.851106Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/3d024439-bfdc-46a8-966b-75cc1af824b2"
+        },
+        {
+          "at": "2026-11-20T18:42:50.096403Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1843245.297,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "aa4df92b-f20b-4e5b-af2b-706c2638dd8b",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "88e3ef95-00af-486f-9bbd-9b52bbd36c3f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:42:50.096588Z",
+          "last_activity_at": "2026-11-20T19:04:00.097359Z",
+          "ended_at": "2026-11-20T19:04:00.097359Z",
+          "outcome": {
+            "summary": "Pass, no defects. The root cause is confirmed. In indigo_drivers/mount_starbook/indigo_mount_starbook.driver:533-544, on_timer runs every 0.5 s and republishes MOUNT_UTC_TIME as OK whenever the state is not BUSY. The refusal at :649 is therefore an ALERT update that the next poll replaces. The old wait_for_property_state_after (indigo_test/integration/simulator_test_common.h:390) needed ALERT to still be in the cache when the 100 ms wait loop sampled it, so it was load-sensitive. Independent reproduction on a scratch copy built against the worktree, with a 1 s sleep before the wait: the old wait failed 2/2 at that assertion; the new wait passed 2/2; the unmodified case passed 2/2. The new wait still proves the ALERT came after this request: property_state_revisions[state] stores the global revision of the last update in that state (simulator_test_common.h:238-239), and revision is taken before indigo_change_text_property (test_mount_starbook_simulator.c:998), so an earlier ALERT cannot satisfy it. The /SETTIME count of 0 at :1006 still checks that no command was sent. Driver behaviour: I consider it legitimate and not worth a ticket. MOUNT_UTC_TIME mirrors the mount clock. mount_lx200 (indigo_mount_lx200.c:4080-4089) and mount_ioptron (indigo_mount_ioptron.c:1795-1809) use the same poll pattern. The lx200 (:3481, :5145), nexstar (:793, :1300) and rainbow (:326, :391) suites already wait for refused-UTC ALERTs with wait_for_property_state_seen_after. Clients still receive the ALERT update on the bus. Other waits in the case: GEOGRAPHIC_COORDINATES ALERT (:994), X_STARBOOK_TIMEZONE ALERT (:995) and MOUNT_SET_HOST_TIME ALERT (:1002) are not republished by the poll, so they are stable. The EQUATORIAL waits (:984-985) already use seen_after for BUSY and wait for the steady OK. Out of scope, for the owner only: :524 wait_for_fast_state_after(BUSY) samples a guider BUSY that lasts only 20 ms with a 1 ms loop, which is the same 'current state of a transient state' pattern (",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1270000.771,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:42:50.096588Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T19:04:00.097359Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass, no defects. The root cause is confirmed. In indigo_drivers/mount_starbook/indigo_mount_starbook.driver:533-544, on_timer runs every 0.5 s and republishes MOUNT_UTC_TIME as OK whenever the state is not BUSY. The refusal at :649 is therefore an ALERT update that the next poll replaces. The old wait_for_property_state_after (indigo_test/integration/simulator_test_common.h:390) needed ALERT to still be in the cache when the 100 ms wait loop sampled it, so it was load-sensitive. Independent reproduction on a scratch copy built against the worktree, with a 1 s sleep before the wait: the old wait failed 2/2 at that assertion; the new wait passed 2/2; the unmodified case passed 2/2. The new wait still proves the ALERT came after this request: property_state_revisions[state] stores the global revision of the last update in that state (simulator_test_common.h:238-239), and revision is taken before indigo_change_text_property (test_mount_starbook_simulator.c:998), so an earlier ALERT cannot satisfy it. The /SETTIME count of 0 at :1006 still checks that no command was sent. Driver behaviour: I consider it legitimate and not worth a ticket. MOUNT_UTC_TIME mirrors the mount clock. mount_lx200 (indigo_mount_lx200.c:4080-4089) and mount_ioptron (indigo_mount_ioptron.c:1795-1809) use the same poll pattern. The lx200 (:3481, :5145), nexstar (:793, :1300) and rainbow (:326, :391) suites already wait for refused-UTC ALERTs with wait_for_property_state_seen_after. Clients still receive the ALERT update on the bus. Other waits in the case: GEOGRAPHIC_COORDINATES ALERT (:994), X_STARBOOK_TIMEZONE ALERT (:995) and MOUNT_SET_HOST_TIME ALERT (:1002) are not republished by the poll, so they are stable. The EQUATORIAL waits (:984-985) already use seen_after for BUSY and wait for the steady OK. Out of scope, for the owner only: :524 wait_for_fast_state_after(BUSY) samples a guider BUSY that lasts only 20 ms with a 1 ms loop, which is the same 'current state of a transient state' pattern ("
+        }
+      ],
+      "result": {
+        "summary": "Pass, no defects. The root cause is confirmed. In indigo_drivers/mount_starbook/indigo_mount_starbook.driver:533-544, on_timer runs every 0.5 s and republishes MOUNT_UTC_TIME as OK whenever the state is not BUSY. The refusal at :649 is therefore an ALERT update that the next poll replaces. The old wait_for_property_state_after (indigo_test/integration/simulator_test_common.h:390) needed ALERT to still be in the cache when the 100 ms wait loop sampled it, so it was load-sensitive. Independent reproduction on a scratch copy built against the worktree, with a 1 s sleep before the wait: the old wait failed 2/2 at that assertion; the new wait passed 2/2; the unmodified case passed 2/2. The new wait still proves the ALERT came after this request: property_state_revisions[state] stores the global revision of the last update in that state (simulator_test_common.h:238-239), and revision is taken before indigo_change_text_property (test_mount_starbook_simulator.c:998), so an earlier ALERT cannot satisfy it. The /SETTIME count of 0 at :1006 still checks that no command was sent. Driver behaviour: I consider it legitimate and not worth a ticket. MOUNT_UTC_TIME mirrors the mount clock. mount_lx200 (indigo_mount_lx200.c:4080-4089) and mount_ioptron (indigo_mount_ioptron.c:1795-1809) use the same poll pattern. The lx200 (:3481, :5145), nexstar (:793, :1300) and rainbow (:326, :391) suites already wait for refused-UTC ALERTs with wait_for_property_state_seen_after. Clients still receive the ALERT update on the bus. Other waits in the case: GEOGRAPHIC_COORDINATES ALERT (:994), X_STARBOOK_TIMEZONE ALERT (:995) and MOUNT_SET_HOST_TIME ALERT (:1002) are not republished by the poll, so they are stable. The EQUATORIAL waits (:984-985) already use seen_after for BUSY and wait for the steady OK. Out of scope, for the owner only: :524 wait_for_fast_state_after(BUSY) samples a guider BUSY that lasts only 20 ms with a 1 ms loop, which is the same 'current state of a transient state' pattern (",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1270000.771,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "85ef7dab-6cb9-4f95-a3b0-6d05af579d89",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:05.230385Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "d41eadd8-fe6d-46cf-b48d-5688d3323569",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T17:02:38.805186Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "42aa00d8-8b50-47e3-91c3-9ddf3020aaf2",
+      "event": "task/progress",
+      "at": "2026-11-20T18:12:06.851526Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "39404a8c-4c86-4057-94a0-aeca33d94d63",
+      "text": "Implementation started on branch ticket/3d024439-bfdc-46a8-966b-75cc1af824b2"
+    },
+    {
+      "event_id": "87b4818a-d9f2-4cc9-bad3-6867d1a3d297",
+      "event": "ticket/started",
+      "at": "2026-11-20T18:12:06.853384Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/3d024439-bfdc-46a8-966b-75cc1af824b2",
+      "base": "master"
+    },
+    {
+      "event_id": "63a62be0-7c7c-4241-866c-96f3bb16e3b0",
+      "event": "task/progress",
+      "at": "2026-11-20T18:12:58.219346Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "39404a8c-4c86-4057-94a0-aeca33d94d63",
+      "text": "Implementer launched",
+      "attempt_id": "7c9bcdba-ea1b-4e90-8e98-c0d9bd6fb8a8",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0dd5bfd5-1667-4ca9-8fff-d993ad165caa",
+      "event": "task/progress",
+      "at": "2026-11-20T18:14:49.149783Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "39404a8c-4c86-4057-94a0-aeca33d94d63",
+      "text": "Building library, starbook driver and suite in the worktree"
+    },
+    {
+      "event_id": "68e7f372-26ed-479f-8114-730235a14c4f",
+      "event": "task/progress",
+      "at": "2026-11-20T18:16:08.857750Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "39404a8c-4c86-4057-94a0-aeca33d94d63",
+      "text": "Running starbook firmware-thresholds case under artificial CPU load"
+    },
+    {
+      "event_id": "86e9cef5-94ed-4f5b-80ee-862590d0eceb",
+      "event": "task/progress",
+      "at": "2026-11-20T18:22:13.711207Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "39404a8c-4c86-4057-94a0-aeca33d94d63",
+      "text": "Running full starbook suite under artificial load after the fix"
+    },
+    {
+      "event_id": "650b2b5c-c6b6-4e8f-90e7-9baa98376e3b",
+      "event": "task/progress",
+      "at": "2026-11-20T18:39:18.699650Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "39404a8c-4c86-4057-94a0-aeca33d94d63",
+      "text": "Recorded run: tools/run_driver_test.py mount_starbook"
+    },
+    {
+      "event_id": "460298f3-10e2-4551-a7b3-98ab5a7ee838",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:41:41.582411Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Root cause (test assumption, not a driver defect): indigo_test/integration/test_mount_starbook_simulator.c:1000 waited with wait_for_property_state_after(UTC_TIME, ALERT) for the refused UTC time write on firmware 2.70. The driver's 0.5 s status poll (indigo_mount_starbook.driver on_timer, MOUNT_UTC_TIME block) republishes the mount clock as OK right after the refusal, so ALERT is the current state only until the next poll; a test thread delayed by machine load missed it. Reproduction: the first run of the case on a loaded machine failed at line 1000; deterministic repro by a temporary 1 s delay before that wait failed 3/3 at the same assertion. Fix: wait_for_property_state_seen_after(UTC_TIME, ALERT, revision), the convention the suite already uses for poll-overwritten ALERTs; with the same 1 s delay it passed 3/3. The /SETTIME count stays 0. After the fix: case 10/10 unloaded before fix (baseline flakiness only under external load), full suite 3x 28/28 under 24 busy loops, recorded run 2026-11-20 19:40 28/28 OK. No driver change.",
+      "tokens": null
+    },
+    {
+      "event_id": "2f8c95dd-dbf0-45a0-883f-533f679c916f",
+      "event": "task/progress",
+      "at": "2026-11-20T18:42:25.396482Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "39404a8c-4c86-4057-94a0-aeca33d94d63",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "8fae8a7e-9298-46bb-9325-e78aca3a84e8",
+      "event": "task/progress",
+      "at": "2026-11-20T18:42:25.419321Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "39404a8c-4c86-4057-94a0-aeca33d94d63",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e7b9c733-6554-43dd-b0e3-ee9194713967",
+      "event": "check/passed",
+      "at": "2026-11-20T18:42:25.420924Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "6cac47453b8e8e92e60d6b82871ba1467bf2c8e0",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "2659d232-c028-448d-83fd-5148dc95e7f7",
+      "event": "task/progress",
+      "at": "2026-11-20T18:42:50.096659Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "aa4df92b-f20b-4e5b-af2b-706c2638dd8b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "d42e9b73-8637-49d1-b743-bef1743a51f3",
+      "event": "review/started",
+      "at": "2026-11-20T18:42:50.097907Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "822d3af5-e208-487c-9163-f19af37fee72",
+      "event": "task/progress",
+      "at": "2026-11-20T18:43:07.885429Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "aa4df92b-f20b-4e5b-af2b-706c2638dd8b",
+      "text": "Reviewer launched",
+      "attempt_id": "88e3ef95-00af-486f-9bbd-9b52bbd36c3f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e051407d-51ae-4519-bd22-e9b7c64a4fc9",
+      "event": "task/progress",
+      "at": "2026-11-20T18:44:47.574739Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "aa4df92b-f20b-4e5b-af2b-706c2638dd8b",
+      "text": "Building starbook suite and a scratch delayed-wait variant to confirm the race"
+    },
+    {
+      "event_id": "1e019b64-51df-41ca-a487-895f156ecdf4",
+      "event": "task/progress",
+      "at": "2026-11-20T19:04:00.097460Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "aa4df92b-f20b-4e5b-af2b-706c2638dd8b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "5bb144c0-fdeb-4817-bfc3-e78b5ae74ce9",
+      "event": "review/passed",
+      "at": "2026-11-20T19:04:00.098764Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "aa4df92b-f20b-4e5b-af2b-706c2638dd8b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "6cac47453b8e8e92e60d6b82871ba1467bf2c8e0"
+    },
+    {
+      "event_id": "ae7cf34a-c0a3-42d9-b9c2-c620be4c5bc0",
+      "event": "ticket/closed",
+      "at": "2026-11-20T19:04:17.663980Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T19:04:17.663956Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "33560bc4dd0c7677c07a276442a488c366e413ad"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6cac47453b8e8e92e60d6b82871ba1467bf2c8e0",
+        "tree": "6ed71e8130dbf0cccb33bf25cc780f3193e3975a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:42:25.418687Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/3d024439-bfdc-46a8-966b-75cc1af824b2/6ed71e8130db-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass, no defects. The root cause is confirmed. In indigo_drivers/mount_starbook/indigo_mount_starbook.driver:533-544, on_timer runs every 0.5 s and republishes MOUNT_UTC_TIME as OK whenever the state is not BUSY. The refusal at :649 is therefore an ALERT update that the next poll replaces. The old wait_for_property_state_after (indigo_test/integration/simulator_test_common.h:390) needed ALERT to still be in the cache when the 100 ms wait loop sampled it, so it was load-sensitive. Independent reproduction on a scratch copy built against the worktree, with a 1 s sleep before the wait: the old wait failed 2/2 at that assertion; the new wait passed 2/2; the unmodified case passed 2/2. The new wait still proves the ALERT came after this request: property_state_revisions[state] stores the global revision of the last update in that state (simulator_test_common.h:238-239), and revision is taken before indigo_change_text_property (test_mount_starbook_simulator.c:998), so an earlier ALERT cannot satisfy it. The /SETTIME count of 0 at :1006 still checks that no command was sent. Driver behaviour: I consider it legitimate and not worth a ticket. MOUNT_UTC_TIME mirrors the mount clock. mount_lx200 (indigo_mount_lx200.c:4080-4089) and mount_ioptron (indigo_mount_ioptron.c:1795-1809) use the same poll pattern. The lx200 (:3481, :5145), nexstar (:793, :1300) and rainbow (:326, :391) suites already wait for refused-UTC ALERTs with wait_for_property_state_seen_after. Clients still receive the ALERT update on the bus. Other waits in the case: GEOGRAPHIC_COORDINATES ALERT (:994), X_STARBOOK_TIMEZONE ALERT (:995) and MOUNT_SET_HOST_TIME ALERT (:1002) are not republished by the poll, so they are stable. The EQUATORIAL waits (:984-985) already use seen_after for BUSY and wait for the steady OK. Out of scope, for the owner only: :524 wait_for_fast_state_after(BUSY) samples a guider BUSY that lasts only 20 ms with a 1 ms loop, which is the same 'current state of a transient state' pattern (overwritten by the guider finalizer, not the poll) and can be load-sensitive. :642 and :1066 wait for UTC_TIME OK after a set; they rely on the synchronously published BUSY and the poll's BUSY guard, and only a theoretical race between the poll's state check at .driver:535 and its OK assignment at :539 could end them early. Formatting: tabs, a one-line call and a // comment; the whitespace check passed. The README change is only the ## Testing record line, replaced in place for the mac arm64 simulator configuration. It matches the TEST_SUMMARY.md row (2026-11-20 19:40, 3.0.0.14, 28/28 OK), and 3.0.0.14 matches version = 14 in the .driver. There is no driver change, so no version bump is needed. Nothing else is touched. Not verified: the full suite under load and the recorded 19:40 run itself.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "6cac47453b8e8e92e60d6b82871ba1467bf2c8e0",
+        "tree": "6ed71e8130dbf0cccb33bf25cc780f3193e3975a",
+        "at": "2026-11-20T19:04:00.097209Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T18:41:41.581251Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Root cause (test assumption, not a driver defect): indigo_test/integration/test_mount_starbook_simulator.c:1000 waited with wait_for_property_state_after(UTC_TIME, ALERT) for the refused UTC time write on firmware 2.70. The driver's 0.5 s status poll (indigo_mount_starbook.driver on_timer, MOUNT_UTC_TIME block) republishes the mount clock as OK right after the refusal, so ALERT is the current state only until the next poll; a test thread delayed by machine load missed it. Reproduction: the first run of the case on a loaded machine failed at line 1000; deterministic repro by a temporary 1 s delay before that wait failed 3/3 at the same assertion. Fix: wait_for_property_state_seen_after(UTC_TIME, ALERT, revision), the convention the suite already uses for poll-overwritten ALERTs; with the same 1 s delay it passed 3/3. The /SETTIME count stays 0. After the fix: case 10/10 unloaded before fix (baseline flakiness only under external load), full suite 3x 28/28 under 24 busy loops, recorded run 2026-11-20 19:40 28/28 OK. No driver change.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "33560bc4dd0c7677c07a276442a488c366e413ad",
+      "tree": "6ed71e8130dbf0cccb33bf25cc780f3193e3975a",
+      "base": "master",
+      "at": "2026-11-20T19:04:17.583530Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:05.229174Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T17:02:38.805051Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 3113246.068,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 24,
+    "sha256": "9718200c12fdd7dece0cfbf7e912ca68c505ba9014d4b25e8dafd6d89831faa2"
+  }
+}
