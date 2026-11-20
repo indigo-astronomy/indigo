@@ -2,7 +2,7 @@
 
 **DRAFT operating manual — implementation inspected; these written recipes are not newly runtime-validated; this manual is included in compiled MCP help.**
 
-Module `indigo_agent_mcp`; device `MCP Agent`; lifecycle behavior below applies to driver version 3.0.0.3. It adapts the existing INDIGO bus to MCP clients. It does not replace Imager, Guider, Mount or solver workflows: use it to inspect those agents and submit their documented commands. Direct hardware properties are appropriate for setup/service tasks described in [server/device preparation](../server-and-devices.md), not an automatic fallback for an absent science agent.
+Module `indigo_agent_mcp`; device `MCP Agent`; lifecycle behavior below applies to driver version 3.0.0.5. It adapts the existing INDIGO bus to MCP clients. It does not replace Imager, Guider, Mount or solver workflows: use it to inspect those agents and submit their documented commands. Direct hardware properties are appropriate for setup/service tasks described in [server/device preparation](../server-and-devices.md), not an automatic fallback for an absent science agent.
 
 For native plate solving, use the [solver operating manual](platesolver.md); the optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) covers algorithms, WCS and indexes.
 

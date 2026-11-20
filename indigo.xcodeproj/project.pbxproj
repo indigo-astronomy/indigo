@@ -5290,6 +5290,7 @@
 		48E7D0A12F0C000000000003 /* indigo_hexdump */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_hexdump; sourceTree = BUILT_PRODUCTS_DIR; };
 		48E7D0A12F0C000000000004 /* test_indigo_hexdump.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_indigo_hexdump.py; sourceTree = "<group>"; };
 		48E7D0A12F0C00000000000F /* test_embedded_file_dependencies.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_embedded_file_dependencies.py; sourceTree = "<group>"; };
+		062E82E9BA5249D5A0000001 /* test_agent_mcp_help.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_agent_mcp_help.py; sourceTree = "<group>"; };
 		9D44F38D2DA55EAE00AB7377 /* indigo_aux_upb3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_upb3.driver; sourceTree = "<group>"; };
 		9D45254720E0FB20004D1137 /* indigo_ccd_andor_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_andor_main.c; sourceTree = "<group>"; };
 		9D45254820E0FB20004D1137 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -6225,6 +6226,7 @@
 				D7CE00EAEFC3F94DA3E0BDAB /* test_ftdi_build.py */,
 				48E7D0A12F0C000000000004 /* test_indigo_hexdump.py */,
 				48E7D0A12F0C00000000000F /* test_embedded_file_dependencies.py */,
+				062E82E9BA5249D5A0000001 /* test_agent_mcp_help.py */,
 			);
 			path = buildsystem;
 			sourceTree = "<group>";

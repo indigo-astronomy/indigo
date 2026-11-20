@@ -208,7 +208,7 @@ static void lifecycle_is_idempotent_and_starts_immediately(void) {
 	ASSERT_TRUE(ensure_fixture());
 	indigo_driver_info info;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000003, info.version);
+	ASSERT_EQ_INT(INDIGO_DRIVER_API_3, INDIGO_DRIVER_API_GENERATION(info.version));
 	char response[4096];
 	ASSERT_TRUE(post_body(ping_request, sizeof(ping_request) - 1, MCP_HEADERS, response, sizeof(response)));
 	ASSERT_EQ_INT(200, response_status(response));

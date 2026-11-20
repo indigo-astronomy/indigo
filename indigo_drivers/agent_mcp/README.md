@@ -20,7 +20,7 @@ For Codex, the MCP server entry uses that URL. Claude Desktop local Code session
 
 ## Status
 
-Driver version 3.0.0.3 starts the service on load. The historical client/simulator checks below apply to their recorded versions; they do not claim that a running server has been reloaded with this version.
+Driver version 3.0.0.5 starts the service on load. The historical client/simulator checks below apply to their recorded versions; they do not claim that a running server has been reloaded with this version.
 
 MCP `2025-11-25`: initialization with agent-first instructions, initialized notifications, ping, `resources/list`, `resources/read`, and tools `get_help`, `list_devices`, `list_properties`, `get_property` and `set_property`. Discovery, reads and reversible text writes were verified with Codex CLI `0.166.0-alpha.5.1` and Claude Desktop `4.16336.0` in local Code mode, using the CCD and mount simulators. Client-side numeric/switch writes, BLOB downloads and Desktop Chat were not exercised.
 
