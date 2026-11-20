@@ -35,9 +35,13 @@
 // mount clock/site used for LST, side of pier and altitude/azimuth.
 //
 // Test control ("<ready-file>.control", consumed atomically):
-//   <command>\t<reply>[\t<count>]   reply override (DROP = no reply, DELAY:<ms> =
+//   <command>\t<reply>[\t<count>[\t<digit|->]]
+//                                   reply override (DROP = no reply, DELAY:<ms> =
 //                                   delay then normal handling); count 0 = sticky,
-//                                   reply CLEAR removes the rule
+//                                   reply CLEAR removes the rule; the optional last
+//                                   field sets the status override as @status does
+//                                   when the rule fires, so a later command of the
+//                                   same poll sees it
 //   @status\t<digit|->              override the reported system status digit
 //   @close\t1                       close the current TCP client connection
 //   @halt\t1                        end a running slew where it is, as a mount that
@@ -109,6 +113,7 @@ typedef struct {
 	char command[64];
 	char reply[128];
 	int count;
+	char status;
 } reply_rule;
 
 typedef struct {
@@ -655,7 +660,7 @@ static void format_signed(char *buffer, size_t size, long value, int digits) {
 
 // ---------------------------------------------------------------- control file
 
-static void add_rule(const char *command, const char *reply, int count) {
+static void add_rule(const char *command, const char *reply, int count, char status) {
 	size_t command_length = strlen(command), reply_length = strlen(reply);
 	// A shortened rule would match the wrong command or answer the wrong bytes, and the test would
 	// fail somewhere else, so refuse it and say so.
@@ -676,6 +681,7 @@ static void add_rule(const char *command, const char *reply, int count) {
 			memcpy(rules[i].command, command, command_length + 1);
 			memcpy(rules[i].reply, reply, reply_length + 1);
 			rules[i].count = count;
+			rules[i].status = status;
 			return;
 		}
 	}
@@ -702,8 +708,14 @@ static void read_control(void) {
 		*reply++ = 0;
 		char *count_text = strchr(reply, '\t');
 		int count = 1;
+		char status = 0;
 		if (count_text != NULL) {
 			*count_text++ = 0;
+			char *status_text = strchr(count_text, '\t');
+			if (status_text != NULL) {
+				*status_text++ = 0;
+				status = *status_text;
+			}
 			count = atoi(count_text);
 		}
 		if (!strcmp(line, "@status")) {
@@ -719,7 +731,7 @@ static void read_control(void) {
 				log_event("", "CLOSE");
 			}
 		} else {
-			add_rule(line, reply, count);
+			add_rule(line, reply, count, status);
 		}
 	}
 	fclose(file);
@@ -735,6 +747,9 @@ static bool apply_rule(const char *command) {
 		}
 		char reply[128];
 		snprintf(reply, sizeof(reply), "%s", rule->reply);
+		if (rule->status) {
+			state.status_override = rule->status == '-' ? 0 : rule->status;
+		}
 		if (rule->count > 0 && --rule->count == 0) {
 			rule->command[0] = 0;
 		}

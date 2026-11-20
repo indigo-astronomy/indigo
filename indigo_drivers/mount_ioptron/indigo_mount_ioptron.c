@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000045
+#define DRIVER_VERSION       0x03000046
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -47,6 +47,9 @@
 #define DEC_MIN_DIF          0.1
 // a park or home the mount acknowledged but did not start within this time [s] failed
 #define START_TIMEOUT        5.0
+// Consecutive polls with a failed position readback, failures during the slew included, up to which a slew the
+// controller reports as ended stays BUSY and the next poll retries; one more failure ends it ALERT.
+#define POSITION_READ_RETRIES 2
 
 typedef enum {
 	UNKNOWN = 0,
@@ -251,6 +254,7 @@ typedef struct {
 	int utc_offset;
 	bool slewing, tracking, parked, homed;
 	bool goto_issued, coordinates_failed;
+	int position_failures;
 	bool goto_target_valid, goto_settling, stopping;
 	double goto_target_ra, goto_target_dec;
 	bool park_moving, home_moving;
@@ -1678,16 +1682,20 @@ static void ioptron_update_mount_state(indigo_device *device) {
 	const char *coordinates_message = NULL, *park_message = NULL, *home_message = NULL;
 	bool coordinates_read = ioptron_read_position(device);
 	if (coordinates_read) {
+		PRIVATE_DATA->position_failures = 0;
 		if (PRIVATE_DATA->coordinates_failed) {
 			PRIVATE_DATA->coordinates_failed = false;
 			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
-	} else if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
-		// keep the last valid coordinates, report the failed readback
-		PRIVATE_DATA->coordinates_failed = true;
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		PRIVATE_DATA->position_failures++;
+		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+			// keep the last valid coordinates, report the failed readback
+			PRIVATE_DATA->coordinates_failed = true;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	if (ioptron_get_state(device)) {
 		if (PRIVATE_DATA->slewing) {
@@ -1705,7 +1713,10 @@ static void ioptron_update_mount_state(indigo_device *device) {
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 				// the controller reports the end of the slew, the readback decides whether it reached the target
-				if (!coordinates_read) {
+				if (!coordinates_read && PRIVATE_DATA->position_failures <= POSITION_READ_RETRIES) {
+					// A failed readback is retried by the next poll, the slew stays BUSY with the last position read; ALERT
+					// would be kept after the BUSY and turn the completion of a correct GOTO into ALERT.
+				} else if (!coordinates_read) {
 					PRIVATE_DATA->coordinates_failed = true;
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else if (PRIVATE_DATA->goto_target_valid && !ioptron_at_target(device) && !PRIVATE_DATA->goto_settling) {
@@ -1895,6 +1906,7 @@ static void mount_connection_handler(indigo_device *device) {
 		}
 		PRIVATE_DATA->goto_issued = PRIVATE_DATA->goto_target_valid = PRIVATE_DATA->stopping = false;
 		PRIVATE_DATA->park_issued = PRIVATE_DATA->home_issued = false;
+		PRIVATE_DATA->position_failures = 0;
 		PRIVATE_DATA->last_motion_ra = PRIVATE_DATA->last_motion_dec = 0;
 		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 		MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;

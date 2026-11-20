@@ -1364,6 +1364,66 @@ cleanup:
 	io_close(&fixture);
 }
 
+// One position readback that fails in the poll where the controller reports the end of a GOTO is a transport hiccup,
+// not a failed slew: the coordinates stay BUSY with the last position read, the next poll retries, and the GOTO the
+// mount completed at its target ends OK. No ALERT is published on the way or at the end.
+static void ioptron_goto_survives_failed_position_readback(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	const char *slow[] = { "--tracking", "--slew-rate", "5", NULL };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, slow));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_sync(6.0, 10.0, INDIGO_OK_STATE));
+	// The frozen slew status keeps the GOTO BUSY at its target until the test releases it.
+	SERIAL_CHECK_TRUE(sim_status(simulator, "2"));
+	SERIAL_CHECK_TRUE(io_goto(6.0, 12.0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 12.0, 0.002));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	// The next :GEP# gets a garbled reply and releases the frozen status when it is served, so the :GLS# of the same poll
+	// reports the end of the slew; the GOTO cannot complete before the failed readback.
+	SERIAL_CHECK_TRUE(sim_control(simulator, "GEP\t+12060000#\t1\t-"));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	fprintf(stderr, "  GOTO ended after the failed readback: %s, ALERT %s\n", property->state == INDIGO_OK_STATE ? "OK" : "ALERT", alerts == property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) ? "never published" : "published");
+	SERIAL_CHECK_EQ_INT(alerts, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, property->state);
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(alerts, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(DEC_VALUE() - 12.0) < 0.002);
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+// A position readback that keeps failing during a GOTO is not hidden: when the controller reports the end of the slew
+// the coordinates end ALERT and stay ALERT, with the last position really read as value and the request as target.
+static void ioptron_goto_ends_alert_when_position_readback_keeps_failing(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	const char *slow[] = { "--tracking", "--slew-rate", "5", NULL };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, slow));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_sync(6.0, 10.0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_goto(6.0, 30.0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 10.0, 3.0));
+	unsigned int coordinates = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(inject(simulator, "GEP", "+12060000#", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	double dec = DEC_VALUE();
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(dec > 13.0 && dec < 29.0);
+	SERIAL_CHECK_TRUE(fabs(DEC_VALUE() - dec) < 1e-6);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target - 6.0) < 1e-6);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.target - 30.0) < 1e-6);
+	SERIAL_CHECK_TRUE(inject(simulator, "GEP", "CLEAR", 0));
+cleanup:
+	io_close(&fixture);
+}
+
 // An abort while nothing moves leaves position, tracking and the coordinate state alone.
 static void ioptron_idle_abort_keeps_position_and_tracking(void) {
 	io_fixture fixture = { 0 };
@@ -2997,6 +3057,8 @@ int main(int argc, char **argv) {
 		{ "ioptron_goto_below_altitude_limit_rejected", ioptron_goto_below_altitude_limit_rejected },
 		{ "ioptron_goto_refusal_reason_8406", ioptron_goto_refusal_reason_8406 },
 		{ "ioptron_goto_completion_follows_slew_status", ioptron_goto_completion_follows_slew_status },
+		{ "ioptron_goto_survives_failed_position_readback", ioptron_goto_survives_failed_position_readback },
+		{ "ioptron_goto_ends_alert_when_position_readback_keeps_failing", ioptron_goto_ends_alert_when_position_readback_keeps_failing },
 		{ "ioptron_idle_abort_keeps_position_and_tracking", ioptron_idle_abort_keeps_position_and_tracking },
 		{ "ioptron_disconnect_during_motion_stops_mount", ioptron_disconnect_during_motion_stops_mount },
 		{ "ioptron_malformed_readback_8406", ioptron_malformed_readback_8406 },
