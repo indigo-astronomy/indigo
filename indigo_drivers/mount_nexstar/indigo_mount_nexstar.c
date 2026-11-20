@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000034
+#define DRIVER_VERSION       0x03000035
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -72,6 +72,9 @@
 #define NEXSTAR_GOTO_TIMEOUT (300)
 #endif
 #define GOTO_TOLERANCE       (0.25)
+// A slew in progress stays BUSY over this many consecutive polls whose position readback failed, the next poll
+// retries; one more failure ends it ALERT.
+#define POSITION_READ_RETRIES (2)
 #define WARN_PARKED_MSG      "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG "Mount parking is in progress, please wait until complete!"
 #define is_connected         gp_bits
@@ -124,6 +127,7 @@ typedef struct {
 	bool guiding_in_progress;
 	bool goto_active;
 	bool coordinates_busy;
+	int position_failures;
 	double goto_ra, goto_dec;
 	//- data
 } nexstar_private_data;
@@ -328,6 +332,7 @@ static bool nexstar_configure_mount(indigo_device *device) {
 	PRIVATE_DATA->park_in_progress = false;
 	PRIVATE_DATA->goto_active = false;
 	PRIVATE_DATA->coordinates_busy = false;
+	PRIVATE_DATA->position_failures = 0;
 	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
 	if (PRIVATE_DATA->capabilities & CAN_GET_SIDE_OF_PIER) {
@@ -397,6 +402,9 @@ static void nexstar_update_position(indigo_device *device) {
 		bool read = nexstar_read_position(device, &ra, &dec, &device_ra, &device_dec);
 		if (goto_in_progress >= 0 && read) {
 			position_valid = true;
+			PRIVATE_DATA->position_failures = 0;
+		} else {
+			PRIVATE_DATA->position_failures++;
 		}
 		int res = tc_get_location(dev_id, &lon, &lat);
 		if (res != RC_OK) {
@@ -472,8 +480,15 @@ static void nexstar_update_position(indigo_device *device) {
 		} else if (request_pending) {
 			// The handler publishes the result.
 		} else if (!position_valid) {
-			PRIVATE_DATA->coordinates_busy = false;
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			// A failed readback during a slew is retried by the next poll, the slew stays BUSY with the last position
+			// read; ALERT would be kept after the BUSY and turn the completion of a correct GOTO into ALERT. A
+			// readback that keeps failing, or one failing while idle, is an ALERT.
+			if ((PRIVATE_DATA->goto_active || PRIVATE_DATA->coordinates_busy) && PRIVATE_DATA->position_failures <= POSITION_READ_RETRIES) {
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			} else {
+				PRIVATE_DATA->coordinates_busy = false;
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 		} else if (goto_in_progress || MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value) {
 			PRIVATE_DATA->coordinates_busy = !PRIVATE_DATA->goto_active;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;

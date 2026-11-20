@@ -144,7 +144,8 @@ static void usage(const char *name) {
 	printf("  malformed, delay (answer 500 ms late), track (hand controller starts EQ\n");
 	printf("  tracking, answer 500 ms late), ignore (acknowledge without applying),\n");
 	printf("  stall (the goto starts but the axes do not move), halt (the goto ends where\n");
-	printf("  the axes are), slow (the goto takes 10 s) and close.\n");
+	printf("  the axes are), arrive (the goto ends at its target now), slow (the goto\n");
+	printf("  takes 10 s) and close.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -379,6 +380,16 @@ static bool apply_control(const uint8_t *command, size_t length) {
 	}
 	if (!strcmp(action, "slow")) {
 		state.next_goto_duration = 10;
+		return false;
+	}
+	if (!strcmp(action, "arrive")) {
+		// The goto in progress ends at its target now, as a slew ends on the controller
+		if (state.slewing) {
+			state.ra = state.target_ra;
+			state.dec = state.target_dec;
+		}
+		state.stalled = false;
+		state.slewing = false;
 		return false;
 	}
 	if (!strcmp(action, "close")) {

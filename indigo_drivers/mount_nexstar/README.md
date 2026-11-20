@@ -52,4 +52,4 @@ Up to version 47 these two properties were named `TRACKING_MODE` and `COMMAND_GU
 - 2026-09-24 21:57 3.0.0.42 mac arm64 Celestron NexStar 4/5 SE (StarSense 1.20, EQ wedge, GPS 11.1) 12/12 OK
 - 2026-09-27 00:04 3.0.0.46 linux x64 simulator 23/23 OK
 - 2026-10-11 10:18 3.0.0.49 linux arm64 NexStar 4/5 SE 12/12 OK
-- 2026-11-20 17:16 3.0.0.52 mac arm64 simulator 41/41 OK
+- 2026-11-20 18:57 3.0.0.53 mac arm64 simulator 43/43 OK

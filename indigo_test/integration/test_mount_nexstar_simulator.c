@@ -1950,6 +1950,68 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// One position readback that fails while a GOTO is under way is a transport hiccup, not a failed slew: the coordinates
+// stay BUSY with the last position read, the next poll retries, and a GOTO the controller completes at the target right
+// after the failure ends OK. No ALERT is published on the way or at the end.
+static void nexstar_goto_survives_failed_position_readback(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "stall", "r"));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(5, 35));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "72", 1));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "malformed", "e"));
+	SERIAL_CHECK_TRUE(wait_for_control_consumed(&simulator));
+	// The slew status of the poll after the failed one reports the GOTO completed at the target.
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "arrive", "L"));
+	SERIAL_CHECK_TRUE(wait_for_control_consumed(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	printf("    after the failed readback: %s, %u ALERT publications\n", property->state == INDIGO_OK_STATE ? "OK" : property->state == INDIGO_BUSY_STATE ? "BUSY" : "ALERT", property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) - alerts);
+	SERIAL_CHECK_EQ_INT(alerts, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, property->state);
+	SERIAL_CHECK_TRUE(coordinates_are(5, 35, 0.01));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "4D"));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A position readback that keeps failing during a GOTO is not hidden: the coordinates end ALERT and stay ALERT, with the
+// last position the controller reported as value and the request as target.
+static void nexstar_goto_ends_alert_when_position_readback_keeps_failing(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "stall", "r"));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(5, 35));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_simulator_event_count(&simulator, "72", 1));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "close", "e"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(coordinates_are(3, 20, 0.001));
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target - 5) < 1e-6);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.target - 35) < 1e-6);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 // Disconnecting during a GOTO or a manual motion stops the mount before the transport closes; after the reconnect
 // the motion items read OFF and nothing is left BUSY.
 static void nexstar_disconnect_stops_goto_and_motion(void) {
@@ -2545,6 +2607,8 @@ int main(void) {
 		{ "nexstar_abort_lands_mid_slew", nexstar_abort_lands_mid_slew },
 		{ "nexstar_coordinates_publish_the_mount_position", nexstar_coordinates_publish_the_mount_position },
 		{ "nexstar_poll_in_flight_does_not_complete_goto", nexstar_poll_in_flight_does_not_complete_goto },
+		{ "nexstar_goto_survives_failed_position_readback", nexstar_goto_survives_failed_position_readback },
+		{ "nexstar_goto_ends_alert_when_position_readback_keeps_failing", nexstar_goto_ends_alert_when_position_readback_keeps_failing },
 		{ "nexstar_disconnect_stops_goto_and_motion", nexstar_disconnect_stops_goto_and_motion },
 		{ "nexstar_manual_motion_rates_and_directions", nexstar_manual_motion_rates_and_directions },
 		{ "nexstar_park_guards_and_unpark", nexstar_park_guards_and_unpark },
