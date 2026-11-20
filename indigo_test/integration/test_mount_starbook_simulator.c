@@ -997,7 +997,8 @@ static void starbook_firmware_thresholds_select_commands(void) {
 			static const char *values[] = { "2026-09-13T12:34:56", "2" };
 			revision = property_revision(UTC_TIME_PROPERTY_NAME);
 			SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, starbook_mount.device_name, UTC_TIME_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
-			SERIAL_CHECK_TRUE(wait_for_property_state_after(UTC_TIME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+			// The next status poll republishes the mount clock as OK, so the refusal is an ALERT seen after the request.
+			SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
 			SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true, INDIGO_ALERT_STATE));
 			SERIAL_CHECK_TRUE(switch_is(MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, false));
 			SERIAL_CHECK_EQ_INT(0, trace_count(trace_path, "/SETPLACE*"));
