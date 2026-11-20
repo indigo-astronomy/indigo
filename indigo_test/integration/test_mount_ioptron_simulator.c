@@ -2985,11 +2985,29 @@ cleanup:
 static void ioptron_tcp_connection_loss_and_reconnect(void) {
 	io_fixture fixture = { 0 };
 	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, TRACKING_ARGS));
-	SERIAL_CHECK_TRUE(sim_control(&fixture.simulator, "@close\t1"));
-	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "CLOSE", 0));
-	// Commands on the lost session fail instead of reporting success.
-	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_ALERT_STATE));
-	disconnect_serial_device(&ioptron_mount);
+	// The mount queue is held while the peer closes and the abort is queued, so the abort, not the status poll,
+	// is the first command on the lost session.
+	indigo_device *device = atomic_load(&mount_device);
+	SERIAL_CHECK_TRUE(device != NULL);
+	atomic_store(&abort_test_entered, false);
+	atomic_store(&abort_test_released, false);
+	indigo_execute_handler(device, abort_test_block);
+	bool held = abort_test_wait(&abort_test_entered);
+	bool closed = held && sim_control(&fixture.simulator, "@close\t1") && wait_event(&fixture.simulator, "CLOSE", 0);
+	uint_fast64_t alerted = atomic_load(&abort_alerted);
+	indigo_result requested = closed ? indigo_change_switch_property_1(&simulator_test_client, ioptron_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) : INDIGO_FAILED;
+	atomic_store(&abort_test_released, true);
+	SERIAL_CHECK_TRUE(held);
+	SERIAL_CHECK_TRUE(closed);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, requested);
+	// The abort on the lost session fails with ALERT instead of reporting success, seen by the client callback
+	// because the driver then closes the port and disconnects the mount with ALERT, which deletes the property.
+	for (int i = 0; i < 100 && atomic_load(&abort_alerted) == alerted; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&abort_alerted) != alerted);
+	SERIAL_CHECK_TRUE(wait_for_connection_lost());
+	fixture.mount = false;
 	fixture.mount = connect_serial_device(&ioptron_mount, NULL);
 	SERIAL_CHECK_TRUE(fixture.mount);
 	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "CONNECT", 1));
