@@ -1,0 +1,433 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e2e60912-dabf-4efb-8ab0-1e83ad4ee341",
+  "revision": 20,
+  "title": "indigo_mount_pmc8: coordinates ALERTs bypass indigo_update_coordinates()",
+  "description": "MOUNT_EQUATORIAL_COORDINATES ALERTs are published with indigo_update_property() instead of indigo_update_coordinates(), so the kept-ALERT state of the mount base class does not see them. Found while working on ticket 42b85be0-1f19-4607-b3c3-746e60317d17 (closed, commit a09e0f878), which introduced the kept coordinates ALERT in indigo_update_coordinates(): an ALERT published after a BUSY stays until the next BUSY. Reproduce in the driver's simulator suite before changing code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:04.332884Z",
+  "status": "closed",
+  "branch": "ticket/e2e60912-dabf-4efb-8ab0-1e83ad4ee341",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "959ffb97-e605-4b0c-9521-b30f75f7b9f1",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "43a9a5c5-d559-4fb7-9953-2d81496320dd",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T17:35:30.188159Z",
+          "last_activity_at": "2026-11-20T17:57:40.362125Z",
+          "ended_at": "2026-11-20T17:57:40.362125Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1330173.966,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T17:35:30.188159Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/e2e60912-dabf-4efb-8ab0-1e83ad4ee341"
+        },
+        {
+          "at": "2026-11-20T17:57:40.362125Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1330173.966,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "9f1a2a49-c9d0-40d4-88a7-0cb6fde1b7bc",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "6bdb623f-6213-40df-a9cc-f8c720a37578",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T17:57:40.362360Z",
+          "last_activity_at": "2026-11-20T18:02:24.134278Z",
+          "ended_at": "2026-11-20T18:02:24.134278Z",
+          "outcome": {
+            "summary": "Pass, no defects. Fix: indigo_mount_pmc8.driver:981-985 (generated indigo_mount_pmc8.c:1080-1084) now publishes the abort ALERT with indigo_update_coordinates(device, NULL), so the horizontal coordinates and LST are published in the same state and the base class keep-ALERT flag sees BUSY->ALERT (indigo_mount_driver.c:1387-1398). Completeness: every remaining hand-written publication of MOUNT_EQUATORIAL_COORDINATES in the .driver goes through indigo_update_coordinates() (lines 660, 684, 691, 707, 713, 934, 939, 984); the only indigo_update_property-style ALERT left is the generator-owned parked guard (generated .c:950, INDIGO_UPDATE_PROPERTY_STATE), out of scope. Sync: regenerating the .driver with the worktree's build/bin/indigo_generator (built from the unchanged generator source) reproduces .c, .h and _main.c byte for byte; note the primary checkout's build/bin/indigo_generator (Nov 16) is stale and emits INDIGO_COPY_TARGETS_PROCESS_CHANGE instead of INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE at .c:1245, unrelated to this branch. Version 19->20 / DRIVER_VERSION 0x03000013->0x03000014. Tests: test_mount_pmc8_simulator.c:700-728 check_abort_alert_publications() plus recording in pmc8_mount_aborts_a_running_slew (742, 758-759) and pmc8_mount_aborts_a_park (824, 836-837), using the shared mount_coordinates_test_common.h helpers; the two fresh_coordinates() waits guarantee the >=3 ALERT publications. Verified on a scratch copy: both cases PASS with the fix and both FAIL with only the generated line reverted to indigo_update_property ('publication 0 ... not preceded by the horizontal coordinates in ALERT'), so the test is not vacuous. Records: README.md:38 and TEST_SUMMARY.md:387 replace the earlier same-configuration mac arm64 simulator line per indigo_test/AGENTS.md:637, both 2026-11-20 18:45 3.0.0.20 38/38, matching the version; MIGRATION_STATUS.md row unchanged at 38/38, consistent. Formatting: single-line calls, no blank lines in bodies, braces OK; git diff --c",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 283771.918,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T17:57:40.362360Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T18:02:24.134278Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass, no defects. Fix: indigo_mount_pmc8.driver:981-985 (generated indigo_mount_pmc8.c:1080-1084) now publishes the abort ALERT with indigo_update_coordinates(device, NULL), so the horizontal coordinates and LST are published in the same state and the base class keep-ALERT flag sees BUSY->ALERT (indigo_mount_driver.c:1387-1398). Completeness: every remaining hand-written publication of MOUNT_EQUATORIAL_COORDINATES in the .driver goes through indigo_update_coordinates() (lines 660, 684, 691, 707, 713, 934, 939, 984); the only indigo_update_property-style ALERT left is the generator-owned parked guard (generated .c:950, INDIGO_UPDATE_PROPERTY_STATE), out of scope. Sync: regenerating the .driver with the worktree's build/bin/indigo_generator (built from the unchanged generator source) reproduces .c, .h and _main.c byte for byte; note the primary checkout's build/bin/indigo_generator (Nov 16) is stale and emits INDIGO_COPY_TARGETS_PROCESS_CHANGE instead of INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE at .c:1245, unrelated to this branch. Version 19->20 / DRIVER_VERSION 0x03000013->0x03000014. Tests: test_mount_pmc8_simulator.c:700-728 check_abort_alert_publications() plus recording in pmc8_mount_aborts_a_running_slew (742, 758-759) and pmc8_mount_aborts_a_park (824, 836-837), using the shared mount_coordinates_test_common.h helpers; the two fresh_coordinates() waits guarantee the >=3 ALERT publications. Verified on a scratch copy: both cases PASS with the fix and both FAIL with only the generated line reverted to indigo_update_property ('publication 0 ... not preceded by the horizontal coordinates in ALERT'), so the test is not vacuous. Records: README.md:38 and TEST_SUMMARY.md:387 replace the earlier same-configuration mac arm64 simulator line per indigo_test/AGENTS.md:637, both 2026-11-20 18:45 3.0.0.20 38/38, matching the version; MIGRATION_STATUS.md row unchanged at 38/38, consistent. Formatting: single-line calls, no blank lines in bodies, braces OK; git diff --c"
+        }
+      ],
+      "result": {
+        "summary": "Pass, no defects. Fix: indigo_mount_pmc8.driver:981-985 (generated indigo_mount_pmc8.c:1080-1084) now publishes the abort ALERT with indigo_update_coordinates(device, NULL), so the horizontal coordinates and LST are published in the same state and the base class keep-ALERT flag sees BUSY->ALERT (indigo_mount_driver.c:1387-1398). Completeness: every remaining hand-written publication of MOUNT_EQUATORIAL_COORDINATES in the .driver goes through indigo_update_coordinates() (lines 660, 684, 691, 707, 713, 934, 939, 984); the only indigo_update_property-style ALERT left is the generator-owned parked guard (generated .c:950, INDIGO_UPDATE_PROPERTY_STATE), out of scope. Sync: regenerating the .driver with the worktree's build/bin/indigo_generator (built from the unchanged generator source) reproduces .c, .h and _main.c byte for byte; note the primary checkout's build/bin/indigo_generator (Nov 16) is stale and emits INDIGO_COPY_TARGETS_PROCESS_CHANGE instead of INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE at .c:1245, unrelated to this branch. Version 19->20 / DRIVER_VERSION 0x03000013->0x03000014. Tests: test_mount_pmc8_simulator.c:700-728 check_abort_alert_publications() plus recording in pmc8_mount_aborts_a_running_slew (742, 758-759) and pmc8_mount_aborts_a_park (824, 836-837), using the shared mount_coordinates_test_common.h helpers; the two fresh_coordinates() waits guarantee the >=3 ALERT publications. Verified on a scratch copy: both cases PASS with the fix and both FAIL with only the generated line reverted to indigo_update_property ('publication 0 ... not preceded by the horizontal coordinates in ALERT'), so the test is not vacuous. Records: README.md:38 and TEST_SUMMARY.md:387 replace the earlier same-configuration mac arm64 simulator line per indigo_test/AGENTS.md:637, both 2026-11-20 18:45 3.0.0.20 38/38, matching the version; MIGRATION_STATUS.md row unchanged at 38/38, consistent. Formatting: single-line calls, no blank lines in bodies, braces OK; git diff --c",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 283771.918,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "1cd98f8a-7a4e-4f6a-a904-866fac76c043",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:04.333614Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "a6a9cb6d-234b-4e34-a75d-b67bf207bc17",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T17:02:38.284010Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "fa9a1605-13aa-46bd-b21a-8ce92a4c581e",
+      "event": "task/progress",
+      "at": "2026-11-20T17:35:30.188427Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "959ffb97-e605-4b0c-9521-b30f75f7b9f1",
+      "text": "Implementation started on branch ticket/e2e60912-dabf-4efb-8ab0-1e83ad4ee341"
+    },
+    {
+      "event_id": "ef26e557-cb20-4f30-beeb-24854dda251a",
+      "event": "ticket/started",
+      "at": "2026-11-20T17:35:30.189960Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/e2e60912-dabf-4efb-8ab0-1e83ad4ee341",
+      "base": "master"
+    },
+    {
+      "event_id": "d3f9e2f9-0f4b-4a44-819c-ae3fe02ea2ae",
+      "event": "task/progress",
+      "at": "2026-11-20T17:36:30.279068Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "959ffb97-e605-4b0c-9521-b30f75f7b9f1",
+      "text": "Implementer launched",
+      "attempt_id": "43a9a5c5-d559-4fb7-9953-2d81496320dd",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "fa63d406-dcc7-4eb9-b0a7-8d74df4fb12a",
+      "event": "task/progress",
+      "at": "2026-11-20T17:37:55.335279Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "959ffb97-e605-4b0c-9521-b30f75f7b9f1",
+      "text": "Writing reproducer: abort ALERT published without indigo_update_coordinates"
+    },
+    {
+      "event_id": "28b1f41c-95fa-4ea2-baca-b78ee9ef3f40",
+      "event": "task/progress",
+      "at": "2026-11-20T17:39:49.305593Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "959ffb97-e605-4b0c-9521-b30f75f7b9f1",
+      "text": "Running reproducer on unchanged driver: pmc8_mount_aborts_a_*"
+    },
+    {
+      "event_id": "86f4e816-30a7-4094-a6ca-c3cc906ad5e0",
+      "event": "task/progress",
+      "at": "2026-11-20T17:40:46.720791Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "959ffb97-e605-4b0c-9521-b30f75f7b9f1",
+      "text": "Running full pmc8 simulator suite"
+    },
+    {
+      "event_id": "7bf1b0ed-16b6-42bb-b358-199e23c73a19",
+      "event": "task/progress",
+      "at": "2026-11-20T17:45:50.487878Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "959ffb97-e605-4b0c-9521-b30f75f7b9f1",
+      "text": "Recorded run: tools/run_driver_test.py mount_pmc8"
+    },
+    {
+      "event_id": "9505aa79-b3d0-4ccf-b1c0-6c9ffd0fa74e",
+      "event": "ticket/note",
+      "at": "2026-11-20T17:51:01.370673Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Defect: mount_abort_motion_handler (indigo_mount_pmc8.driver MOUNT_ABORT_MOTION on_change, generated .c line ~1080) published the ALERT of an aborted GOTO or park with indigo_update_property() instead of indigo_update_coordinates(), so MOUNT_HORIZONTAL_COORDINATES stayed BUSY and LST was not refreshed while the equatorial coordinates went ALERT, and the kept-ALERT state of the mount base class did not see the abort's ALERT (it was only kept later because the next poll still found ALERT after the last BUSY). Reproduction: pmc8_mount_aborts_a_running_slew and pmc8_mount_aborts_a_park extended with check_abort_alert_publications() (every equatorial publication from the abort's ALERT on is ALERT, preceded by the horizontal coordinates in ALERT, at least two polls follow); on the unchanged driver (version 19) both FAILED: publication 0 'E A' not preceded by 'H A'. Fix: indigo_update_coordinates(device, NULL) for the abort ALERT; version 19 -> 20 (0x03000014), regenerated with the unchanged build/bin/indigo_generator (only the .c changed besides the .driver). After the fix both cases pass; full simulator suite 38/38 PASS; recorded run 2026-11-20 18:45 3.0.0.20 mac arm64 simulator 38/38 OK. Not changed: the parked-mount guard in the generated mount_equatorial_coordinates_handler still publishes ALERT with INDIGO_UPDATE_PROPERTY_STATE; it is generator-owned (out of scope). Observation, not fixed (scope): the abort ALERT carries the position of the last poll, not a fresh readback after the axes stopped (about 0.3 deg stale in the simulator); the next poll publishes the stopped position, still ALERT.",
+      "tokens": null
+    },
+    {
+      "event_id": "749cc5cd-ebc8-4657-8502-31466e6827d9",
+      "event": "task/progress",
+      "at": "2026-11-20T17:57:06.159537Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "959ffb97-e605-4b0c-9521-b30f75f7b9f1",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "0da60331-abb7-4aa0-bff3-a39564e289eb",
+      "event": "task/progress",
+      "at": "2026-11-20T17:57:06.180775Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "959ffb97-e605-4b0c-9521-b30f75f7b9f1",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4828756f-fe8f-4ebf-9a83-9e1fc5f7b1a4",
+      "event": "check/passed",
+      "at": "2026-11-20T17:57:06.182413Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "dcc934ec56fa97f5f3c9284a96069636e44be2dd",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "5140a116-ccaa-4b1e-8536-fc2bee07d30a",
+      "event": "task/progress",
+      "at": "2026-11-20T17:57:40.362432Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "9f1a2a49-c9d0-40d4-88a7-0cb6fde1b7bc",
+      "text": "Review started"
+    },
+    {
+      "event_id": "24843004-cd69-41ce-9f91-3c4bade53b85",
+      "event": "review/started",
+      "at": "2026-11-20T17:57:40.363669Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "3cd45b49-bf63-4d91-ba76-14167f7a9ca7",
+      "event": "task/progress",
+      "at": "2026-11-20T17:58:27.950184Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "9f1a2a49-c9d0-40d4-88a7-0cb6fde1b7bc",
+      "text": "Reviewer launched",
+      "attempt_id": "6bdb623f-6213-40df-a9cc-f8c720a37578",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "988c34d7-28d8-4302-b07d-96221612c3ee",
+      "event": "task/progress",
+      "at": "2026-11-20T17:59:46.397889Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "9f1a2a49-c9d0-40d4-88a7-0cb6fde1b7bc",
+      "text": "Copying worktree to scratch to run pmc8 abort tests with and without the fix"
+    },
+    {
+      "event_id": "8597c6b3-c592-4a1e-8fdd-2731027b343d",
+      "event": "task/progress",
+      "at": "2026-11-20T18:00:35.230119Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "9f1a2a49-c9d0-40d4-88a7-0cb6fde1b7bc",
+      "text": "Running pmc8 abort cases (scratch copy) with the fix"
+    },
+    {
+      "event_id": "b6f9edb1-39d5-40d8-8dea-1a850a698ab0",
+      "event": "task/progress",
+      "at": "2026-11-20T18:01:50.686204Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "9f1a2a49-c9d0-40d4-88a7-0cb6fde1b7bc",
+      "text": "Running pmc8 abort cases (scratch copy) with the fix reverted"
+    },
+    {
+      "event_id": "fcc3f861-2877-4282-86d2-dea377605043",
+      "event": "task/progress",
+      "at": "2026-11-20T18:02:24.134386Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "9f1a2a49-c9d0-40d4-88a7-0cb6fde1b7bc",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "f6a769cd-6819-4aed-a84a-6328ac0828bb",
+      "event": "review/passed",
+      "at": "2026-11-20T18:02:24.135817Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "9f1a2a49-c9d0-40d4-88a7-0cb6fde1b7bc",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "dcc934ec56fa97f5f3c9284a96069636e44be2dd"
+    },
+    {
+      "event_id": "3363d2b8-d348-4674-b2de-dcc9c1840395",
+      "event": "ticket/closed",
+      "at": "2026-11-20T18:02:43.499249Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T18:02:43.499226Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "c9b5f1aee0e786e31d216463543d2bc0da3166b1"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "dcc934ec56fa97f5f3c9284a96069636e44be2dd",
+        "tree": "6586163d7c90413c4fd1a2df4e269c9ec2d579ee",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T17:57:06.180114Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/e2e60912-dabf-4efb-8ab0-1e83ad4ee341/6586163d7c90-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass, no defects. Fix: indigo_mount_pmc8.driver:981-985 (generated indigo_mount_pmc8.c:1080-1084) now publishes the abort ALERT with indigo_update_coordinates(device, NULL), so the horizontal coordinates and LST are published in the same state and the base class keep-ALERT flag sees BUSY->ALERT (indigo_mount_driver.c:1387-1398). Completeness: every remaining hand-written publication of MOUNT_EQUATORIAL_COORDINATES in the .driver goes through indigo_update_coordinates() (lines 660, 684, 691, 707, 713, 934, 939, 984); the only indigo_update_property-style ALERT left is the generator-owned parked guard (generated .c:950, INDIGO_UPDATE_PROPERTY_STATE), out of scope. Sync: regenerating the .driver with the worktree's build/bin/indigo_generator (built from the unchanged generator source) reproduces .c, .h and _main.c byte for byte; note the primary checkout's build/bin/indigo_generator (Nov 16) is stale and emits INDIGO_COPY_TARGETS_PROCESS_CHANGE instead of INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE at .c:1245, unrelated to this branch. Version 19->20 / DRIVER_VERSION 0x03000013->0x03000014. Tests: test_mount_pmc8_simulator.c:700-728 check_abort_alert_publications() plus recording in pmc8_mount_aborts_a_running_slew (742, 758-759) and pmc8_mount_aborts_a_park (824, 836-837), using the shared mount_coordinates_test_common.h helpers; the two fresh_coordinates() waits guarantee the >=3 ALERT publications. Verified on a scratch copy: both cases PASS with the fix and both FAIL with only the generated line reverted to indigo_update_property ('publication 0 ... not preceded by the horizontal coordinates in ALERT'), so the test is not vacuous. Records: README.md:38 and TEST_SUMMARY.md:387 replace the earlier same-configuration mac arm64 simulator line per indigo_test/AGENTS.md:637, both 2026-11-20 18:45 3.0.0.20 38/38, matching the version; MIGRATION_STATUS.md row unchanged at 38/38, consistent. Formatting: single-line calls, no blank lines in bodies, braces OK; git diff --check clean. Scope: only mount_pmc8 sources, its test, its README record and TEST_SUMMARY.md changed. Not verified by me: the full 38-case simulator suite (I ran only the two abort cases), Linux/Windows builds, hardware.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "dcc934ec56fa97f5f3c9284a96069636e44be2dd",
+        "tree": "6586163d7c90413c4fd1a2df4e269c9ec2d579ee",
+        "at": "2026-11-20T18:02:24.134082Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T17:51:01.369221Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Defect: mount_abort_motion_handler (indigo_mount_pmc8.driver MOUNT_ABORT_MOTION on_change, generated .c line ~1080) published the ALERT of an aborted GOTO or park with indigo_update_property() instead of indigo_update_coordinates(), so MOUNT_HORIZONTAL_COORDINATES stayed BUSY and LST was not refreshed while the equatorial coordinates went ALERT, and the kept-ALERT state of the mount base class did not see the abort's ALERT (it was only kept later because the next poll still found ALERT after the last BUSY). Reproduction: pmc8_mount_aborts_a_running_slew and pmc8_mount_aborts_a_park extended with check_abort_alert_publications() (every equatorial publication from the abort's ALERT on is ALERT, preceded by the horizontal coordinates in ALERT, at least two polls follow); on the unchanged driver (version 19) both FAILED: publication 0 'E A' not preceded by 'H A'. Fix: indigo_update_coordinates(device, NULL) for the abort ALERT; version 19 -> 20 (0x03000014), regenerated with the unchanged build/bin/indigo_generator (only the .c changed besides the .driver). After the fix both cases pass; full simulator suite 38/38 PASS; recorded run 2026-11-20 18:45 3.0.0.20 mac arm64 simulator 38/38 OK. Not changed: the parked-mount guard in the generated mount_equatorial_coordinates_handler still publishes ALERT with INDIGO_UPDATE_PROPERTY_STATE; it is generator-owned (out of scope). Observation, not fixed (scope): the abort ALERT carries the position of the last poll, not a fresh readback after the axes stopped (about 0.3 deg stale in the simulator); the next poll publishes the stopped position, still ALERT.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "c9b5f1aee0e786e31d216463543d2bc0da3166b1",
+      "tree": "6586163d7c90413c4fd1a2df4e269c9ec2d579ee",
+      "base": "master",
+      "at": "2026-11-20T18:02:43.423919Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:04.332884Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T17:02:38.283885Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 1613945.884,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 26,
+    "sha256": "23eff93e24795196b89bff974a3076d9e784ff605d731745382014bc6069db35"
+  }
+}
