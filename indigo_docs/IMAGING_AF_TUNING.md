@@ -15,8 +15,7 @@ INDIGO Imager Agent can use two focus quality metrics called Focus Quality Estim
 
 - **Iterative (RMS/contrast)** - This estimator uses Root Mean Square (RMS) contrast of the whole image to determine the best focus. This method works fine with highly defocused images. It can find a perfect focus form virtually any focuser position as long as the image has some features on it. As a downside of this method should be mentioned that saturated stars will fool it and it will not find the perfect focus. To fight this, INDIGO 2.0-166 introduces masking of the saturated areas. If saturation is detected, the saturated area is excluded from the RMS contrast estimation and focusing statistics are reset. Then the autofocus process is resumed. This can be avoided with shorter exposure time, lower gain, or just by avoiding bright stars in the focusing frame (see **Selection Subframe**).
 
-- **Iterative (Bahtinov)** - This method needs a Bahtinov mask to work. It estimates asymmetry of the diffraction spikes produced by the Bahtinov mask.
-This method will work only with very bright stars and will not work with narrow-band filters. **This estimator is still experimental**.
+- **Iterative (Bahtinov)** - This method requires a Bahtinov mask and minimizes the distance between the central diffraction spike and the intersection of the two outer spikes. The current analyzer supports broadband and narrowband patterns; known or learned mask angles can help with faint or dotted spikes. Use a camera frame no larger than 500 × 500 pixels containing one well-centred star. See [Bahtinov mask focusing](../indigo_drivers/agent_imager/doc/BAHTINOV.md) for the optical principle, algorithm, angle learning and limitations.
 
 Iterative auto-focus estimators (**Peak/HFD** and **RMS contrast**) start with a large step to approximate the focus and progressively decreasing it until it finishes making adjustments with its final step. This is why the final step is important for the focusing accuracy of these estimators.
 
@@ -24,7 +23,7 @@ Iterative auto-focus estimators (**Peak/HFD** and **RMS contrast**) start with a
 
 ![Polynomial fit. Red dots are data points, x - focuser position, y - HFD](IMAGING_AF_TUNING/u-curve.png)
 
-The mentioned focus estimators (except **Iterative (Bahtinov)**) will not work correctly if used with a Bahtinov mask. If the mask is on during the autofocus process, the final focus will either fail or be reported as successful while it is not. The Bahtinov mask can be used to verify the final focus but should not be used during the autofocus process.
+Keep the Bahtinov mask on when using **Iterative (Bahtinov)**. Remove it for the other focus estimators: its diffraction pattern can make autofocus fail or report a misleading success. The mask can also be fitted afterwards to verify focus; remove it before science imaging.
 
 ## Autofocus Tuning Parameters
 

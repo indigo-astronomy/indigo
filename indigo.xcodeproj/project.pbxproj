@@ -4976,6 +4976,7 @@
 		59E9D55D2DBD48E000D1534A /* indigo_guider_cgusbst4.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_guider_cgusbst4.driver; sourceTree = "<group>"; };
 		59EA12822F66DA1200E29EDD /* Protocol_Special_Mode.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_Special_Mode.pdf; sourceTree = "<group>"; };
 		59ECA503B2CD35CEF6E3094C /* PLATESOLVER.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = doc/PLATESOLVER.md; sourceTree = "<group>"; };
+		8C1DF2B8D2A94785B77A2A01 /* BAHTINOV.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = doc/BAHTINOV.md; sourceTree = "<group>"; };
 		59EF8BC024683B10009D75C5 /* indigo_dome_baader.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_dome_baader.c; sourceTree = "<group>"; };
 		59EF8BC224683B10009D75C5 /* dome_baader_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = dome_baader_simulator.ino; sourceTree = "<group>"; };
 		59EF8BC324683B10009D75C5 /* baader_command_set.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = baader_command_set.txt; sourceTree = "<group>"; };
@@ -16239,6 +16240,7 @@
 			isa = PBXGroup;
 			children = (
 				9DA451CB21908CBC00818B58 /* README.md */,
+				8C1DF2B8D2A94785B77A2A01 /* BAHTINOV.md */,
 				9DA451CD21908CBC00818B58 /* indigo_agent_imager.h */,
 				9DA451CC21908CBC00818B58 /* indigo_agent_imager.c */,
 			);
