@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "073bfe6a-5c22-41d4-8497-42c1e7e6832e",
+  "revision": 1,
+  "title": "indigo_ccd_ptp: recorded non-interactive simulator test run after the EOS R6 Mark II exposure fix",
+  "description": "Non-interactive simulator run of the indigo_ccd_ptp hardware-free tests on driver version 3.0.0.63 (after ticket 32c9bae5, commit cbfe9d17a), made with 'python3 tools/run_driver_test.py ccd_ptp'. The script records the run in indigo_drivers/ccd_ptp/README.md '## Testing' and regenerates TEST_SUMMARY.md; both are committed with the ticket. Fix every defect found, rerun the full scope, do not push. Hardware coverage is not part of this run.",
+  "type": "check",
+  "discovered_at": null,
+  "created_at": "2026-11-20T18:55:05.199332Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "983d1725-cc79-4b70-82db-87b180487298",
+      "event": "ticket/created",
+      "at": "2026-11-20T18:55:05.200031Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T18:55:05.199332Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "da414b4e0a539ceac6811a9e7c6f0444b0a68a4f19156a24a3751d942ff4b989"
+  }
+}
