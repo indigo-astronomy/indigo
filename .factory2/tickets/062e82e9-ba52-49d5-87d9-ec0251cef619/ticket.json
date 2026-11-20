@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "062e82e9-ba52-49d5-87d9-ec0251cef619",
+  "revision": 1,
+  "title": "indigo_agent_mcp: embedded help bundle is stale and test_agent_mcp expects the previous driver version",
+  "description": "Registered on the owner's request of 2026-11-20; both defects confirmed on master at d411033ba.\n\n1. Stale help bundle. python3 indigo_drivers/agent_mcp/generate_help.py --check exits 1 with 'MCP help bundle is stale'. The checked-in indigo_drivers/agent_mcp/indigo_agent_mcp_help.h is generated from indigo_docs/mcp/*.md, indigo_docs/mcp/agents/*.md and indigo_drivers/agent_scripting/library/Sequencer.md; those sources were changed by later commits (for example cbbc6aedf and 47da62f95 of 2026-11-20) without regenerating the header. A make build regenerates it, but the checked-in copy is what the Visual Studio build and a reader of the repository get, and nothing runs --check. Regenerate the header. Find which source documents changed since the last regeneration and report them. Add the --check run to an existing hardware-free test target (indigo_test buildsystem tests) so that a forgotten regeneration fails a test; establish first whether the Windows build has any way to regenerate the header and state the result.\n\n2. Version assertion. indigo_test/integration/test_agent_mcp.c:211 asserts info.version == 0x03000003 while indigo_drivers/agent_mcp/indigo_agent_mcp.c:42 defines DRIVER_VERSION 0x03000004 (raised by 85313ca07 of 2026-11-10), so the case 'idempotent automatic lifecycle' of make -C indigo_test test-agent-mcp fails. Reported during ticket e4cfbebb, not re-run since. Reproduce with test-agent-mcp, find out whether anything besides the stale constant fails, and fix the test; prefer not to hard-code a literal that must be edited with every version bump if the surrounding tests have a convention for it.\n\nIf the fix changes the behaviour of the driver, increment DRIVER_VERSION; regenerating the help header from changed documents changes what the agent serves, so decide and justify whether that counts. Do not edit README files. Verification: generate_help.py --check exits 0, test-agent-mcp and test-agent-mcp-sanitize pass with counts reported, test-buildsystem passes.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T18:23:05.284202Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "46b9c618-9af2-4005-9005-3eb1bd32e47e",
+      "event": "ticket/created",
+      "at": "2026-11-20T18:23:05.285750Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T18:23:05.284202Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "685e5395d75b07c70f835c21041a8be486ea728bf3c3763829c204df22e25a8d"
+  }
+}
