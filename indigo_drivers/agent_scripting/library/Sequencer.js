@@ -931,7 +931,7 @@ var indigo_sequencer = {
 				indigo_define_switch_property(indigo_flipper.devices[SCRIPTING_AGENT], "FLIPPER_STATE", "Sequencer", "Flipper state", { WAITING_FOR_TRANSIT: indigo_flipper.waiting_for_transit, WAITING_FOR_SLEW: indigo_flipper.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: indigo_flipper.waiting_for_sync_and_center, WAITING_FOR_GUIDING: indigo_flipper.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: indigo_flipper.waiting_for_settle_down, RESUME_GUIDING: indigo_flipper.resume_guiding, USE_SOLVER: indigo_flipper.use_solver }, { WAITING_FOR_TRANSIT: { label: "Waiting for transit" }, WAITING_FOR_SLEW: { label: "Waiting for slew" }, WAITING_FOR_SYNC_AND_CENTER: { label: "Waiting for sync & center" }, WAITING_FOR_GUIDING: { label: "Waiting for guiding" }, WAITING_FOR_SETTLE_DOWN: { label: "Waiting for settle down" }, RESUME_GUIDING: { label: "Resume guiding" }, USE_SOLVER: { label: "Use solver" }}, indigo_flipper.state, "RO", "AnyOfMany");
 			}
 			if (property.name == null || property.name == "MERIDIAN_FLIP") {
-				indigo_define_number_property(this.devices[SCRIPTING_AGENT], "MERIDIAN_FLIP", "Sequencer", "Meridian flip", indigo_meridian_flip_items(), { ENABLED: { label: "Enabled", format: "%g", min: 0, max: 1, step: 1 }, USE_SOLVER: { label: "Use solver (exposure s)", format: "%g", min: 0, max: 3600, step: 0 }, OFFSET: { label: "Offset to meridian (h)", format: "%g", min: -2, max: 2, step: 0 }}, "Ok", "RO");
+				indigo_define_number_property(this.devices[SCRIPTING_AGENT], "MERIDIAN_FLIP", "Sequencer", "Meridian flip", indigo_meridian_flip_items(), { ENABLED: { label: "Enabled", format: "%g", min: 0, max: 1, step: 1 }, USE_SOLVER: { label: "Use solver (exposure s)", format: "%g", min: 0, max: 60, step: 0 }, OFFSET: { label: "Offset to meridian (h)", format: "%g", min: -2, max: 2, step: 0 }}, "Ok", "RO");
 			}
 		}
 	},
@@ -1767,14 +1767,15 @@ var indigo_sequencer = {
 
 	// a number is the solver exposure the flip sets before recentering, true keeps the solver's current exposure, which is published then (1 when no solver agent is loaded)
 	set_use_solver: function(use_solver) {
+		// the solver agents limit AGENT_PLATESOLVER_EXPOSURE.EXPOSURE to 0..60 s, the published and stored exposure is the one they use
 		if (typeof use_solver === "number") {
-			indigo_meridian_flip.solver_exposure = use_solver > 0 ? use_solver : 0;
+			indigo_meridian_flip.solver_exposure = use_solver > 0 ? Math.min(60, use_solver) : 0;
 			indigo_meridian_flip.use_solver = indigo_meridian_flip.solver_exposure;
 		} else if (use_solver) {
 			var agent = sequencer_loaded_solver_agent(this.devices[SOLVER_AGENT], this.devices[IMAGER_AGENT]);
 			var exposure = agent != null ? indigo_devices[agent].AGENT_PLATESOLVER_EXPOSURE.items.EXPOSURE : 0;
 			indigo_meridian_flip.solver_exposure = 0;
-			indigo_meridian_flip.use_solver = exposure > 0 ? exposure : 1;
+			indigo_meridian_flip.use_solver = exposure > 0 ? Math.min(60, exposure) : 1;
 		} else {
 			indigo_meridian_flip.solver_exposure = 0;
 			indigo_meridian_flip.use_solver = 0;

@@ -1289,6 +1289,33 @@ static void meridian_flip_property_offset_limits(void) {
 	ASSERT_TRUE(wait_meridian_flip(1, 0, 2));
 }
 
+// USE_SOLVER is the exposure the flip sets, the solver agents limit AGENT_PLATESOLVER_EXPOSURE.EXPOSURE to 0..60 s
+static void meridian_flip_property_solver_exposure_limits(void) {
+	indigo_property *property = snapshot(SCRIPTING, "MERIDIAN_FLIP");
+	ASSERT_TRUE(property != NULL);
+	indigo_item *item = property != NULL ? indigo_get_item(property, "USE_SOLVER") : NULL;
+	ASSERT_TRUE(item != NULL);
+	if (item != NULL) {
+		ASSERT_NEAR(0, item->number.min, 0.0001);
+		ASSERT_NEAR(60, item->number.max, 0.0001);
+	}
+	indigo_release_property(property);
+	ASSERT_TRUE(run_js("var s=new Sequence('flip exposure above'); s.sync_center(1); s.enable_meridian_flip(120,0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 60, 0));
+	ASSERT_TRUE(check_js("indigo_meridian_flip.solver_exposure===60"));
+	ASSERT_NEAR(1, solver_exposure("Astrometry Agent"), 0.0001);
+	ASSERT_TRUE(run_js("indigo_change_switch_property('Astrometry Agent','AGENT_START_PROCESS',{CENTER:false,PRECISE_GOTO:true});"));
+	for (int i = 0; i < 500 && solver_center_requested("Astrometry Agent"); i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_FALSE(solver_center_requested("Astrometry Agent"));
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(wait_solver_center("Astrometry Agent"));
+	ASSERT_NEAR(60, solver_exposure("Astrometry Agent"), 0.0001);
+	ASSERT_TRUE(check_js("indigo_flipper.solver_exposure===60 && indigo_flipper.use_solver===true"));
+}
+
 // the property is read-only, a client change leaves it as it is
 static void meridian_flip_property_read_only(void) {
 	ASSERT_TRUE(run_js("var s=new Sequence('flip property read only'); s.enable_meridian_flip(2,0.5); s.start();"));
@@ -1787,6 +1814,7 @@ static const indigo_test_case tests[] = {
 	{ "meridian flip property with solver true", meridian_flip_property_with_solver_true },
 	{ "meridian flip property disabled", meridian_flip_property_disabled },
 	{ "meridian flip property offset limits", meridian_flip_property_offset_limits },
+	{ "meridian flip property solver exposure limits", meridian_flip_property_solver_exposure_limits },
 	{ "meridian flip property read only", meridian_flip_property_read_only },
 	{ "meridian flip property kept by reload", meridian_flip_property_kept_by_reload },
 	{ "meridian flip sets solver exposure", meridian_flip_sets_solver_exposure },
