@@ -1,0 +1,671 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5e7ef4f3-62a8-4ad2-b24b-fc6dd0568d39",
+  "revision": 36,
+  "title": "indigo_agent_scripting: add the MERIDIAN_FLIP property showing whether the meridian flip is enabled, its solver exposure and offset",
+  "description": "Owner request (2026-11-20): Sequencer.js publishes a new property MERIDIAN_FLIP on the Scripting Agent, next to FLIPPER_STATE, with three items:\n- ENABLED: 0 or 1, whether the automatic meridian flip is enabled;\n- USE_SOLVER: 0 = recentering with the solver is off, > 0 = the solver exposure time in seconds used to recenter after the flip;\n- OFFSET: when the flip should happen relative to the meridian (culmination), < 0 before the meridian, > 0 after, 0 at the meridian (same unit as enable_meridian_flip() time and AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT, hours, unless the owner decides otherwise).\n\nThe property is defined and deleted together with the other flipper / Sequencer properties (FLIPPER_STATE), so it disappears when the Sequencer (flipper) is unloaded. enable_meridian_flip() and disable_meridian_flip() update it when they execute.\n\nMotivation: a first step towards a flip-avoiding VISIBILITY plan in the scheduler (flip cost study, scratchpad flip/), which needs to know whether a task flips, with what offset and whether it uses the solver.\n\nTests: full integration coverage in indigo_test/integration/test_agent_scripting_sequencer.c (and sequencer_simulators.js where a simulator run is needed): definition with defaults, update by enable_meridian_flip() with and without solver and with negative/zero/positive offsets, update by disable_meridian_flip(), the value reaching the flip (solver exposure used for recentering), library reload keeping the state, and deletion on unload. Docs: Sequencer.md, indigo_docs/mcp/agents/sequencer.md, PROPERTIES.md.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T07:18:15.243176Z",
+  "status": "closed",
+  "branch": "ticket/5e7ef4f3-62a8-4ad2-b24b-fc6dd0568d39",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "f22ca1c4-9684-4d8d-ab2e-c03683aa0816",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T07:27:54.212408Z",
+          "last_activity_at": "2026-11-20T08:01:17.855247Z",
+          "ended_at": "2026-11-20T08:01:17.855247Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2003642.839,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T07:27:54.212408Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/5e7ef4f3-62a8-4ad2-b24b-fc6dd0568d39"
+        },
+        {
+          "at": "2026-11-20T08:01:17.855247Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2003642.839,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "4eedb4cc-c085-478e-b46c-e10d468c3264",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T08:01:17.855282Z",
+          "last_activity_at": "2026-11-20T08:07:45.559841Z",
+          "ended_at": "2026-11-20T08:07:45.559841Z",
+          "outcome": {
+            "summary": "Independent review of master...HEAD. Sequencer.js: MERIDIAN_FLIP is a RO number property (group Sequencer) defined in on_enumerate_properties next to FLIPPER_STATE (Sequencer.js:933-935); state lives in the reload-surviving global indigo_meridian_flip (Sequencer.js:649), so an idle sequencer replaced on reload and the next flip keep ENABLED/USE_SOLVER/OFFSET and the solver exposure; an in-progress flip keeps solver_exposure via the preserved indigo_flipper object. set_use_solver (1769-1782) implements owner decision 2: number = exposure, true = loaded solver exposure at step time or 1, false/0 = 0; boolean scripts keep working. The flip sets AGENT_PLATESOLVER_EXPOSURE before CENTER only for a positive number (722-724). disable keeps USE_SOLVER/OFFSET and this is documented. Removing indigo_sequencer.use_solver also fixes the previous loss of the solver choice on an idle reload; no other user of it exists. Sequencer.js.dat equals the hexdump of the new Sequencer.js (cmp OK). Docs updated in Sequencer.md:313-314,339, mcp/agents/sequencer.md:197-198,219, PROPERTIES.md:728. Tests: make -C indigo_test test-agent-scripting-sequencer in the worktree, 76/76 PASS, exit 0; new cases cover defaults/schema, number/true/false/0, negative/zero/positive offset, no solver agent -> 1, disable, read-only rejection, reload keeping state and the exposure reaching the solver after reload, and true not changing the exposure. Non-blocking notes: (1) set_pause_after_transit stores the unclamped time in OFFSET (Sequencer.js:1786) while the Imager clamps AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT to -2..2 h (indigo_agent_imager.c:2664), so |time| > 2 h publishes an offset the Imager does not use; MERIDIAN_FLIP declares -12..12. (2) set_meridian_flip publishes ENABLED before the Imager feature change succeeds (Sequencer.js:1811-1815), so a failed enable step leaves ENABLED 1. (3) The simulator suite changes in sequencer_simulators.js are unexecuted (environment limitation recorded by the implemen",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 387704.559,
+          "tokens": null
+        },
+        {
+          "attempt_id": "91f821a5-4bc8-426b-8685-9c59e2715cdb",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T11:27:27.563068Z",
+          "last_activity_at": "2026-11-20T11:40:15.141509Z",
+          "ended_at": "2026-11-20T11:40:15.141509Z",
+          "outcome": {
+            "summary": "Reviewed master...HEAD (c3817db8c). Matches owner decisions: read-only number MERIDIAN_FLIP (ENABLED/USE_SOLVER/OFFSET, group Sequencer) defined in on_enumerate_properties next to FLIPPER_STATE (Sequencer.js:933-935), updated only by set_meridian_flip(), the last step of enable/disable_meridian_flip() (Sequencer.js:1812-1816). use_solver: number = exposure set on AGENT_PLATESOLVER_EXPOSURE before CENTER (Sequencer.js:722-724); boolean true keeps today's behaviour and publishes the loaded solver's exposure or 1 (Sequencer.js:1773-1777); false/0 = no solver. Reload: indigo_meridian_flip is a reload-surviving global (Sequencer.js:649), the flip reads it instead of the removed indigo_sequencer.use_solver, so the solver choice now also survives replacing an idle sequencer. OFFSET clamped to -2..2 matching AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT (indigo_agent_imager.c:2664); the raw time is still sent to the imager, which clamps it itself. disable keeps USE_SOLVER/OFFSET, documented. Sequencer.js.dat equals the Makefile.inc hexdump of the new Sequencer.js (cmp). Docs updated in Sequencer.md, mcp/agents/sequencer.md, PROPERTIES.md. git diff --check clean. Tests cover defaults, number/true/false/0, no solver agent, negative/zero/positive and clamped offsets, disable, read-only, reload (incl. flip after reload setting the exposure) and exposure reaching the solver. Reviewer runs: test-agent-scripting-sequencer 77/77 passed, test-agent-scheduler 134/134 passed. Non-blocking notes: USE_SOLVER item max is 3600 while the solver exposure item is limited to 0..60 (indigo_platesolver.c:1004), so a larger number would be published unclamped while the solver clamps it; enable_meridian_flip without a time publishes OFFSET NaN (Math.min/max of undefined), pre-existing misuse. sequencer_simulators.js changes are unexecuted (environment limitation recorded by implementer).",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 767578.441,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T08:01:17.855282Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T08:07:45.559841Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of master...HEAD. Sequencer.js: MERIDIAN_FLIP is a RO number property (group Sequencer) defined in on_enumerate_properties next to FLIPPER_STATE (Sequencer.js:933-935); state lives in the reload-surviving global indigo_meridian_flip (Sequencer.js:649), so an idle sequencer replaced on reload and the next flip keep ENABLED/USE_SOLVER/OFFSET and the solver exposure; an in-progress flip keeps solver_exposure via the preserved indigo_flipper object. set_use_solver (1769-1782) implements owner decision 2: number = exposure, true = loaded solver exposure at step time or 1, false/0 = 0; boolean scripts keep working. The flip sets AGENT_PLATESOLVER_EXPOSURE before CENTER only for a positive number (722-724). disable keeps USE_SOLVER/OFFSET and this is documented. Removing indigo_sequencer.use_solver also fixes the previous loss of the solver choice on an idle reload; no other user of it exists. Sequencer.js.dat equals the hexdump of the new Sequencer.js (cmp OK). Docs updated in Sequencer.md:313-314,339, mcp/agents/sequencer.md:197-198,219, PROPERTIES.md:728. Tests: make -C indigo_test test-agent-scripting-sequencer in the worktree, 76/76 PASS, exit 0; new cases cover defaults/schema, number/true/false/0, negative/zero/positive offset, no solver agent -> 1, disable, read-only rejection, reload keeping state and the exposure reaching the solver after reload, and true not changing the exposure. Non-blocking notes: (1) set_pause_after_transit stores the unclamped time in OFFSET (Sequencer.js:1786) while the Imager clamps AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT to -2..2 h (indigo_agent_imager.c:2664), so |time| > 2 h publishes an offset the Imager does not use; MERIDIAN_FLIP declares -12..12. (2) set_meridian_flip publishes ENABLED before the Imager feature change succeeds (Sequencer.js:1811-1815), so a failed enable step leaves ENABLED 1. (3) The simulator suite changes in sequencer_simulators.js are unexecuted (environment limitation recorded by the implemen"
+        },
+        {
+          "at": "2026-11-20T11:27:27.563068Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T11:40:15.141509Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Reviewed master...HEAD (c3817db8c). Matches owner decisions: read-only number MERIDIAN_FLIP (ENABLED/USE_SOLVER/OFFSET, group Sequencer) defined in on_enumerate_properties next to FLIPPER_STATE (Sequencer.js:933-935), updated only by set_meridian_flip(), the last step of enable/disable_meridian_flip() (Sequencer.js:1812-1816). use_solver: number = exposure set on AGENT_PLATESOLVER_EXPOSURE before CENTER (Sequencer.js:722-724); boolean true keeps today's behaviour and publishes the loaded solver's exposure or 1 (Sequencer.js:1773-1777); false/0 = no solver. Reload: indigo_meridian_flip is a reload-surviving global (Sequencer.js:649), the flip reads it instead of the removed indigo_sequencer.use_solver, so the solver choice now also survives replacing an idle sequencer. OFFSET clamped to -2..2 matching AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT (indigo_agent_imager.c:2664); the raw time is still sent to the imager, which clamps it itself. disable keeps USE_SOLVER/OFFSET, documented. Sequencer.js.dat equals the Makefile.inc hexdump of the new Sequencer.js (cmp). Docs updated in Sequencer.md, mcp/agents/sequencer.md, PROPERTIES.md. git diff --check clean. Tests cover defaults, number/true/false/0, no solver agent, negative/zero/positive and clamped offsets, disable, read-only, reload (incl. flip after reload setting the exposure) and exposure reaching the solver. Reviewer runs: test-agent-scripting-sequencer 77/77 passed, test-agent-scheduler 134/134 passed. Non-blocking notes: USE_SOLVER item max is 3600 while the solver exposure item is limited to 0..60 (indigo_platesolver.c:1004), so a larger number would be published unclamped while the solver clamps it; enable_meridian_flip without a time publishes OFFSET NaN (Math.min/max of undefined), pre-existing misuse. sequencer_simulators.js changes are unexecuted (environment limitation recorded by implementer)."
+        }
+      ],
+      "result": {
+        "summary": "Reviewed master...HEAD (c3817db8c). Matches owner decisions: read-only number MERIDIAN_FLIP (ENABLED/USE_SOLVER/OFFSET, group Sequencer) defined in on_enumerate_properties next to FLIPPER_STATE (Sequencer.js:933-935), updated only by set_meridian_flip(), the last step of enable/disable_meridian_flip() (Sequencer.js:1812-1816). use_solver: number = exposure set on AGENT_PLATESOLVER_EXPOSURE before CENTER (Sequencer.js:722-724); boolean true keeps today's behaviour and publishes the loaded solver's exposure or 1 (Sequencer.js:1773-1777); false/0 = no solver. Reload: indigo_meridian_flip is a reload-surviving global (Sequencer.js:649), the flip reads it instead of the removed indigo_sequencer.use_solver, so the solver choice now also survives replacing an idle sequencer. OFFSET clamped to -2..2 matching AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT (indigo_agent_imager.c:2664); the raw time is still sent to the imager, which clamps it itself. disable keeps USE_SOLVER/OFFSET, documented. Sequencer.js.dat equals the Makefile.inc hexdump of the new Sequencer.js (cmp). Docs updated in Sequencer.md, mcp/agents/sequencer.md, PROPERTIES.md. git diff --check clean. Tests cover defaults, number/true/false/0, no solver agent, negative/zero/positive and clamped offsets, disable, read-only, reload (incl. flip after reload setting the exposure) and exposure reaching the solver. Reviewer runs: test-agent-scripting-sequencer 77/77 passed, test-agent-scheduler 134/134 passed. Non-blocking notes: USE_SOLVER item max is 3600 while the solver exposure item is limited to 0..60 (indigo_platesolver.c:1004), so a larger number would be published unclamped while the solver clamps it; enable_meridian_flip without a time publishes OFFSET NaN (Math.min/max of undefined), pre-existing misuse. sequencer_simulators.js changes are unexecuted (environment limitation recorded by implementer).",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1155283.0,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "4d14a06e-f986-4bfd-aaa8-1392dc66b119",
+      "event": "ticket/created",
+      "at": "2026-11-20T07:18:15.243819Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "8c3f17a2-b29c-4b80-a2d9-ae50841b23e4",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T07:27:44.690654Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "e79bc9d6-d643-402a-9845-a17c310aae4d",
+      "event": "ticket/note",
+      "at": "2026-11-20T07:27:44.808256Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions (2026-11-20):\n1. MERIDIAN_FLIP is a read-only number property on the Scripting Agent (group Sequencer), changed only when enable_meridian_flip()/disable_meridian_flip() steps execute.\n2. enable_meridian_flip(use_solver, time): use_solver accepts a number = solver exposure in seconds (> 0: the flip sets the loaded solver agent's AGENT_PLATESOLVER_EXPOSURE.EXPOSURE to it before CENTER) or a boolean as today (true keeps the solver's current exposure; USE_SOLVER then publishes the loaded solver agent's current exposure at the time the step executes, or 1 when no solver agent is loaded; false / 0 = no solver). Existing scripts with booleans keep working. OFFSET = time in hours as today (< 0 before the meridian, > 0 after, 0 at the meridian).\n3. No new unload mechanism: MERIDIAN_FLIP is defined in on_enumerate_properties together with FLIPPER_STATE and goes away the same way (with the agent).\nImplementation notes: clients resend the library before every script, and an idle indigo_sequencer is replaced on reload; the published MERIDIAN_FLIP state must survive a library reload (the Imager Agent keeps the flip enabled), e.g. keep it in a reload-surviving variable or take it over from the existing property. disable_meridian_flip() sets ENABLED 0 (keep the last USE_SOLVER/OFFSET or reset them, decide and document). Add PROPERTIES.md, Sequencer.md and indigo_docs/mcp/agents/sequencer.md entries; Sequencer version bump if the library has one.",
+      "tokens": null
+    },
+    {
+      "event_id": "5b2e881f-8b7f-446d-8d57-266ed31d68dd",
+      "event": "task/progress",
+      "at": "2026-11-20T07:27:54.212513Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Implementation started on branch ticket/5e7ef4f3-62a8-4ad2-b24b-fc6dd0568d39"
+    },
+    {
+      "event_id": "deed07dc-e1e6-4515-ae99-d54a860c85e0",
+      "event": "ticket/started",
+      "at": "2026-11-20T07:27:54.213226Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/5e7ef4f3-62a8-4ad2-b24b-fc6dd0568d39",
+      "base": "master"
+    },
+    {
+      "event_id": "6e21ac5a-94f9-45cb-845c-ecb3ddb7f1ce",
+      "event": "task/progress",
+      "at": "2026-11-20T07:28:15.372753Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Implementer launched",
+      "attempt_id": "f22ca1c4-9684-4d8d-ab2e-c03683aa0816",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "28f82b6a-6bb3-4a61-a192-8fd0b3c560bf",
+      "event": "task/progress",
+      "at": "2026-11-20T07:30:10.829912Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Implementing MERIDIAN_FLIP in Sequencer.js"
+    },
+    {
+      "event_id": "e4fb2263-a264-45a8-93cd-8e949f6b6c1a",
+      "event": "task/progress",
+      "at": "2026-11-20T07:31:59.137275Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Running test_agent_scripting_sequencer (meridian flip and schema cases)"
+    },
+    {
+      "event_id": "3f28e33c-b42f-47fb-a499-09c14d7843d0",
+      "event": "task/progress",
+      "at": "2026-11-20T07:39:33.096248Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Building indigo_server and drivers for the opt-in sequencer simulator suite"
+    },
+    {
+      "event_id": "f97e6852-d63c-4767-a9c6-ca0ccad1d6d4",
+      "event": "task/progress",
+      "at": "2026-11-20T07:43:19.181392Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Simulator suite blocked before library load (Server rejects authenticated DRIVERS); rerunning C suite"
+    },
+    {
+      "event_id": "228d7167-c942-4a26-b846-d138bbb8eac4",
+      "event": "task/progress",
+      "at": "2026-11-20T07:48:48.571308Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Running test-agent-scheduler with the regenerated Sequencer.js.dat"
+    },
+    {
+      "event_id": "bda4d567-a655-47fd-a74d-76d0d4512031",
+      "event": "task/progress",
+      "at": "2026-11-20T07:55:11.142071Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9f9f1a87-d329-46df-a3b6-a1eb49f466f4",
+      "event": "task/progress",
+      "at": "2026-11-20T07:55:11.180597Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "1a1253c5-aa15-48c9-a507-0456f2ac7ded",
+      "event": "check/passed",
+      "at": "2026-11-20T07:55:11.186830Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "96e24c391547e90a6296cd04ae0adedc2aa39b93",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a3962907-f9a2-48de-92a1-d301d6aefb89",
+      "event": "task/progress",
+      "at": "2026-11-20T07:55:16.112955Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "c2e2a7a0-5c69-4d9d-937c-bfb274d8d697",
+      "event": "ticket/note",
+      "at": "2026-11-20T07:55:21.734375Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementer: the opt-in simulator suite (indigo_test/integration/run_sequencer_simulators.py) could not be run: in the worktree build the private indigo_server rejects the suite's token-authenticated Server.DRIVERS change, so no driver loads and the run ends before Sequencer.js is sent (0 cases). The failure is before the library is involved, so it is independent of this change; the updated sequencer_simulators.js cases (MERIDIAN_FLIP readback, numeric solver exposure in the native solver flip) are therefore unexecuted. Coverage of the property and of the exposure reaching AGENT_PLATESOLVER_EXPOSURE during a flip is in test_agent_scripting_sequencer (76/76 passed); test_agent_scheduler with the regenerated Sequencer.js.dat passed 134/134.",
+      "tokens": null
+    },
+    {
+      "event_id": "e4d700a3-1322-4158-8b84-3d0be8af4fbc",
+      "event": "task/progress",
+      "at": "2026-11-20T08:00:39.237162Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "a5cf2119-35d7-46c4-839a-245e73d8c92f",
+      "event": "check/passed",
+      "at": "2026-11-20T08:00:39.242478Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "96e24c391547e90a6296cd04ae0adedc2aa39b93",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "ffab51b0-12ac-4fa4-9142-427fb472a149",
+      "event": "task/progress",
+      "at": "2026-11-20T08:00:50.927337Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "423fc8ff-9664-4c62-9951-6d3e69eb28ac",
+      "text": "Implementation done; whitespace and sequencer integration checks passed"
+    },
+    {
+      "event_id": "fde564f2-acdc-4b08-ba0c-37c237c178d0",
+      "event": "task/progress",
+      "at": "2026-11-20T08:01:17.855349Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f2147aae-97ec-4b5a-9a41-436a3c8d3670",
+      "event": "review/started",
+      "at": "2026-11-20T08:01:17.855933Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "41e965c1-af90-4a0a-abf8-eb0ed2efe1bd",
+      "event": "task/progress",
+      "at": "2026-11-20T08:01:31.235151Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "text": "Reviewer launched",
+      "attempt_id": "4eedb4cc-c085-478e-b46c-e10d468c3264",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "00cdb030-a8a1-4c53-a7a4-06af53616b57",
+      "event": "task/progress",
+      "at": "2026-11-20T08:02:06.101874Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "text": "Running test-agent-scripting-sequencer in the worktree"
+    },
+    {
+      "event_id": "a7f1836a-7c09-422a-92bd-31f9fb955203",
+      "event": "task/progress",
+      "at": "2026-11-20T08:07:45.559918Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "43c5dabf-b182-4447-abc8-13c152fde18e",
+      "event": "review/passed",
+      "at": "2026-11-20T08:07:45.560567Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "96e24c391547e90a6296cd04ae0adedc2aa39b93"
+    },
+    {
+      "event_id": "c9426929-3e02-4d80-9cb8-4e8177198c4e",
+      "event": "task/progress",
+      "at": "2026-11-20T11:21:24.576200Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Clamping MERIDIAN_FLIP.OFFSET to the Imager's -2..2 h range"
+    },
+    {
+      "event_id": "6e1558c0-e7ce-4d3d-a60d-bba8ef7c1eec",
+      "event": "task/progress",
+      "at": "2026-11-20T11:21:46.976439Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1ae28b33-57d5-443b-95b0-083b150fb5d5",
+      "event": "task/progress",
+      "at": "2026-11-20T11:21:46.998059Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ab24c2ce-c91c-4d02-8e67-a51eebe35871",
+      "event": "check/passed",
+      "at": "2026-11-20T11:21:47.003446Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "c3817db8cf62d6745823a2dcaa1f1c084596357b",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "1ee1b2e5-cd9d-4c32-b7a9-c542dec686fa",
+      "event": "task/progress",
+      "at": "2026-11-20T11:21:47.162023Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check command-1 started: make -C indigo_test test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "81b49e3e-871b-4df7-946f-e396d8402628",
+      "event": "task/progress",
+      "at": "2026-11-20T11:27:09.004406Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "42272b3a-a9a4-4d89-a070-255cf13bc75e",
+      "event": "check/passed",
+      "at": "2026-11-20T11:27:09.010192Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "c3817db8cf62d6745823a2dcaa1f1c084596357b",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "f1429afe-3b86-4a3c-9abe-ecc7aa818447",
+      "event": "task/progress",
+      "at": "2026-11-20T11:27:27.563166Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "text": "Review started"
+    },
+    {
+      "event_id": "7811c821-8342-449e-a5d0-5106567c28fe",
+      "event": "review/started",
+      "at": "2026-11-20T11:27:27.563863Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "9b814f7d-cf05-4a65-a45e-d08c52e73086",
+      "event": "task/progress",
+      "at": "2026-11-20T11:27:39.633572Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "text": "Reviewer launched",
+      "attempt_id": "91f821a5-4bc8-426b-8685-9c59e2715cdb",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0c605967-739e-4676-bbfa-0c379c77025e",
+      "event": "task/progress",
+      "at": "2026-11-20T11:28:15.600701Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "text": "Running test-agent-scripting-sequencer and test-agent-scheduler"
+    },
+    {
+      "event_id": "efaab139-ae37-4f6c-9344-7b431b756665",
+      "event": "task/progress",
+      "at": "2026-11-20T11:40:15.141583Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "c2c16fd0-140b-4049-9581-196d9aa91fb4",
+      "event": "review/passed",
+      "at": "2026-11-20T11:40:15.142261Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "db8bf485-a865-404d-95f5-d9a56188b613",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "c3817db8cf62d6745823a2dcaa1f1c084596357b"
+    },
+    {
+      "event_id": "37f1c0b0-6801-47ae-ae52-0121c47398d4",
+      "event": "ticket/title_changed",
+      "at": "2026-11-20T11:45:23.769885Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scripting: add the MERIDIAN_FLIP property to Sequencer.js showing whether the meridian flip is enabled, its solver exposure and its offset",
+      "title": "indigo_agent_scripting: add the MERIDIAN_FLIP property showing whether the meridian flip is enabled, its solver exposure and offset"
+    },
+    {
+      "event_id": "3ed0b61a-50a3-4d79-8276-ec4531278b76",
+      "event": "ticket/closed",
+      "at": "2026-11-20T11:45:24.171238Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-20T11:45:24.171200Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "cbbc6aedf2b56a3de28ebeee7a69df3ab0a03796"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "96e24c391547e90a6296cd04ae0adedc2aa39b93",
+        "tree": "02185ccb80ea9cf96246550c1fcc7265c09b5092",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T07:55:11.179581Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/5e7ef4f3-62a8-4ad2-b24b-fc6dd0568d39/02185ccb80ea-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scripting-sequencer",
+        "commit": "96e24c391547e90a6296cd04ae0adedc2aa39b93",
+        "tree": "02185ccb80ea9cf96246550c1fcc7265c09b5092",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T08:00:39.234364Z",
+        "duration_s": 323.1,
+        "log": "/tmp/factory-flow/5e7ef4f3-62a8-4ad2-b24b-fc6dd0568d39/02185ccb80ea-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c3817db8cf62d6745823a2dcaa1f1c084596357b",
+        "tree": "986e8fdeb324c52ad1206f08f7a1e052f1a58e6a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T11:21:46.997152Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/5e7ef4f3-62a8-4ad2-b24b-fc6dd0568d39/986e8fdeb324-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scripting-sequencer",
+        "commit": "c3817db8cf62d6745823a2dcaa1f1c084596357b",
+        "tree": "986e8fdeb324c52ad1206f08f7a1e052f1a58e6a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T11:27:09.001229Z",
+        "duration_s": 321.8,
+        "log": "/tmp/factory-flow/5e7ef4f3-62a8-4ad2-b24b-fc6dd0568d39/986e8fdeb324-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of master...HEAD. Sequencer.js: MERIDIAN_FLIP is a RO number property (group Sequencer) defined in on_enumerate_properties next to FLIPPER_STATE (Sequencer.js:933-935); state lives in the reload-surviving global indigo_meridian_flip (Sequencer.js:649), so an idle sequencer replaced on reload and the next flip keep ENABLED/USE_SOLVER/OFFSET and the solver exposure; an in-progress flip keeps solver_exposure via the preserved indigo_flipper object. set_use_solver (1769-1782) implements owner decision 2: number = exposure, true = loaded solver exposure at step time or 1, false/0 = 0; boolean scripts keep working. The flip sets AGENT_PLATESOLVER_EXPOSURE before CENTER only for a positive number (722-724). disable keeps USE_SOLVER/OFFSET and this is documented. Removing indigo_sequencer.use_solver also fixes the previous loss of the solver choice on an idle reload; no other user of it exists. Sequencer.js.dat equals the hexdump of the new Sequencer.js (cmp OK). Docs updated in Sequencer.md:313-314,339, mcp/agents/sequencer.md:197-198,219, PROPERTIES.md:728. Tests: make -C indigo_test test-agent-scripting-sequencer in the worktree, 76/76 PASS, exit 0; new cases cover defaults/schema, number/true/false/0, negative/zero/positive offset, no solver agent -> 1, disable, read-only rejection, reload keeping state and the exposure reaching the solver after reload, and true not changing the exposure. Non-blocking notes: (1) set_pause_after_transit stores the unclamped time in OFFSET (Sequencer.js:1786) while the Imager clamps AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT to -2..2 h (indigo_agent_imager.c:2664), so |time| > 2 h publishes an offset the Imager does not use; MERIDIAN_FLIP declares -12..12. (2) set_meridian_flip publishes ENABLED before the Imager feature change succeeds (Sequencer.js:1811-1815), so a failed enable step leaves ENABLED 1. (3) The simulator suite changes in sequencer_simulators.js are unexecuted (environment limitation recorded by the implementer). Deletion on unload is not separately tested, consistent with owner decision 3 (no new mechanism).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "96e24c391547e90a6296cd04ae0adedc2aa39b93",
+        "tree": "02185ccb80ea9cf96246550c1fcc7265c09b5092",
+        "at": "2026-11-20T08:07:45.559814Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed master...HEAD (c3817db8c). Matches owner decisions: read-only number MERIDIAN_FLIP (ENABLED/USE_SOLVER/OFFSET, group Sequencer) defined in on_enumerate_properties next to FLIPPER_STATE (Sequencer.js:933-935), updated only by set_meridian_flip(), the last step of enable/disable_meridian_flip() (Sequencer.js:1812-1816). use_solver: number = exposure set on AGENT_PLATESOLVER_EXPOSURE before CENTER (Sequencer.js:722-724); boolean true keeps today's behaviour and publishes the loaded solver's exposure or 1 (Sequencer.js:1773-1777); false/0 = no solver. Reload: indigo_meridian_flip is a reload-surviving global (Sequencer.js:649), the flip reads it instead of the removed indigo_sequencer.use_solver, so the solver choice now also survives replacing an idle sequencer. OFFSET clamped to -2..2 matching AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT (indigo_agent_imager.c:2664); the raw time is still sent to the imager, which clamps it itself. disable keeps USE_SOLVER/OFFSET, documented. Sequencer.js.dat equals the Makefile.inc hexdump of the new Sequencer.js (cmp). Docs updated in Sequencer.md, mcp/agents/sequencer.md, PROPERTIES.md. git diff --check clean. Tests cover defaults, number/true/false/0, no solver agent, negative/zero/positive and clamped offsets, disable, read-only, reload (incl. flip after reload setting the exposure) and exposure reaching the solver. Reviewer runs: test-agent-scripting-sequencer 77/77 passed, test-agent-scheduler 134/134 passed. Non-blocking notes: USE_SOLVER item max is 3600 while the solver exposure item is limited to 0..60 (indigo_platesolver.c:1004), so a larger number would be published unclamped while the solver clamps it; enable_meridian_flip without a time publishes OFFSET NaN (Math.min/max of undefined), pre-existing misuse. sequencer_simulators.js changes are unexecuted (environment limitation recorded by implementer).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "c3817db8cf62d6745823a2dcaa1f1c084596357b",
+        "tree": "986e8fdeb324c52ad1206f08f7a1e052f1a58e6a",
+        "at": "2026-11-20T11:40:15.141485Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T07:27:44.807742Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions (2026-11-20):\n1. MERIDIAN_FLIP is a read-only number property on the Scripting Agent (group Sequencer), changed only when enable_meridian_flip()/disable_meridian_flip() steps execute.\n2. enable_meridian_flip(use_solver, time): use_solver accepts a number = solver exposure in seconds (> 0: the flip sets the loaded solver agent's AGENT_PLATESOLVER_EXPOSURE.EXPOSURE to it before CENTER) or a boolean as today (true keeps the solver's current exposure; USE_SOLVER then publishes the loaded solver agent's current exposure at the time the step executes, or 1 when no solver agent is loaded; false / 0 = no solver). Existing scripts with booleans keep working. OFFSET = time in hours as today (< 0 before the meridian, > 0 after, 0 at the meridian).\n3. No new unload mechanism: MERIDIAN_FLIP is defined in on_enumerate_properties together with FLIPPER_STATE and goes away the same way (with the agent).\nImplementation notes: clients resend the library before every script, and an idle indigo_sequencer is replaced on reload; the published MERIDIAN_FLIP state must survive a library reload (the Imager Agent keeps the flip enabled), e.g. keep it in a reload-surviving variable or take it over from the existing property. disable_meridian_flip() sets ENABLED 0 (keep the last USE_SOLVER/OFFSET or reset them, decide and document). Add PROPERTIES.md, Sequencer.md and indigo_docs/mcp/agents/sequencer.md entries; Sequencer version bump if the library has one.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T07:55:21.733825Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementer: the opt-in simulator suite (indigo_test/integration/run_sequencer_simulators.py) could not be run: in the worktree build the private indigo_server rejects the suite's token-authenticated Server.DRIVERS change, so no driver loads and the run ends before Sequencer.js is sent (0 cases). The failure is before the library is involved, so it is independent of this change; the updated sequencer_simulators.js cases (MERIDIAN_FLIP readback, numeric solver exposure in the native solver flip) are therefore unexecuted. Coverage of the property and of the exposure reaching AGENT_PLATESOLVER_EXPOSURE during a flip is in test_agent_scripting_sequencer (76/76 passed); test_agent_scheduler with the regenerated Sequencer.js.dat passed 134/134.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "cbbc6aedf2b56a3de28ebeee7a69df3ab0a03796",
+      "tree": "986e8fdeb324c52ad1206f08f7a1e052f1a58e6a",
+      "base": "master",
+      "at": "2026-11-20T11:45:23.960358Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T07:18:15.243176Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-20T07:27:44.690624Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 3158925.839,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 46,
+    "sha256": "d1fd82e1ffc8d116f4660a64309c1b270e2519ecaf8ea6ae44024a494a11c480"
+  }
+}
