@@ -22,6 +22,7 @@
 
 #include "serial_simulator_test_common.h"
 #include "abort_queue_test_common.h"
+#include "mount_coordinates_test_common.h"
 
 #ifndef MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE
 #define MOUNT_NEXSTAR_SIMULATOR_EXECUTABLE "build/integration/mount_nexstar_simulator"
@@ -707,7 +708,10 @@ static void nexstar_mount_tracks_syncs_and_aborts_coordinate_changes(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// the aborted GoTo ends ALERT and the polls keep it until the next request
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, nexstar_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(coordinate_items), coordinate_items, recovery_values));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
@@ -1789,7 +1793,7 @@ static void nexstar_abort_lands_mid_slew(void) {
 	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(request_coordinates(9, 50));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
-	// The request echo carries the target, so the slew is seen on fresh polls.
+	// The slew is seen on fresh polls.
 	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
 	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) > 3.05);
 	clear_simulator_events(&simulator);
@@ -1830,6 +1834,88 @@ static void nexstar_abort_lands_mid_slew(void) {
 	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54"));
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
 cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The coordinate values are the position the controller reports and the request lives in the targets: a GOTO publishes
+// BUSY with the position before it and the horizontal coordinates of that position, then the positions on the way and
+// the target with OK; a SYNC publishes BUSY with the old position, OK, and the synced position from the next poll; an
+// abort mid-slew publishes a position the mount reached, never the target; a GOTO the controller never received keeps
+// the real position.
+static void nexstar_coordinates_publish_the_mount_position(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	external_serial_simulator simulator = { 0 };
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	// GOTO
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "slow", "r"));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(nexstar_mount.device_name);
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(5, 35));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	int count = stop_coordinates_publications(events);
+	int busy = check_request_publication("GOTO", events, count, 0, ra0, dec0, alt0, az0, 5, 35, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_motion_publications("GOTO", events, count, busy, ra0, dec0, 5, 35, 0.05, INDIGO_OK_STATE));
+	// SYNC
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(nexstar_mount.device_name);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(5.2, 37));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("SYNC", events, count, 0, ra0, dec0, alt0, az0, 5.2, 37, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	int result = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(check_sync_result("SYNC", events, count, busy, result, 5.2, 37, 0.01));
+	SERIAL_CHECK_TRUE(coordinates_near(events[count - 1].value[0], events[count - 1].value[1], 5.2, 37, 0.01));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, events[count - 1].state);
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	// abort mid-slew
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "slow", "r"));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(nexstar_mount.device_name);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(9, 50));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("aborted GOTO", events, count, 0, ra0, dec0, alt0, az0, 9, 50, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	int aborted = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(aborted > busy);
+	SERIAL_CHECK_TRUE(check_reported_position("abort", events, count, busy, aborted, 9, 50, 0.5));
+	SERIAL_CHECK_TRUE(fabs(events[count - 1].target[0] - 9) < 1e-6 && fabs(events[count - 1].target[1] - 50) < 1e-6);
+	// a GOTO whose command the controller never answered
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", "r"));
+	start_coordinates_publications(nexstar_mount.device_name);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(10, -15));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 1));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("refused GOTO", events, count, 0, ra0, dec0, alt0, az0, 10, -15, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_ALERT_STATE) > busy);
+	SERIAL_CHECK_TRUE(check_position_kept("refused GOTO", events, count, busy, ra0, dec0, 0.05));
+cleanup:
+	stop_coordinates_publications(NULL);
 	if (context.connected) {
 		stop_serial_driver(&nexstar_mount);
 	}
@@ -2457,6 +2543,7 @@ int main(void) {
 		{ "nexstar_goto_refusals_stop_the_sequence", nexstar_goto_refusals_stop_the_sequence },
 		{ "nexstar_goto_completion_follows_slew_status", nexstar_goto_completion_follows_slew_status },
 		{ "nexstar_abort_lands_mid_slew", nexstar_abort_lands_mid_slew },
+		{ "nexstar_coordinates_publish_the_mount_position", nexstar_coordinates_publish_the_mount_position },
 		{ "nexstar_poll_in_flight_does_not_complete_goto", nexstar_poll_in_flight_does_not_complete_goto },
 		{ "nexstar_disconnect_stops_goto_and_motion", nexstar_disconnect_stops_goto_and_motion },
 		{ "nexstar_manual_motion_rates_and_directions", nexstar_manual_motion_rates_and_directions },

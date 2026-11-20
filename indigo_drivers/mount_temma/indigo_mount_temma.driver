@@ -22,7 +22,7 @@ driver temma {
 	label = "Takahashi Temma Mount";
 	author = "";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 27;
+	version = 28;
 	serial {
 	}
 	include {
@@ -42,7 +42,6 @@ driver temma {
 		#endif
 	}
 	data {
-		double current_ra, current_dec;
 		double goto_deadline, park_deadline;
 		char telescope_side;
 		bool is_busy, start_tracking, stop_tracking;
@@ -170,12 +169,6 @@ driver temma {
 			return true;
 		}
 
-		// A refused request publishes the position the mount reported last, not the rejected target.
-		static void temma_restore_position(indigo_device *device) {
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->current_ra;
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
-		}
-
 		static unsigned char temma_motion_byte(indigo_device *device) {
 			unsigned char motion_mask = PRIVATE_DATA->mount_motion_mask | PRIVATE_DATA->guider_motion_mask;
 			return motion_mask == 0 ? 'A' : 0x40 | motion_mask | (PRIVATE_DATA->mount_motion_mask != 0 && PRIVATE_DATA->mount_high_speed ? 1 : 0);
@@ -221,10 +214,8 @@ driver temma {
 				dec = -dec;
 			}
 			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-			PRIVATE_DATA->current_ra = ra;
-			PRIVATE_DATA->current_dec = dec;
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->current_ra;
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 			// F says the automatic introduction has just finished, not which side the mount is
 			// on, so the last known side is kept instead of being replaced by a value that is
 			// not a side at all. The GOTO state is followed through s. The mount changes side by
@@ -297,7 +288,6 @@ driver temma {
 
 		static void mount_goto_finalizer(indigo_device *device) {
 			if (!IS_CONNECTED || !temma_update_position(device) || !temma_command(device, true, "s") || (strcmp(PRIVATE_DATA->response, "s0") && strcmp(PRIVATE_DATA->response, "s1"))) {
-				temma_restore_position(device);
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else if (PRIVATE_DATA->response[1] == '1' && indigo_monotonic_time() < PRIVATE_DATA->goto_deadline) {
 				indigo_update_coordinates(device, NULL);
@@ -556,6 +546,7 @@ driver temma {
 		}
 		inherited MOUNT_EQUATORIAL_COORDINATES {
 			hidden = false;
+			preserve_values = true;
 			on_change {
 				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
@@ -570,7 +561,6 @@ driver temma {
 					indigo_update_coordinates(device, NULL);
 					indigo_execute_handler_in(device, 0.1, mount_goto_finalizer);
 				} else {
-					temma_restore_position(device);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_coordinates(device, NULL);
 				}

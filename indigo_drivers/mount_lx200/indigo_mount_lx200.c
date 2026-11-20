@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000054
+#define DRIVER_VERSION       0x03000055
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -1241,6 +1241,18 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 		}
 	}
 	return false;
+}
+
+// The position the mount reports, converted to J2000 into the values of MOUNT_EQUATORIAL_COORDINATES as the poll does.
+static bool meade_read_position(indigo_device *device) {
+	double ra = 0, dec = 0;
+	if (!meade_get_coordinates(device, &ra, &dec)) {
+		return false;
+	}
+	indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+	return true;
 }
 
 static bool meade_set_tracking(indigo_device *device, bool on);
@@ -3031,14 +3043,9 @@ static void meade_update_agotino_state(indigo_device *device) {
 		PRIVATE_DATA->slewing = *PRIVATE_DATA->response;
 		if (!PRIVATE_DATA->slewing && PRIVATE_DATA->goto_issued) {
 			// GR/GD precede D in the poll; the slew may have ended between those reads.
-			double ra = 0, dec = 0;
-			PRIVATE_DATA->coordinate_read_failed = !meade_get_coordinates(device, &ra, &dec);
+			PRIVATE_DATA->coordinate_read_failed = !meade_read_position(device);
 			if (PRIVATE_DATA->coordinate_read_failed) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 			}
 		}
 	}
@@ -3942,14 +3949,10 @@ static void meade_init_mount(indigo_device *device) {
 }
 
 static void meade_update_mount_state(indigo_device *device) {
-	double ra = 0, dec = 0;
 	if (PRIVATE_DATA->meade_park_silent) {
 		// A parked Meade that stopped answering is not asked anything, the last position read stands.
 		PRIVATE_DATA->coordinate_read_failed = false;
-	} else if (meade_get_coordinates(device, &ra, &dec)) {
-		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+	} else if (meade_read_position(device)) {
 		if (PRIVATE_DATA->coordinate_read_failed) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -4014,9 +4017,9 @@ static void meade_update_mount_state(indigo_device *device) {
 	} else if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->goto_issued) {
 		// a GOTO was accepted but its slew command has not been sent yet
 	} else {
-		// The coordinates were read, so the position is valid again whatever left the
-		// property in ALERT. Only a failed readback keeps it there, through the branch
-		// above; a refused GOTO must not poison the property for the rest of the session.
+		// The coordinates were read, so the position is valid again after a failed readback.
+		// The ALERT of a refused or aborted GOTO stays until the next request: it was published
+		// right after BUSY, and indigo_update_coordinates() publishes this OK as ALERT until then.
 		PRIVATE_DATA->goto_issued = false;
 		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -4825,6 +4828,10 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		if (meade_sync(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			// The result carries the position the mount reports now, a failed readback leaves it to the next poll.
+			if (!PRIVATE_DATA->meade_park_silent) {
+				meade_read_position(device);
+			}
 		} else {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_send_message(device, ALERT_PROPERTY, "Sync failed");
@@ -4867,8 +4874,8 @@ static void mount_abort_motion_handler(indigo_device *device) {
 				INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 			// An aborted goto did not reach its target, so it ends as a failed request.
-			// The values are the last position read, and the next poll publishes the
-			// position the mount stopped at as valid again.
+			// The values are the last position read; the polls publish the position the
+			// mount stopped at and keep the ALERT until the next request.
 			bool goto_aborted = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
 			if (goto_aborted) {
 				PRIVATE_DATA->goto_issued = false;
@@ -5389,7 +5396,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);

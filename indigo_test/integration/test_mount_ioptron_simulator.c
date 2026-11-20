@@ -23,6 +23,7 @@
 
 #include "serial_simulator_test_common.h"
 #include "abort_queue_test_common.h"
+#include "mount_coordinates_test_common.h"
 
 #ifndef MOUNT_IOPTRON_SIMULATOR_EXECUTABLE
 #define MOUNT_IOPTRON_SIMULATOR_EXECUTABLE "build/integration/mount_ioptron_simulator"
@@ -758,6 +759,43 @@ static void ioptron_profile_0100(void) { check_profile(I0100); }
 static void ioptron_profile_0200(void) { check_profile(I0200); }
 static void ioptron_profile_0205(void) { check_profile(I0205); }
 static void ioptron_profile_0300(void) { check_profile(I0300); }
+
+// The OK publication of an accepted sync carries the position the mount reports after it, not the one from before the
+// sync: a client such as the Mount Agent compares it with its request. Every protocol reads it the way its poll does
+// (:GR#/:GD# of the hand controllers, :GEC# of 1.0 and 2.x, :GEP# of 3.0) after its own sync (:CMR# or :CM#).
+static void check_ioptron_sync_result(int index) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	const ioptron_dialect *d = dialects + index;
+	io_fixture fixture = { 0 };
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, d->protocol, NULL, TRACKING_ARGS));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	unsigned int revision = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	double ra = fmod(floor(ra0 * 60) / 60 + 0.5, 24);
+	double dec = dec0 > 60 ? 40 : floor(dec0) + 2;
+	start_coordinates_publications(ioptron_mount.device_name);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, ioptron_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	int count = stop_coordinates_publications(events);
+	int busy = check_request_publication(d->protocol, events, count, 0, ra0, dec0, alt0, az0, ra, dec, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_sync_result(d->protocol, events, count, busy, find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE), ra, dec, 0.01));
+cleanup:
+	stop_coordinates_publications(NULL);
+	io_close(&fixture);
+}
+
+static void ioptron_sync_result_carries_the_reported_position(void) {
+	for (int i = 0; i < ARRAY_SIZE(dialects); i++) {
+		check_ioptron_sync_result(i);
+	}
+}
 
 static void ioptron_driver_metadata_and_base_properties(void) {
 	io_fixture fixture = { 0 };
@@ -1858,6 +1896,35 @@ cleanup:
 	io_close(&fixture);
 }
 
+// A park or home requested while a poll is in progress must not be judged by that poll before its command
+// is sent: the poll ran between the copy of the request and its handler and alerted "did not complete".
+static void ioptron_park_and_home_wait_for_their_command(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, "0300", NULL, TRACKING_ARGS));
+	SERIAL_CHECK_TRUE(inject(simulator, "GEP", "DELAY:700", 0));
+	int polls = event_count(simulator, "GEP");
+	SERIAL_CHECK_TRUE(wait_event(simulator, "GEP", polls));
+	unsigned int revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(property_state_revision(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE) <= revision);
+	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	// no home request before the racing one: each sets a fresh home deadline that would hide the race
+	polls = event_count(simulator, "GEP");
+	SERIAL_CHECK_TRUE(wait_event(simulator, "GEP", polls));
+	revision = property_revision(MOUNT_HOME_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(property_state_revision(MOUNT_HOME_PROPERTY_NAME, INDIGO_ALERT_STATE) <= revision);
+	SERIAL_CHECK_TRUE(wait_switch(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(inject(simulator, "GEP", "CLEAR", 0));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
 static void check_park_set(int index) {
 	const ioptron_dialect *d = dialects + index;
 	io_fixture fixture = { 0 };
@@ -2885,6 +2952,7 @@ int main(int argc, char **argv) {
 		{ "ioptron_profile_0200", ioptron_profile_0200 },
 		{ "ioptron_profile_0205", ioptron_profile_0205 },
 		{ "ioptron_profile_0300", ioptron_profile_0300 },
+		{ "ioptron_sync_result_carries_the_reported_position", ioptron_sync_result_carries_the_reported_position },
 		{ "ioptron_forced_protocol_selection", ioptron_forced_protocol_selection },
 		{ "ioptron_detect_cem60_fw190716_uses_3", ioptron_detect_cem60_fw190716_uses_3 },
 		{ "ioptron_detect_cem60_fw161101_uses_25", ioptron_detect_cem60_fw161101_uses_25 },
@@ -2969,6 +3037,7 @@ int main(int argc, char **argv) {
 		{ "ioptron_park_workflow_0300", ioptron_park_workflow_0300 },
 		{ "ioptron_park_and_home_abort", ioptron_park_and_home_abort },
 		{ "ioptron_park_and_home_never_started_alert", ioptron_park_and_home_never_started_alert },
+		{ "ioptron_park_and_home_wait_for_their_command", ioptron_park_and_home_wait_for_their_command },
 		{ "ioptron_park_set_hidden_0200", ioptron_park_set_hidden_0200 },
 		{ "ioptron_park_set_positions_0205", ioptron_park_set_positions_0205 },
 		{ "ioptron_park_set_positions_0300", ioptron_park_set_positions_0300 },

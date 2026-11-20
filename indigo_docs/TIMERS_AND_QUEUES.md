@@ -335,6 +335,11 @@ incoming values, set the property busy, update it, and dispatch the handler with
   inline instead of queueing it. Use them only for handlers that cannot block,
   since they run on the caller's thread.
 
+`indigo_mount_driver.h` adds `INDIGO_COPY_VALUES_PROCESS_COORDINATES_CHANGE(handler)`
+and `INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(handler)` for
+`MOUNT_EQUATORIAL_COORDINATES`: the same busy guard, copy and dispatch, but the
+BUSY state is published through `indigo_update_coordinates()`.
+
 ## Examples
 
 ### Property change handler

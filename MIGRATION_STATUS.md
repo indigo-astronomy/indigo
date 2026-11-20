@@ -10,7 +10,7 @@
 | agent_guider            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 89 / 0 | |
 | agent_imager            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 65 / 0 | |
 | agent_mcp               | 3️⃣ | ✅ Project | ⛔ N/A | ⛔ N/A | ✅ Sim | 34 / 0 | |
-| agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 79 / 0 | |
+| agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 84 / 0 | |
 | agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 67 / 0 | |
 | agent_platesolver       | 3️⃣ | ✅ Project | ⛔ N/A | ✅ Yes | ✅ Sim | 162 / 0 | |
 | agent_scheduler         | 3️⃣ | ✅ Project | ⛔ N/A | ✅ Yes | ✅ Sim | 75 / 0 | |
@@ -121,17 +121,17 @@
 | guider_cgusbst4         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 7 / 11 | |
 | guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 10 | |
 | mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | 30 / 0 | |
-| mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 140 / 0 | |
-| mount_lx200             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 166 / 35 | |
+| mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 142 / 0 | |
+| mount_lx200             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 167 / 35 | |
 | mount_mxhd              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | 0 / 0 | |
-| mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 40 / 12 | ⏰ TODO - make libnexstar for Windows |
-| mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 67 / 37 | |
-| mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 37 / 38 | |
-| mount_rainbow           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 39 / 0 | |
-| mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 28 / 0 | |
-| mount_starbook          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 26 / 0 | |
-| mount_synscan           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 103 / 21 | |
-| mount_temma             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 30 / 0 | |
+| mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 41 / 12 | ⏰ TODO - make libnexstar for Windows |
+| mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 69 / 37 | |
+| mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 38 / 38 | |
+| mount_rainbow           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 41 / 0 | |
+| mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 30 / 0 | |
+| mount_starbook          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 28 / 0 | |
+| mount_synscan           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 106 / 21 | |
+| mount_temma             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 31 / 0 | |
 | polaralign_simulator    | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | rotator_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 0 | |
 | rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 0 | `test_rotator_falcon_simulator.c`, covers both protocol generations |

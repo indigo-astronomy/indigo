@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "serial_simulator_test_common.h"
+#include "mount_coordinates_test_common.h"
 
 #ifndef MOUNT_STARBOOK_SIMULATOR_EXECUTABLE
 #define MOUNT_STARBOOK_SIMULATOR_EXECUTABLE "build/integration/mount_starbook_simulator"
@@ -176,12 +177,10 @@ static const simulator_driver_case starbook_guider = {
 static void starbook_mount_passes_http_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
-
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE));
 	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
 	driver_started = true;
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
 	assert_device_interface(INDIGO_INTERFACE_MOUNT);
 	assert_property_has_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME);
 	assert_property_has_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME);
@@ -195,7 +194,6 @@ static void starbook_mount_passes_http_compliance_checks(void) {
 	assert_property_has_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME);
 	assert_property_has_item(STARBOOK_TIMEZONE_PROPERTY_NAME, STARBOOK_TIMEZONE_VALUE_ITEM_NAME);
 	assert_property_has_item(STARBOOK_RESET_PROPERTY_NAME, STARBOOK_RESET_ITEM_NAME);
-
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, starbook_mount.device_name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_SLEW_RATE_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, starbook_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
@@ -204,7 +202,6 @@ static void starbook_mount_passes_http_compliance_checks(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, starbook_mount.device_name, STARBOOK_TIMEZONE_PROPERTY_NAME, STARBOOK_TIMEZONE_VALUE_ITEM_NAME, 1));
 	SERIAL_CHECK_TRUE(wait_for_property_state(STARBOOK_TIMEZONE_PROPERTY_NAME, INDIGO_OK_STATE));
-
 cleanup:
 	if (driver_started) {
 		stop_serial_driver(&starbook_mount);
@@ -215,7 +212,6 @@ cleanup:
 static void starbook_guider_passes_http_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
-
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE));
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&starbook_guider));
 	driver_started = true;
@@ -223,18 +219,15 @@ static void starbook_guider_passes_http_compliance_checks(void) {
 	indigo_usleep(100000);
 	SERIAL_CHECK_TRUE(connect_serial_device(&starbook_guider, NULL));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-
 	assert_device_interface(INDIGO_INTERFACE_GUIDER);
 	assert_property_has_item(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME);
 	assert_property_has_item(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME);
 	assert_property_has_item(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME);
 	assert_property_has_item(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME);
-
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, starbook_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, starbook_guider.device_name, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
-
 	// A pulse arriving while another one on the same axis is still running replaces it, so the
 	// elapsed time has to follow the second request. Measuring the duration is the point of these
 	// two cases: waiting only for the property to leave BUSY passes even when the second request
@@ -251,7 +244,6 @@ static void starbook_guider_passes_http_compliance_checks(void) {
 	double replaced = (indigo_monotonic_time() - started) * 1000.0;
 	printf("    2000 ms north pulse replaced after 500 ms by a 600 ms north pulse finished in %.0f ms\n", replaced);
 	SERIAL_CHECK_TRUE(replaced > 900 && replaced < 1700);
-
 	started = indigo_monotonic_time();
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, starbook_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2000));
 	SERIAL_CHECK_TRUE(wait_for_property_state(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_BUSY_STATE));
@@ -263,7 +255,6 @@ static void starbook_guider_passes_http_compliance_checks(void) {
 	double reversed = (indigo_monotonic_time() - started) * 1000.0;
 	printf("    2000 ms north pulse replaced after 500 ms by a 300 ms south pulse finished in %.0f ms\n", reversed);
 	SERIAL_CHECK_TRUE(reversed > 600 && reversed < 1400);
-
 cleanup:
 	if (driver_started) {
 		disconnect_serial_device(&starbook_guider);
@@ -286,7 +277,9 @@ static void starbook_firmware_capabilities_are_gated(void) {
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME) != NULL);
 	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "StarBook"));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
 }
 
@@ -319,9 +312,13 @@ static void starbook_sync_and_goto_have_exact_protocol_and_progress(void) {
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -12.25, 0.001));
 	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/GOTORADEC?ra=8+30.000&dec=-12+15.00"));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 static void starbook_manual_motion_rate_abort_and_recovery(void) {
@@ -353,9 +350,13 @@ static void starbook_manual_motion_rate_abort_and_recovery(void) {
 	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false, INDIGO_OK_STATE));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 static void starbook_settings_and_commands_are_translated(void) {
@@ -379,9 +380,13 @@ static void starbook_settings_and_commands_are_translated(void) {
 	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(trace_contains(trace_path, "/STOP"));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 static void starbook_command_failure_recovers(void) {
@@ -394,7 +399,9 @@ static void starbook_command_failure_recovers(void) {
 	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, true, INDIGO_OK_STATE));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
 }
 
@@ -414,7 +421,9 @@ static void starbook_transport_drop_and_near_sun_retry_recover(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
 }
 
@@ -478,7 +487,9 @@ cleanup:
 static bool wait_for_fast_state_after(const char *property_name, indigo_property_state state, unsigned int revision) {
 	for (int i = 0; i < 5000; i++) {
 		indigo_property *property = find_cached_property(property_name);
-		if (property != NULL && property_revision(property_name) > revision && property->state == state) return true;
+		if (property != NULL && property_revision(property_name) > revision && property->state == state) {
+			return true;
+		}
 		indigo_usleep(1000);
 	}
 	return false;
@@ -518,7 +529,9 @@ static void starbook_guider_directions_and_timing(void) {
 				SERIAL_CHECK_TRUE(wait_for_fast_state_after(properties[d], INDIGO_OK_STATE, revision));
 				double error = (indigo_monotonic_time() - started) * 1000 - durations[t];
 				total_error[workload] += error;
-				if (fabs(error) > maximum_error[workload]) maximum_error[workload] = fabs(error);
+				if (fabs(error) > maximum_error[workload]) {
+					maximum_error[workload] = fabs(error);
+				}
 				samples[workload]++;
 				char command[64];
 				snprintf(command, sizeof(command), "/MOVEPULSE?DIRECT=%d&DURATION=%d", directions[d], durations[t]);
@@ -535,7 +548,9 @@ cleanup:
 		tear_down_serial_driver(&starbook_mount);
 	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 static bool trace_contains_now(const char *path, const char *needle) {
@@ -638,9 +653,13 @@ static void starbook_utc_request_survives_poll(void) {
 	SERIAL_CHECK_TRUE(set_before_result);
 	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(UTC_TIME_PROPERTY_NAME, UTC_TIME_ITEM_NAME)->text.value, "2026-09-13T12:34:56"));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // A request copied while a finalizer runs is the race of the number targets. The finalizer clears the pulse before any
@@ -750,7 +769,9 @@ cleanup:
 		tear_down_serial_driver(&starbook_guider);
 	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // Messages published with MOUNT_EQUATORIAL_COORDINATES, so a refusal can be checked for the controller's reason.
@@ -911,9 +932,13 @@ static void starbook_connect_publishes_device_state_and_capabilities(void) {
 	SERIAL_CHECK_TRUE(wait_for_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
 	SERIAL_CHECK_EQ_INT(0, updates_without_define());
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 static indigo_result change_site(double longitude, double latitude) {
@@ -985,9 +1010,13 @@ static void starbook_firmware_thresholds_select_commands(void) {
 		*trace_path = '\0';
 	}
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // The StarBook boots into INIT and takes no telescope command until START, which the driver sends first: START on
@@ -1042,9 +1071,13 @@ static void starbook_init_state_start_precedes_motion(void) {
 	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(1, trace_count(trace_path, "/MOVE?NORTH=0&SOUTH=0&EAST=0&WEST=0"));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 static bool coordinates_at(double ra, double dec) {
@@ -1113,10 +1146,241 @@ static void starbook_goto_refusals_report_reason_and_recover(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	SERIAL_CHECK_TRUE(coordinates_at(10.0, 30.0));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	record_coordinates_messages(false);
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
+// Every MOUNT_EQUATORIAL_COORDINATES ('U'), MOUNT_HORIZONTAL_COORDINATES ('H') and MOUNT_LST_TIME ('L') update and
+// every MOUNT_EQUATORIAL_COORDINATES message ('M') of the mount, each with the number of requests the simulator had
+// received when it arrived. The trace line is written before the reply, so what a handler publishes after its last
+// command carries that command's count, and the next poll or finalizer a higher one. The client asks for redundant
+// updates as well: the bus drops an update that changes nothing, which would hide a repeated publication.
+typedef struct {
+	char kind;
+	indigo_property_state state;
+	int requests;
+	char text[INDIGO_VALUE_SIZE];
+} coordinates_event;
+
+static pthread_mutex_t coordinates_events_mutex = PTHREAD_MUTEX_INITIALIZER;
+static coordinates_event coordinates_events[4096];
+static int coordinates_event_count;
+static const char *coordinates_events_trace;
+
+static int trace_lines(const char *trace_path) {
+	int lines = 0;
+	FILE *file = fopen(trace_path, "r");
+	if (file != NULL) {
+		int c;
+		while ((c = fgetc(file)) != EOF) {
+			if (c == '\n') {
+				lines++;
+			}
+		}
+		fclose(file);
+	}
+	return lines;
+}
+
+static void record_coordinates_event(char kind, indigo_device *device, indigo_property *property, const char *text) {
+	if (device == NULL || property == NULL || strcmp(device->name, starbook_mount.device_name)) {
+		return;
+	}
+	if (kind == 'M' && strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+		return;
+	}
+	if (kind == 'U') {
+		if (!strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
+			kind = 'H';
+		} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
+			kind = 'L';
+		} else if (strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+			return;
+		}
+	}
+	pthread_mutex_lock(&coordinates_events_mutex);
+	if (coordinates_events_trace != NULL && coordinates_event_count < (int)ARRAY_SIZE(coordinates_events)) {
+		coordinates_event *event = &coordinates_events[coordinates_event_count++];
+		event->kind = kind;
+		event->state = property->state;
+		event->requests = trace_lines(coordinates_events_trace);
+		snprintf(event->text, sizeof(event->text), "%s", text != NULL ? text : "");
+	}
+	pthread_mutex_unlock(&coordinates_events_mutex);
+}
+
+static indigo_result coordinates_events_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	record_coordinates_event('U', device, property, NULL);
+	return result;
+}
+
+static indigo_result coordinates_events_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_send_message(client, device, property, message);
+	if (message != NULL && *message != '\0') {
+		record_coordinates_event('M', device, property, message);
+	}
+	return result;
+}
+
+static void record_coordinates_events(const char *trace_path) {
+	pthread_mutex_lock(&coordinates_events_mutex);
+	coordinates_event_count = 0;
+	coordinates_events_trace = trace_path;
+	pthread_mutex_unlock(&coordinates_events_mutex);
+	simulator_test_client.force_property_updates = trace_path != NULL;
+	simulator_test_client.update_property = trace_path != NULL ? coordinates_events_update_property : simulator_client_update_property;
+	simulator_test_client.send_message = trace_path != NULL ? coordinates_events_send_message : simulator_client_send_message;
+}
+
+typedef struct {
+	int equatorial, horizontal, lst, messages;
+	indigo_property_state state;
+	char text[INDIGO_VALUE_SIZE];
+} handler_publication;
+
+// What the handler published after its last command, the count-th request matching command: the events carrying
+// the request count of the first MOUNT_EQUATORIAL_COORDINATES update after it. The BUSY update of the accepted
+// change comes before the command and is not counted. Waits for a later update, so the handler is done.
+static bool handler_coordinates_events(const char *trace_path, const char *command, int count, const char *label, handler_publication *publication) {
+	memset(publication, 0, sizeof(*publication));
+	if (!wait_for_trace_count(trace_path, command, count, 5)) {
+		return false;
+	}
+	int command_requests = trace_last(trace_path, command) + 1;
+	double deadline = indigo_monotonic_time() + 5;
+	char sequence[1024] = { 0 };
+	while (true) {
+		pthread_mutex_lock(&coordinates_events_mutex);
+		int group = -1, later = 0;
+		for (int i = 0; i < coordinates_event_count; i++) {
+			if (coordinates_events[i].kind != 'U') {
+				continue;
+			}
+			if (group < 0 && coordinates_events[i].requests >= command_requests) {
+				group = coordinates_events[i].requests;
+			} else if (group >= 0 && coordinates_events[i].requests > group) {
+				later++;
+			}
+		}
+		if (group >= 0 && later > 0) {
+			for (int i = 0; i < coordinates_event_count; i++) {
+				coordinates_event *event = &coordinates_events[i];
+				if (event->requests != group) {
+					continue;
+				}
+				size_t length = strlen(sequence);
+				const char *separator = length ? ", " : "";
+				switch (event->kind) {
+					case 'U':
+						if (publication->equatorial++ == 0) {
+							publication->state = event->state;
+						}
+						snprintf(sequence + length, sizeof(sequence) - length, "%sMOUNT_EQUATORIAL_COORDINATES %s", separator, indigo_property_state_text[event->state]);
+						break;
+					case 'H':
+						publication->horizontal++;
+						snprintf(sequence + length, sizeof(sequence) - length, "%sMOUNT_HORIZONTAL_COORDINATES", separator);
+						break;
+					case 'L':
+						publication->lst++;
+						snprintf(sequence + length, sizeof(sequence) - length, "%sMOUNT_LST_TIME", separator);
+						break;
+					default:
+						publication->messages++;
+						snprintf(publication->text, sizeof(publication->text), "%s", event->text);
+						snprintf(sequence + length, sizeof(sequence) - length, "%smessage '%s'", separator, event->text);
+						break;
+				}
+			}
+			pthread_mutex_unlock(&coordinates_events_mutex);
+			printf("    %s: %d/%d/%d equatorial/horizontal/LST updates, %d message(s): %s\n", label, publication->equatorial, publication->horizontal, publication->lst, publication->messages, sequence);
+			return true;
+		}
+		pthread_mutex_unlock(&coordinates_events_mutex);
+		if (indigo_monotonic_time() > deadline) {
+			fprintf(stderr, "    %s: no coordinates update after %s\n", label, command);
+			return false;
+		}
+		indigo_usleep(10000);
+	}
+}
+
+static bool published_once(const handler_publication *publication, indigo_property_state state, const char *text) {
+	bool ok = publication->equatorial == 1 && publication->horizontal == 1 && publication->lst == 1 && publication->state == state;
+	ok = ok && (text == NULL ? publication->messages == 0 : publication->messages == 1 && !strcmp(publication->text, text));
+	if (!ok) {
+		fprintf(stderr, "    expected one %s publication %s%s%s\n", indigo_property_state_text[state], text ? "with message '" : "without message", text ? text : "", text ? "'" : "");
+	}
+	return ok;
+}
+
+// One request publishes MOUNT_EQUATORIAL_COORDINATES, MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME exactly once
+// in every path: a refused START, a refused and an accepted GOTO, a successful and a refused SYNC. The reason of a
+// refusal reaches the client exactly once; the paths without a reason send no message. An accepted GOTO is
+// published BUSY before its finalizer publishes anything.
+static void starbook_coordinates_request_publishes_once(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = { 0 };
+	handler_publication publication;
+	const char *extra[] = { "--init", NULL };
+	SERIAL_CHECK_TRUE(start_traced_simulator(&simulator, trace_path, sizeof(trace_path), extra));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	record_coordinates_events(trace_path);
+	// A refused START.
+	SERIAL_CHECK_TRUE(send_control(&simulator, "fault /START* ERROR:ILLEGAL STATE"));
+	int commands = trace_count(trace_path, "/START*");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(8.5, -12.25));
+	SERIAL_CHECK_TRUE(handler_coordinates_events(trace_path, "/START*", commands + 1, "refused START", &publication));
+	SERIAL_CHECK_TRUE(published_once(&publication, INDIGO_ALERT_STATE, NULL));
+	SERIAL_CHECK_EQ_INT(0, trace_count(trace_path, "/GOTORADEC*"));
+	// A refused GOTO, the START before it is accepted now.
+	SERIAL_CHECK_TRUE(send_control(&simulator, "fault /GOTORADEC* ERROR:BELOW HORIZON"));
+	commands = trace_count(trace_path, "/GOTORADEC*");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(8.5, -12.25));
+	SERIAL_CHECK_TRUE(handler_coordinates_events(trace_path, "/GOTORADEC*", commands + 1, "refused GOTO", &publication));
+	SERIAL_CHECK_TRUE(published_once(&publication, INDIGO_ALERT_STATE, "BELOW HORIZON"));
+	SERIAL_CHECK_TRUE(coordinates_at(6.0, 45.0));
+	// An accepted GOTO.
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	commands = trace_count(trace_path, "/GOTORADEC*");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(8.5, -12.25));
+	SERIAL_CHECK_TRUE(handler_coordinates_events(trace_path, "/GOTORADEC*", commands + 1, "accepted GOTO", &publication));
+	SERIAL_CHECK_TRUE(published_once(&publication, INDIGO_BUSY_STATE, NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(coordinates_at(8.5, -12.25));
+	// A successful SYNC.
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	commands = trace_count(trace_path, "/ALIGN*");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(9.0, 20.0));
+	SERIAL_CHECK_TRUE(handler_coordinates_events(trace_path, "/ALIGN*", commands + 1, "successful SYNC", &publication));
+	SERIAL_CHECK_TRUE(published_once(&publication, INDIGO_OK_STATE, NULL));
+	SERIAL_CHECK_TRUE(coordinates_at(9.0, 20.0));
+	// A refused SYNC.
+	SERIAL_CHECK_TRUE(send_control(&simulator, "fault /ALIGN* ERROR:FORMAT"));
+	commands = trace_count(trace_path, "/ALIGN*");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(10.0, 30.0));
+	SERIAL_CHECK_TRUE(handler_coordinates_events(trace_path, "/ALIGN*", commands + 1, "refused SYNC", &publication));
+	SERIAL_CHECK_TRUE(published_once(&publication, INDIGO_ALERT_STATE, "FORMAT"));
+	SERIAL_CHECK_TRUE(coordinates_at(9.0, 20.0));
+cleanup:
+	record_coordinates_events(NULL);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // A poll already waiting for its reply when a GOTO is accepted does not complete it; a second GOTO while the first
@@ -1174,9 +1438,102 @@ static void starbook_goto_busy_poll_and_abort_mid_slew(void) {
 	SERIAL_CHECK_EQ_INT(stops + 1, trace_count(trace_path, "/STOP"));
 	SERIAL_CHECK_EQ_INT(2, trace_count(trace_path, "/GOTORADEC*"));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
+// Waits for `count` more status polls.
+static bool wait_for_status_polls(const char *trace_path, int count) {
+	return wait_for_trace_count(trace_path, "/GETSTATUS2", trace_count(trace_path, "/GETSTATUS2") + count, 5);
+}
+
+// The coordinate values are the position the StarBook reports and the request lives in the targets: a GOTO publishes
+// BUSY with the position before it and the horizontal coordinates of that position, then the positions on the way and
+// the target with OK; a SYNC publishes BUSY with the old position, then the synced position as the StarBook reads it
+// back; an abort mid-slew publishes a position the mount reached, never the target; a refused GOTO keeps the real
+// position.
+static void starbook_coordinates_publish_the_mount_position(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = { 0 };
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	const char *extra[] = { "--goto-polls", "12", NULL };
+	SERIAL_CHECK_TRUE(start_traced_simulator(&simulator, trace_path, sizeof(trace_path), extra));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_status_polls(trace_path, 1));
+	// GOTO
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(starbook_mount.device_name);
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(8.5, -12.25));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_status_polls(trace_path, 1));
+	int count = stop_coordinates_publications(events);
+	int busy = check_request_publication("GOTO", events, count, 0, ra0, dec0, alt0, az0, 8.5, -12.25, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_motion_publications("GOTO", events, count, busy, ra0, dec0, 8.5, -12.25, 0.01, INDIGO_OK_STATE));
+	// SYNC
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(starbook_mount.device_name);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(9.0, 20.0));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_status_polls(trace_path, 1));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("SYNC", events, count, 0, ra0, dec0, alt0, az0, 9.0, 20.0, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_sync_result("SYNC", events, count, busy, find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE), 9.0, 20.0, 0.01));
+	// abort mid-slew
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(starbook_mount.device_name);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	int gotos = trace_count(trace_path, "/GOTORADEC*");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(6.0, 45.0));
+	SERIAL_CHECK_TRUE(wait_for_trace_count(trace_path, "/GOTORADEC*", gotos + 1, 5));
+	SERIAL_CHECK_TRUE(wait_for_status_polls(trace_path, 2));
+	unsigned int abort_revision = property_revision(MOUNT_ABORT_MOTION_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, starbook_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE, abort_revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_status_polls(trace_path, 2));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("aborted GOTO", events, count, 0, ra0, dec0, alt0, az0, 6.0, 45.0, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	int aborted = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(aborted > busy);
+	SERIAL_CHECK_TRUE(check_reported_position("abort", events, count, busy, aborted, 6.0, 45.0, 0.1));
+	// a refused GOTO
+	SERIAL_CHECK_TRUE(send_control(&simulator, "fault /GOTORADEC* ERROR:BELOW HORIZON"));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(starbook_mount.device_name);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_coordinates(8.5, -12.25));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_status_polls(trace_path, 2));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("refused GOTO", events, count, 0, ra0, dec0, alt0, az0, 8.5, -12.25, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_position_kept("refused GOTO", events, count, busy, ra0, dec0, 0.01));
+cleanup:
+	stop_coordinates_publications(NULL);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // A malformed status, tracking or clock reply marks only that property ALERT with the last valid values, and the
@@ -1225,9 +1582,13 @@ static void starbook_poll_faults_publish_alert_and_recover(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	SERIAL_CHECK_TRUE(coordinates_at(9.0, 20.0));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // Guider standard on the StarBook: a zero request sends nothing, a refused pulse ends ALERT and the next one is
@@ -1295,7 +1656,9 @@ cleanup:
 		tear_down_serial_driver(&starbook_guider);
 	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // A GOTO requested on the mount while a guide pulse runs is accepted and both complete.
@@ -1329,7 +1692,9 @@ cleanup:
 		tear_down_serial_driver(&starbook_mount);
 	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // Disconnecting during manual motion or a GOTO stops the mount before the session ends; after reconnect the motion
@@ -1377,9 +1742,13 @@ static void starbook_disconnect_during_motion_stops_mount(void) {
 	SERIAL_CHECK_TRUE(!coordinates_at(8.5, -12.25));
 	SERIAL_CHECK_EQ_INT(0, updates_without_define());
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 static indigo_client motion_owner = { "StarBook Motion Owner", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL, NULL, NULL, NULL, NULL, NULL, NULL, false, false };
@@ -1411,10 +1780,16 @@ static void starbook_manual_motion_released_when_owner_detaches(void) {
 	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, false, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(2, trace_count(trace_path, "/MOVE?NORTH=0&SOUTH=0&EAST=0&WEST=0"));
 cleanup:
-	if (owner_attached) indigo_detach_client(&motion_owner);
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (owner_attached) {
+		indigo_detach_client(&motion_owner);
+	}
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // Momentary switches (reset, host time, park, abort) return to off once done; host time is sent as the host's local
@@ -1458,9 +1833,13 @@ static void starbook_momentary_switches_and_host_time(void) {
 	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 static void sync_to(double ra, double dec) {
@@ -1514,9 +1893,13 @@ static void starbook_coordinate_encoding_rounds_and_carries(void) {
 	SERIAL_CHECK_TRUE(sync_sends(trace_path, 12 + 59.9 / 60, -(59.0 / 60), "/ALIGN?ra=12+59.9&dec=-0+59"));
 	SERIAL_CHECK_TRUE(sync_sends(trace_path, 1.5, -90, "/ALIGN?ra=1+30.0&dec=-90+00"));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 // The site is one /SETPLACE command: a one-item change resends the others as read from the mount, minutes are
@@ -1575,9 +1958,13 @@ static void starbook_site_write_keeps_combined_values(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	SERIAL_CHECK_EQ_INT(2, trace_count(trace_path, "/SETPLACE?LONGITUDE=E17+6&LATITUDE=N48+30&TIMEZONE=2"));
 cleanup:
-	if (driver_started) stop_serial_driver(&starbook_mount);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
 	stop_external_serial_simulator(&simulator);
-	if (*trace_path) unlink(trace_path);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
 }
 
 int main(void) {
@@ -1599,7 +1986,9 @@ int main(void) {
 		{ "starbook_firmware_thresholds_select_commands", starbook_firmware_thresholds_select_commands },
 		{ "starbook_init_state_start_precedes_motion", starbook_init_state_start_precedes_motion },
 		{ "starbook_goto_refusals_report_reason_and_recover", starbook_goto_refusals_report_reason_and_recover },
+		{ "starbook_coordinates_request_publishes_once", starbook_coordinates_request_publishes_once },
 		{ "starbook_goto_busy_poll_and_abort_mid_slew", starbook_goto_busy_poll_and_abort_mid_slew },
+		{ "starbook_coordinates_publish_the_mount_position", starbook_coordinates_publish_the_mount_position },
 		{ "starbook_poll_faults_publish_alert_and_recover", starbook_poll_faults_publish_alert_and_recover },
 		{ "starbook_guider_zero_failure_axes_and_disconnect", starbook_guider_zero_failure_axes_and_disconnect },
 		{ "starbook_goto_during_guide_pulse", starbook_goto_during_guide_pulse },

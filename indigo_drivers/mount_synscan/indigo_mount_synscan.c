@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000017
+#define DRIVER_VERSION       0x03000019
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -262,6 +262,8 @@ typedef struct {
 	double home_index_deadline;
 	int model_code;
 	synscan_global_mode global_mode;
+	// an admitted sync waits for its handler; the position poll keeps its BUSY instead of publishing OK over it
+	bool sync_pending;
 	double motion_deadline;
 	synscan_axis_mode ra_axis_mode;
 	synscan_axis_mode dec_axis_mode;
@@ -950,27 +952,6 @@ static int synscan_select_encoder_solution(double ra_positions[2]) {
 	return ra_positions[0] <= 0.5 ? 0 : 1;
 }
 
-static void synscan_de2h(double ha, double dec, double latitude, double *az, double *alt) {
-	double sh = sin(ha);
-	double ch = cos(ha);
-	double sd = sin(dec);
-	double cd = cos(dec);
-	double sp = sin(latitude);
-	double cp = cos(latitude);
-	double x = -ch * cd * sp + sd * cp;
-	double y = -sh * cd;
-	double z = ch * cd * cp + sd * sp;
-	double r = hypot(x, y);
-	*az = r == 0.0 ? 0.0 : atan2(y, x);
-	if (fabs(*az) < 0.00001) {
-		*az = 0.0;
-	}
-	if (*az < 0.0) {
-		*az += 2.0 * M_PI;
-	}
-	*alt = atan2(z, r);
-}
-
 static double synscan_range24(double hours) {
 	double range = fmod(hours, 24.0);
 	if (range < 0) {
@@ -1032,20 +1013,6 @@ static bool synscan_read_mount_coordinates(indigo_device *device) {
 	MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = raw_dec_degrees;
 	indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier == MOUNT_SIDE_EAST ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 	indigo_raw_to_translated_with_lst(device, lst, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, side_of_pier, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
-	if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-		double az = 0;
-		double alt = 0;
-		double aligned_ra_hours = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-		double aligned_dec_degrees = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-		indigo_j2k_to_jnow(&aligned_ra_hours, &aligned_dec_degrees);
-		double aligned_ha = (lst - aligned_ra_hours) * M_PI / 12.0;
-		double aligned_dec = aligned_dec_degrees * M_PI / 180.0;
-		double latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * M_PI / 180.0;
-		synscan_de2h(aligned_ha, aligned_dec, latitude, &az, &alt);
-		MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
-		MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt * 180.0 / M_PI;
-		MOUNT_LST_TIME_ITEM->number.value = lst;
-	}
 	return true;
 }
 
@@ -1057,20 +1024,15 @@ static bool synscan_update_mount_coordinates(indigo_device *device) {
 	if (!IS_CONNECTED || !synscan_read_mount_coordinates(device)) {
 		return false;
 	}
-	indigo_property_state coordinates_state = PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+	indigo_property_state coordinates_state = PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE && !PRIVATE_DATA->sync_pending ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 	MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = coordinates_state;
-	if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-		MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = coordinates_state;
-	}
 	synscan_update_mount_state(device);
 	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-	if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-		indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-	}
-	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
+	// the mount base driver derives MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME from the equatorial
+	// coordinates and publishes them with them
+	indigo_update_coordinates(device, NULL);
 	return true;
 }
 
@@ -2131,6 +2093,7 @@ static void mount_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->ra_axis_mode = PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
 		}
 		PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+		PRIVATE_DATA->sync_pending = false;
 		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 		MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
 		MOUNT_HOME_ITEM->sw.value = false;
@@ -2209,6 +2172,9 @@ static void mount_home_set_handler(indigo_device *device) {
 
 static void mount_park_handler(indigo_device *device) {
 	//+ mount.MOUNT_PARK.on_change
+	// A sync admitted just before this park request never reaches its handler body, the parked-mount guard of
+	// the handler refuses it; it must not keep the coordinates BUSY.
+	PRIVATE_DATA->sync_pending = false;
 	if (!MOUNT_PARK_PARKED_ITEM->sw.value) {
 		PRIVATE_DATA->parked = false;
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
@@ -2277,28 +2243,34 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		return;
 	}
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
-	// A sync never reaches this handler, so a request that did not claim the slew is refused.
-	if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	// The request claimed the sync or the slew, a request that claimed neither is refused. The result of a sync is
+	// published by the generated indigo_update_coordinates() below, a slew publishes its own start or failure.
+	if (PRIVATE_DATA->sync_pending) {
+		PRIVATE_DATA->sync_pending = false;
+		indigo_mount_sync(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
 	} else {
-		long ra_target = 0;
-		long dec_target = 0;
-		synscan_radec_to_steps(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &ra_target, &dec_target);
-		PRIVATE_DATA->abort_motion = false;
-		PRIVATE_DATA->homed = false;
-		synscan_update_mount_state(device);
-		bool ok = synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_RA, ra_target) && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_DEC, dec_target);
-		if (ok) {
-			PRIVATE_DATA->motion_deadline = synscan_now() + 300;
-			indigo_execute_handler_in(device, 0.2, mount_equatorial_coordinates_finalizer);
+		if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
+			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 		} else {
-			const char *reason = synscan_failure_reason(device);
-			mount_motion_failed(device);
-			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, "Slew failed, %s.", reason);
+			long ra_target = 0;
+			long dec_target = 0;
+			synscan_radec_to_steps(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &ra_target, &dec_target);
+			PRIVATE_DATA->abort_motion = false;
+			PRIVATE_DATA->homed = false;
 			synscan_update_mount_state(device);
+			bool ok = synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_RA, ra_target) && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_DEC, dec_target);
+			if (ok) {
+				PRIVATE_DATA->motion_deadline = synscan_now() + 300;
+				indigo_execute_handler_in(device, 0.2, mount_equatorial_coordinates_finalizer);
+			} else {
+				const char *reason = synscan_failure_reason(device);
+				mount_motion_failed(device);
+				INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, "Slew failed, %s.", reason);
+				synscan_update_mount_state(device);
+			}
 		}
+		return;
 	}
-	return;
 	//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	indigo_update_coordinates(device, NULL);
 }
@@ -2462,6 +2434,8 @@ static void mount_abort_motion_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_AUTOHOME_PROPERTY, INDIGO_ALERT_STATE, "Auto home aborted.");
 	}
 	indigo_cancel_pending_handler(device, mount_equatorial_coordinates_handler);
+	// a sync whose handler was cancelled never ends its claim, the poll must not keep it BUSY
+	PRIVATE_DATA->sync_pending = false;
 	indigo_cancel_pending_handler(device, mount_equatorial_coordinates_finalizer);
 	indigo_cancel_pending_handler(device, mount_motion_ra_handler);
 	indigo_cancel_pending_handler(device, mount_motion_dec_handler);
@@ -2770,17 +2744,18 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
 		//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request
-		// The controller has no sync of its own, a sync is an alignment point of the framework's model;
-		// the parked mount guard above already refused it on a parked mount.
-		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
-			return indigo_mount_change_property(device, client, property);
-		}
-		// Claim the slew before the poll can republish OK over the accepted BUSY state.
-		if (!MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
-			PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;
+		// Claim the slew or the sync before the poll can republish OK over the accepted BUSY state. The controller
+		// has no sync of its own, a sync is an alignment point of the framework's model; the parked mount guard above
+		// already refused it on a parked mount.
+		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+			if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+				PRIVATE_DATA->sync_pending = !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
+			} else if (PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE) {
+				PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;
+			}
 		}
 		//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_TRACKING_PROPERTY, "Mount is parked!");

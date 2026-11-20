@@ -539,6 +539,8 @@ typedef struct {
 	indigo_client_ref motion_ra_client;											///< attachment of the client that last requested MOUNT_MOTION_RA, written in change_property() under the bus mutex, read only by the bus under its mutex
 	time_t utc_target;																			///< UTC time of the last admitted MOUNT_UTC_TIME request, -1 if it was missing or unparsable, see indigo_mount_set_utc_target()
 	int utc_offset_target;																	///< UTC offset in hours of the last admitted MOUNT_UTC_TIME request, see indigo_mount_set_utc_target()
+	bool keep_coordinates_alert;														///< an ALERT that ended a BUSY MOUNT_EQUATORIAL_COORDINATES is kept until the next BUSY, owned by indigo_update_coordinates(), cleared on disconnect
+	indigo_property_state coordinates_state;								///< state of MOUNT_EQUATORIAL_COORDINATES last published by indigo_update_coordinates()
 } indigo_mount_context;
 
 /** Attach callback function.
@@ -607,10 +609,38 @@ INDIGO_EXTERN indigo_result indigo_raw_to_translated_with_lst(indigo_device *dev
  */
 INDIGO_EXTERN time_t indigo_get_mount_utc(indigo_device *device);
 
-/** Translate coordinates from native.
+/** Publish MOUNT_EQUATORIAL_COORDINATES in the state the caller set, together with MOUNT_HORIZONTAL_COORDINATES (derived from
+    the equatorial values, in the same state) and MOUNT_LST_TIME. Use it for every publication of the equatorial coordinates:
+    the request's BUSY, the result of the change handler and the position poll.
+    The function keeps the ALERT of a failed request or motion: an ALERT it publishes right after it published BUSY sets
+    the keep-ALERT flag of the mount context, and while the flag is set a call with OK is published as ALERT (the property
+    state is changed to ALERT), so a position poll that reports the unchanged pointing does not turn a refusal into success.
+    The next call with BUSY (a new request or a motion seen by the poll) clears the flag. An ALERT that does not follow BUSY,
+    e.g. a failed position readback, does not set it, so the next good poll publishes OK. "Right after BUSY" means that the
+    previous call of this function published BUSY: an ALERT published with indigo_update_property() in between is not seen,
+    it is kept only if the next call of this function still has ALERT, otherwise a call with OK publishes OK. The base class
+    clears the flag on disconnect. Drivers never set, clear or read the flag.
  */
-
 INDIGO_EXTERN void indigo_update_coordinates(indigo_device *device, const char *message);
+
+/** Add an alignment point for a sync of the INDIGO alignment model to ra (hours) and dec (degrees), the requested
+    coordinates of MOUNT_EQUATORIAL_COORDINATES in its epoch, at the current raw coordinates. On success the requested
+    coordinates become the values and targets of MOUNT_EQUATORIAL_COORDINATES and its state is set to OK. A sync in
+    CONTROLLER alignment mode, with all alignment points used or within 5 degrees of the celestial pole (requested or raw
+    declination) is refused: the state is set to ALERT, the reason is sent with indigo_send_message() and the values are
+    left alone. Nothing is published, the caller publishes the result with indigo_update_coordinates(). Returns true if the
+    sync was accepted. Call it from the MOUNT_EQUATORIAL_COORDINATES change handler of a driver whose controller has no
+    sync of its own; indigo_mount_change_property() uses it for a sync passed to it.
+ */
+INDIGO_EXTERN bool indigo_mount_sync(indigo_device *device, double ra, double dec);
+
+/** Change branch of MOUNT_EQUATORIAL_COORDINATES, used by generated drivers: like INDIGO_COPY_VALUES_PROCESS_CHANGE and
+    INDIGO_COPY_TARGETS_PROCESS_CHANGE (a request arriving while the property is BUSY is ignored), but the BUSY state of
+    the admitted request is published through indigo_update_coordinates(), so the keep-ALERT flag is cleared and
+    MOUNT_HORIZONTAL_COORDINATES follows the equatorial state.
+ */
+#define INDIGO_COPY_VALUES_PROCESS_COORDINATES_CHANGE(h) if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false); MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE; indigo_update_coordinates(device, NULL); indigo_execute_handler(device, h); }
+#define INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(h) if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) { indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false); MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE; indigo_update_coordinates(device, NULL); indigo_execute_handler(device, h); }
 
 /** Load alignment points.
  */

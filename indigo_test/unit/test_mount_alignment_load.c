@@ -188,6 +188,153 @@ static void sync_near_the_pole_is_refused(void) {
 	ASSERT_EQ_INT(accepted, partial_points);
 }
 
+#define COORDINATES_LOG_SIZE 64
+
+static indigo_property_state equatorial_log[COORDINATES_LOG_SIZE], horizontal_log[COORDINATES_LOG_SIZE];
+static int equatorial_count, horizontal_count, coordinates_messages;
+
+static indigo_result coordinates_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && equatorial_count < COORDINATES_LOG_SIZE) {
+		equatorial_log[equatorial_count++] = property->state;
+	} else if (!strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME) && horizontal_count < COORDINATES_LOG_SIZE) {
+		horizontal_log[horizontal_count++] = property->state;
+	}
+	return INDIGO_OK;
+}
+
+static indigo_result coordinates_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && message != NULL && *message) {
+		coordinates_messages++;
+	}
+	return INDIGO_OK;
+}
+
+static indigo_client coordinates_client = { .name = "Coordinates state test client", .version = INDIGO_VERSION_CURRENT, .update_property = coordinates_update, .send_message = coordinates_message, .force_property_updates = true };
+
+static void reset_coordinates_log(void) {
+	equatorial_count = horizontal_count = coordinates_messages = 0;
+}
+
+static indigo_device *attach_coordinates_device(indigo_device *device) {
+	if (indigo_start() != INDIGO_OK || indigo_attach_client(&coordinates_client) != INDIGO_OK || indigo_mount_attach(device, "audit-test", 1) != INDIGO_OK) {
+		return NULL;
+	}
+	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
+	MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden = false;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->defined = true;
+	MOUNT_HORIZONTAL_COORDINATES_PROPERTY->defined = true;
+	MOUNT_LST_TIME_PROPERTY->defined = true;
+	reset_coordinates_log();
+	return device;
+}
+
+static void detach_coordinates_device(indigo_device *device) {
+	indigo_mount_detach(device);
+	indigo_detach_client(&coordinates_client);
+	indigo_stop();
+}
+
+// indigo_update_coordinates() keeps the ALERT that ends a BUSY state: an ALERT published right after BUSY is kept and a later
+// OK (the position poll) is published as ALERT, also in MOUNT_HORIZONTAL_COORDINATES, until the next BUSY. An ALERT that does
+// not follow BUSY (a failed position readback) is replaced by the next OK; disconnect clears the kept ALERT.
+static void coordinates_alert_after_busy_is_kept_until_busy(void) {
+	indigo_device storage = { .name = "Audit Coordinates State Test" };
+	indigo_device *device = attach_coordinates_device(&storage);
+	ASSERT_TRUE(device != NULL);
+	const indigo_property_state requested[] = { INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_BUSY_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_ALERT_STATE };
+	const indigo_property_state published[] = { INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_BUSY_STATE, INDIGO_BUSY_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_ALERT_STATE };
+	int count = (int)(sizeof(requested) / sizeof(*requested));
+	indigo_property_state kept_state = INDIGO_IDLE_STATE;
+	for (int i = 0; i < count; i++) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = requested[i];
+		indigo_update_coordinates(device, NULL);
+		if (i == 8) {
+			kept_state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+		}
+	}
+	int sequence_equatorial = equatorial_count, sequence_horizontal = horizontal_count;
+	indigo_property_state equatorial[COORDINATES_LOG_SIZE], horizontal[COORDINATES_LOG_SIZE];
+	memcpy(equatorial, equatorial_log, sizeof(equatorial));
+	memcpy(horizontal, horizontal_log, sizeof(horizontal));
+	// the sequence ends with a kept ALERT; disconnect clears it and the first poll of the next session publishes OK
+	bool kept_before_disconnect = MOUNT_CONTEXT->keep_coordinates_alert;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	CONNECTION_PROPERTY->defined = true;
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+	bool kept_after_disconnect = MOUNT_CONTEXT->keep_coordinates_alert;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->hidden = false;
+	reset_coordinates_log();
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_coordinates(device, NULL);
+	indigo_property_state after_disconnect = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	detach_coordinates_device(device);
+	ASSERT_EQ_INT(count, sequence_equatorial);
+	ASSERT_EQ_INT(count, sequence_horizontal);
+	for (int i = 0; i < count; i++) {
+		if (equatorial[i] != published[i] || horizontal[i] != published[i]) {
+			printf("    step %d: requested %d, published %d, horizontal %d, expected %d\n", i, requested[i], equatorial[i], horizontal[i], published[i]);
+		}
+		ASSERT_EQ_INT(published[i], equatorial[i]);
+		ASSERT_EQ_INT(published[i], horizontal[i]);
+	}
+	// the property keeps the state that was published
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, kept_state);
+	ASSERT_TRUE(kept_before_disconnect);
+	ASSERT_TRUE(!kept_after_disconnect);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, after_disconnect);
+}
+
+// indigo_mount_sync() decides a sync of the INDIGO alignment model without publishing: a refusal sets ALERT, sends its reason
+// as a message and leaves the values and the alignment points alone; an accepted sync adopts the coordinates, adds the point
+// and sets OK. indigo_mount_change_property() still publishes the result of a sync passed to it once.
+static void mount_sync_decides_without_publishing(void) {
+	indigo_device storage = { .name = "Audit Mount Sync Test" };
+	indigo_device *device = attach_coordinates_device(&storage);
+	ASSERT_TRUE(device != NULL);
+	indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM, true);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = 1;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 2;
+	MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = 40;
+	bool refused = indigo_mount_sync(device, 6, 88);
+	indigo_property_state refused_state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	int refused_points = MOUNT_CONTEXT->alignment_point_count;
+	double refused_ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, refused_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+	int refused_publications = equatorial_count, refused_messages = coordinates_messages;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	bool accepted = indigo_mount_sync(device, 6, 30);
+	indigo_property_state accepted_state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	int accepted_points = MOUNT_CONTEXT->alignment_point_count;
+	double accepted_ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, accepted_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+	double accepted_target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+	int accepted_publications = equatorial_count, accepted_messages = coordinates_messages;
+	// CONTROLLER mode has no model to add a point to
+	indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM, true);
+	bool controller = indigo_mount_sync(device, 7, 30);
+	indigo_property_state controller_state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	int controller_points = MOUNT_CONTEXT->alignment_point_count;
+	detach_coordinates_device(device);
+	ASSERT_TRUE(!refused);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, refused_state);
+	ASSERT_EQ_INT(0, refused_points);
+	ASSERT_NEAR(1, refused_ra, 1e-12);
+	ASSERT_NEAR(2, refused_dec, 1e-12);
+	ASSERT_EQ_INT(0, refused_publications);
+	ASSERT_EQ_INT(1, refused_messages);
+	ASSERT_TRUE(accepted);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, accepted_state);
+	ASSERT_EQ_INT(1, accepted_points);
+	ASSERT_NEAR(6, accepted_ra, 1e-12);
+	ASSERT_NEAR(30, accepted_dec, 1e-12);
+	ASSERT_NEAR(30, accepted_target, 1e-12);
+	ASSERT_EQ_INT(0, accepted_publications);
+	ASSERT_EQ_INT(1, accepted_messages);
+	ASSERT_TRUE(!controller);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, controller_state);
+	ASSERT_EQ_INT(1, controller_points);
+}
+
 int main(void) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
@@ -195,7 +342,9 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "alignment_load_commits_complete_files_and_preserves_state_on_rejection", alignment_load_commits_complete_files_and_preserves_state_on_rejection },
 		{ "multi_point_translations_pass_coordinates_through", multi_point_translations_pass_coordinates_through },
-		{ "sync_near_the_pole_is_refused", sync_near_the_pole_is_refused }
+		{ "sync_near_the_pole_is_refused", sync_near_the_pole_is_refused },
+		{ "coordinates_alert_after_busy_is_kept_until_busy", coordinates_alert_after_busy_is_kept_until_busy },
+		{ "mount_sync_decides_without_publishing", mount_sync_decides_without_publishing }
 	};
 	int result = indigo_run_tests("Alignment file load", tests, sizeof(tests) / sizeof(*tests));
 	indigo_test_remove_private_home();

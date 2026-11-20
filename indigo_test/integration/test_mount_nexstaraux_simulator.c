@@ -23,6 +23,7 @@
 #include <indigo/indigo_align.h>
 
 #include "serial_simulator_test_common.h"
+#include "mount_coordinates_test_common.h"
 #include <errno.h>
 #include <sys/wait.h>
 
@@ -364,10 +365,10 @@ static double hours_apart(double a, double b) {
 
 // The mount reports its position continuously, so a coordinate is only settled
 // once the property is no longer busy and the readback matches. The match has to
-// come from a publication the polling callback made after this call: the handler
-// of a change request publishes the values the client itself sent, so a check
-// that accepts the first publication is only reading its own request back. That
-// is how a declination the mount reported as 330 degrees passed as -30.
+// come from a publication the polling callback made after this call: when the
+// change request still published the values the client itself sent, a check that
+// accepted the first publication only read its own request back. That is how a
+// declination the mount reported as 330 degrees passed as -30.
 static bool coordinates_are(double ra, double dec, double tolerance) {
 	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) + 1;
 	for (int i = 0; i < 600; i++) {
@@ -727,6 +728,72 @@ static void abort_slew(void) {
 	SERIAL_CHECK_TRUE(coordinates_change(3, 20, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .1));
 cleanup:
+	driver_stop();
+}
+
+// The coordinate values are the position the motor controllers report and the request lives in the targets: a slew
+// publishes BUSY with the position before it and the horizontal coordinates of that position, then the positions on the
+// way and the target with OK; a sync publishes BUSY with the old position, then the synced one; an abort mid-slew
+// publishes a position the mount reached, never the target; a slew the controller refuses keeps the real position.
+static void coordinates_publish_the_mount_position(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	// slew
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(nexstaraux_mount.device_name);
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(4, 35, .1));
+	int count = stop_coordinates_publications(events);
+	int busy = check_request_publication("slew", events, count, 0, ra0, dec0, alt0, az0, 4, 35, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_motion_publications("slew", events, count, busy, ra0, dec0, 4, 35, 0.5, INDIGO_OK_STATE));
+	// sync
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(nexstaraux_mount.device_name);
+	SERIAL_CHECK_TRUE(coordinates_change(4.5, 40, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_are(4.5, 40, .05));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("sync", events, count, 0, ra0, dec0, alt0, az0, 4.5, 40, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_sync_result("sync", events, count, busy, find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE), 4.5, 40, 0.05));
+	SERIAL_CHECK_TRUE(coordinates_near(events[count - 1].value[0], events[count - 1].value[1], 4.5, 40, 0.1));
+	// abort mid-slew
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(nexstaraux_mount.device_name);
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	int fast = requests(AZM_GOTO_FAST);
+	SERIAL_CHECK_TRUE(coordinates_change(14, -20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests(AZM_GOTO_FAST, fast + 1));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(state_seen(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("aborted slew", events, count, 0, ra0, dec0, alt0, az0, 14, -20, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	int aborted = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(aborted > busy);
+	SERIAL_CHECK_TRUE(check_reported_position("abort", events, count, busy, aborted, 14, -20, 0.5));
+	// a slew the controller refuses
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	SERIAL_CHECK_TRUE(fault(AZM_GOTO_FAST, "silent"));
+	start_coordinates_publications(nexstaraux_mount.device_name);
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("refused slew", events, count, 0, ra0, dec0, alt0, az0, 4, 35, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_position_kept("refused slew", events, count, busy, ra0, dec0, 0.05));
+cleanup:
+	stop_coordinates_publications(NULL);
 	driver_stop();
 }
 
@@ -2533,6 +2600,7 @@ int main(void) {
 		{ "slew_command_failure", slew_command_failure, "normal" },
 		{ "sync_command_failure", sync_command_failure, "normal" },
 		{ "abort_slew", abort_slew, "normal" },
+		{ "coordinates_publish_the_mount_position", coordinates_publish_the_mount_position, "normal" },
 		{ "abort_while_idle", abort_while_idle, "normal" },
 		{ "abort_command_failure", abort_command_failure, "normal" },
 		{ "manual_motion", manual_motion, "normal" },

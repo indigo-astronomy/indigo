@@ -450,6 +450,11 @@ void indigo_radec_to_altaz(const double ra, const double dec, const time_t *utc,
 	indigo_ra_dec_to_point(ra, dec, lst, &eq_point);
 	indigo_equatorial_to_hotizontal(&eq_point, latitude * DEG2RAD, &h_point);
 	*az = h_point.a * RAD2DEG;
+	/* due north is exactly 0, never -0, 360 or a rounding error: azimuths are published as "%.10g", which resolves
+	   1e-7 degree at 360, so an azimuth within half of that of north, on either side, is north */
+	if (*az < 5e-8 || *az >= 360 - 5e-8) {
+		*az = 0;
+	}
 	*alt = h_point.d * RAD2DEG;
 }
 

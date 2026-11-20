@@ -2623,6 +2623,7 @@
 		59910A3C305193A900FB1C2F /* guider_cgusbst4_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = guider_cgusbst4_simulator.c; sourceTree = "<group>"; };
 		59910A3F3051FD6200FB1C2F /* indigo_focuser_prodigy.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_prodigy.driver; sourceTree = "<group>"; };
 		59910A59305289D700FB1C2F /* abort_queue_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = abort_queue_test_common.h; sourceTree = "<group>"; };
+		81AFB45D3D500DA474F1D3A9 /* mount_coordinates_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mount_coordinates_test_common.h; sourceTree = "<group>"; };
 		59910A5A305289D700FB1C2F /* test_agent_imager.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_imager.c; sourceTree = "<group>"; };
 		59910A5B305289D700FB1C2F /* test_ccd_countdown.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_countdown.c; sourceTree = "<group>"; };
 		59910A5C305289D700FB1C2F /* test_rotator_lunatico_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_lunatico_simulator.c; sourceTree = "<group>"; };
@@ -2640,6 +2641,7 @@
 		59910A823052E5E400FB1C2F /* style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = style.css; sourceTree = "<group>"; };
 		59910AA23054836E00FB1C2F /* test_agent_config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_config.c; sourceTree = "<group>"; };
 		59910AA33054836E00FB1C2F /* test_agent_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_mount.c; sourceTree = "<group>"; };
+		C0DE20261119A00100000001 /* test_agent_mount_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_mount_simulator.c; sourceTree = "<group>"; };
 		59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_asi_sdk.c; sourceTree = "<group>"; };
 		59910AA6305535A900FB1C2F /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59910AA7305535A900FB1C2F /* pthread_yield_compat.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = pthread_yield_compat.c; sourceTree = "<group>"; };
@@ -14409,6 +14411,7 @@
 				C0DE20260920003000000003 /* qsi_fake_sdk.h */,
 				C0DE20260920003000000004 /* qsi_fake_sdk.cpp */,
 				C0DE20300920000500000008 /* fli_sdk_test_common.h */,
+				81AFB45D3D500DA474F1D3A9 /* mount_coordinates_test_common.h */,
 				C0DE20260921000100000001 /* parallel_case_runner.h */,
 				59FEFFC6301E6891007FB62D /* serial_simulator_test_common.h */,
 				59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */,
@@ -14425,6 +14428,7 @@
 				C0DE20260924A00100000001 /* test_agent_imager_guider_mount.c */,
 				C0DE20260924A00100000002 /* test_agent_imager_instances.c */,
 				59910AA33054836E00FB1C2F /* test_agent_mount.c */,
+				C0DE20261119A00100000001 /* test_agent_mount_simulator.c */,
 				C0DE20260914B00100000001 /* test_agent_scripting.c */,
 				8C15A69404991352D3CBD6D1 /* test_agent_scheduler.c */,
 				C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */,

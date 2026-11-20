@@ -2117,6 +2117,10 @@ void write_c_change_property(device_type *device) {
 				} else if (property->asynchronous_change) {
 						if (!strcmp(property->id, "CCD_ABORT_EXPOSURE") || !strcmp(property->id, "FOCUSER_ABORT_MOTION") || !strcmp(property->id, "ROTATOR_ABORT_MOTION") || !strcmp(property->id, "MOUNT_ABORT_MOTION") || !strcmp(property->id, "DOME_ABORT_MOTION") || !strcmp(property->id, "POLARALIGN_ABORT_MOTION")) {
 							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(%s, %s);", property->handle, property->handler);
+						} else if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES")) {
+							// The BUSY of the request is published through indigo_update_coordinates() like every other
+							// publication of the equatorial coordinates, so the mount base class sees it.
+							write_line("\t\tINDIGO_COPY_%s_PROCESS_COORDINATES_CHANGE(%s);", property->preserve_values ? "TARGETS" : "VALUES", property->handler);
 						} else if (property->preserve_values) {
 							write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
 						} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {

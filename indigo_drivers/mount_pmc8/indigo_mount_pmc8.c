@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_mount_pmc8"
 #define DRIVER_LABEL         "PMC Eight Mount"
 #define MOUNT_DEVICE_NAME    "Mount PMC Eight"
@@ -528,6 +528,58 @@ static void pmc8_target_position(indigo_device *device, int32_t *raw_ha, int32_t
 	*raw_ha = (ha_angle / 24.0) * ra_count;
 }
 
+// Reads the axis counts and sets the coordinate values and the side of pier from them, publishing a changed side.
+static bool pmc8_read_position(indigo_device *device) {
+	int32_t raw_ha = 0, raw_dec = 0;
+	if (!pmc8_get_position(device, &raw_ha, &raw_dec)) {
+		return false;
+	}
+	PRIVATE_DATA->raw_ha = raw_ha;
+	PRIVATE_DATA->raw_dec = raw_dec;
+	indigo_item *side_of_pier;
+	uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
+	uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
+	double ha_angle = ((double)raw_ha / ra_count) * 24;
+	double dec_angle = ((double)raw_dec / dec_count) * 360;
+	double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+	double ha, ra, dec;
+	if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
+		if (raw_dec >= -1) {
+			dec = 90 - dec_angle;
+			ha = ha_angle - 6;
+			side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
+		} else {
+			dec = 90 + dec_angle;
+			ha = ha_angle + 6;
+			side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
+		}
+	} else {
+		if (raw_dec >= -1) {
+			dec = -90 + dec_angle;
+			ha = -(ha_angle - 6);
+			side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
+		} else {
+			dec = -90 - dec_angle;
+			ha = -(ha_angle + 6);
+			side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
+		}
+	}
+	ra = lst - ha;
+	if (ra < 0) {
+		ra += 24;
+	} else if (ra > 24) {
+		ra -= 24;
+	}
+	indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+	if (!side_of_pier->sw.value) {
+		indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier, true);
+		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+	}
+	return true;
+}
+
 // A running point is not stopped by setting the axis rates to zero: the controller leaves such
 // a request unanswered for more than a second and the axes stop late. Axis 3 of the point
 // command ends the point on both axes with their normal deceleration.
@@ -743,56 +795,13 @@ static void mount_timer_callback(indigo_device *device) {
 	}
 	//+ mount.on_timer
 	if (PRIVATE_DATA->handle != NULL) {
-		int32_t raw_ha = 0, raw_dec = 0;
-		if (pmc8_get_position(device, &raw_ha, &raw_dec)) {
+		if (pmc8_read_position(device)) {
 			// A good readback ends the ALERT a failed one published, not the one of a failed GOTO.
 			if (PRIVATE_DATA->poll_failed) {
 				PRIVATE_DATA->poll_failed = false;
 				if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				}
-			}
-			PRIVATE_DATA->raw_ha = raw_ha;
-			PRIVATE_DATA->raw_dec = raw_dec;
-			indigo_item *side_of_pier;
-			uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
-			uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
-			double ha_angle = ((double)raw_ha / ra_count) * 24;
-			double dec_angle = ((double)raw_dec / dec_count) * 360;
-			double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-			double ha, ra, dec;
-			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-				if (raw_dec >= -1) {
-					dec = 90 - dec_angle;
-					ha = ha_angle - 6;
-					side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
-				} else {
-					dec = 90 + dec_angle;
-					ha = ha_angle + 6;
-					side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
-				}
-			} else {
-				if (raw_dec >= -1) {
-					dec = -90 + dec_angle;
-					ha = -(ha_angle - 6);
-					side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
-				} else {
-					dec = -90 - dec_angle;
-					ha = -(ha_angle + 6);
-					side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
-				}
-			}
-			ra = lst - ha;
-			if (ra < 0) {
-				ra += 24;
-			} else if (ra > 24)
-				ra -= 24;
-			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-			if (!side_of_pier->sw.value) {
-				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier, true);
-				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			}
 			indigo_update_coordinates(device, NULL);
 			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
@@ -949,6 +958,8 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		pmc8_target_position(device, &raw_ha, &raw_dec);
 		if (pmc8_point(device, true, raw_ha, raw_dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			// The result carries the position the controller reports now, a failed readback leaves it to the next poll.
+			pmc8_read_position(device);
 		} else {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -1230,7 +1241,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_TRACKING_PROPERTY, "Mount is parked!");

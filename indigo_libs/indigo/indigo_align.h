@@ -254,6 +254,8 @@ INDIGO_EXTERN double indigo_lst(const time_t *utc, const double longitude);
 extern double indigo_jd_to_mean_gst(double jd);
 
 /** ra/dec to alt/az (in degrees)
+ * az is in [0, 360) also as published with "%.10g": an azimuth within 5e-8 degree of north on either side is exactly 0,
+ * never -0, 360 or a rounding error such as 4e-15
  */
 INDIGO_EXTERN void indigo_radec_to_altaz(const double ra, const double dec, const time_t *utc, const double latitude, const double longitude, const double elevation, double *alt, double *az);
 

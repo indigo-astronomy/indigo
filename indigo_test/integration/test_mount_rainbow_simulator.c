@@ -21,6 +21,7 @@
 #include <indigo_drivers/mount_rainbow/indigo_mount_rainbow.h>
 
 #include "serial_simulator_test_common.h"
+#include "mount_coordinates_test_common.h"
 
 #ifndef MOUNT_RAINBOW_SIMULATOR_EXECUTABLE
 #define MOUNT_RAINBOW_SIMULATOR_EXECUTABLE "build/integration/mount_rainbow_simulator"
@@ -922,7 +923,21 @@ static indigo_result capture_send_message(indigo_client *client, indigo_device *
 	return INDIGO_OK;
 }
 
+// The coordinates publications made while one request's handler runs alone on the device queue.
+static atomic_bool counting_publications, publication_window_closed;
+static atomic_int equatorial_publications, horizontal_publications, lst_publications, last_equatorial_state;
+
 static indigo_result capture_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (atomic_load(&counting_publications) && !strcmp(property->device, rainbow_mount.device_name)) {
+		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+			atomic_fetch_add(&equatorial_publications, 1);
+			atomic_store(&last_equatorial_state, property->state);
+		} else if (!strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
+			atomic_fetch_add(&horizontal_publications, 1);
+		} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
+			atomic_fetch_add(&lst_publications, 1);
+		}
+	}
 	if (atomic_load(&watch_armed) && property->state == INDIGO_OK_STATE && !strcmp(property->name, watched_property)) {
 		first_ok_value[0] = 0;
 		if (property->type == INDIGO_TEXT_VECTOR) {
@@ -1122,6 +1137,112 @@ cleanup:
 		stop_serial_driver(&rainbow_mount);
 	}
 	stop_external_serial_simulator(&simulator);
+}
+
+static void open_publication_window(indigo_device *device) {
+	(void)device;
+	atomic_store(&equatorial_publications, 0);
+	atomic_store(&horizontal_publications, 0);
+	atomic_store(&lst_publications, 0);
+	atomic_store(&last_equatorial_state, -1);
+	// an unchanged property is delivered too, as to a client that asked for redundant updates in its session
+	simulator_test_client.force_property_updates = true;
+	atomic_store(&counting_publications, true);
+}
+
+static void close_publication_window(indigo_device *device) {
+	(void)device;
+	atomic_store(&counting_publications, false);
+	simulator_test_client.force_property_updates = false;
+	atomic_store(&publication_window_closed, true);
+}
+
+// The request is sent while the device queue is held, between two markers queued with the priority of its handler, so
+// its handler runs alone between them. A poll reply read meanwhile is queued, and processed, before the first marker;
+// the poll timer only writes. The bus drops an unchanged update unless the client asked for redundant updates, so the
+// window asks for them. The handler must publish each coordinates property exactly once, in the expected state.
+static bool coordinates_published_once(double ra, double dec, indigo_property_state state, const char *path) {
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	indigo_device *device = atomic_load(&driver_device);
+	if (!hold_queue()) {
+		return false;
+	}
+	indigo_usleep(300000);
+	atomic_store(&publication_window_closed, false);
+	indigo_execute_handler(device, open_publication_window);
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	bool result = indigo_change_number_property(&simulator_test_client, rainbow_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values) == INDIGO_OK;
+	indigo_execute_handler(device, close_publication_window);
+	release_queue();
+	for (int i = 0; i < 100 && !atomic_load(&publication_window_closed); i++) {
+		indigo_usleep(50000);
+	}
+	result = result && atomic_load(&publication_window_closed) && wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, state, revision);
+	fprintf(stderr, "%s: %d %s, %d %s and %d %s publications, last state %d\n", path, atomic_load(&equatorial_publications), MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, atomic_load(&horizontal_publications), MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, atomic_load(&lst_publications), MOUNT_LST_TIME_PROPERTY_NAME, atomic_load(&last_equatorial_state));
+	return result && atomic_load(&equatorial_publications) == 1 && atomic_load(&horizontal_publications) == 1 && atomic_load(&lst_publications) == 1 && atomic_load(&last_equatorial_state) == (int)state;
+}
+
+// A sync or GOTO request publishes the coordinates once from its handler: an accepted sync OK, an accepted GOTO BUSY,
+// a sync or GOTO the mount cannot be sent ALERT.
+static void rainbow_coordinates_request_publishes_once(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_published_once(8, 20, INDIGO_OK_STATE, "accepted sync"));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ck120.000+20.000", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_published_once(7, 30, INDIGO_BUSY_STATE, "accepted GOTO"));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MS", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	// the port is lost, every command fails to be written
+	SERIAL_CHECK_TRUE(install_injection(&simulator, "AT", "CLOSE", 1));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CLOSE", "AT", 1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_published_once(9, 10, INDIGO_ALERT_STATE, "failed sync"));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_published_once(10, 15, INDIGO_ALERT_STATE, "failed GOTO"));
+	SERIAL_CHECK_EQ_INT(1, count_events(&simulator, "CMD", "MS"));
+cleanup:
+	release_queue();
+	atomic_store(&counting_publications, false);
+	simulator_test_client.force_property_updates = false;
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The OK publication of an accepted sync carries the position the mount reports after it, not the one from before the
+// sync: a client such as the Mount Agent compares it with its request. Both firmware generations sync with :Ck.
+static void check_rainbow_sync_result(const char *firmware) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	external_serial_simulator simulator = { 0 };
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, firmware));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "GD", count_events(&simulator, "CMD", "GD") + 1));
+	indigo_usleep(200000);
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	double ra = fmod(floor(ra0 * 60) / 60 + 0.5, 24);
+	double dec = dec0 > 60 ? 40 : floor(dec0) + 2;
+	start_coordinates_publications(rainbow_mount.device_name);
+	SERIAL_CHECK_TRUE(change_coordinates(ra, dec, INDIGO_OK_STATE));
+	int count = stop_coordinates_publications(events);
+	int busy = check_request_publication(firmware, events, count, 0, ra0, dec0, alt0, az0, ra, dec, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_sync_result(firmware, events, count, busy, find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE), ra, dec, 0.01));
+cleanup:
+	stop_coordinates_publications(NULL);
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void rainbow_sync_result_carries_the_reported_position(void) {
+	check_rainbow_sync_result("200625");
+	check_rainbow_sync_result("191217");
 }
 
 static bool start_rainbow_with(external_serial_simulator *simulator, const char * const *arguments) {
@@ -1349,7 +1470,8 @@ static void rainbow_abort_stops_slew_once(void) {
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "AT", polls + 2));
 	indigo_usleep(100000);
 	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
-	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	// the ALERT of the aborted slew is kept until the next request, an idle abort does not change it
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 1e-6);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 1e-6);
 cleanup:
@@ -1880,6 +2002,8 @@ int main(void) {
 		{ "rainbow_tracking_request_survives_poll_reply", rainbow_tracking_request_survives_poll_reply },
 		{ "rainbow_track_rate_request_survives_poll_reply", rainbow_track_rate_request_survives_poll_reply },
 		{ "rainbow_utc_request_survives_poll_reply", rainbow_utc_request_survives_poll_reply },
+		{ "rainbow_coordinates_request_publishes_once", rainbow_coordinates_request_publishes_once },
+		{ "rainbow_sync_result_carries_the_reported_position", rainbow_sync_result_carries_the_reported_position },
 		{ "rainbow_connect_publishes_device_state", rainbow_connect_publishes_device_state },
 		{ "rainbow_connect_recovers_from_lost_initial_replies", rainbow_connect_recovers_from_lost_initial_replies },
 		{ "rainbow_goto_sequence_completion_and_encoding", rainbow_goto_sequence_completion_and_encoding },
