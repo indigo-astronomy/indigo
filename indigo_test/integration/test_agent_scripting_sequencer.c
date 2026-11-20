@@ -535,7 +535,7 @@ static void library_inventory(void) {
 	ASSERT_TRUE(check_js("typeof Sequence==='function'"));
 	ASSERT_TRUE(check_js("(function(){var names=Object.getOwnPropertyNames(Sequence.prototype); if(names.length!==110) throw new Error('prototype count '+names.length); return true})()"));
 	ASSERT_TRUE(check_js("indigo_event_handlers.indigo_sequencer===indigo_sequencer"));
-	const char *properties[] = { "SEQUENCE_NAME", "SEQUENCE_STATE", "SEQUENCE_FAILURE", "SEQUENCE_STEP_STATE", "AGENT_ABORT_PROCESS", "AGENT_PAUSE_PROCESS", "SEQUENCE_RESET", "FLIPPER_STATE" };
+	const char *properties[] = { "SEQUENCE_NAME", "SEQUENCE_STATE", "SEQUENCE_FAILURE", "SEQUENCE_STEP_STATE", "AGENT_ABORT_PROCESS", "AGENT_PAUSE_PROCESS", "SEQUENCE_RESET", "FLIPPER_STATE", "MERIDIAN_FLIP" };
 	for (unsigned i = 0; i < ARRAY_SIZE(properties); i++) {
 		indigo_property *property = snapshot(SCRIPTING, properties[i]);
 		ASSERT_TRUE(property != NULL);
@@ -585,6 +585,22 @@ static void published_property_schema(void) {
 	ASSERT_EQ_INT(INDIGO_RO_PERM, property->perm);
 	ASSERT_EQ_INT(7, property->count);
 	ASSERT_EQ_INT(INDIGO_ANY_OF_MANY_RULE, property->rule);
+	indigo_release_property(property);
+	property = snapshot(SCRIPTING, "MERIDIAN_FLIP");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_EQ_INT(INDIGO_NUMBER_VECTOR, property->type);
+	ASSERT_EQ_INT(INDIGO_RO_PERM, property->perm);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->state);
+	ASSERT_STREQ("Sequencer", property->group);
+	ASSERT_EQ_INT(3, property->count);
+	const char *flip_items[] = { "ENABLED", "USE_SOLVER", "OFFSET" };
+	for (unsigned i = 0; i < ARRAY_SIZE(flip_items); i++) {
+		indigo_item *item = indigo_get_item(property, flip_items[i]);
+		ASSERT_TRUE(item != NULL);
+		if (item != NULL) {
+			ASSERT_NEAR(0, item->number.value, 0.0001);
+		}
+	}
 	indigo_release_property(property);
 }
 
@@ -1149,6 +1165,219 @@ static void meridian_flip_without_solver_fails(void) {
 	ASSERT_TRUE(!has_message("Sequence aborted"));
 }
 
+// MERIDIAN_FLIP reaches the given values; the update is published by the step, before the sequence moves on
+static bool wait_meridian_flip(double enabled, double use_solver, double offset) {
+	double values[3] = { 0 };
+	bool found = false;
+	for (double deadline = indigo_monotonic_time() + 5; indigo_monotonic_time() < deadline; indigo_usleep(1000)) {
+		indigo_property *property = snapshot(SCRIPTING, "MERIDIAN_FLIP");
+		indigo_item *items[3] = { NULL };
+		if (property != NULL) {
+			items[0] = indigo_get_item(property, "ENABLED");
+			items[1] = indigo_get_item(property, "USE_SOLVER");
+			items[2] = indigo_get_item(property, "OFFSET");
+		}
+		found = items[0] != NULL && items[1] != NULL && items[2] != NULL;
+		if (found) {
+			for (int i = 0; i < 3; i++) {
+				values[i] = items[i]->number.value;
+			}
+		}
+		indigo_release_property(property);
+		if (found && fabs(values[0] - enabled) < 0.0001 && fabs(values[1] - use_solver) < 0.0001 && fabs(values[2] - offset) < 0.0001) {
+			return true;
+		}
+	}
+	fprintf(stderr, "MERIDIAN_FLIP is %s ENABLED=%g USE_SOLVER=%g OFFSET=%g, expected %g %g %g\n", found ? "" : "(missing)", values[0], values[1], values[2], enabled, use_solver, offset);
+	return false;
+}
+
+static bool wait_switch_item(const char *device, const char *name, const char *item, bool value);
+
+static bool imager_flip_feature(bool enabled) {
+	return wait_switch_item(IMAGER, "AGENT_PROCESS_FEATURES", "PAUSE_AFTER_TRANSIT", enabled);
+}
+
+static double solver_exposure(const char *agent) {
+	indigo_property *property = snapshot(agent, "AGENT_PLATESOLVER_EXPOSURE");
+	double result = property != NULL ? property->items[0].number.value : -1;
+	indigo_release_property(property);
+	return result;
+}
+
+static bool solver_center_requested(const char *agent) {
+	indigo_property *property = snapshot(agent, "AGENT_START_PROCESS");
+	bool result = property != NULL && property->items[0].sw.value;
+	indigo_release_property(property);
+	return result;
+}
+
+static void meridian_flip_property_without_solver(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property without solver'); s.enable_meridian_flip(false,-0.5); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 0, -0.5));
+	ASSERT_TRUE(imager_flip_feature(true));
+	ASSERT_TRUE(check_js("indigo_meridian_flip.solver_exposure===0"));
+	// a zero exposure means no solver as well
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property zero exposure'); s.enable_meridian_flip(0,0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 0, 0));
+}
+
+static void meridian_flip_property_with_solver_exposure(void) {
+	double exposure = solver_exposure("Astrometry Agent");
+	ASSERT_TRUE(exposure != 7.5);
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property exposure'); s.enable_meridian_flip(7.5,0.25); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 7.5, 0.25));
+	ASSERT_TRUE(imager_flip_feature(true));
+	// the step only publishes the exposure, the flip sets it on the solver agent
+	ASSERT_NEAR(exposure, solver_exposure("Astrometry Agent"), 0.0001);
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property at meridian'); s.enable_meridian_flip(3,0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 3, 0));
+}
+
+// true keeps the exposure of the solver agent, MERIDIAN_FLIP publishes the one it has when the step executes, 1 without a loaded solver agent
+static void meridian_flip_property_with_solver_true(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property solver exposure'); s.sync_center(2.5); s.enable_meridian_flip(true,-0.25); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 2.5, -0.25));
+	ASSERT_TRUE(check_js("indigo_meridian_flip.solver_exposure===0"));
+	ASSERT_TRUE(rename_solver_peer("Unrelated Device"));
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property no solver agent'); s.enable_meridian_flip(true,0.5); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 1, 0.5));
+}
+
+// disable_meridian_flip() clears ENABLED and keeps the solver and the offset of the last enable_meridian_flip()
+static void meridian_flip_property_disabled(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property disable'); s.enable_meridian_flip(4,-1); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 4, -1));
+	ASSERT_TRUE(imager_flip_feature(true));
+	unsigned before = revision(SCRIPTING, "MERIDIAN_FLIP");
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property disabled'); s.disable_meridian_flip(); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(0, 4, -1));
+	ASSERT_TRUE(revision(SCRIPTING, "MERIDIAN_FLIP") > before);
+	ASSERT_TRUE(imager_flip_feature(false));
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property enabled again'); s.enable_meridian_flip(false,0.1); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 0, 0.1));
+}
+
+// OFFSET is the offset the Imager Agent uses, which limits AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT to -2..2 h
+static void meridian_flip_property_offset_limits(void) {
+	indigo_property *property = snapshot(SCRIPTING, "MERIDIAN_FLIP");
+	ASSERT_TRUE(property != NULL);
+	indigo_item *item = property != NULL ? indigo_get_item(property, "OFFSET") : NULL;
+	ASSERT_TRUE(item != NULL);
+	if (item != NULL) {
+		ASSERT_NEAR(-2, item->number.min, 0.0001);
+		ASSERT_NEAR(2, item->number.max, 0.0001);
+	}
+	indigo_release_property(property);
+	ASSERT_TRUE(run_js("var s=new Sequence('flip offset above'); s.enable_meridian_flip(false,3); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 0, 2));
+	ASSERT_TRUE(run_js("var s=new Sequence('flip offset below'); s.enable_meridian_flip(false,-3); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 0, -2));
+	ASSERT_TRUE(run_js("var s=new Sequence('flip offset limit'); s.enable_meridian_flip(false,2); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 0, 2));
+}
+
+// the property is read-only, a client change leaves it as it is
+static void meridian_flip_property_read_only(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property read only'); s.enable_meridian_flip(2,0.5); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 2, 0.5));
+	unsigned before = revision(SCRIPTING, "MERIDIAN_FLIP");
+	static const char *names[] = { "ENABLED", "USE_SOLVER", "OFFSET" };
+	static const double values[] = { 0, 9, -2 };
+	ASSERT_TRUE(indigo_change_number_property(&observer, SCRIPTING, "MERIDIAN_FLIP", 3, names, values) == INDIGO_OK);
+	ASSERT_TRUE(drain());
+	indigo_usleep(200000);
+	ASSERT_TRUE(wait_meridian_flip(1, 2, 0.5));
+	ASSERT_EQ_INT(before, revision(SCRIPTING, "MERIDIAN_FLIP"));
+	ASSERT_TRUE(check_js("indigo_meridian_flip.enabled===true && indigo_meridian_flip.use_solver===2 && indigo_meridian_flip.offset===0.5"));
+}
+
+// clients send the library before every script; the idle sequencer is replaced, the published flip settings and those used by the flip are kept
+static void meridian_flip_property_kept_by_reload(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property reload'); s.enable_meridian_flip(6,-0.75); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(1, 6, -0.75));
+	ASSERT_TRUE(run_js("indigo_sequencer.reload_marker = true;"));
+	unsigned before = revision(SCRIPTING, "MERIDIAN_FLIP");
+	ASSERT_TRUE(load_sequencer());
+	ASSERT_TRUE(check_js("indigo_sequencer.reload_marker === undefined"));
+	// the reload enumerates the properties again, with the kept values
+	for (int i = 0; i < 500 && revision(SCRIPTING, "MERIDIAN_FLIP") == before; i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(revision(SCRIPTING, "MERIDIAN_FLIP") > before);
+	ASSERT_TRUE(wait_meridian_flip(1, 6, -0.75));
+	ASSERT_TRUE(check_js("indigo_meridian_flip.solver_exposure===6"));
+	// the flip after the reload still sets the exposure
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(wait_solver_center("Astrometry Agent"));
+	ASSERT_NEAR(6, solver_exposure("Astrometry Agent"), 0.0001);
+	// a disabled flip stays disabled
+	ASSERT_TRUE(run_js("var s=new Sequence('flip property reload disabled'); s.disable_meridian_flip(); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_meridian_flip(0, 6, -0.75));
+	ASSERT_TRUE(load_sequencer());
+	ASSERT_TRUE(drain());
+	ASSERT_TRUE(wait_meridian_flip(0, 6, -0.75));
+}
+
+// a number sets the solver exposure before the flip recenters
+static void meridian_flip_sets_solver_exposure(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip exposure'); s.sync_center(1); s.enable_meridian_flip(7.5,0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_NEAR(1, solver_exposure("Astrometry Agent"), 0.0001);
+	ASSERT_TRUE(run_js("indigo_change_switch_property('Astrometry Agent','AGENT_START_PROCESS',{CENTER:false,PRECISE_GOTO:true});"));
+	for (int i = 0; i < 500 && solver_center_requested("Astrometry Agent"); i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_FALSE(solver_center_requested("Astrometry Agent"));
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(wait_solver_center("Astrometry Agent"));
+	ASSERT_NEAR(7.5, solver_exposure("Astrometry Agent"), 0.0001);
+	ASSERT_TRUE(check_js("indigo_flipper.solver_exposure===7.5 && indigo_flipper.use_solver===true"));
+}
+
+// true recenters with the exposure the solver agent has, false does not recenter
+static void meridian_flip_keeps_solver_exposure(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip current exposure'); s.sync_center(2.5); s.enable_meridian_flip(true,0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(run_js("indigo_change_switch_property('Astrometry Agent','AGENT_START_PROCESS',{CENTER:false,PRECISE_GOTO:true});"));
+	for (int i = 0; i < 500 && solver_center_requested("Astrometry Agent"); i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_FALSE(solver_center_requested("Astrometry Agent"));
+	int before = atomic_load(&orchestration_changes);
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(wait_solver_center("Astrometry Agent"));
+	// only CENTER was requested, the exposure was not changed
+	ASSERT_EQ_INT(before + 1, atomic_load(&orchestration_changes));
+	ASSERT_NEAR(2.5, solver_exposure("Astrometry Agent"), 0.0001);
+	ASSERT_TRUE(run_js("indigo_change_switch_property('Astrometry Agent','AGENT_START_PROCESS',{CENTER:false,PRECISE_GOTO:true});"));
+	for (int i = 0; i < 500 && solver_center_requested("Astrometry Agent"); i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(run_js("var s=new Sequence('flip no solver'); s.enable_meridian_flip(false,0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	before = atomic_load(&orchestration_changes);
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(check_js("indigo_flipper.use_solver===false && indigo_flipper.state==='Ok' && indigo_event_handlers.indigo_flipper===undefined"));
+	ASSERT_EQ_INT(before, atomic_load(&orchestration_changes));
+	ASSERT_FALSE(solver_center_requested("Astrometry Agent"));
+}
+
 // The abort publishes AGENT_ABORT_PROCESS last, so whatever it did to the sequence state has been delivered by then
 static bool failed_flip_keeps_sequence_state(indigo_property_state state) {
 	unsigned sequence_before = revision(SCRIPTING, "SEQUENCE_STATE");
@@ -1553,6 +1782,15 @@ static const indigo_test_case tests[] = {
 	{ "meridian flip uses solver selected by step", meridian_flip_uses_solver_selected_by_step },
 	{ "meridian flip uses solver loaded after sequence", meridian_flip_uses_solver_loaded_after_sequence },
 	{ "meridian flip without solver fails", meridian_flip_without_solver_fails },
+	{ "meridian flip property without solver", meridian_flip_property_without_solver },
+	{ "meridian flip property with solver exposure", meridian_flip_property_with_solver_exposure },
+	{ "meridian flip property with solver true", meridian_flip_property_with_solver_true },
+	{ "meridian flip property disabled", meridian_flip_property_disabled },
+	{ "meridian flip property offset limits", meridian_flip_property_offset_limits },
+	{ "meridian flip property read only", meridian_flip_property_read_only },
+	{ "meridian flip property kept by reload", meridian_flip_property_kept_by_reload },
+	{ "meridian flip sets solver exposure", meridian_flip_sets_solver_exposure },
+	{ "meridian flip keeps solver exposure", meridian_flip_keeps_solver_exposure },
 	{ "meridian flip failure recovers", meridian_flip_failure_recovers },
 	{ "meridian flip failure during capture recovers", meridian_flip_failure_during_capture_recovers },
 	{ "meridian flip failure during endless capture recovers", meridian_flip_failure_during_endless_capture_recovers },
