@@ -145,7 +145,6 @@ This walkthrough needs only the Scheduler and Scripting Agents. The test task wa
 // @retry      1 after 15
 
 var sequence = new Sequence(scheduler_task.name);
-sequence.enable_meridian_flip(true, 0);
 sequence.precise_goto(5, scheduler_task.ra, scheduler_task.dec);
 sequence.start_guiding();
 sequence.select_filter("L");
@@ -252,7 +251,7 @@ The night plan applies exactly the same rules to the rest of the night, so it sh
 
 **What the other settings do under `VISIBILITY`.** Task constraints such as `@altitude`, `@airmass`, `@ha`, `@window`, `@moon` and `@twilight` remain hard limits and must hold for the whole run: a run is never placed where its target would drop below the limit before it ends. The altitude limit only rules out times; the quality is still measured against the culmination, not the limit. `COMPACT`, guided by priority and the weights, picks the runs the plan starts from; `VISIBILITY` adds the runs `COMPACT` leaves out where they still fit, by the quality they gain, and when it plans again it never drops an urgent run or a run of a higher class than the runs it keeps. Within the plan a `high` run may still come after a `normal` one when that gives a better night. `SETTING_WEIGHT` and `ALTITUDE_WEIGHT` do not move runs: they shape the `COMPACT` plan that `VISIBILITY` starts from, and they decide whenever the scheduler falls back to the `COMPACT` choice. That happens when no plan beats `COMPACT`, when a night has more than 64 runs or the plan reaches more than 24 hours ahead, or when a planned run cannot start at its time even after the night is planned again. A target that sets early is still placed early, because it stands highest then.
 
-**Example.** At 42° N, 23° E on 19 November 2026, six tasks with `@twilight astronomical` and `@altitude > 20` (`> 10` for Pleiades and Soul), Orion with `@priority high`, astronomical dusk at 16:45 UTC:
+**Example.** At 42° N, 23° E on 19 November 2026, six tasks with `@twilight astronomical` and `@altitude > 20` (`> 10` for Pleiades and Soul), Orion with `@priority high`, astronomical dusk at 16:45 UTC, with the meridian flip disabled (or `VISIBILITY_FLIP_PENALTY` 0); with the flip enabled at `OFFSET` 0 and the default penalty, Soul, Pleiades and Jellyfish start once they have crossed the meridian and the night has no flip, see [Meridian flips](#meridian-flips):
 
 | Task | Length | Culmination (UTC) | `COMPACT` | Quality | `VISIBILITY` | Quality |
 |---|---|---|---|---|---|---|
@@ -290,6 +289,17 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_STRATEGY.COMPACT=ON"
 ```
 
 Switching back to `COMPACT` during a wait starts the best task at once. A running task is never stopped by a change of the strategy.
+
+#### Meridian flips
+
+A German equatorial mount has to flip when a run crosses the meridian. The scheduler reads the meridian flip setting from the `MERIDIAN_FLIP` property that `Sequencer.js` publishes on the Scripting Agent (`ENABLED` and `OFFSET`, set by `enable_meridian_flip()` and `disable_meridian_flip()`). Set it once in the `STARTUP` hook; the plan assumes it stays the same for the whole night, and every change makes the scheduler plan the night again. While `MERIDIAN_FLIP.ENABLED` is 0 or the property is missing, no run is expected to flip.
+
+- **When a run flips.** A run flips when it starts before the meridian (east of it) and its target reaches `OFFSET` hours past the meridian before the run ends. A run that starts past the meridian is slewed to the west side and does not flip. With a negative `OFFSET` the capture also pauses from that point until the meridian, where the flip happens.
+- **The plan marks them.** Under both strategies, a run expected to flip has `meridian flip` as its reason in the [night plan](#the-night-plan).
+- **`VISIBILITY` avoids them where that is cheap.** Under `VISIBILITY` a run that would flip costs `VISIBILITY_FLIP_PENALTY` minutes of full-quality imaging (default 10), plus the pause before the meridian with a negative `OFFSET`. A flip is therefore avoided when moving the run costs less quality than that: a short run moves past the meridian, a long run centred on it keeps its flip. Set the penalty to at least the time a flip takes; higher values avoid flips more strongly, 0 switches the cost off. Urgent runs keep their start and are not penalised. The setting has no effect under `COMPACT` and while the flip is disabled.
+- **Durations stay the same.** The time a flip takes is not added to the planned run; the measured duration of a task already includes the flips of earlier runs, see [Task duration](#task-duration).
+
+On a simulated set of 1000 random nights at 42° N with `OFFSET` 0, the default penalty of 10 minutes reduced the flips of `VISIBILITY` from 1436 to 269 (`COMPACT`: 645) and the duration-weighted quality from 79.6 % to 78.9 % (`COMPACT`: 69.7 %), with the same number of runs.
 
 ### Time windows
 
@@ -381,7 +391,7 @@ Checkpoints act only where the sequence reaches them: an exposure, a slew or a f
 ### Rules for the body
 
 - **Build, then start.** The body runs once on every upload and edit to estimate the duration. Up to `sequence.start()`, it must only build the sequence: it must not change properties, start timers or send messages itself. Everything that acts on the equipment belongs in sequence steps.
-- **Set up everything you rely on.** The scheduler does not reset the agents between tasks, so settings made by one task stay for the next one. The exceptions are the object name, the folder and the FITS keywords that the scheduler sets itself, see [Where the data goes](#where-the-data-goes). Set the filter, the binning and other options in every task, and call `enable_meridian_flip()` or `disable_meridian_flip()` explicitly.
+- **Set up everything you rely on.** The scheduler does not reset the agents between tasks, so settings made by one task stay for the next one. The exceptions are the object name, the folder and the FITS keywords that the scheduler sets itself, see [Where the data goes](#where-the-data-goes). Set the filter, the binning and other options in every task. The meridian flip is the exception: set it once for all tasks with `enable_meridian_flip()` or `disable_meridian_flip()` in the `STARTUP` hook, see [Hooks](#hooks), and do not change it in the tasks. The night plan assumes that the flip setting `Sequencer.js` publishes in `MERIDIAN_FLIP` holds for the whole night, see [Meridian flips](#meridian-flips).
 - **End the sequence in the right state.** A sequence that ends Ok counts as a success, and one that ends Alert as a failure. Use the sequencer's own steps to stop early, such as `break_if_target_altitude_below()` and `break_at()`.
 - **Name the sequence after the task** with `new Sequence(scheduler_task.name)`.
 
@@ -445,7 +455,6 @@ A target that must be high, away from a bright Moon, in astronomical darkness:
 // @duration   120
 
 var sequence = new Sequence(scheduler_task.name);
-sequence.enable_meridian_flip(true, 0);
 sequence.precise_goto(5, scheduler_task.ra, scheduler_task.dec);
 sequence.focus(5);
 sequence.start_guiding();
@@ -469,7 +478,6 @@ A variable star observed every night near the meridian, every 30 minutes, ten ti
 // @duration   5
 
 var sequence = new Sequence(scheduler_task.name);
-sequence.disable_meridian_flip();
 sequence.precise_goto(3, scheduler_task.ra, scheduler_task.dec);
 sequence.select_filter("V");
 sequence.capture_batch(3, 60);
@@ -505,7 +513,6 @@ You upload a task by writing its text to the `TASK` item of `AGENT_SCHEDULER_ADD
 // @twilight   astronomical
 
 var sequence = new Sequence(scheduler_task.name);
-sequence.enable_meridian_flip(true, 0);
 sequence.precise_goto(5, scheduler_task.ra, scheduler_task.dec);
 sequence.start_guiding();
 sequence.select_filter("L");
@@ -546,7 +553,6 @@ To submit an urgent task, upload its file to `AGENT_SCHEDULER_URGENT_TASK` inste
 // @duration   30
 
 var sequence = new Sequence(scheduler_task.name);
-sequence.disable_meridian_flip();
 sequence.precise_goto(5, scheduler_task.ra, scheduler_task.dec);
 sequence.select_filter("L");
 sequence.capture_batch(10, 60);
@@ -624,6 +630,7 @@ and an unpark task as `unpark.task`:
 
 var sequence = new Sequence(scheduler_task.name);
 sequence.unpark();
+sequence.enable_meridian_flip(true, 0);
 sequence.start();
 ```
 
@@ -635,7 +642,7 @@ indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=unpar
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.STARTUP=Unpark;SHUTDOWN=Park;IDLE=Park;RESUME=Unpark"
 ```
 
-The mount is unparked on `START`, parked when nothing can run for `IDLE_HOOK_DELAY` minutes, unparked again before the next task, and parked when the scheduler stops.
+The mount is unparked on `START`, parked when nothing can run for `IDLE_HOOK_DELAY` minutes, unparked again before the next task, and parked when the scheduler stops. `Unpark` also sets the meridian flip for all tasks, so the night plan knows which runs will flip, see [Meridian flips](#meridian-flips).
 
 - Hooks name their tasks: renaming a hook task with an edit detaches it from the hook.
 - A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it with the state `HOOK` and its hook in the priority column: `hook startup`, `hook shutdown`, `hook night start`, `hook night end`, `hook idle` or `hook resume`, for example `Park | HOOK | hook shutdown | - | - | -`.
@@ -743,6 +750,7 @@ A night then runs like this:
 | `START_TIMEOUT` | s | 10 | 1–600 | Time allowed for a started task's sequence to begin |
 | `SETTING_WEIGHT` | — | 1 | 0–4 | How strongly tasks whose constraints end soon are preferred within a priority class (`COMPACT`; under `VISIBILITY` only for the starting plan and fallbacks), see [Priorities](#priorities) |
 | `ALTITUDE_WEIGHT` | — | 1 | 0–4 | How strongly targets near their own culmination are preferred within a priority class (`COMPACT`; under `VISIBILITY` only for the starting plan and fallbacks) |
+| `VISIBILITY_FLIP_PENALTY` | min | 10 | 0–120 | Best visibility only: the minutes of full-quality imaging you are willing to give up to avoid one meridian flip; at least the time a flip takes, higher avoids flips more strongly, 0 switches the cost off. Ignored under `COMPACT` and while `MERIDIAN_FLIP.ENABLED` of the Scripting Agent is 0 or missing, see [Meridian flips](#meridian-flips) |
 | `FRAME_OVERHEAD` | s | 10 | 0–600 | Time added per frame in the duration estimate (download, saving, dithering) |
 | `OPERATION_OVERHEAD` | s | 120 | 0–3600 | Time added per slew, centering, focus or guiding start in the duration estimate |
 | `NIGHT_START_OFFSET` | min | 0 | −240–240 | Shift of the night start for the night hooks; negative is earlier, see [Several nights](#several-nights) |
@@ -857,7 +865,7 @@ The priority is `urgent`, the class and level of the task such as `normal 60`, o
 
 - Each run shows its expected UTC start and end, the task, the run number of a repeated task and the priority. The night hooks appear at their expected times with `-` as the run and `hook night start` or `hook night end` as the priority.
 - The state is `RUNNING` (Busy light) for the running task or hook and `PLANNED` (Idle light) for planned runs.
-- The reason of a planned run is `-`. A gap between runs is idle time: with `COMPACT` nothing can run then, with [`VISIBILITY`](#choosing-a-strategy) the plan waits for a better slot.
+- The reason of a planned run is `-`, or `meridian flip` for a run that is expected to flip, see [Meridian flips](#meridian-flips). A gap between runs is idle time: with `COMPACT` nothing can run then, with [`VISIBILITY`](#choosing-a-strategy) the plan waits for a better slot.
 - While a hook runs, whatever its kind (`hook startup`, `hook shutdown`, `hook night start`, `hook night end`, `hook idle` or `hook resume`), it is the first item, for example `2026-11-20 19:58-20:03 | Evening | - | hook night start | RUNNING | -`. Its end is its start plus its duration, but not earlier than a minute from now, and the planned runs follow from that end. A running night hook replaces its planned item, and the item disappears when the hook ends. Only the night hooks are forecast; `STARTUP`, `SHUTDOWN`, `IDLE` and `RESUME` show up only while they run.
 - After the runs come the tasks that will not run tonight, with an Alert light, `-` as the time, the state `NOT TONIGHT` and the reason. Typical reasons are a constraint that never holds tonight (see [Reasons](#reasons)), `disabled`, `script error`, or `no time left tonight` for a task that could run but finds no room after the others. A day without night, with night hooks set, adds the item `- | - | - | - | NOT TONIGHT | no night at the night limit within a day, the night hooks do not run`.
 - During the day the plan shows the coming night. When the night of the night hooks ends after sunrise, the plan lasts until it ends. It is shown also while the scheduler is stopped, as the plan that `START` would follow.

@@ -50,8 +50,11 @@
 // runs moved by more than 15 minutes or reordered) and, for VISIBILITY, how
 // each plan was decided, the plan time (min, mean, median, p95, p99, max and
 // standard deviation, warm-up plans of the first night excluded) and the
-// largest work of one plan. The owner's night of 2026-11-19 is printed run by
-// run first.
+// largest work of one plan. VISIBILITY F=10 is VISIBILITY with the meridian
+// flip enabled at OFFSET 0 and the default flip penalty of 10 minutes; the
+// meridian flips of the executed runs (a run starting before the meridian and
+// reaching it) are counted for every strategy. The owner's night of 2026-11-19
+// is printed run by run first.
 
 #include <math.h>
 #include <stdio.h>
@@ -76,13 +79,22 @@
 
 typedef enum {
 	STRATEGY_COMPACT,
-	STRATEGY_VISIBILITY
+	STRATEGY_VISIBILITY,
+	STRATEGY_VISIBILITY_FLIP
 } strategy;
+
+#define STRATEGY_COUNT	3
+
+static const char *strategy_names[STRATEGY_COUNT] = { "COMPACT", "VISIBILITY", "VISIBILITY F=10" };
+
+// the meridian flip of VISIBILITY F=10, also used to count the flips of every strategy
+static const scheduler_flip penalty_flip = { true, 0, 10 / 60.0 };
 
 typedef struct {
 	int runs;
 	double quality, weighted, duration;
 	int violations, changes;
+	int flips;
 } night_result;
 
 static scheduler_sky_grid sky;
@@ -217,15 +229,18 @@ static night_result run_night(strategy kind, bool timed) {
 			scheduler_plan_info info;
 			struct timespec from, to;
 			clock_gettime(CLOCK_MONOTONIC, &from);
-			count = indigo_scheduler_plan_visibility(&sky, state, task_count, hooks, hook_count, t, T_END + 1, 1, 1, have_previous ? previous : NULL, previous_count, plan, MAX_RUNS, &info);
+			count = indigo_scheduler_plan_visibility(&sky, state, task_count, hooks, hook_count, t, T_END + 1, 1, 1, kind == STRATEGY_VISIBILITY_FLIP ? &penalty_flip : NULL, have_previous ? previous : NULL, previous_count, plan, MAX_RUNS, &info);
 			clock_gettime(CLOCK_MONOTONIC, &to);
-			if (timed && sample_count < MAX_SAMPLES) {
-				samples[sample_count++] = elapsed(&from, &to) * 1000;
+			// the timing and the decisions are those of plain VISIBILITY
+			if (kind == STRATEGY_VISIBILITY) {
+				if (timed && sample_count < MAX_SAMPLES) {
+					samples[sample_count++] = elapsed(&from, &to) * 1000;
+				}
+				if (info.work > worst_work) {
+					worst_work = info.work;
+				}
+				results[info.result]++;
 			}
-			if (info.work > worst_work) {
-				worst_work = info.work;
-			}
-			results[info.result]++;
 		}
 		if (have_previous && changed(previous, previous_count, plan, count)) {
 			result.changes++;
@@ -259,11 +274,15 @@ static night_result run_night(strategy kind, bool timed) {
 			}
 			ran[i] = true;
 			last_end[i] = start + tasks[i].duration;
+			bool flips = indigo_scheduler_run_flips(&sky, &targets[i], &headers[i], start, tasks[i].duration, &penalty_flip);
+			if (flips) {
+				result.flips++;
+			}
 			if (verbose) {
 				char a[8], b[8];
 				hhmm(start, a);
 				hhmm(start + tasks[i].duration, b);
-				printf("    %s-%s %-10s %5.1f %%\n", a, b, headers[i].name, quality(i, start));
+				printf("    %s-%s %-10s %5.1f %%%s\n", a, b, headers[i].name, quality(i, start), flips ? "  FLIP" : "");
 			}
 			result.runs++;
 			result.quality += quality(i, start);
@@ -306,7 +325,11 @@ static void print_timing(void) {
 }
 
 static void print_line(const char *name, const night_result *total, int fewer, int worse) {
-	printf("%-10s runs %5d  mean quality %5.1f %%  weighted quality %5.1f %%  nights with fewer runs than COMPACT %d  same runs and worse %d  violations %d  plan changes %d\n", name, total->runs, total->runs > 0 ? total->quality / total->runs : 0, total->duration > 0 ? total->weighted / total->duration : 0, fewer, worse, total->violations, total->changes);
+	printf("%-15s runs %5d  mean quality %5.1f %%  weighted quality %5.1f %%  nights with fewer runs than COMPACT %d  same runs and worse %d  violations %d  plan changes %d\n", name, total->runs, total->runs > 0 ? total->quality / total->runs : 0, total->duration > 0 ? total->weighted / total->duration : 0, fewer, worse, total->violations, total->changes);
+}
+
+static void print_flips(const char *name, const night_result *total, int nights) {
+	printf("%-15s meridian flips %5d  flips per night %.2f  runs %5d  weighted quality %5.1f %%\n", name, total->flips, nights > 0 ? (double)total->flips / nights : 0, total->runs, total->duration > 0 ? total->weighted / total->duration : 0);
 }
 
 int main(int argc, char **argv) {
@@ -323,15 +346,15 @@ int main(int argc, char **argv) {
 	printf("Scheduler plan benchmark: %s, %d random nights x %d, latitude %d, longitude %d, 2026-11-19\n", label, nights, repeats, LATITUDE, LONGITUDE);
 	owner_night();
 	verbose = true;
-	for (int kind = STRATEGY_COMPACT; kind <= STRATEGY_VISIBILITY; kind++) {
-		printf("  owner's night, %s:\n", kind == STRATEGY_COMPACT ? "COMPACT" : "VISIBILITY");
+	for (int kind = STRATEGY_COMPACT; kind < STRATEGY_COUNT; kind++) {
+		printf("  owner's night, %s:\n", strategy_names[kind]);
 		night_result result = run_night(kind, false);
-		printf("    %d runs, mean quality %.1f %%, weighted quality %.1f %%\n", result.runs, result.quality / result.runs, result.weighted / result.duration);
+		printf("    %d runs, mean quality %.1f %%, weighted quality %.1f %%, meridian flips %d\n", result.runs, result.quality / result.runs, result.weighted / result.duration, result.flips);
 	}
 	verbose = false;
 	memset(results, 0, sizeof(results));
-	night_result totals[2];
-	int fewer[2] = { 0 }, worse[2] = { 0 };
+	night_result totals[STRATEGY_COUNT];
+	int fewer[STRATEGY_COUNT] = { 0 }, worse[STRATEGY_COUNT] = { 0 };
 	for (int repeat = 0; repeat < repeats; repeat++) {
 		memset(totals, 0, sizeof(totals));
 		memset(fewer, 0, sizeof(fewer));
@@ -342,8 +365,9 @@ int main(int argc, char **argv) {
 			night_result compact = run_night(STRATEGY_COMPACT, false);
 			// the plans of the first night are warm-up
 			night_result visibility = run_night(STRATEGY_VISIBILITY, repeat > 0 || night > 0);
-			night_result *each[2] = { &compact, &visibility };
-			for (int kind = 0; kind < 2; kind++) {
+			night_result visibility_flip = run_night(STRATEGY_VISIBILITY_FLIP, false);
+			night_result *each[STRATEGY_COUNT] = { &compact, &visibility, &visibility_flip };
+			for (int kind = 0; kind < STRATEGY_COUNT; kind++) {
 				night_result *result = each[kind];
 				totals[kind].runs += result->runs;
 				totals[kind].quality += result->quality;
@@ -351,6 +375,7 @@ int main(int argc, char **argv) {
 				totals[kind].duration += result->duration;
 				totals[kind].violations += result->violations;
 				totals[kind].changes += result->changes;
+				totals[kind].flips += result->flips;
 				if (result->runs < compact.runs) {
 					fewer[kind]++;
 				} else if (result->runs == compact.runs && result->duration > 0 && compact.duration > 0 && result->weighted / result->duration < compact.weighted / compact.duration - 1e-9) {
@@ -359,8 +384,12 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	print_line("COMPACT", totals + 0, fewer[0], worse[0]);
-	print_line("VISIBILITY", totals + 1, fewer[1], worse[1]);
+	for (int kind = 0; kind < STRATEGY_COUNT; kind++) {
+		print_line(strategy_names[kind], totals + kind, fewer[kind], worse[kind]);
+	}
+	for (int kind = 0; kind < STRATEGY_COUNT; kind++) {
+		print_flips(strategy_names[kind], totals + kind, nights);
+	}
 	printf("VISIBILITY plans: %d planned, %d COMPACT not worse, %d no arrangement, %d too large\n", results[SCHEDULER_VISIBILITY_PLANNED], results[SCHEDULER_VISIBILITY_NOT_BETTER], results[SCHEDULER_VISIBILITY_NO_ARRANGEMENT], results[SCHEDULER_VISIBILITY_TOO_LARGE]);
 	print_timing();
 	return 0;

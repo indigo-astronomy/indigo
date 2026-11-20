@@ -776,7 +776,7 @@ static void test_visibility_owner_night(void) {
 	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
 	int compact = indigo_scheduler_plan(&sky, tasks, 6, T_VISIBILITY_NOON, end, 1, 1, compact_runs, 512);
 	scheduler_plan_info info;
-	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, &info);
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
 	print_plan("COMPACT", compact_runs, compact);
 	print_plan("VISIBILITY", runs, count);
 	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
@@ -868,7 +868,7 @@ static void test_visibility_never_fewer_runs(void) {
 		int count = random_queue(queue >= 200);
 		int compact = indigo_scheduler_plan(&sky, tasks, count, T_VISIBILITY_NOON, end, 1, 1, compact_runs, 512);
 		scheduler_plan_info info;
-		int visibility = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, &info);
+		int visibility = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
 		int compact_counts[MAX_TASKS], counts[MAX_TASKS];
 		int compact_total = count_runs(compact_runs, compact, compact_counts, count), total = count_runs(runs, visibility, counts, count);
 		for (int i = 0; i < count; i++) {
@@ -892,7 +892,7 @@ static void test_visibility_constraints_hold(void) {
 	int repeated = 0;
 	for (int queue = 0; queue < 250; queue++) {
 		int count = random_queue(queue >= 200);
-		int visibility = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, NULL);
+		int visibility = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, NULL);
 		ASSERT_TRUE(plan_constraints_hold(runs, visibility, count, T_VISIBILITY_NOON, end));
 		for (int r = 0; r < visibility; r++) {
 			repeated += runs[r].task >= 0 && runs[r].run == 2;
@@ -994,7 +994,7 @@ static void test_visibility_urgent(void) {
 	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
 	int compact = indigo_scheduler_plan(&sky, tasks, 6, T_VISIBILITY_NOON, end, 1, 1, compact_runs, 512);
 	scheduler_plan_info info;
-	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, &info);
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
 	print_plan("VISIBILITY with Pleiades urgent", runs, count);
 	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
 	int a = find_run(compact_runs, compact, 3), b = find_run(runs, count, 3);
@@ -1022,7 +1022,7 @@ static void test_visibility_windows(void) {
 	for (int i = 1; i <= 3; i++) {
 		build_task(i);
 	}
-	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, NULL);
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, NULL);
 	print_plan("VISIBILITY with windows", runs, count);
 	ASSERT_TRUE(plan_constraints_hold(runs, count, 6, T_VISIBILITY_NOON, end));
 	int jellyfish = find_run(runs, count, 2), rosette = find_run(runs, count, 1), pleiades = find_run(runs, count, 3);
@@ -1037,7 +1037,7 @@ static void test_visibility_hooks(void) {
 	owner_night();
 	time_t dark = dark_from(T_VISIBILITY_NOON), end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
 	scheduler_plan_hook hooks[] = { { T_VISIBILITY_NOON - 60, 600, true }, { dark, 1200, false }, { T_VISIBILITY_NOON + 10 * 3600 + 7 * 60, 900, false }, { end, 900, false } };
-	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, hooks, 4, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, NULL);
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, hooks, 4, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, NULL);
 	print_plan("VISIBILITY with hooks", runs, count);
 	ASSERT_TRUE(plan_constraints_hold(runs, count, 6, T_VISIBILITY_NOON, end));
 	ASSERT_EQ_INT(0, runs[0].hook);
@@ -1068,7 +1068,7 @@ static void test_visibility_running_task(void) {
 	tasks[3].running = true;
 	tasks[3].running_start = now - 600;
 	tasks[3].running_end = now + 660;
-	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, now, end, 1, 1, NULL, 0, runs, 512, NULL);
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, now, end, 1, 1, NULL, NULL, 0, runs, 512, NULL);
 	print_plan("VISIBILITY with Pleiades running", runs, count);
 	ASSERT_EQ_INT(3, runs[0].task);
 	ASSERT_TRUE(runs[0].running);
@@ -1094,7 +1094,7 @@ static void test_visibility_untargeted(void) {
 	build_task(0);
 	build_task(1);
 	int compact = indigo_scheduler_plan(&sky, tasks, 2, T_VISIBILITY_NOON, end, 1, 1, compact_runs, 512);
-	int count = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, NULL);
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, NULL);
 	print_plan("COMPACT", compact_runs, compact);
 	print_plan("VISIBILITY", runs, count);
 	ASSERT_EQ_INT(2, count);
@@ -1122,7 +1122,7 @@ static void test_visibility_stable(void) {
 			headers[i].priority_class = SCHEDULER_PRIORITY_NORMAL;
 		}
 		static scheduler_plan_run previous[512];
-		int previous_count = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, previous, 512, NULL);
+		int previous_count = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, previous, 512, NULL);
 		for (int step = 0; step < 20; step++) {
 			int first = 0;
 			while (first < previous_count && previous[first].task < 0) {
@@ -1137,7 +1137,7 @@ static void test_visibility_stable(void) {
 			tasks[i].runs_left--;
 			tasks[i].available_from = now + headers[i].repeat_every * 60;
 			scheduler_plan_info info;
-			int planned = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, now, end, 1, 1, previous + first + 1, previous_count - first - 1, runs, 512, &info);
+			int planned = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, now, end, 1, 1, NULL, previous + first + 1, previous_count - first - 1, runs, 512, &info);
 			bool same = planned == previous_count - first - 1;
 			for (int r = 0; same && r < planned; r++) {
 				same = runs[r].task == previous[first + 1 + r].task && runs[r].start == previous[first + 1 + r].start;
@@ -1169,8 +1169,8 @@ static void test_visibility_deterministic(void) {
 	add_altitude_task(1, "Y", 5.5881, 22, 40);
 	build_task(0);
 	build_task(1);
-	int count = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, NULL);
-	int again = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, compact_runs, 512, NULL);
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, NULL);
+	int again = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, compact_runs, 512, NULL);
 	ASSERT_TRUE(same_runs(runs, count, compact_runs, again));
 	ASSERT_EQ_INT(2, count);
 	for (int first = 0; first < 2; first++) {
@@ -1180,7 +1180,7 @@ static void test_visibility_deterministic(void) {
 		previous[1].task = 1 - first;
 		previous[0].hook = previous[1].hook = -1;
 		scheduler_plan_info info;
-		count = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, previous, 2, runs, 512, &info);
+		count = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, previous, 2, runs, 512, &info);
 		ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
 		ASSERT_EQ_INT(first, runs[0].task);
 		ASSERT_EQ_INT(1 - first, runs[1].task);
@@ -1197,7 +1197,7 @@ static void test_visibility_limits(void) {
 	int compact = plan(70, T_NOVEMBER_NOON);
 	memcpy(compact_runs, runs, sizeof(scheduler_plan_run) * compact);
 	scheduler_plan_info info;
-	int count = indigo_scheduler_plan_visibility(&sky, tasks, 70, NULL, 0, T_NOVEMBER_NOON, end, 0, 0, NULL, 0, runs, 512, &info);
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 70, NULL, 0, T_NOVEMBER_NOON, end, 0, 0, NULL, NULL, 0, runs, 512, &info);
 	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_TOO_LARGE, info.result);
 	ASSERT_EQ_INT(70, info.compact_runs);
 	ASSERT_TRUE(same_runs(compact_runs, compact, runs, count));
@@ -1214,7 +1214,7 @@ static void test_visibility_limits(void) {
 	const int order[] = { 0, 1, 0, 1 };
 	time_t starts[4];
 	ASSERT_TRUE(indigo_scheduler_plan_order(&sky, tasks, 2, NULL, 0, now, end, order, 4, starts) < 0);
-	count = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, now, end, 1, 1, NULL, 0, runs, 512, &info);
+	count = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, now, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
 	ASSERT_TRUE(plan_constraints_hold(runs, count, 2, now, end));
 	int counts[2];
 	ASSERT_EQ_INT(4, count_runs(runs, count, counts, 2));
@@ -1246,7 +1246,7 @@ static void test_visibility_performance(void) {
 		struct timespec begin, finish;
 		scheduler_plan_info info;
 		clock_gettime(CLOCK_MONOTONIC, &begin);
-		int count = indigo_scheduler_plan_visibility(&sky, tasks, 64, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, &info);
+		int count = indigo_scheduler_plan_visibility(&sky, tasks, 64, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
 		clock_gettime(CLOCK_MONOTONIC, &finish);
 		double elapsed = seconds(&begin, &finish);
 		printf("    64 tasks of 5 min%s: %d runs (COMPACT %d), result %d, work %ld, %.3f s\n", windows ? " with windows" : "", info.runs, info.compact_runs, info.result, info.work, elapsed);
@@ -1263,7 +1263,7 @@ static void test_visibility_performance(void) {
 	struct timespec begin, finish;
 	scheduler_plan_info info;
 	clock_gettime(CLOCK_MONOTONIC, &begin);
-	indigo_scheduler_plan_visibility(&sky, tasks, MAX_TASKS, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, &info);
+	indigo_scheduler_plan_visibility(&sky, tasks, MAX_TASKS, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
 	clock_gettime(CLOCK_MONOTONIC, &finish);
 	printf("    %d tasks: %d runs (COMPACT %d), result %d, work %ld, %.3f s\n", MAX_TASKS, info.runs, info.compact_runs, info.result, info.work, seconds(&begin, &finish));
 	ASSERT_TRUE(info.work <= SCHEDULER_VISIBILITY_BUDGET + 2000000);
@@ -1274,7 +1274,7 @@ static void test_visibility_performance(void) {
 	for (int queue = 0; queue < 250; queue++) {
 		int count = random_queue(queue >= 200);
 		clock_gettime(CLOCK_MONOTONIC, &begin);
-		indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, 0, runs, 512, &info);
+		indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
 		clock_gettime(CLOCK_MONOTONIC, &finish);
 		ASSERT_TRUE(info.work <= SCHEDULER_VISIBILITY_BUDGET + 2000000);
 		worst = seconds(&begin, &finish) > worst ? seconds(&begin, &finish) : worst;
@@ -1282,6 +1282,224 @@ static void test_visibility_performance(void) {
 	printf("    the slowest plan took %.3f s\n", worst);
 	// about 0.05 s on the reference machine (Intel Core i5-9400); a Raspberry Pi 4 is up to ten times slower
 	ASSERT_TRUE(worst < 2.0);
+}
+
+#define SIDEREAL_RATE	1.00273790935
+
+static scheduler_plan_run flip_runs[512];
+
+// the time at which the hour angle of a target is ha hours, near its transit in the grid
+static time_t hour_angle_time(int i, double ha) {
+	int k = transit_index(i);
+	return grid_time(k) + (time_t)lround((ha - targets[i].hour_angle[k]) * 3600 / SIDEREAL_RATE);
+}
+
+// the run length in seconds from hour angle from to hour angle to
+static int hour_angle_duration(double from, double to) {
+	return (int)lround((to - from) * 3600 / SIDEREAL_RATE);
+}
+
+static int count_flips(const scheduler_plan_run *result, int count, const scheduler_flip *flip) {
+	int flips = 0;
+	for (int r = 0; r < count; r++) {
+		if (result[r].task >= 0 && indigo_scheduler_run_flips(&sky, &targets[result[r].task], &headers[result[r].task], result[r].start, tasks[result[r].task].duration, flip)) {
+			flips++;
+		}
+	}
+	return flips;
+}
+
+// the objective of VISIBILITY with the flip costs of the runs that are not urgent
+static double plan_flip_value(const scheduler_plan_run *result, int count, const scheduler_flip *flip) {
+	double sum = plan_value(result, count);
+	for (int r = 0; r < count; r++) {
+		int i = result[r].task;
+		if (i >= 0 && !result[r].running && headers[i].priority_class != SCHEDULER_PRIORITY_URGENT) {
+			sum -= 100 * indigo_scheduler_flip_loss(&sky, &targets[i], &headers[i], result[r].start, tasks[i].duration, flip);
+		}
+	}
+	return sum;
+}
+
+// a run flips when it starts before the meridian and reaches the offset before it ends; the cost is the penalty plus, for a negative offset, the wait until the meridian
+static void test_flip_loss_offsets(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
+	add_altitude_task(0, "M45", 3.7833, 24.117, 60);
+	build_task(0);
+	static const double offsets[] = { -0.5, 0, 0.5 };
+	const double penalty = 10 / 60.0;
+	for (int o = 0; o < 3; o++) {
+		double offset = offsets[o];
+		scheduler_flip flip = { true, offset, penalty };
+		// a start past the meridian is slewed to the west side
+		time_t start = hour_angle_time(0, 0.1);
+		ASSERT_FALSE(indigo_scheduler_run_flips(&sky, &targets[0], &headers[0], start, 3 * 3600, &flip));
+		ASSERT_NEAR(0, indigo_scheduler_flip_loss(&sky, &targets[0], &headers[0], start, 3 * 3600, &flip), 1e-12);
+		// a start before the meridian ending just short of the offset
+		start = hour_angle_time(0, -1);
+		int duration = hour_angle_duration(-1, offset - 0.02);
+		ASSERT_FALSE(indigo_scheduler_run_flips(&sky, &targets[0], &headers[0], start, duration, &flip));
+		ASSERT_NEAR(0, indigo_scheduler_flip_loss(&sky, &targets[0], &headers[0], start, duration, &flip), 1e-12);
+		// ending just past it
+		duration = hour_angle_duration(-1, offset + 0.02);
+		ASSERT_TRUE(indigo_scheduler_run_flips(&sky, &targets[0], &headers[0], start, duration, &flip));
+		ASSERT_NEAR(penalty + (offset < 0 ? -offset : 0), indigo_scheduler_flip_loss(&sky, &targets[0], &headers[0], start, duration, &flip), 0.002);
+	}
+	// a start between a negative offset and the meridian waits from the start
+	scheduler_flip early = { true, -0.5, penalty };
+	time_t start = hour_angle_time(0, -0.2);
+	ASSERT_TRUE(indigo_scheduler_run_flips(&sky, &targets[0], &headers[0], start, 600, &early));
+	ASSERT_NEAR(penalty + 0.2, indigo_scheduler_flip_loss(&sky, &targets[0], &headers[0], start, 600, &early), 0.002);
+	// a disabled flip, no flip or a task without a target never flip, penalty 0 costs nothing
+	start = hour_angle_time(0, -1);
+	scheduler_flip disabled = { false, 0, penalty }, free_flip = { true, -0.5, 0 };
+	ASSERT_FALSE(indigo_scheduler_run_flips(&sky, &targets[0], &headers[0], start, 3 * 3600, &disabled));
+	ASSERT_NEAR(0, indigo_scheduler_flip_loss(&sky, &targets[0], &headers[0], start, 3 * 3600, &disabled), 1e-12);
+	ASSERT_FALSE(indigo_scheduler_run_flips(&sky, &targets[0], &headers[0], start, 3 * 3600, NULL));
+	ASSERT_NEAR(0, indigo_scheduler_flip_loss(&sky, &targets[0], &headers[0], start, 3 * 3600, NULL), 1e-12);
+	ASSERT_TRUE(indigo_scheduler_run_flips(&sky, &targets[0], &headers[0], start, 3 * 3600, &free_flip));
+	ASSERT_NEAR(0, indigo_scheduler_flip_loss(&sky, &targets[0], &headers[0], start, 3 * 3600, &free_flip), 1e-12);
+	add_task(1, "no target", SCHEDULER_PRIORITY_NORMAL, 0, 60);
+	build_task(1);
+	ASSERT_FALSE(indigo_scheduler_run_flips(&sky, &targets[1], &headers[1], start, 3 * 3600, &early));
+	ASSERT_NEAR(0, indigo_scheduler_flip_loss(&sky, &targets[1], &headers[1], start, 3 * 3600, &early), 1e-12);
+}
+
+// a short run across the meridian moves past it when that costs less than the penalty
+static void test_visibility_flip_moves_short_task(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
+	add_altitude_task(0, "M45", 3.7833, 24.117, 20);
+	build_task(0);
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	scheduler_flip free_flip = { true, 0, 0 }, flip = { true, 0, 10 / 60.0 };
+	int free_count = indigo_scheduler_plan_visibility(&sky, tasks, 1, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, &free_flip, NULL, 0, compact_runs, 512, NULL);
+	scheduler_plan_info info;
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 1, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, &flip, NULL, 0, runs, 512, &info);
+	print_plan("penalty 0", compact_runs, free_count);
+	print_plan("penalty 10 min", runs, count);
+	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
+	ASSERT_EQ_INT(1, free_count);
+	ASSERT_EQ_INT(1, count);
+	ASSERT_EQ_INT(1, count_flips(compact_runs, free_count, &flip));
+	ASSERT_EQ_INT(0, count_flips(runs, count, &flip));
+	double lost = plan_value(compact_runs, free_count) - plan_value(runs, count);
+	ASSERT_TRUE(lost >= 0 && lost < 100 * flip.penalty);
+	ASSERT_NEAR(info.value, plan_flip_value(runs, count, &flip), 1e-6);
+}
+
+// a long run centred on the meridian keeps its flip when every placement without one loses more than the penalty
+static void test_visibility_flip_keeps_long_task(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
+	add_altitude_task(0, "M45", 3.7833, 24.117, 240);
+	build_task(0);
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	scheduler_flip flip = { true, 0, 10 / 60.0 };
+	scheduler_plan_info info;
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 1, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, &flip, NULL, 0, runs, 512, &info);
+	print_plan("penalty 10 min", runs, count);
+	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
+	ASSERT_EQ_INT(1, count);
+	ASSERT_EQ_INT(1, count_flips(runs, count, &flip));
+	time_t middle = runs[0].start + tasks[0].duration / 2;
+	ASSERT_TRUE(labs((long)(middle - transit_near(0, middle))) <= 30 * 60);
+}
+
+// an urgent run keeps its COMPACT start and its flip, which costs nothing
+static void test_visibility_flip_urgent_exempt(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
+	time_t dark = dark_from(T_VISIBILITY_NOON);
+	int k = (int)((dark - sky.start) / SCHEDULER_GRID_STEP);
+	// a target 15 minutes before the meridian at dusk
+	double ra = fmod(sky.lst[k] + 0.25 + 24, 24);
+	add_altitude_task(0, "urgent", ra, 30, 60);
+	headers[0].priority_class = SCHEDULER_PRIORITY_URGENT;
+	tasks[0].urgent_order = 1;
+	build_task(0);
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	scheduler_flip flip = { true, 0, 10 / 60.0 };
+	int compact = indigo_scheduler_plan(&sky, tasks, 1, T_VISIBILITY_NOON, end, 1, 1, compact_runs, 512);
+	scheduler_plan_info info;
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 1, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, &flip, NULL, 0, runs, 512, &info);
+	ASSERT_EQ_INT(1, compact);
+	ASSERT_EQ_INT(1, count);
+	ASSERT_EQ_INT(1, count_flips(compact_runs, compact, &flip));
+	ASSERT_EQ_INT((int)((compact_runs[0].start + 59) / 60 * 60), (int)runs[0].start);
+	ASSERT_EQ_INT(1, count_flips(runs, count, &flip));
+	ASSERT_NEAR(plan_value(compact_runs, compact), info.compact_value, 1e-6);
+	ASSERT_NEAR(plan_value(runs, count), info.value, 1e-6);
+}
+
+// a task whose every start flips has only negative values with a large penalty; it is still planned, with the other runs
+static void test_visibility_flip_every_start_flips(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
+	add_altitude_task(0, "M45", 3.7833, 24.117, 60);
+	build_task(0);
+	// a window that lets the hour run start only between 30 and 20 minutes before the meridian
+	headers[0].window_kind = SCHEDULER_WINDOW_ABSOLUTE;
+	headers[0].has_window_start = headers[0].has_window_end = true;
+	// the transit of this night, the grid reaches the next one too
+	headers[0].window_start = transit_near(0, T_VISIBILITY_NOON + 11 * 3600) - 30 * 60;
+	headers[0].window_end = headers[0].window_start + 70 * 60;
+	build_task(0);
+	add_altitude_task(1, "M31", 0.7123, 41.27, 60);
+	build_task(1);
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	scheduler_flip flip = { true, 0, 2 };
+	scheduler_plan_info info;
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 2, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, &flip, NULL, 0, runs, 512, &info);
+	print_plan("penalty 120 min", runs, count);
+	ASSERT_EQ_INT(2, count);
+	int m45 = find_run(runs, count, 0);
+	ASSERT_TRUE(m45 >= 0 && find_run(runs, count, 1) >= 0);
+	ASSERT_TRUE(indigo_scheduler_run_flips(&sky, &targets[0], &headers[0], runs[m45].start, tasks[0].duration, &flip));
+	ASSERT_TRUE(info.value < 0 || plan_flip_value(runs, count, &flip) < plan_value(runs, count));
+	ASSERT_TRUE(plan_constraints_hold(runs, count, 2, T_VISIBILITY_NOON, end));
+}
+
+// a disabled flip or penalty 0 gives the plans made without a flip
+static void test_visibility_flip_off_is_today(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, 42, 23, 0);
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	scheduler_flip off[] = { { false, 0, 10 / 60.0 }, { true, 0, 0 }, { true, -0.5, 0 } };
+	random_state = 1;
+	for (int queue = 0; queue < 100; queue++) {
+		int count = random_queue(queue >= 80);
+		int plain = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, compact_runs, 512, NULL);
+		for (int f = 0; f < 3; f++) {
+			int other = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, off + f, NULL, 0, flip_runs, 512, NULL);
+			ASSERT_TRUE(same_runs(compact_runs, plain, flip_runs, other));
+		}
+	}
+}
+
+// with the flip cost VISIBILITY still plans every COMPACT run, keeps the constraints and flips less
+static void test_visibility_flip_never_fewer_runs(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, 42, 23, 0);
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	scheduler_flip flip = { true, 0, 10 / 60.0 };
+	random_state = 1;
+	int flips = 0, plain_flips = 0;
+	for (int queue = 0; queue < 250; queue++) {
+		int count = random_queue(queue >= 200);
+		int compact = indigo_scheduler_plan(&sky, tasks, count, T_VISIBILITY_NOON, end, 1, 1, compact_runs, 512);
+		int plain = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, flip_runs, 512, NULL);
+		scheduler_plan_info info;
+		int visibility = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, &flip, NULL, 0, runs, 512, &info);
+		int compact_counts[MAX_TASKS], counts[MAX_TASKS];
+		int compact_total = count_runs(compact_runs, compact, compact_counts, count), total = count_runs(runs, visibility, counts, count);
+		for (int i = 0; i < count; i++) {
+			ASSERT_TRUE(counts[i] >= compact_counts[i]);
+		}
+		ASSERT_TRUE(total >= compact_total);
+		if (total == compact_total) {
+			ASSERT_TRUE(plan_flip_value(runs, visibility, &flip) >= plan_flip_value(compact_runs, compact, &flip) - 1e-6);
+		}
+		ASSERT_TRUE(plan_constraints_hold(runs, visibility, count, T_VISIBILITY_NOON, end));
+		flips += count_flips(runs, visibility, &flip);
+		plain_flips += count_flips(flip_runs, plain, &flip);
+	}
+	printf("    flips in 250 queues: %d without the penalty, %d with 10 min\n", plain_flips, flips);
+	ASSERT_TRUE(flips * 2 < plain_flips);
 }
 
 int main(void) {
@@ -1320,6 +1538,13 @@ int main(void) {
 		{ "visibility_deterministic", test_visibility_deterministic },
 		{ "visibility_limits", test_visibility_limits },
 		{ "visibility_performance", test_visibility_performance },
+		{ "flip_loss_offsets", test_flip_loss_offsets },
+		{ "visibility_flip_moves_short_task", test_visibility_flip_moves_short_task },
+		{ "visibility_flip_keeps_long_task", test_visibility_flip_keeps_long_task },
+		{ "visibility_flip_urgent_exempt", test_visibility_flip_urgent_exempt },
+		{ "visibility_flip_every_start_flips", test_visibility_flip_every_start_flips },
+		{ "visibility_flip_off_is_today", test_visibility_flip_off_is_today },
+		{ "visibility_flip_never_fewer_runs", test_visibility_flip_never_fewer_runs },
 	};
 	return indigo_run_tests("test_agent_scheduler_plan", cases, sizeof(cases) / sizeof(cases[0]));
 }

@@ -33,6 +33,9 @@
 
 #define MAX_PLAN_TASKS	256
 
+// hours of hour angle per hour of time
+#define SIDEREAL_RATE	1.00273790935
+
 // summed qualities closer than this are equal, a start must be better by more than this to be the best one
 #define QUALITY_EPSILON	1e-6
 
@@ -45,6 +48,8 @@ typedef struct {
 	int hook_count;
 	time_t now, end;
 	double setting_weight, altitude_weight;
+	// the meridian flip of a VISIBILITY plan, NULL otherwise
+	const scheduler_flip *flip;
 	unsigned long requeue_base;
 	// per task, a stretch [from, until) of start times at which the task is known not to be eligible; it depends only on the constraints
 	time_t *ineligible_from, *ineligible_until;
@@ -106,6 +111,48 @@ double indigo_scheduler_run_quality(const scheduler_sky_grid *sky, const schedul
 	return sum / (last - first + 1);
 }
 
+// the hour angle of the target at start, normalised to [-12, 12), from the grid point before it; false when the run cannot flip: a disabled or NULL flip, a task without a usable target or a start outside the grid
+static bool flip_hour_angle(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, time_t start, const scheduler_flip *flip, double *ha) {
+	if (flip == NULL || !flip->enabled || !header->has_target || target == NULL || !target->valid || !sky->valid || start < sky->start) {
+		return false;
+	}
+	int k = (int)((start - sky->start) / SCHEDULER_GRID_STEP);
+	if (k >= SCHEDULER_GRID_POINTS) {
+		return false;
+	}
+	double value = target->hour_angle[k] + (double)(start - sky->start - (time_t)k * SCHEDULER_GRID_STEP) / 3600.0 * SIDEREAL_RATE;
+	if (value >= 12) {
+		value -= 24;
+	} else if (value < -12) {
+		value += 24;
+	}
+	*ha = value;
+	return true;
+}
+
+// a run started west of the meridian is slewed to the west side and does not flip; one started east of it flips when the hour angle reaches the offset before the run ends
+static bool flip_needed(double ha, int duration, const scheduler_flip *flip) {
+	return ha < 0 && ha + duration / 3600.0 * SIDEREAL_RATE >= flip->offset;
+}
+
+bool indigo_scheduler_run_flips(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, time_t start, int duration, const scheduler_flip *flip) {
+	double ha;
+	return flip_hour_angle(sky, target, header, start, flip, &ha) && flip_needed(ha, duration, flip);
+}
+
+double indigo_scheduler_flip_loss(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, time_t start, int duration, const scheduler_flip *flip) {
+	double ha;
+	if (flip == NULL || flip->penalty <= 0 || !flip_hour_angle(sky, target, header, start, flip, &ha) || !flip_needed(ha, duration, flip)) {
+		return 0;
+	}
+	// with a negative offset the capture also waits from the pause (at the offset, or at the start when it is later) until the meridian
+	double wait = 0;
+	if (flip->offset < 0) {
+		wait = -(ha > flip->offset ? ha : flip->offset);
+	}
+	return flip->penalty + wait;
+}
+
 static void init_context(plan_context *ctx, const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight) {
 	ctx->sky = sky;
 	ctx->tasks = tasks;
@@ -116,6 +163,7 @@ static void init_context(plan_context *ctx, const scheduler_sky_grid *sky, const
 	ctx->end = end;
 	ctx->setting_weight = setting_weight;
 	ctx->altitude_weight = altitude_weight;
+	ctx->flip = NULL;
 	for (int i = 0; i < ctx->count; i++) {
 		ctx->ineligible_from[i] = ctx->ineligible_until[i] = 0;
 	}
@@ -419,7 +467,8 @@ static void vis_table(vis_context *vc, int i) {
 	vc->startable[i] = false;
 	// an urgent run keeps its COMPACT start, its value is needed there whatever the constraints say at the whole minute
 	bool urgent = is_urgent_task(ctx, i);
-	double best = -1;
+	// a flip cost can make every value negative
+	double best = VIS_NONE;
 	for (int g = 0; g < vc->minutes; g++) {
 		time_t start = vc->base + (time_t)g * VIS_STEP;
 		const char *reason;
@@ -428,6 +477,10 @@ static void vis_table(vis_context *vc, int i) {
 		if (vc->ok[i][g] || urgent) {
 			double quality = indigo_scheduler_run_quality(ctx->sky, task->target, task->header, start, task->duration);
 			vc->value[i][g] = (quality > 0 ? quality : 0) * task->duration / 3600.0;
+			// an hour lost to a flip costs as much as an hour of full-quality imaging; an urgent run keeps its COMPACT start, its flip cannot be avoided
+			if (!urgent) {
+				vc->value[i][g] -= 100 * indigo_scheduler_flip_loss(ctx->sky, task->target, task->header, start, task->duration, ctx->flip);
+			}
 		}
 		if (vc->ok[i][g] && g >= vc->lower[i]) {
 			vc->startable[i] = true;
@@ -1050,7 +1103,7 @@ static int vis_store(const vis_context *vc, const vis_order *order, scheduler_pl
 	return stored;
 }
 
-int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, const scheduler_plan_run *previous, int previous_count, scheduler_plan_run *runs, int max_runs, scheduler_plan_info *info) {
+int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, const scheduler_flip *flip, const scheduler_plan_run *previous, int previous_count, scheduler_plan_run *runs, int max_runs, scheduler_plan_info *info) {
 	double started = indigo_monotonic_time();
 	scheduler_plan_info local_info;
 	if (info == NULL) {
@@ -1064,6 +1117,7 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 	ctx.ineligible_from = ineligible_from;
 	ctx.ineligible_until = ineligible_until;
 	init_context(&ctx, sky, tasks, count, hooks, hook_count, now, end, setting_weight, altitude_weight);
+	ctx.flip = flip;
 	plan_state *state = indigo_safe_malloc(sizeof(plan_state));
 	init_state(&ctx, state, NULL, 0);
 	int fixed = 0;
@@ -1083,6 +1137,10 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 		info->compact_runs++;
 		double quality = indigo_scheduler_run_quality(sky, tasks[i].target, tasks[i].header, runs[k].start, tasks[i].duration);
 		info->compact_value += (quality > 0 ? quality : 0) * tasks[i].duration / 3600.0;
+		// COMPACT is compared with the same flip costs
+		if (!is_urgent_task(&ctx, i)) {
+			info->compact_value -= 100 * indigo_scheduler_flip_loss(sky, tasks[i].target, tasks[i].header, runs[k].start, tasks[i].duration, flip);
+		}
 		if (compact->count < SCHEDULER_VISIBILITY_MAX_RUNS) {
 			compact->runs[compact->count].task = i;
 			compact->runs[compact->count].pin = -1;

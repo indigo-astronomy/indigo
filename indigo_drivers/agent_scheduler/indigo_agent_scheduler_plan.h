@@ -86,7 +86,15 @@ typedef enum {
 	SCHEDULER_VISIBILITY_TOO_LARGE
 } scheduler_visibility_result;
 
-/** What indigo_scheduler_plan_visibility() did: the task runs and the summed quality (percent of the transit altitude times hours) of the COMPACT plan and of the plan returned, whether the COMPACT plan was kept and why, the work used and the time taken.
+/** The meridian flip as the VISIBILITY plan sees it: whether the flip is enabled, its offset to the meridian in hours (negative before it) and the cost of one flip in hours of full-quality imaging.
+ */
+typedef struct {
+	bool enabled;
+	double offset;
+	double penalty;
+} scheduler_flip;
+
+/** What indigo_scheduler_plan_visibility() did: the task runs and the summed quality (percent of the transit altitude times hours, less the flip costs of the runs that are not urgent) of the COMPACT plan and of the plan returned, whether the COMPACT plan was kept and why, the work used and the time taken.
  */
 typedef struct {
 	int compact_runs;
@@ -106,6 +114,14 @@ extern double indigo_scheduler_score(const scheduler_sky_grid *sky, const schedu
  */
 extern double indigo_scheduler_run_quality(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, time_t start, int duration);
 
+/** True when a run from start to start + duration needs a meridian flip: it starts east of the meridian (hour angle < 0) and reaches flip->offset hours of hour angle before it ends. False for a disabled or NULL flip, a task without a usable target or a start outside the grid.
+ */
+extern bool indigo_scheduler_run_flips(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, time_t start, int duration, const scheduler_flip *flip);
+
+/** The cost in hours of a run's meridian flip: 0 without a flip or with flip->penalty 0, otherwise flip->penalty plus, for a negative offset, the wait -max(HA_start, offset) until the meridian.
+ */
+extern double indigo_scheduler_flip_loss(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, time_t start, int duration, const scheduler_flip *flip);
+
 /** Simulate the scheduling of tasks from now until end, assuming every run takes its duration and succeeds. A task that becomes available again after a repeat or retry delay queues behind the urgent tasks already waiting, as in the scheduler. Returns the number of runs stored, at most max_runs.
  */
 extern int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, time_t now, time_t end, double setting_weight, double altitude_weight, scheduler_plan_run *runs, int max_runs);
@@ -114,9 +130,9 @@ extern int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_
  */
 extern int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, scheduler_plan_run *runs, int max_runs);
 
-/** The night plan of the VISIBILITY strategy, with the same inputs and runs as indigo_scheduler_plan_with_hooks(). It never plans fewer task runs than the COMPACT plan, starts from its runs, adds the runs COMPACT leaves out where they fit, and chooses their order and start times, on whole UTC minutes, so that the summed run quality weighted by the run duration is highest. Runs of urgent tasks keep their COMPACT start. The COMPACT plan is returned when no arrangement is better. previous (may be NULL) is the rest of the last VISIBILITY plan, with task indexes into tasks; it seeds the search and wins ties, which keeps the plan stable. info (may be NULL) tells what was decided.
+/** The night plan of the VISIBILITY strategy, with the same inputs and runs as indigo_scheduler_plan_with_hooks(). It never plans fewer task runs than the COMPACT plan, starts from its runs, adds the runs COMPACT leaves out where they fit, and chooses their order and start times, on whole UTC minutes, so that the summed run quality weighted by the run duration is highest. Runs of urgent tasks keep their COMPACT start. The COMPACT plan is returned when no arrangement is better. previous (may be NULL) is the rest of the last VISIBILITY plan, with task indexes into tasks; it seeds the search and wins ties, which keeps the plan stable. flip (may be NULL) adds the cost of a meridian flip to every run that is not urgent. info (may be NULL) tells what was decided.
  */
-extern int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, const scheduler_plan_run *previous, int previous_count, scheduler_plan_run *runs, int max_runs, scheduler_plan_info *info);
+extern int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, const scheduler_flip *flip, const scheduler_plan_run *previous, int previous_count, scheduler_plan_run *runs, int max_runs, scheduler_plan_info *info);
 
 /** The best start times of the VISIBILITY plan for task runs in a fixed order, given as task indexes into tasks, without urgent runs; for tests. Stores the starts and returns the summed quality weighted by the run duration, or -1 when the order has no feasible arrangement.
  */

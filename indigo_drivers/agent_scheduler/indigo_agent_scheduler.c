@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300001E
+#define DRIVER_VERSION 0x0300001F
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -57,6 +57,7 @@
 #define GUIDER_AGENT							"Guider Agent"
 #define SCHEDULER_RESULT_PROPERTY	"SCHEDULER_RESULT"
 #define SCHEDULER_ESTIMATE_PROPERTY	"SCHEDULER_ESTIMATE"
+#define MERIDIAN_FLIP_PROPERTY		"MERIDIAN_FLIP"
 #define MAX_HISTORY								200
 #define MAX_URGENT_COUNT					1000000
 #define ESTIMATE_TIMEOUT					10
@@ -113,11 +114,12 @@
 #define SETTINGS_START_TIMEOUT_ITEM	(SETTINGS_PROPERTY->items + 2)
 #define SETTINGS_SETTING_WEIGHT_ITEM	(SETTINGS_PROPERTY->items + 3)
 #define SETTINGS_ALTITUDE_WEIGHT_ITEM	(SETTINGS_PROPERTY->items + 4)
-#define SETTINGS_IDLE_HOOK_DELAY_ITEM	(SETTINGS_PROPERTY->items + 5)
-#define SETTINGS_FRAME_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 6)
-#define SETTINGS_OPERATION_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 7)
-#define SETTINGS_NIGHT_START_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 8)
-#define SETTINGS_NIGHT_END_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 9)
+#define SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM	(SETTINGS_PROPERTY->items + 5)
+#define SETTINGS_IDLE_HOOK_DELAY_ITEM	(SETTINGS_PROPERTY->items + 6)
+#define SETTINGS_FRAME_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 7)
+#define SETTINGS_OPERATION_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 8)
+#define SETTINGS_NIGHT_START_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 9)
+#define SETTINGS_NIGHT_END_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 10)
 #define DATA_PROPERTY							(PRIVATE_DATA->data_property)
 #define DATA_OBJECT_ITEM					(DATA_PROPERTY->items + 0)
 #define DATA_FITS_ITEM						(DATA_PROPERTY->items + 1)
@@ -262,6 +264,11 @@ typedef struct {
 	bool imager_known;
 	char imager_dir[INDIGO_VALUE_SIZE];
 	char imager_object[INDIGO_VALUE_SIZE];
+	// MERIDIAN_FLIP of the Scripting Agent (Sequencer.js); disabled until defined and after its deletion
+	bool flip_enabled;
+	double flip_offset;
+	// incremented when flip_enabled or flip_offset changes
+	unsigned flip_generation;
 } scheduler_observed;
 
 typedef struct {
@@ -345,6 +352,9 @@ typedef struct {
 	int visibility_count;
 	// the plan end for which a VISIBILITY plan too large to arrange was told
 	time_t visibility_notice;
+	// the meridian flip the current plan was made with and the generation of MERIDIAN_FLIP it was read from
+	scheduler_flip plan_flip;
+	unsigned plan_flip_generation;
 	run_phase phase;
 	run_kind kind;
 	time_t run_start;
@@ -2233,7 +2243,8 @@ static void plan_run_label(indigo_device *device, scheduler_plan_run *run, char 
 	char when[48], runs[32], priority[48];
 	time_range(run->start, run->end, when, sizeof(when));
 	snprintf(runs, sizeof(runs), "run %d/%d", run->run, task->header.repeat);
-	const char *columns[] = { when, task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), run->running ? "RUNNING" : "PLANNED", "-" };
+	bool flips = indigo_scheduler_run_flips(&PRIVATE_DATA->sky, &task->target, &task->header, run->start, plan_tasks[run->task].duration, &PRIVATE_DATA->plan_flip);
+	const char *columns[] = { when, task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), run->running ? "RUNNING" : "PLANNED", flips ? "meridian flip" : "-" };
 	join_label(label, size, 6, columns);
 }
 
@@ -2317,7 +2328,7 @@ static int plan_visibility(indigo_device *device, int count, int hook_count, tim
 	scheduler_plan_run previous[SCHEDULER_VISIBILITY_MAX_RUNS];
 	int previous_count = visibility_previous(device, count, previous);
 	scheduler_plan_info info;
-	int runs = indigo_scheduler_plan_visibility(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, SETTINGS_SETTING_WEIGHT_ITEM->number.value, SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value, previous, previous_count, plan_runs, MAX_PLAN_RUNS, &info);
+	int runs = indigo_scheduler_plan_visibility(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, SETTINGS_SETTING_WEIGHT_ITEM->number.value, SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value, &PRIVATE_DATA->plan_flip, previous, previous_count, plan_runs, MAX_PLAN_RUNS, &info);
 	static const char *results[] = { "planned", "COMPACT is not worse", "no arrangement, COMPACT", "too large, COMPACT" };
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "VISIBILITY plan: %s, %d runs %.2f (COMPACT %d runs %.2f), work %ld, %.0f ms", results[info.result], info.runs, info.value, info.compact_runs, info.compact_value, info.work, info.seconds * 1000);
 	// told once a night
@@ -2338,6 +2349,14 @@ static int plan_visibility(indigo_device *device, int count, int hook_count, tim
 static void update_plan(indigo_device *device, time_t now) {
 	static char labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
 	static indigo_property_state states[MAX_PLAN_ITEMS];
+	// the meridian flip is assumed not to change during the night, planning reads only this copy
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	pthread_mutex_lock(&observed->mutex);
+	PRIVATE_DATA->plan_flip.enabled = observed->flip_enabled;
+	PRIVATE_DATA->plan_flip.offset = observed->flip_offset;
+	PRIVATE_DATA->plan_flip_generation = observed->flip_generation;
+	pthread_mutex_unlock(&observed->mutex);
+	PRIVATE_DATA->plan_flip.penalty = SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM->number.value / 60.0;
 	int count = 0;
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
 		int slot = PRIVATE_DATA->order[i];
@@ -2533,6 +2552,13 @@ static bool visibility_plan_valid(indigo_device *device, time_t now) {
 
 static void process(indigo_device *device) {
 	time_t now = time(NULL);
+	// a changed MERIDIAN_FLIP replans
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	pthread_mutex_lock(&observed->mutex);
+	if (observed->flip_generation != PRIVATE_DATA->plan_flip_generation) {
+		PRIVATE_DATA->plan_dirty = true;
+	}
+	pthread_mutex_unlock(&observed->mutex);
 	bool plan = PRIVATE_DATA->plan_dirty || indigo_monotonic_time() >= PRIVATE_DATA->plan_due;
 	refresh_sky(device, now);
 	refresh_nights(device, now);
@@ -3084,7 +3110,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_text_item(CURRENT_CURRENT_ITEM, AGENT_SCHEDULER_CURRENT_CURRENT_ITEM_NAME, "Running task", "");
 		indigo_init_text_item(CURRENT_REASON_ITEM, AGENT_SCHEDULER_CURRENT_REASON_ITEM_NAME, "Waiting because", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_SETTINGS
-		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
+		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 11);
 		if (SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -3093,6 +3119,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(SETTINGS_START_TIMEOUT_ITEM, AGENT_SCHEDULER_SETTINGS_START_TIMEOUT_ITEM_NAME, "Start timeout (s)", 1, 600, 1, 10);
 		indigo_init_number_item(SETTINGS_SETTING_WEIGHT_ITEM, AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME, "Setting soonest weight", 0, 4, 0.1, 1);
 		indigo_init_number_item(SETTINGS_ALTITUDE_WEIGHT_ITEM, AGENT_SCHEDULER_SETTINGS_ALTITUDE_WEIGHT_ITEM_NAME, "Altitude weight", 0, 4, 0.1, 1);
+		indigo_init_number_item(SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM, AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME, "Best visibility: meridian flip penalty (min)", 0, 120, 1, 10);
 		indigo_init_number_item(SETTINGS_IDLE_HOOK_DELAY_ITEM, AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, "Idle hook delay (min)", 0, 1440, 1, 30);
 		indigo_init_number_item(SETTINGS_FRAME_OVERHEAD_ITEM, AGENT_SCHEDULER_SETTINGS_FRAME_OVERHEAD_ITEM_NAME, "Estimate overhead per frame (s)", 0, 600, 1, 10);
 		indigo_init_number_item(SETTINGS_OPERATION_OVERHEAD_ITEM, AGENT_SCHEDULER_SETTINGS_OPERATION_OVERHEAD_ITEM_NAME, "Estimate overhead per operation (s)", 0, 3600, 1, 120);
@@ -3417,6 +3444,19 @@ static void observe_property(indigo_property *property) {
 				}
 				observed->estimate_counts = true;
 			}
+		} else if (!strcmp(property->name, MERIDIAN_FLIP_PROPERTY)) {
+			indigo_item *enabled_item = indigo_get_item(property, "ENABLED");
+			indigo_item *offset_item = indigo_get_item(property, "OFFSET");
+			if (enabled_item && offset_item) {
+				bool enabled = enabled_item->number.value > 0.5;
+				double offset = offset_item->number.value;
+				offset = offset < -2 ? -2 : (offset > 2 ? 2 : offset);
+				if (enabled != observed->flip_enabled || offset != observed->flip_offset) {
+					observed->flip_enabled = enabled;
+					observed->flip_offset = offset;
+					observed->flip_generation++;
+				}
+			}
 		}
 	} else if (!strcmp(property->device, MOUNT_AGENT) && !strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		indigo_item *latitude = indigo_get_item(property, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
@@ -3480,6 +3520,11 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 			observed->sequencer_present = false;
 		} else if (!strcmp(property->name, "SEQUENCE_STATE")) {
 			observed->sequencer_present = false;
+		}
+		// the plan then assumes no meridian flip
+		if ((*property->name == 0 || !strcmp(property->name, MERIDIAN_FLIP_PROPERTY)) && observed->flip_enabled) {
+			observed->flip_enabled = false;
+			observed->flip_generation++;
 		}
 	} else if (!strcmp(property->device, MOUNT_AGENT) && (*property->name == 0 || !strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME))) {
 		observed->site_known = false;

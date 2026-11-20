@@ -116,7 +116,6 @@ A task is a JavaScript text. It starts with a header of `// @key value` comment 
 // @preempted  retry
 
 var sequence = new Sequence(scheduler_task.name);
-sequence.enable_meridian_flip(true, 0);
 sequence.precise_goto(5, scheduler_task.ra, scheduler_task.dec);
 sequence.start_guiding();
 sequence.select_filter("L");
@@ -135,7 +134,6 @@ An urgent task has the same form:
 // @duration   30
 
 var sequence = new Sequence(scheduler_task.name);
-sequence.disable_meridian_flip();
 sequence.precise_goto(5, scheduler_task.ra, scheduler_task.dec);
 sequence.select_filter("L");
 sequence.capture_batch(10, 60);
@@ -378,6 +376,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `START_TIMEOUT` | s | 10 | Time allowed for a started task's sequence to become Busy |
 | `SETTING_WEIGHT` | — | 1 | Weight of the setting-soonest score term, 0–4 |
 | `ALTITUDE_WEIGHT` | — | 1 | Weight of the altitude score term (the altitude relative to the target's culmination), 0–4 |
+| `VISIBILITY_FLIP_PENALTY` | min | 10 | Best visibility only: cost of one meridian flip in minutes of full-quality imaging, 0–120, 0 = off; ignored under COMPACT and while `MERIDIAN_FLIP.ENABLED` is 0 or missing, see [Meridian flips](#meridian-flips) |
 | `FRAME_OVERHEAD` | s | 10 | Time added per captured frame in the duration estimate |
 | `OPERATION_OVERHEAD` | s | 120 | Time added per slew, centering, focus, guiding start or similar step in the duration estimate |
 | `NIGHT_START_OFFSET` | min | 0 | Shift of the night start, −240 to 240, negative is earlier |
@@ -644,7 +643,7 @@ At every decision the agent goes through the following steps. The [night plan](#
 
 **Quality of a run.** The quality `q(X, s)` of task X started at time s is the mean relative altitude over the run: the mean of `100 * max(0, alt) / alt_transit`, each clamped to 0–100, over the grid points s, s + 5 min, … up to s + `@duration` (`indigo_scheduler_run_quality()`). A task without `@target`, or with a target that never rises, has quality 0.
 
-**Objective.** The plan maximises the summed quality weighted by the run duration, `J = Σ q(X, s) × d / 3600` (percent × hours), over the planned runs that are not running. Between two plans, more task runs is better, then a higher `J`; on a tie (a difference of at most 10⁻⁶) the earlier candidate of the search wins, the previous plan first.
+**Objective.** The plan maximises the summed quality weighted by the run duration, `J = Σ q(X, s) × d / 3600` (percent × hours), over the planned runs that are not running, less the cost of the [meridian flips](#meridian-flips) of the runs that are not urgent. Between two plans, more task runs is better, then a higher `J`; on a tie (a difference of at most 10⁻⁶) the earlier candidate of the search wins, the previous plan first.
 
 **Constraints.** A plan is a run order with a start on a whole UTC minute for every run, within `[t0, end)`, where `t0` is now or the end of the running task or hook, rounded up to the minute, and `end` is the end of the night plan. It is feasible when:
 
@@ -682,6 +681,18 @@ At every decision the agent goes through the following steps. The [night plan](#
 
 **Results.** On the same 1000 nights COMPACT makes 5626 runs with a mean quality of 68.7 % (69.7 % weighted by the run duration), VISIBILITY 5879 runs with 79.6 % weighted; no night has fewer runs than COMPACT and no executed run breaks a constraint. The worked example is the night of 19 November 2026 at 42° N, 23° E with six tasks, see the [user guide](../../../indigo_docs/INDIGO_SCHEDULER_GUIDE.md#choosing-a-strategy): COMPACT runs them from dusk at a mean quality of 73.1 %, VISIBILITY at 97.3 %.
 
+#### Meridian flips
+
+**Input.** `Sequencer.js` publishes the meridian flip as `MERIDIAN_FLIP` on the Scripting Agent (`ENABLED` 0 or 1, `USE_SOLVER`, `OFFSET` in hours, −2 to 2), defined when the library is loaded and updated by `set_meridian_flip()`, the last step of `enable_meridian_flip()` and `disable_meridian_flip()`. The agent's client caches `ENABLED` and `OFFSET` (clamped to −2..2) on define and update; before the first one and after the property or the device is deleted the flip counts as disabled. A change of either value increments a generation, and a plan made with an older generation is replaced at the next pass; an update with the same values changes nothing. Every plan copies the cached values once and assumes they hold for the rest of the night, so the flip should be set once, in the `STARTUP` hook, not by the tasks. `USE_SOLVER` is not used because durations stay fixed.
+
+**Rule.** The Imager Agent pauses the batch before the first exposure that would end at an hour angle of `OFFSET` or more, and the flipper flips once the Mount Agent reports `FLIP_REQUIRED` at hour angle 0; a target reached west of the meridian is not paused. A run therefore flips if and only if its hour angle at the start, `HA_start` (from the target grid, advanced at the sidereal rate and normalised to −12..12), is below 0 and `HA_start + d × 1.0027379 / 3600 ≥ OFFSET` (`indigo_scheduler_run_flips()`). With `OFFSET < 0` the capture also idles from `max(HA_start, OFFSET)` until the meridian. Exposure granularity is ignored.
+
+**Cost of a flip.** For a run that flips, `indigo_scheduler_flip_loss()` returns `VISIBILITY_FLIP_PENALTY / 60` hours plus, for `OFFSET < 0`, the wait `−max(HA_start, OFFSET)` hours; it returns 0 without a flip or with the penalty 0, which switches the whole cost off, the wait included. `indigo_scheduler_plan_visibility()` takes it through its `scheduler_flip` argument (`enabled`, `offset` in hours, `penalty` in hours; NULL = none) and subtracts `100 × loss` from the value of every run that is not urgent: an hour lost counts as an hour of full-quality imaging. The same cost is subtracted from the `J` of the COMPACT plan that VISIBILITY compares itself with, so VISIBILITY is not measured against a COMPACT plan that flips for free; the COMPACT plan and the COMPACT selection are unchanged. Urgent runs keep their COMPACT start and are not charged. Run durations do not include the flip; the measured duration of a task already includes past flips.
+
+**Mark.** Under both strategies, while `MERIDIAN_FLIP.ENABLED` is 1, a task run of the plan that flips has `meridian flip` as its reason in [`AGENT_SCHEDULER_PLAN`](#night-plan-preview); the running run is evaluated with its actual start, hooks are never marked. The mark does not depend on the penalty.
+
+**Results.** On the 1000 random nights of `bench_scheduler_plan` with the flip enabled at `OFFSET` 0, the executed runs flip 645 times under COMPACT and 1436 times under VISIBILITY; with the default penalty of 10 minutes VISIBILITY flips 269 times (−81 %), at 78.9 % instead of 79.6 % weighted quality and the same 5879 runs. In the worked example of the user guide the penalty removes all three flips of VISIBILITY for 1.3 points of weighted quality.
+
 ### Night plan preview
 
 `AGENT_SCHEDULER_TASK_STATE` lists the tasks in list order, which only breaks score ties. `AGENT_SCHEDULER_CURRENT` shows only the running task. To show the user the expected order of the whole night, the agent publishes a forecast in `AGENT_SCHEDULER_PLAN`.
@@ -699,7 +710,7 @@ The simulation works on a copy of the runtime status and never changes the real 
 
 **Items.** Each planned run is one item, in expected run order:
 
-- The label has six columns joined by ` | `: when (`YYYY-MM-DD HH:MM-HH:MM`, UTC), name, run, priority, state and reason, for example `2026-11-12 20:15-23:15 | M31 LRGB | run 1/1 | normal 50 | PLANNED | -`. A task that repeats appears once per planned run, with the run number. The reason of a planned run is `-`; the gaps of a VISIBILITY plan show as idle time between the runs. A hook has `-` as the run and `hook startup`, `hook shutdown`, `hook night start`, `hook night end`, `hook idle` or `hook resume` as the priority.
+- The label has six columns joined by ` | `: when (`YYYY-MM-DD HH:MM-HH:MM`, UTC), name, run, priority, state and reason, for example `2026-11-12 20:15-23:15 | M31 LRGB | run 1/1 | normal 50 | PLANNED | -`. A task that repeats appears once per planned run, with the run number. The reason of a planned run is `-`, or `meridian flip` for a run that is expected to [flip](#meridian-flips); the gaps of a VISIBILITY plan show as idle time between the runs. A hook has `-` as the run and `hook startup`, `hook shutdown`, `hook night start`, `hook night end`, `hook idle` or `hook resume` as the priority.
 - The light is Busy for the running task or hook, with the state `RUNNING`, and Idle for future runs. A running hook is the first item and disappears when the hook ends. A running night hook replaces its planned item, so it is never listed twice.
 - Tasks that cannot run before the end of the night follow the planned runs as Alert items with `-` as the time, the state `NOT TONIGHT` and the reason, for example `- | M42 | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit`, with the reason `disabled`, `script error` or `no time left tonight`, the last for a task that could run but finds no room after the planned runs. DONE, FAILED and EXPIRED tasks are not listed.
 
@@ -763,7 +774,7 @@ Entries are oldest first, the newest is last. Expiry is not a run, so an expired
 
 The scheduler does not reset the agents between tasks. Settings made by one task body persist into the next one. Examples are the meridian flip, which stays enabled after a sequence ends, HA limits, filter offsets and the solver filter.
 
-The exceptions are the object name, the folder and the FITS keywords that the agent labels a run with, see [Observation data](#observation-data). Each task body must therefore set up the state it relies on. In particular, every task should call `enable_meridian_flip()` or `disable_meridian_flip()` explicitly, so that a flip enabled by a preempted task does not fire during an urgent task.
+The exceptions are the object name, the folder and the FITS keywords that the agent labels a run with, see [Observation data](#observation-data). Each task body must therefore set up the state it relies on. The meridian flip is the exception: set it once with `enable_meridian_flip()` or `disable_meridian_flip()` in the `STARTUP` hook and leave it unchanged in the tasks, because the night plan uses the current `MERIDIAN_FLIP` for all runs, see [Meridian flips](#meridian-flips). Tasks that change it make the plan approximate, and every change makes the agent plan the night again.
 
 ## Urgent preemption
 

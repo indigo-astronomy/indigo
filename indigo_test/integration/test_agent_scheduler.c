@@ -2902,8 +2902,16 @@ static void strategy_defaults_to_compact(void) {
 	// the settings have no DEFER item any more
 	indigo_property *settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
 	REQUIRE(settings != NULL);
-	ASSERT_EQ_INT(10, settings->count);
+	ASSERT_EQ_INT(11, settings->count);
 	ASSERT_TRUE(indigo_get_item(settings, "DEFER") == NULL);
+	// the meridian flip penalty of VISIBILITY follows the altitude weight
+	indigo_item *penalty = indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME);
+	REQUIRE(penalty != NULL);
+	ASSERT_TRUE(penalty == indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_ALTITUDE_WEIGHT_ITEM_NAME) + 1);
+	ASSERT_NEAR(10, penalty->number.value, 1e-9);
+	ASSERT_NEAR(0, penalty->number.min, 1e-9);
+	ASSERT_NEAR(120, penalty->number.max, 1e-9);
+	ASSERT_NEAR(1, penalty->number.step, 1e-9);
 	indigo_release_property(settings);
 	// COMPACT starts a task two hours before its culmination at once
 	REQUIRE(upload_before_culmination("Target"));
@@ -4160,6 +4168,140 @@ static void data_defaults(void) {
 	indigo_release_property(base);
 }
 
+// MERIDIAN_FLIP of the Scripting Agent as the observer sees it: ENABLED, or -1 while it is not defined
+static int observed_flip(double *offset) {
+	pthread_mutex_lock(&cache_mutex);
+	observation *entry = find(SCRIPTING_AGENT_NAME, "MERIDIAN_FLIP");
+	int result = -1;
+	if (entry && entry->property) {
+		indigo_item *enabled = indigo_get_item(entry->property, "ENABLED");
+		indigo_item *item = indigo_get_item(entry->property, "OFFSET");
+		if (enabled && item) {
+			result = enabled->number.value > 0.5;
+			*offset = item->number.value;
+		}
+	}
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
+static bool wait_flip(int enabled, double offset, double timeout) {
+	double observed = 0;
+	for (double t = 0; t < timeout; t += 0.01) {
+		if (observed_flip(&observed) == enabled && (enabled < 0 || fabs(observed - offset) < 1e-9)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for MERIDIAN_FLIP %d %g, observed %d %g\n", enabled, offset, observed_flip(&observed), observed);
+	return false;
+}
+
+static void run_script(const char *script) {
+	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
+	const char *values[] = { script };
+	indigo_change_text_property(&observer, SCRIPTING_AGENT_NAME, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+}
+
+// publishes the meridian flip as set_meridian_flip() of Sequencer.js does, through its global, which a reload of the library keeps
+static bool set_flip(bool enabled, double offset) {
+	char script[512];
+	snprintf(script, sizeof(script), "indigo_meridian_flip.enabled = %s; indigo_meridian_flip.offset = %g; indigo_update_number_property(\"%s\", \"MERIDIAN_FLIP\", indigo_meridian_flip_items(), \"Ok\");", enabled ? "true" : "false", offset, SCRIPTING_AGENT_NAME);
+	run_script(script);
+	return wait_flip(enabled, offset, 5);
+}
+
+// a 60 minute run of a target 90 minutes before the meridian at the equator: VISIBILITY centres it on the meridian, 30 minutes ahead, unless the flip penalty moves it past
+static bool start_with_crossing_task(void) {
+	CHECK(set_setting(AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME, 0));
+	CHECK(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	set_site(0, longitude_at_hour(20));
+	CHECK(upload_placed("Crossing", -1.5, 0, "// @duration 60\n"));
+	CHECK(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	// Sequencer.js defines MERIDIAN_FLIP disabled when it is loaded
+	CHECK(wait_flip(0, 0, 15));
+	CHECK(wait_task_state("Crossing", "QUEUED", 10));
+	CHECK(wait_plan_contains("Crossing", true, 10));
+	CHECK(wait_plan_contains("meridian flip", false, 5));
+	return true;
+}
+
+static void visibility_flip_change_replans(void) {
+	REQUIRE(start_with_crossing_task());
+	ASSERT_TRUE(set_flip(true, 0));
+	ASSERT_TRUE(wait_plan_contains("| Crossing | run 1/1 | normal 50 | PLANNED | meridian flip", true, 10));
+	// the penalty moves the run past the meridian
+	ASSERT_TRUE(set_setting(AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME, 10));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", false, 10));
+	ASSERT_TRUE(wait_plan_contains("| Crossing | run 1/1 | normal 50 | PLANNED | -", true, 5));
+	// back without the penalty, then an offset the run does not reach
+	ASSERT_TRUE(set_setting(AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME, 0));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", true, 10));
+	ASSERT_TRUE(set_flip(true, 1));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", false, 10));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Crossing'"));
+}
+
+static void visibility_flip_unchanged_update_keeps_the_plan(void) {
+	REQUIRE(start_with_crossing_task());
+	ASSERT_TRUE(set_flip(true, 0));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", true, 10));
+	char before[32][INDIGO_VALUE_SIZE], after[32][INDIGO_VALUE_SIZE];
+	indigo_property_state states[32];
+	int count = plan_items(before, states, 32);
+	REQUIRE(count > 0);
+	unsigned flip_revision = 0;
+	pthread_mutex_lock(&cache_mutex);
+	observation *entry = find(SCRIPTING_AGENT_NAME, "MERIDIAN_FLIP");
+	flip_revision = entry ? entry->revision : 0;
+	pthread_mutex_unlock(&cache_mutex);
+	ASSERT_TRUE(set_flip(true, 0));
+	// the same update arrived and the plan labels stay
+	for (int i = 0; i < 500; i++) {
+		pthread_mutex_lock(&cache_mutex);
+		unsigned now = entry ? entry->revision : 0;
+		pthread_mutex_unlock(&cache_mutex);
+		if (now != flip_revision) {
+			break;
+		}
+		indigo_usleep(10000);
+	}
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(count, plan_items(after, states, 32));
+	for (int i = 0; i < count; i++) {
+		ASSERT_STREQ(before[i], after[i]);
+	}
+}
+
+static void visibility_flip_delete_disables(void) {
+	REQUIRE(start_with_crossing_task());
+	ASSERT_TRUE(set_flip(true, 0));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", true, 10));
+	run_script("indigo_delete_property(\"" SCRIPTING_AGENT_NAME "\", \"MERIDIAN_FLIP\");");
+	ASSERT_TRUE(wait_flip(-1, 0, 5));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", false, 10));
+	// defined again with the values the library kept
+	run_script("indigo_sequencer.on_enumerate_properties({ device: \"" SCRIPTING_AGENT_NAME "\", name: \"MERIDIAN_FLIP\" });");
+	ASSERT_TRUE(wait_flip(1, 0, 5));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", true, 10));
+}
+
+// the flip is marked under COMPACT too, as information
+static void compact_marks_the_flip(void) {
+	set_site(0, longitude_at_hour(20));
+	// a window that opens in 20 minutes, when the target is about 16 minutes before the meridian
+	char start[32], header[128];
+	utc(minute_ahead(1200), start);
+	snprintf(header, sizeof(header), "// @duration 60\n// @window %s ..\n", start);
+	REQUIRE(upload_placed("Crossing", -0.6, 0, header));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_flip(0, 0, 15));
+	ASSERT_TRUE(wait_plan_contains("| Crossing | run 1/1 | normal 50 | PLANNED | -", true, 10));
+	ASSERT_TRUE(set_flip(true, 0));
+	ASSERT_TRUE(wait_plan_contains("| Crossing | run 1/1 | normal 50 | PLANNED | meridian flip", true, 10));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Crossing'"));
+}
+
 static const indigo_test_case cases[] = {
 	{ "store_edit_and_delete", store_edit_and_delete },
 	{ "commands_and_order", commands_and_order },
@@ -4250,6 +4392,10 @@ static const indigo_test_case cases[] = {
 	{ "visibility_wait_stops_with_the_shutdown_hook", visibility_wait_stops_with_the_shutdown_hook },
 	{ "strategy_switch_back_starts_at_once", strategy_switch_back_starts_at_once },
 	{ "visibility_replans_after_failure", visibility_replans_after_failure },
+	{ "visibility_flip_change_replans", visibility_flip_change_replans },
+	{ "visibility_flip_unchanged_update_keeps_the_plan", visibility_flip_unchanged_update_keeps_the_plan },
+	{ "visibility_flip_delete_disables", visibility_flip_delete_disables },
+	{ "compact_marks_the_flip", compact_marks_the_flip },
 	{ "largest_task_text_is_stored_and_restored", largest_task_text_is_stored_and_restored },
 	{ "task_count_limit", task_count_limit },
 	{ "repeat_interval_and_retry_delay", repeat_interval_and_retry_delay },
