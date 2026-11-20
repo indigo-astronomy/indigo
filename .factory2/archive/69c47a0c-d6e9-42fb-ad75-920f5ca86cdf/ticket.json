@@ -1,0 +1,580 @@
+{
+  "schema_version": 1,
+  "ticket_id": "69c47a0c-d6e9-42fb-ad75-920f5ca86cdf",
+  "revision": 29,
+  "title": "indigo_mount_ioptron: a position readback failure during motion can end a successful GoTo in ALERT",
+  "description": "ioptron_read_position() failing once while the mount is slewing publishes ALERT after BUSY, which is then kept, so a GoTo that completes correctly ends as ALERT. Found while working on ticket 42b85be0-1f19-4607-b3c3-746e60317d17 (closed, commit a09e0f878), which introduced the kept coordinates ALERT in indigo_update_coordinates(): an ALERT published after a BUSY stays until the next BUSY. Reproduce in the driver's simulator suite before changing code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:04.782219Z",
+  "status": "closed",
+  "branch": "ticket/69c47a0c-d6e9-42fb-ad75-920f5ca86cdf",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "2c033018-a7d8-4dea-b21e-1c94de381117",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "087f340d-9ad9-4351-87fd-d14771b96941",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:11:56.762226Z",
+          "last_activity_at": "2026-11-20T18:40:24.760781Z",
+          "ended_at": "2026-11-20T18:40:24.760781Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1707998.555,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:11:56.762226Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/69c47a0c-d6e9-42fb-ad75-920f5ca86cdf"
+        },
+        {
+          "at": "2026-11-20T18:40:24.760781Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1707998.555,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "b95bab2d-0581-4de2-b0c2-e15550346569",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:40:24.760959Z",
+          "last_activity_at": "2026-11-20T19:01:22.078490Z",
+          "ended_at": "2026-11-20T19:01:22.078490Z",
+          "outcome": {
+            "summary": "Pass. Reviewed git diff c912611a4..cb66398ae (merge-base..HEAD). Fix (indigo_mount_ioptron.driver:1621-1636, 1653-1658; .c 1684-1721): position_failures counts consecutive failed poll readbacks, reset on a good read and in on_disconnect (driver:1783; connection loss goes through mount_connection_handler -> on_disconnect; init_mount does not reset it, but every session ends through on_disconnect and private data starts zeroed). The end-of-slew branch keeps BUSY only while !coordinates_read && failures <= 2; the 0.5 s BUSY poll retries, so a persistent failure ends ALERT after at most two extra polls (~1 s); failures during the slew count too, so it can end ALERT earlier, never later. Refused GoTo (ALERT in on_change), abort (ALERT + stopping), the not-yet-sent GoTo branch, idle failures, park/home (decided from :GLS flags, park_issued/home_issued guards and deadlines untouched) and hand-controller slews are unaffected; no new path can stay BUSY forever (a failing get_state keeping BUSY is pre-existing). ioptron_read_position() writes values only on success for every protocol, so values stay the last real read and targets (preserve_values) the request; the sync exit (driver:1939) is unchanged and does not touch the counter. Generated .c/.h/_main.c are byte-identical to output of a freshly built indigo_generator from the worktree source; version 69->70 / 0x03000046; git diff --check clean; formatting fine (empty commented branch matches driver:1646 style). README change is only the script record line, matches TEST_SUMMARY.md and 3.0.0.70; MIGRATION_STATUS 144/0 = 141 registered cases + 3 opt-in --tcp, Comment column untouched; nothing outside mount_ioptron, its test and the two record files changed. Tests: both new cases pass on HEAD; on a scratch build of the pre-fix driver ioptron_goto_survives_failed_position_readback FAILS (ALERT published) and the other passes; on a scratch variant whose retry never ends ioptron_goto_ends_alert_when_position_readback_keeps_failing",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1257317.531,
+          "tokens": null
+        },
+        {
+          "attempt_id": "7f8c694f-575c-4720-9784-b913368bba81",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-20T20:32:28.038561Z",
+          "last_activity_at": "2026-11-20T20:32:28.038595Z",
+          "ended_at": "2026-11-20T20:32:28.038595Z",
+          "outcome": {
+            "summary": "Pass (re-review of cb66398ae..a7588164a). (1) mount_ioptron_simulator.c:38-44, 116, 663-686, 709-734, 750-752: a reply rule takes an optional 4th field that sets status_override when the rule fires, with the same '-' => 0 mapping as @status. Backward compatible: 2- and 3-field lines parse as before (count is still atoi of the 3rd field, status 0 = no effect), @status/@halt/@close are unchanged, the status field is stored only on the new rule, and replacing or CLEARing a rule drops it. The only 4-field control in the tree is the new one at test_mount_ioptron_simulator.c:1385, and this simulator is used only by this suite. The header comment documents the field. test_mount_ioptron_simulator.c:1383-1390 is now event-driven: the frozen status '2' keeps the GoTo BUSY until the garbled :GEP# is served; the same rule releases the status, so the :GLS# of that poll reports the end of the slew. The outcome no longer depends on when the test thread writes the control (read_control runs at every command and every 100 ms idle tick, and nothing completes before the rule fires). Rebuilt in the worktree: both readback cases pass on HEAD. With the pre-fix driver source (c912611a4) and the new simulator and test (scratch build), ioptron_goto_survives_failed_position_readback FAILS and the other case passes, so the test still detects the defect. (2) Progress line reworded; it is printed when the GoTo leaves BUSY. (3) The POSITION_READ_RETRIES comment is correct now (.driver:36-37). The .c differs only in that comment, and .c/.h/_main.c are byte-identical to output of a freshly built worktree indigo_generator; version stays 70 (0x03000046), which is fine for a comment-only driver change. The README change is only the record line 2026-11-20 20:45 3.0.0.70 mac arm64 simulator 141/141 OK, and TEST_SUMMARY.md has the same line; MIGRATION_STATUS 144/0 unchanged and still right. git diff --check is clean, formatting follows the rules, and nothing outside mount_ioptron, its simulator, its tes",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 0.034,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:40:24.760959Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T19:01:22.078490Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass. Reviewed git diff c912611a4..cb66398ae (merge-base..HEAD). Fix (indigo_mount_ioptron.driver:1621-1636, 1653-1658; .c 1684-1721): position_failures counts consecutive failed poll readbacks, reset on a good read and in on_disconnect (driver:1783; connection loss goes through mount_connection_handler -> on_disconnect; init_mount does not reset it, but every session ends through on_disconnect and private data starts zeroed). The end-of-slew branch keeps BUSY only while !coordinates_read && failures <= 2; the 0.5 s BUSY poll retries, so a persistent failure ends ALERT after at most two extra polls (~1 s); failures during the slew count too, so it can end ALERT earlier, never later. Refused GoTo (ALERT in on_change), abort (ALERT + stopping), the not-yet-sent GoTo branch, idle failures, park/home (decided from :GLS flags, park_issued/home_issued guards and deadlines untouched) and hand-controller slews are unaffected; no new path can stay BUSY forever (a failing get_state keeping BUSY is pre-existing). ioptron_read_position() writes values only on success for every protocol, so values stay the last real read and targets (preserve_values) the request; the sync exit (driver:1939) is unchanged and does not touch the counter. Generated .c/.h/_main.c are byte-identical to output of a freshly built indigo_generator from the worktree source; version 69->70 / 0x03000046; git diff --check clean; formatting fine (empty commented branch matches driver:1646 style). README change is only the script record line, matches TEST_SUMMARY.md and 3.0.0.70; MIGRATION_STATUS 144/0 = 141 registered cases + 3 opt-in --tcp, Comment column untouched; nothing outside mount_ioptron, its test and the two record files changed. Tests: both new cases pass on HEAD; on a scratch build of the pre-fix driver ioptron_goto_survives_failed_position_readback FAILS (ALERT published) and the other passes; on a scratch variant whose retry never ends ioptron_goto_ends_alert_when_position_readback_keeps_failing"
+        },
+        {
+          "at": "2026-11-20T20:32:28.038561Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T20:32:28.038595Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass (re-review of cb66398ae..a7588164a). (1) mount_ioptron_simulator.c:38-44, 116, 663-686, 709-734, 750-752: a reply rule takes an optional 4th field that sets status_override when the rule fires, with the same '-' => 0 mapping as @status. Backward compatible: 2- and 3-field lines parse as before (count is still atoi of the 3rd field, status 0 = no effect), @status/@halt/@close are unchanged, the status field is stored only on the new rule, and replacing or CLEARing a rule drops it. The only 4-field control in the tree is the new one at test_mount_ioptron_simulator.c:1385, and this simulator is used only by this suite. The header comment documents the field. test_mount_ioptron_simulator.c:1383-1390 is now event-driven: the frozen status '2' keeps the GoTo BUSY until the garbled :GEP# is served; the same rule releases the status, so the :GLS# of that poll reports the end of the slew. The outcome no longer depends on when the test thread writes the control (read_control runs at every command and every 100 ms idle tick, and nothing completes before the rule fires). Rebuilt in the worktree: both readback cases pass on HEAD. With the pre-fix driver source (c912611a4) and the new simulator and test (scratch build), ioptron_goto_survives_failed_position_readback FAILS and the other case passes, so the test still detects the defect. (2) Progress line reworded; it is printed when the GoTo leaves BUSY. (3) The POSITION_READ_RETRIES comment is correct now (.driver:36-37). The .c differs only in that comment, and .c/.h/_main.c are byte-identical to output of a freshly built worktree indigo_generator; version stays 70 (0x03000046), which is fine for a comment-only driver change. The README change is only the record line 2026-11-20 20:45 3.0.0.70 mac arm64 simulator 141/141 OK, and TEST_SUMMARY.md has the same line; MIGRATION_STATUS 144/0 unchanged and still right. git diff --check is clean, formatting follows the rules, and nothing outside mount_ioptron, its simulator, its tes"
+        }
+      ],
+      "result": {
+        "summary": "Pass (re-review of cb66398ae..a7588164a). (1) mount_ioptron_simulator.c:38-44, 116, 663-686, 709-734, 750-752: a reply rule takes an optional 4th field that sets status_override when the rule fires, with the same '-' => 0 mapping as @status. Backward compatible: 2- and 3-field lines parse as before (count is still atoi of the 3rd field, status 0 = no effect), @status/@halt/@close are unchanged, the status field is stored only on the new rule, and replacing or CLEARing a rule drops it. The only 4-field control in the tree is the new one at test_mount_ioptron_simulator.c:1385, and this simulator is used only by this suite. The header comment documents the field. test_mount_ioptron_simulator.c:1383-1390 is now event-driven: the frozen status '2' keeps the GoTo BUSY until the garbled :GEP# is served; the same rule releases the status, so the :GLS# of that poll reports the end of the slew. The outcome no longer depends on when the test thread writes the control (read_control runs at every command and every 100 ms idle tick, and nothing completes before the rule fires). Rebuilt in the worktree: both readback cases pass on HEAD. With the pre-fix driver source (c912611a4) and the new simulator and test (scratch build), ioptron_goto_survives_failed_position_readback FAILS and the other case passes, so the test still detects the defect. (2) Progress line reworded; it is printed when the GoTo leaves BUSY. (3) The POSITION_READ_RETRIES comment is correct now (.driver:36-37). The .c differs only in that comment, and .c/.h/_main.c are byte-identical to output of a freshly built worktree indigo_generator; version stays 70 (0x03000046), which is fine for a comment-only driver change. The README change is only the record line 2026-11-20 20:45 3.0.0.70 mac arm64 simulator 141/141 OK, and TEST_SUMMARY.md has the same line; MIGRATION_STATUS 144/0 unchanged and still right. git diff --check is clean, formatting follows the rules, and nothing outside mount_ioptron, its simulator, its tes",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1257317.565,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "a4ca5274-8579-4ae6-8053-a1e6efe9f7d2",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:04.782984Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "8a641414-7deb-4a51-8ab0-b88075e672e6",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T17:02:38.554720Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "ad0004c1-e579-4a01-9701-4dd080872517",
+      "event": "task/progress",
+      "at": "2026-11-20T18:11:56.762616Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "2c033018-a7d8-4dea-b21e-1c94de381117",
+      "text": "Implementation started on branch ticket/69c47a0c-d6e9-42fb-ad75-920f5ca86cdf"
+    },
+    {
+      "event_id": "b4dbf94f-0cc6-4e39-be2f-9cb2d0f255f7",
+      "event": "ticket/started",
+      "at": "2026-11-20T18:11:56.764487Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/69c47a0c-d6e9-42fb-ad75-920f5ca86cdf",
+      "base": "master"
+    },
+    {
+      "event_id": "fe389347-4888-43ae-a978-ef4427bf93a0",
+      "event": "task/progress",
+      "at": "2026-11-20T18:12:59.851384Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "2c033018-a7d8-4dea-b21e-1c94de381117",
+      "text": "Implementer launched",
+      "attempt_id": "087f340d-9ad9-4351-87fd-d14771b96941",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ab511656-5657-43a9-877d-52b32b0d3016",
+      "event": "task/progress",
+      "at": "2026-11-20T18:15:18.952890Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "2c033018-a7d8-4dea-b21e-1c94de381117",
+      "text": "Building worktree library, generator and ioptron driver"
+    },
+    {
+      "event_id": "81de0bbe-282c-4883-8f45-18b26849ce1e",
+      "event": "task/progress",
+      "at": "2026-11-20T18:17:32.256285Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "2c033018-a7d8-4dea-b21e-1c94de381117",
+      "text": "Reproducing on the unchanged driver: ioptron_goto_survives_failed_position_readback"
+    },
+    {
+      "event_id": "bdfd7ccd-cda7-4049-919f-e554f7869f9b",
+      "event": "task/progress",
+      "at": "2026-11-20T18:21:47.737953Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "2c033018-a7d8-4dea-b21e-1c94de381117",
+      "text": "Recorded run: tools/run_driver_test.py mount_ioptron"
+    },
+    {
+      "event_id": "4f152d58-46ba-4e78-ac84-078bdd2ad26f",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:34:59.808663Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction (driver v69, unchanged): new simulator test ioptron_goto_survives_failed_position_readback (protocol 3.0, slew status frozen at the target, then one garbled :GEP# reply in the poll whose :GLS# reports the slew ended) failed: ALERT published after BUSY in ioptron_update_mount_state() end-of-slew branch (if (!coordinates_read) -> ALERT, indigo_mount_ioptron.driver line ~1645 before the fix), kept by indigo_update_coordinates() over the following OK. A failed readback while the controller still reports slewing already kept BUSY; the defect is the poll where the slew ends. Fix (v70): PRIVATE_DATA->position_failures counts consecutive failed poll readbacks (reset on a good readback and on disconnect); the end-of-slew branch keeps BUSY with the last read position while position_failures <= POSITION_READ_RETRIES (2), one more failure ends ALERT as before. Idle failures, refused GoTo and abort unchanged. After the fix both new tests pass (the second, ioptron_goto_ends_alert_when_position_readback_keeps_failing, passed before and after: persistent failure ends and stays ALERT, value = last real read, target = request). Recorded run: 2026-11-20 19:22 3.0.0.70 mac arm64 simulator 141/141 OK. MIGRATION_STATUS 142/0 -> 144/0 (incl. 3 opt-in --tcp cases, not run).",
+      "tokens": null
+    },
+    {
+      "event_id": "db7f54d6-1ac8-4d2f-8767-f9cd855f7776",
+      "event": "task/progress",
+      "at": "2026-11-20T18:34:59.978187Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "2c033018-a7d8-4dea-b21e-1c94de381117",
+      "text": "Running flow check"
+    },
+    {
+      "event_id": "5327727c-518e-44fe-85de-5d0bbd01e899",
+      "event": "task/progress",
+      "at": "2026-11-20T18:40:00.010911Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "2c033018-a7d8-4dea-b21e-1c94de381117",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "68e81aff-ecc6-49a8-8abc-d35b0ef7bb2f",
+      "event": "task/progress",
+      "at": "2026-11-20T18:40:00.034770Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "2c033018-a7d8-4dea-b21e-1c94de381117",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "15d659dc-ad45-4b94-addc-30fc4c1ad093",
+      "event": "check/passed",
+      "at": "2026-11-20T18:40:00.036472Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "cb66398aebcecf011680e8525b0d0d25f9e6519a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "9fe69340-a9f4-4e60-b103-8824dfdc1c1c",
+      "event": "task/progress",
+      "at": "2026-11-20T18:40:24.761023Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e683cf15-cdc9-4073-8d90-e2df79548795",
+      "event": "review/started",
+      "at": "2026-11-20T18:40:24.762135Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "d4ca760a-d1b7-4851-bf7e-6376787a4249",
+      "event": "task/progress",
+      "at": "2026-11-20T18:40:42.192551Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "text": "Reviewer launched",
+      "attempt_id": "b95bab2d-0581-4de2-b0c2-e15550346569",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "cf20f01c-da25-403e-ad69-95a4d23ae263",
+      "event": "task/progress",
+      "at": "2026-11-20T18:41:34.625451Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "text": "Checking generated outputs against the worktree generator"
+    },
+    {
+      "event_id": "8f4da996-7028-4f16-b3c5-26c3a3629eb4",
+      "event": "task/progress",
+      "at": "2026-11-20T18:42:09.687848Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "text": "Building the ioptron driver and simulator test binary in the worktree"
+    },
+    {
+      "event_id": "a49d131c-5151-4625-89f1-94e89cdebffb",
+      "event": "task/progress",
+      "at": "2026-11-20T18:43:44.519285Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "text": "Running the two new tests against pre-fix and never-ending-retry scratch variants"
+    },
+    {
+      "event_id": "e3b0f7b5-b982-4ea9-98e9-6bc0fd9f3022",
+      "event": "task/progress",
+      "at": "2026-11-20T19:01:22.078579Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "c34fa23f-f05c-40ff-b55a-75e38f901ad5",
+      "event": "review/passed",
+      "at": "2026-11-20T19:01:22.079792Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "cb66398aebcecf011680e8525b0d0d25f9e6519a"
+    },
+    {
+      "event_id": "b0e0c3da-16c1-47de-906a-bde00fb32a05",
+      "event": "task/progress",
+      "at": "2026-11-20T19:03:12.518550Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Review fixes: event-driven readback test, delay evidence on fixed and unfixed driver"
+    },
+    {
+      "event_id": "8249fb04-c437-450a-bc64-f6a506cd9996",
+      "event": "task/progress",
+      "at": "2026-11-20T19:41:52.117052Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Recorded run after review fixes: tools/run_driver_test.py mount_ioptron"
+    },
+    {
+      "event_id": "2e58b0fa-1dab-4115-a55b-a2f75edbecbc",
+      "event": "ticket/note",
+      "at": "2026-11-20T19:57:47.696948Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review findings addressed. (1) ioptron_goto_survives_failed_position_readback is now event-driven: the simulator control rule takes an optional last field <digit|-> that sets the status override when the rule fires; the test injects GEP<TAB>+12060000#<TAB>1<TAB>- while the slew status is frozen at 2, so the frozen status is released exactly when the garbled :GEP# is served and the :GLS# of the same poll reports the end of the slew; the GOTO cannot complete before the failed readback. Evidence with a temporary 1 s delay before the control write: fixed driver v70 3/3 PASS (OK, ALERT never published); base driver v69 (c912611a4) 2/2 FAIL (ALERT published, expected 0 got 6). Delay removed. (2) Progress line now 'GOTO ended after the failed readback' printed once the coordinates leave BUSY. (3) POSITION_READ_RETRIES comment states that failures during the slew count too; regenerated, version stays 70. Recorded run: 2026-11-20 20:45 3.0.0.70 mac arm64 simulator 141/141 OK.",
+      "tokens": null
+    },
+    {
+      "event_id": "7e0e5c79-39cd-4506-8a07-4ea922bef31a",
+      "event": "task/progress",
+      "at": "2026-11-20T19:59:29.334872Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ad59b8f7-11e7-412f-8312-149a12911132",
+      "event": "task/progress",
+      "at": "2026-11-20T19:59:29.361877Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "9b556922-3e06-4642-a3e2-b92daa8aff32",
+      "event": "check/passed",
+      "at": "2026-11-20T19:59:29.363823Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "a7588164ad5c55b07d371f02080b535e128c3110",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7bc87ec5-24e7-429e-ba6d-65eda48e9626",
+      "event": "task/progress",
+      "at": "2026-11-20T19:59:57.653123Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "text": "Re-review of cb66398ae..a7588164a launched",
+      "attempt_id": "b95bab2d-0581-4de2-b0c2-e15550346569",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ca2de042-3b52-43fb-8866-92c9a9db5b83",
+      "event": "task/progress",
+      "at": "2026-11-20T20:00:43.374528Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Re-review: running the readback tests on HEAD and on the pre-fix driver"
+    },
+    {
+      "event_id": "a6105d91-aa4b-4e45-aa57-c814b050d7d7",
+      "event": "task/progress",
+      "at": "2026-11-20T20:32:28.038674Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "e6156b58-487a-47ec-b945-b87c8a12246a",
+      "event": "review/passed",
+      "at": "2026-11-20T20:32:28.040785Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "90e46c33-2433-43aa-84ba-796f3b883b99",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "a7588164ad5c55b07d371f02080b535e128c3110"
+    },
+    {
+      "event_id": "ff3ed43b-39b5-4060-af99-4d8c038480e3",
+      "event": "ticket/closed",
+      "at": "2026-11-20T20:32:44.111383Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T20:32:44.111355Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "333445a2037a75bd426b0874d5e627b9b7daa6e6"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "cb66398aebcecf011680e8525b0d0d25f9e6519a",
+        "tree": "325c3dfbe5b882016269fd02e8e729771eb4267c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:40:00.034034Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/69c47a0c-d6e9-42fb-ad75-920f5ca86cdf/325c3dfbe5b8-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "a7588164ad5c55b07d371f02080b535e128c3110",
+        "tree": "b5f5537309da5a62fd71614615c62edac879d5a9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T19:59:29.361081Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/69c47a0c-d6e9-42fb-ad75-920f5ca86cdf/b5f5537309da-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Reviewed git diff c912611a4..cb66398ae (merge-base..HEAD). Fix (indigo_mount_ioptron.driver:1621-1636, 1653-1658; .c 1684-1721): position_failures counts consecutive failed poll readbacks, reset on a good read and in on_disconnect (driver:1783; connection loss goes through mount_connection_handler -> on_disconnect; init_mount does not reset it, but every session ends through on_disconnect and private data starts zeroed). The end-of-slew branch keeps BUSY only while !coordinates_read && failures <= 2; the 0.5 s BUSY poll retries, so a persistent failure ends ALERT after at most two extra polls (~1 s); failures during the slew count too, so it can end ALERT earlier, never later. Refused GoTo (ALERT in on_change), abort (ALERT + stopping), the not-yet-sent GoTo branch, idle failures, park/home (decided from :GLS flags, park_issued/home_issued guards and deadlines untouched) and hand-controller slews are unaffected; no new path can stay BUSY forever (a failing get_state keeping BUSY is pre-existing). ioptron_read_position() writes values only on success for every protocol, so values stay the last real read and targets (preserve_values) the request; the sync exit (driver:1939) is unchanged and does not touch the counter. Generated .c/.h/_main.c are byte-identical to output of a freshly built indigo_generator from the worktree source; version 69->70 / 0x03000046; git diff --check clean; formatting fine (empty commented branch matches driver:1646 style). README change is only the script record line, matches TEST_SUMMARY.md and 3.0.0.70; MIGRATION_STATUS 144/0 = 141 registered cases + 3 opt-in --tcp, Comment column untouched; nothing outside mount_ioptron, its test and the two record files changed. Tests: both new cases pass on HEAD; on a scratch build of the pre-fix driver ioptron_goto_survives_failed_position_readback FAILS (ALERT published) and the other passes; on a scratch variant whose retry never ends ioptron_goto_ends_alert_when_position_readback_keeps_failing FAILS and the first passes, so each detects its defect. Non-blocking notes: (1) test_mount_ioptron_simulator.c:1384-1386 relies on writing the control (garbled GEP + @status -) in the ~0.45 s gap between a poll's :GLS# and the next :GEP#; if the test thread stalls past that, poll N+1 reads a good position and ends OK and the garbled GEP lands on the idle poll, publishing ALERT, so the test fails falsely (it cannot pass falsely). Event-driven option: let the simulator apply the status override when the GEP rule fires (e.g. a rule option chaining @status), or check in the events file that the injected GEP was followed by the released GLS of the same poll and re-inject otherwise. (2) The 'after the failed readback' line is printed after the retry poll (wait for polls+1 = two :GLS# after the control), cosmetic. (3) The POSITION_READ_RETRIES comment (driver:36-38) reads as if only polls after the reported end count; failures during the slew also count. Not run: full suite (implementer's recorded 141/141), protocol profiles other than 3.0 for the new path (verified by reading only), the race in (1) was not reproduced empirically.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "cb66398aebcecf011680e8525b0d0d25f9e6519a",
+        "tree": "325c3dfbe5b882016269fd02e8e729771eb4267c",
+        "at": "2026-11-20T19:01:22.078333Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass (re-review of cb66398ae..a7588164a). (1) mount_ioptron_simulator.c:38-44, 116, 663-686, 709-734, 750-752: a reply rule takes an optional 4th field that sets status_override when the rule fires, with the same '-' => 0 mapping as @status. Backward compatible: 2- and 3-field lines parse as before (count is still atoi of the 3rd field, status 0 = no effect), @status/@halt/@close are unchanged, the status field is stored only on the new rule, and replacing or CLEARing a rule drops it. The only 4-field control in the tree is the new one at test_mount_ioptron_simulator.c:1385, and this simulator is used only by this suite. The header comment documents the field. test_mount_ioptron_simulator.c:1383-1390 is now event-driven: the frozen status '2' keeps the GoTo BUSY until the garbled :GEP# is served; the same rule releases the status, so the :GLS# of that poll reports the end of the slew. The outcome no longer depends on when the test thread writes the control (read_control runs at every command and every 100 ms idle tick, and nothing completes before the rule fires). Rebuilt in the worktree: both readback cases pass on HEAD. With the pre-fix driver source (c912611a4) and the new simulator and test (scratch build), ioptron_goto_survives_failed_position_readback FAILS and the other case passes, so the test still detects the defect. (2) Progress line reworded; it is printed when the GoTo leaves BUSY. (3) The POSITION_READ_RETRIES comment is correct now (.driver:36-37). The .c differs only in that comment, and .c/.h/_main.c are byte-identical to output of a freshly built worktree indigo_generator; version stays 70 (0x03000046), which is fine for a comment-only driver change. The README change is only the record line 2026-11-20 20:45 3.0.0.70 mac arm64 simulator 141/141 OK, and TEST_SUMMARY.md has the same line; MIGRATION_STATUS 144/0 unchanged and still right. git diff --check is clean, formatting follows the rules, and nothing outside mount_ioptron, its simulator, its test and the two record files changed. Not verified: full-suite rerun (relies on the implementer's 20:45 141/141 record); no artificial-load stress run, independence is from reading the code.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "a7588164ad5c55b07d371f02080b535e128c3110",
+        "tree": "b5f5537309da5a62fd71614615c62edac879d5a9",
+        "at": "2026-11-20T20:32:28.038372Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T18:34:59.806459Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction (driver v69, unchanged): new simulator test ioptron_goto_survives_failed_position_readback (protocol 3.0, slew status frozen at the target, then one garbled :GEP# reply in the poll whose :GLS# reports the slew ended) failed: ALERT published after BUSY in ioptron_update_mount_state() end-of-slew branch (if (!coordinates_read) -> ALERT, indigo_mount_ioptron.driver line ~1645 before the fix), kept by indigo_update_coordinates() over the following OK. A failed readback while the controller still reports slewing already kept BUSY; the defect is the poll where the slew ends. Fix (v70): PRIVATE_DATA->position_failures counts consecutive failed poll readbacks (reset on a good readback and on disconnect); the end-of-slew branch keeps BUSY with the last read position while position_failures <= POSITION_READ_RETRIES (2), one more failure ends ALERT as before. Idle failures, refused GoTo and abort unchanged. After the fix both new tests pass (the second, ioptron_goto_ends_alert_when_position_readback_keeps_failing, passed before and after: persistent failure ends and stays ALERT, value = last real read, target = request). Recorded run: 2026-11-20 19:22 3.0.0.70 mac arm64 simulator 141/141 OK. MIGRATION_STATUS 142/0 -> 144/0 (incl. 3 opt-in --tcp cases, not run).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T19:57:47.695676Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review findings addressed. (1) ioptron_goto_survives_failed_position_readback is now event-driven: the simulator control rule takes an optional last field <digit|-> that sets the status override when the rule fires; the test injects GEP<TAB>+12060000#<TAB>1<TAB>- while the slew status is frozen at 2, so the frozen status is released exactly when the garbled :GEP# is served and the :GLS# of the same poll reports the end of the slew; the GOTO cannot complete before the failed readback. Evidence with a temporary 1 s delay before the control write: fixed driver v70 3/3 PASS (OK, ALERT never published); base driver v69 (c912611a4) 2/2 FAIL (ALERT published, expected 0 got 6). Delay removed. (2) Progress line now 'GOTO ended after the failed readback' printed once the coordinates leave BUSY. (3) POSITION_READ_RETRIES comment states that failures during the slew count too; regenerated, version stays 70. Recorded run: 2026-11-20 20:45 3.0.0.70 mac arm64 simulator 141/141 OK.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "333445a2037a75bd426b0874d5e627b9b7daa6e6",
+      "tree": "b5f5537309da5a62fd71614615c62edac879d5a9",
+      "base": "master",
+      "at": "2026-11-20T20:32:44.006860Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:04.782219Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T17:02:38.554562Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 2965316.12,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 37,
+    "sha256": "114a0363e386290ea4b8b5ac1fca6764675a9c2f52e5ab9adc1127ec9cfe57c9"
+  }
+}
