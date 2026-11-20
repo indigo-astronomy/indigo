@@ -1,0 +1,453 @@
+{
+  "schema_version": 1,
+  "ticket_id": "32c9bae5-217c-40df-b764-7e7fe89b8bee",
+  "revision": 21,
+  "title": "indigo_ccd_ptp: exposure fails on Canon EOS R6 Mark II, pre-shutter property write returns DeviceBusy",
+  "description": "User report (INDIGO A1 6.1_1050, INDIGO 3.0_10, macOS ICA transport, indigo_ccd_ptp 3.0.0.62, Canon EOS R6 Mark II in Bulb mode): every exposure ends with 'CCD_EXPOSURE_PROPERTY didn't become OK' / 'Exposure failed'.\n\nEvidence from the debug log: in ptp_canon_exposure() SetUILock_Canon (911b) returns OK, the following SetDevicePropValueEx_Canon (9110) returns DeviceBusy (2019), the driver issues ResetUILock_Canon and CCD_EXPOSURE goes to Alert. RemoteReleaseOn is never sent. The same sequence repeats for all three agent retries.\n\nOnly two property writes sit between the UI lock and the shutter release (indigo_ptp_canon.c, RemoteReleaseOn branch): the mirror setting and DriveMode. The log does not show the payload, so the rejected write is not proven.\n- Most likely the mirror write: the camera lists d13a MirrorUpSetting_Canon in its device info but never sends a PropValueChanged event for it, so the property slot keeps code == 0, the condition 'mirror_property->code != mirror' is true and MirrorUpSetting = 0 is written. The guard added for #778 (2d5f2e7ed) only covers bodies that report the value.\n- Second candidate: the unconditional DriveMode (d106) = 0 write; the camera already reports DriveMode = 0.\n\nExpected: an exposure on a body that advertises MirrorUpSetting without ever reporting its value starts the shutter. Proposed fix: do not write the mirror setting when mirror lockup is not requested and the camera has not reported a value for it; write DriveMode only when the requested value differs from the reported one. Reproduce in the Canon simulator/fake backend first (camera that lists d13a, sends no event for it and answers DeviceBusy to the write), add the regression test, bump the driver version.\n\nAlso seen in the same log, to be assessed while there: ResetUILock_Canon at the end of ptp_canon_initialise returns DeviceBusy and is ignored; three ICA ptp_transaction timeouts during the first connection attempt (cause not visible in the log, second connection was clean).\n\nHardware gap: no EOS R6 Mark II available; the fix needs confirmation from the reporter with a test build.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T18:24:48.370781Z",
+  "status": "closed",
+  "branch": "ticket/32c9bae5-217c-40df-b764-7e7fe89b8bee",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "37f7903d-c37e-4c93-9503-21a5a236b16c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:29:52.547046Z",
+          "last_activity_at": "2026-11-20T18:44:55.630088Z",
+          "ended_at": "2026-11-20T18:44:55.630088Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 903083.042,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:29:52.547046Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/32c9bae5-217c-40df-b764-7e7fe89b8bee"
+        },
+        {
+          "at": "2026-11-20T18:44:55.630088Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 903083.042,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "fa54eddd-b8be-4905-8d7b-442753c067d4",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "2a0ef3b5-d0ab-468b-b991-d751203e40db",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T18:44:55.630261Z",
+          "last_activity_at": "2026-11-20T18:52:57.596139Z",
+          "ended_at": "2026-11-20T18:52:57.596139Z",
+          "outcome": {
+            "summary": "Pass. Logic in ptp_canon_exposure() (indigo_ptp_canon.c:1755-1775) checked for all cases: mirror reported -> written only on mismatch (unchanged #778 behaviour); mirror unreported + no lockup -> no write (the fix); unreported + lockup -> writes 1, caches code/value, unlock then writes 0; failed mirror write returns before DriveMode and leaves caches untouched. DriveMode reported -> written only on mismatch, cache updated after success; never reported -> written every exposure as before; failed write -> no cache change, retried next exposure. number.value and sw.value alias in the union, DriveMode is read-only to clients, so the cache is only changed by events and this path. Replaced canon_mirror_unknown_value expectation came from the #778 commit, not field evidence, and contradicts the ticket's requested behaviour, so its replacement is justified. Verified: test_ccd_ptp_sdk 177/177 PASS in the worktree; mutants built in scratchpad: old mirror condition -> canon_mirror_unreported_off FAILS; unconditional DriveMode write -> canon_mirror_unreported_off FAILS; so both halves are guarded. Version 0x0300003E->0x0300003F, MIGRATION_STATUS count 183->184 with Comment untouched, no new files/properties/README edits, git diff --check clean. Non-blocking: (1) the DriveMode cache update at indigo_ptp_canon.c:1772-1774 is untested: removing it still passes all canon_mirror cases because the fake echoes DriveMode on every GetEvent; on a body that does not echo the write, a regression there would leave 2 s self-timer set after unlocking. (2) Intended trade-off: a body that lists MirrorUpSetting, never reports it and has lockup set On in its menu is no longer forced Off. (3) A DriveMode slot filled only by AvailListChanged has code set with value 0 and counts as reported Single shot (same pattern as the #778 mirror guard). Not verified: ICA test, real hardware (R6 Mark II).",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 481965.878,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T18:44:55.630261Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T18:52:57.596139Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass. Logic in ptp_canon_exposure() (indigo_ptp_canon.c:1755-1775) checked for all cases: mirror reported -> written only on mismatch (unchanged #778 behaviour); mirror unreported + no lockup -> no write (the fix); unreported + lockup -> writes 1, caches code/value, unlock then writes 0; failed mirror write returns before DriveMode and leaves caches untouched. DriveMode reported -> written only on mismatch, cache updated after success; never reported -> written every exposure as before; failed write -> no cache change, retried next exposure. number.value and sw.value alias in the union, DriveMode is read-only to clients, so the cache is only changed by events and this path. Replaced canon_mirror_unknown_value expectation came from the #778 commit, not field evidence, and contradicts the ticket's requested behaviour, so its replacement is justified. Verified: test_ccd_ptp_sdk 177/177 PASS in the worktree; mutants built in scratchpad: old mirror condition -> canon_mirror_unreported_off FAILS; unconditional DriveMode write -> canon_mirror_unreported_off FAILS; so both halves are guarded. Version 0x0300003E->0x0300003F, MIGRATION_STATUS count 183->184 with Comment untouched, no new files/properties/README edits, git diff --check clean. Non-blocking: (1) the DriveMode cache update at indigo_ptp_canon.c:1772-1774 is untested: removing it still passes all canon_mirror cases because the fake echoes DriveMode on every GetEvent; on a body that does not echo the write, a regression there would leave 2 s self-timer set after unlocking. (2) Intended trade-off: a body that lists MirrorUpSetting, never reports it and has lockup set On in its menu is no longer forced Off. (3) A DriveMode slot filled only by AvailListChanged has code set with value 0 and counts as reported Single shot (same pattern as the #778 mirror guard). Not verified: ICA test, real hardware (R6 Mark II)."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Logic in ptp_canon_exposure() (indigo_ptp_canon.c:1755-1775) checked for all cases: mirror reported -> written only on mismatch (unchanged #778 behaviour); mirror unreported + no lockup -> no write (the fix); unreported + lockup -> writes 1, caches code/value, unlock then writes 0; failed mirror write returns before DriveMode and leaves caches untouched. DriveMode reported -> written only on mismatch, cache updated after success; never reported -> written every exposure as before; failed write -> no cache change, retried next exposure. number.value and sw.value alias in the union, DriveMode is read-only to clients, so the cache is only changed by events and this path. Replaced canon_mirror_unknown_value expectation came from the #778 commit, not field evidence, and contradicts the ticket's requested behaviour, so its replacement is justified. Verified: test_ccd_ptp_sdk 177/177 PASS in the worktree; mutants built in scratchpad: old mirror condition -> canon_mirror_unreported_off FAILS; unconditional DriveMode write -> canon_mirror_unreported_off FAILS; so both halves are guarded. Version 0x0300003E->0x0300003F, MIGRATION_STATUS count 183->184 with Comment untouched, no new files/properties/README edits, git diff --check clean. Non-blocking: (1) the DriveMode cache update at indigo_ptp_canon.c:1772-1774 is untested: removing it still passes all canon_mirror cases because the fake echoes DriveMode on every GetEvent; on a body that does not echo the write, a regression there would leave 2 s self-timer set after unlocking. (2) Intended trade-off: a body that lists MirrorUpSetting, never reports it and has lockup set On in its menu is no longer forced Off. (3) A DriveMode slot filled only by AvailListChanged has code set with value 0 and counts as reported Single shot (same pattern as the #778 mirror guard). Not verified: ICA test, real hardware (R6 Mark II).",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 481965.878,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "cb599e53-61e3-4549-9711-2a98fc93ac6c",
+      "event": "ticket/created",
+      "at": "2026-11-20T18:24:48.371636Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple"
+    },
+    {
+      "event_id": "614b8dde-899b-4f17-8a30-a6184641ebee",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T18:29:47.841179Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "b7ead385-d2d6-46f2-a922-2254367301cb",
+      "event": "task/progress",
+      "at": "2026-11-20T18:29:52.547328Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Implementation started on branch ticket/32c9bae5-217c-40df-b764-7e7fe89b8bee"
+    },
+    {
+      "event_id": "3ebf9ded-9cae-42d1-adc1-03ce78e2dac7",
+      "event": "ticket/started",
+      "at": "2026-11-20T18:29:52.548882Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/32c9bae5-217c-40df-b764-7e7fe89b8bee",
+      "base": "master"
+    },
+    {
+      "event_id": "64cd1a8a-f735-4bb3-9242-2f17c801ba5d",
+      "event": "task/progress",
+      "at": "2026-11-20T18:30:12.507242Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Implementer launched",
+      "attempt_id": "37f7903d-c37e-4c93-9503-21a5a236b16c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e9dd2923-4027-4362-98c8-dec3a1111e5b",
+      "event": "task/progress",
+      "at": "2026-11-20T18:31:56.887598Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Adding R6 Mark II reproducer to the Canon fake camera in test_ccd_ptp_sdk"
+    },
+    {
+      "event_id": "833a59b8-af83-435d-a204-b777f65e7b42",
+      "event": "task/progress",
+      "at": "2026-11-20T18:32:33.278476Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Building libindigo in worktree for the reproduction run"
+    },
+    {
+      "event_id": "42321149-5eec-4909-b07f-d5fb4625f121",
+      "event": "task/progress",
+      "at": "2026-11-20T18:33:28.798892Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Reproduction: running new canon_mirror_* cases against the unfixed driver"
+    },
+    {
+      "event_id": "096b491a-36a0-4b83-b095-b82db4e26bf0",
+      "event": "task/progress",
+      "at": "2026-11-20T18:33:57.629408Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Running full test_ccd_ptp_sdk and test_ccd_ptp_ica after the fix"
+    },
+    {
+      "event_id": "0236a5d3-f838-47e3-9998-b9b7a1481766",
+      "event": "task/progress",
+      "at": "2026-11-20T18:39:31.111750Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e7976ea7-e6bf-434c-8124-0c2fb2cf9ce6",
+      "event": "task/progress",
+      "at": "2026-11-20T18:39:31.135222Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "339914dc-86b0-4f81-b7c1-480746934c97",
+      "event": "check/passed",
+      "at": "2026-11-20T18:39:31.136940Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "5e53480ff0def638488c040495ff9d8edf8bdb9e",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "67db55c8-75b8-4dd2-8418-fea931b3420c",
+      "event": "task/progress",
+      "at": "2026-11-20T18:39:37.387052Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Check command-1 started: make -C indigo_drivers/ccd_ptp all && make -C indigo_test build/integration/test_ccd_ptp_sdk build/integration/test_ccd_ptp_ica && cd indigo_test && b"
+    },
+    {
+      "event_id": "a58a3043-a0c5-482f-9b74-25a48ed0f3ac",
+      "event": "ticket/note",
+      "at": "2026-11-20T18:39:49.851547Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementer note. Root cause (code): ptp_canon_exposure() (indigo_ptp_canon.c, RemoteReleaseOn branch) wrote MirrorUpSetting whenever the slot had code != MirrorUpSetting, i.e. also for a body that lists d13a in GetDeviceInfoEx but never sends PropValueChanged for it, so an Off write was sent even without mirror lockup; DriveMode (d106) was then written unconditionally. Both are rejected-write candidates for the R6 Mark II DeviceBusy (the log has no payload). Fix: the mirror setting is written when lockup is requested, or Off only over a reported On; DriveMode is written only when it was not reported or the reported value differs, and the cache is updated after a successful write so a 2 s self-timer set for lockup is still reset when no event echoes it. indigo_ptp_canon.m only #imports the .c with USE_ICA_TRANSPORT, so USB and ICA builds share the fix. Version 3.0.0.62 (0x0300003E) -> 3.0.0.63 (0x0300003F). Reproduction: fake Canon camera in indigo_test/integration/test_ccd_ptp_sdk.c extended with a selectable DriveMode quirk (drive_reject = DeviceBusy for a same-value write, drive_writes counter); new case canon_mirror_unreported_off (d13a advertised, no event, every mirror write DeviceBusy, DriveMode same-value write DeviceBusy) FAILED on the unfixed driver at wait_value(exposure OK) and PASSES after the fix with 0 mirror writes, 0 DriveMode writes and 2 RemoteReleaseOn. Mutation check: restoring the unconditional DriveMode write alone makes it fail again. New case canon_mirror_unreported_lockup keeps the #778 lockup path: unreported body with lockup writes MirrorUpSetting=1 and DriveMode=0x11, then unlock writes 0/0. Changed expectation: the former canon_mirror_unknown_value case asserted that an advertised but unreported setting is written Off before every first exposure (and that a DeviceBusy reply aborts it); that expectation contradicts the R6 Mark II field report and was replaced by the two cases above. Other #778 cases (redundant_off, transitions, write_rec",
+      "tokens": null
+    },
+    {
+      "event_id": "adc70cb4-80ef-4a4f-a965-afaecaaf1ba2",
+      "event": "task/progress",
+      "at": "2026-11-20T18:44:25.615918Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "06d0886f-cc69-4877-9554-9009c170dd28",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "73e02235-0311-4475-ae9d-050397d460c4",
+      "event": "check/passed",
+      "at": "2026-11-20T18:44:25.619085Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "5e53480ff0def638488c040495ff9d8edf8bdb9e",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "593bea8b-83ae-4b42-9717-6cceb6cbbfa1",
+      "event": "task/progress",
+      "at": "2026-11-20T18:44:55.630330Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fa54eddd-b8be-4905-8d7b-442753c067d4",
+      "text": "Review started"
+    },
+    {
+      "event_id": "aa280373-680d-4b15-b29a-1abd450b3fb7",
+      "event": "review/started",
+      "at": "2026-11-20T18:44:55.631516Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "b7e14d8d-946d-40a2-bab8-7f1670915ff9",
+      "event": "task/progress",
+      "at": "2026-11-20T18:45:11.687422Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fa54eddd-b8be-4905-8d7b-442753c067d4",
+      "text": "Reviewer launched",
+      "attempt_id": "2a0ef3b5-d0ab-468b-b991-d751203e40db",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7ca706fc-f9b2-4268-82fd-0ce8a7e9b39a",
+      "event": "task/progress",
+      "at": "2026-11-20T18:46:52.391460Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fa54eddd-b8be-4905-8d7b-442753c067d4",
+      "text": "Running test_ccd_ptp_sdk in the worktree"
+    },
+    {
+      "event_id": "2e167bfa-7eba-4a05-8410-3e26d64d511a",
+      "event": "task/progress",
+      "at": "2026-11-20T18:52:57.596231Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fa54eddd-b8be-4905-8d7b-442753c067d4",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "52e11a58-9a88-4796-b009-00ef008f0609",
+      "event": "review/passed",
+      "at": "2026-11-20T18:52:57.597626Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fa54eddd-b8be-4905-8d7b-442753c067d4",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5e53480ff0def638488c040495ff9d8edf8bdb9e"
+    },
+    {
+      "event_id": "a92938ec-ed20-4a96-a017-efa98d2bbb9a",
+      "event": "ticket/closed",
+      "at": "2026-11-20T18:53:32.733200Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T18:53:32.733179Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "cbfe9d17a3ed2d65627232d2daa1a5aef9aa61be"
+  },
+  "priority": "high",
+  "severity": "high",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5e53480ff0def638488c040495ff9d8edf8bdb9e",
+        "tree": "301ce79ee8eb7d9eeaff1f80c3dc646abb0df6e0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:39:31.134450Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/32c9bae5-217c-40df-b764-7e7fe89b8bee/301ce79ee8eb-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_drivers/ccd_ptp all && make -C indigo_test build/integration/test_ccd_ptp_sdk build/integration/test_ccd_ptp_ica && cd indigo_test && build/integration/test_ccd_ptp_sdk && build/integration/test_ccd_ptp_ica",
+        "commit": "5e53480ff0def638488c040495ff9d8edf8bdb9e",
+        "tree": "301ce79ee8eb7d9eeaff1f80c3dc646abb0df6e0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T18:44:25.614385Z",
+        "duration_s": 288.2,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/32c9bae5-217c-40df-b764-7e7fe89b8bee/301ce79ee8eb-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Logic in ptp_canon_exposure() (indigo_ptp_canon.c:1755-1775) checked for all cases: mirror reported -> written only on mismatch (unchanged #778 behaviour); mirror unreported + no lockup -> no write (the fix); unreported + lockup -> writes 1, caches code/value, unlock then writes 0; failed mirror write returns before DriveMode and leaves caches untouched. DriveMode reported -> written only on mismatch, cache updated after success; never reported -> written every exposure as before; failed write -> no cache change, retried next exposure. number.value and sw.value alias in the union, DriveMode is read-only to clients, so the cache is only changed by events and this path. Replaced canon_mirror_unknown_value expectation came from the #778 commit, not field evidence, and contradicts the ticket's requested behaviour, so its replacement is justified. Verified: test_ccd_ptp_sdk 177/177 PASS in the worktree; mutants built in scratchpad: old mirror condition -> canon_mirror_unreported_off FAILS; unconditional DriveMode write -> canon_mirror_unreported_off FAILS; so both halves are guarded. Version 0x0300003E->0x0300003F, MIGRATION_STATUS count 183->184 with Comment untouched, no new files/properties/README edits, git diff --check clean. Non-blocking: (1) the DriveMode cache update at indigo_ptp_canon.c:1772-1774 is untested: removing it still passes all canon_mirror cases because the fake echoes DriveMode on every GetEvent; on a body that does not echo the write, a regression there would leave 2 s self-timer set after unlocking. (2) Intended trade-off: a body that lists MirrorUpSetting, never reports it and has lockup set On in its menu is no longer forced Off. (3) A DriveMode slot filled only by AvailListChanged has code set with value 0 and counts as reported Single shot (same pattern as the #778 mirror guard). Not verified: ICA test, real hardware (R6 Mark II).",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "5e53480ff0def638488c040495ff9d8edf8bdb9e",
+        "tree": "301ce79ee8eb7d9eeaff1f80c3dc646abb0df6e0",
+        "at": "2026-11-20T18:52:57.595976Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T18:39:49.850311Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementer note. Root cause (code): ptp_canon_exposure() (indigo_ptp_canon.c, RemoteReleaseOn branch) wrote MirrorUpSetting whenever the slot had code != MirrorUpSetting, i.e. also for a body that lists d13a in GetDeviceInfoEx but never sends PropValueChanged for it, so an Off write was sent even without mirror lockup; DriveMode (d106) was then written unconditionally. Both are rejected-write candidates for the R6 Mark II DeviceBusy (the log has no payload). Fix: the mirror setting is written when lockup is requested, or Off only over a reported On; DriveMode is written only when it was not reported or the reported value differs, and the cache is updated after a successful write so a 2 s self-timer set for lockup is still reset when no event echoes it. indigo_ptp_canon.m only #imports the .c with USE_ICA_TRANSPORT, so USB and ICA builds share the fix. Version 3.0.0.62 (0x0300003E) -> 3.0.0.63 (0x0300003F). Reproduction: fake Canon camera in indigo_test/integration/test_ccd_ptp_sdk.c extended with a selectable DriveMode quirk (drive_reject = DeviceBusy for a same-value write, drive_writes counter); new case canon_mirror_unreported_off (d13a advertised, no event, every mirror write DeviceBusy, DriveMode same-value write DeviceBusy) FAILED on the unfixed driver at wait_value(exposure OK) and PASSES after the fix with 0 mirror writes, 0 DriveMode writes and 2 RemoteReleaseOn. Mutation check: restoring the unconditional DriveMode write alone makes it fail again. New case canon_mirror_unreported_lockup keeps the #778 lockup path: unreported body with lockup writes MirrorUpSetting=1 and DriveMode=0x11, then unlock writes 0/0. Changed expectation: the former canon_mirror_unknown_value case asserted that an advertised but unreported setting is written Off before every first exposure (and that a DeviceBusy reply aborts it); that expectation contradicts the R6 Mark II field report and was replaced by the two cases above. Other #778 cases (redundant_off, transitions, write_recovery) unchanged and passing. Results: test_ccd_ptp_sdk 177/177, test_ccd_ptp_ica 7/7, driver build incl. ICA .m OK, flow check whitespace passed. MIGRATION_STATUS ccd_ptp Sim count 183 -> 184. Assessed, not changed: ResetUILock at the end of ptp_canon_initialise is a best-effort unlock whose result is deliberately ignored; a DeviceBusy there leaves no state behind (capture_ui_locked is not set, exposure sends its own SetUILock which succeeded in the log), so it is not a defect. ICA connect timeouts not investigated. Unverified: no EOS R6 Mark II available; which of the two writes the camera actually rejects is not proven, the reporter must confirm with a test build. No recorded run via tools/run_driver_test.py was made (no test run mode was requested).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "cbfe9d17a3ed2d65627232d2daa1a5aef9aa61be",
+      "tree": "301ce79ee8eb7d9eeaff1f80c3dc646abb0df6e0",
+      "base": "master",
+      "at": "2026-11-20T18:53:32.668714Z"
+    }
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "high",
+    "profile": "simple",
+    "at": "2026-11-20T18:24:48.370781Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T18:29:47.841041Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 1385048.92,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 27,
+    "sha256": "02713c6a93a3b839e0b79350d2249eae83cf524dea32a77fc813cdede0890d9f"
+  }
+}
