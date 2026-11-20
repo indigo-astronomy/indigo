@@ -22,7 +22,7 @@ driver pmc8 {
 	label = "PMC Eight Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 19;
+	version = 20;
 	serial;
 	include {
 		#include <stdarg.h>
@@ -979,8 +979,9 @@ driver pmc8 {
 					MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+					// Published by indigo_update_coordinates(), which keeps the ALERT of the aborted motion until the next request.
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+					indigo_update_coordinates(device, NULL);
 				}
 				MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);

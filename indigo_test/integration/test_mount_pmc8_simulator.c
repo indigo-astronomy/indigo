@@ -697,10 +697,41 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The ALERT that ends an aborted motion goes through indigo_update_coordinates(), which publishes the horizontal
+// coordinates in the same state right before it and keeps the ALERT: from the first ALERT publication of the
+// equatorial coordinates on, every one of them is ALERT, preceded by the horizontal coordinates in ALERT, and at
+// least two polls follow the abort. The abort used to publish its ALERT with indigo_update_property(), leaving the
+// horizontal coordinates BUSY.
+static bool check_abort_alert_publications(const char *label, const coordinates_publication *events, int count) {
+	int first = find_coordinates_publication(events, count, 0, 'E', INDIGO_ALERT_STATE);
+	int alerts = 0;
+	bool ok = first >= 0;
+	for (int i = first; ok && i < count; i++) {
+		if (events[i].kind != 'E') {
+			continue;
+		}
+		if (events[i].state != INDIGO_ALERT_STATE) {
+			fprintf(stderr, "    %s: publication %d of the coordinates after the abort is not ALERT\n", label, i);
+			ok = false;
+		} else if (i == 0 || events[i - 1].kind != 'H' || events[i - 1].state != INDIGO_ALERT_STATE) {
+			fprintf(stderr, "    %s: publication %d of the coordinates is not preceded by the horizontal coordinates in ALERT\n", label, i);
+			ok = false;
+		}
+		alerts++;
+	}
+	ok = ok && alerts >= 3;
+	if (!ok) {
+		fprintf(stderr, "    %s: expected the ALERT of the abort and at least two polls in ALERT (first %d, publications %d)\n", label, first, alerts);
+		print_coordinates_publications(label, events, count);
+	}
+	return ok;
+}
+
 // An abort has to end a running point. The GOTO used to wait for arrival inside its handler, which
 // kept the abort queued until the slew was over, and zero rates reach a pointing controller only
 // after about 1.5 s; the point is ended with ESPt300000 instead (both found on an iEXOS-100).
 static void pmc8_mount_aborts_a_running_slew(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
 	external_serial_simulator simulator = { 0 };
 
 	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, NULL));
@@ -708,6 +739,7 @@ static void pmc8_mount_aborts_a_running_slew(void) {
 	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(0.5), 60));
 	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
 	indigo_usleep(2000000);
+	start_coordinates_publications(pmc8_mount.device_name);
 	double requested = indigo_monotonic_time();
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, 5));
@@ -723,8 +755,11 @@ static void pmc8_mount_aborts_a_running_slew(void) {
 	printf("    the aborted slew stopped at DEC %.4f\n", dec);
 	SERIAL_CHECK_TRUE(fabs(dec - 60) > 1);
 	SERIAL_CHECK_TRUE(fabs(dec - cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) < 0.001);
+	int count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(check_abort_alert_publications("aborted slew", events, count));
 
 cleanup:
+	stop_coordinates_publications(NULL);
 	if (context.connected) {
 		stop_serial_driver(&pmc8_mount);
 	}
@@ -772,8 +807,9 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// An abort during a park ends the point and leaves the mount unparked where it stopped.
+// An abort during a park ends the point and leaves the mount unparked where it stopped, the coordinates in ALERT.
 static void pmc8_mount_aborts_a_park(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
 	external_serial_simulator simulator = { 0 };
 	bool parked = true;
 
@@ -785,6 +821,7 @@ static void pmc8_mount_aborts_a_park(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
 	indigo_usleep(1500000);
+	start_coordinates_publications(pmc8_mount.device_name);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, 5));
 	SERIAL_CHECK_TRUE(cached_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, &parked));
@@ -796,8 +833,11 @@ static void pmc8_mount_aborts_a_park(void) {
 	printf("    the aborted park stopped at DEC %.4f\n", dec);
 	SERIAL_CHECK_TRUE(dec < 89);
 	SERIAL_CHECK_TRUE(fabs(dec - cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) < 0.001);
+	int count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(check_abort_alert_publications("aborted park", events, count));
 
 cleanup:
+	stop_coordinates_publications(NULL);
 	if (context.connected) {
 		stop_serial_driver(&pmc8_mount);
 	}

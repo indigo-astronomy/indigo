@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000013
+#define DRIVER_VERSION       0x03000014
 #define DRIVER_NAME          "indigo_mount_pmc8"
 #define DRIVER_LABEL         "PMC Eight Mount"
 #define MOUNT_DEVICE_NAME    "Mount PMC Eight"
@@ -1078,8 +1078,9 @@ static void mount_abort_motion_handler(indigo_device *device) {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+		// Published by indigo_update_coordinates(), which keeps the ALERT of the aborted motion until the next request.
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		indigo_update_coordinates(device, NULL);
 	}
 	MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
