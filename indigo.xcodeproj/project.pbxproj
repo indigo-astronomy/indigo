@@ -5612,6 +5612,8 @@
 		AA962949773AAF60E258ECBB /* test_network_url.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_network_url.c; sourceTree = "<group>"; };
 		AAAF66866494BCC5527AE16E /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
 		AAB91F3090379976D9CB11B3 /* test_gps_compliance_script.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_gps_compliance_script.py; sourceTree = "<group>"; };
+		FFFBD38F7C8D2271BACB0C59 /* test_rpi_ctrl_wifi_client.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_rpi_ctrl_wifi_client.py; sourceTree = "<group>"; };
+		4C1E8B2A9D6F3075A2B4E91D /* test_rpi_ctrl_v2.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_rpi_ctrl_v2.py; sourceTree = "<group>"; };
 		AB1026102418335100000001 /* test_agent_alpaca_mapping.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_alpaca_mapping.c; sourceTree = "<group>"; };
 		ADA24BABD608401A83474BB2 /* indigo_solver.iss */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_solver.iss; sourceTree = "<group>"; };
 		ADC414885E082C4228189144 /* test_aux_giotto_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_giotto_hw.c; sourceTree = "<group>"; };
@@ -14334,6 +14336,8 @@
 			children = (
 				580FA96D0F1CB38FD7ED8D50 /* test_omnisim_startup.py */,
 				AAB91F3090379976D9CB11B3 /* test_gps_compliance_script.py */,
+				FFFBD38F7C8D2271BACB0C59 /* test_rpi_ctrl_wifi_client.py */,
+				4C1E8B2A9D6F3075A2B4E91D /* test_rpi_ctrl_v2.py */,
 				E504D070AB6E4330A6609E41 /* test_shell_compliance.py */,
 				E8E0D5461DF019F65D73181A /* test_usbserial_enumeration_macos.c */,
 				908C6C80EAAC4D34DD01BF7E /* test_mount_manual_motion.js */,
