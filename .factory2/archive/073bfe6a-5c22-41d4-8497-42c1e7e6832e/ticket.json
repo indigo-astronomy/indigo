@@ -1,0 +1,386 @@
+{
+  "schema_version": 1,
+  "ticket_id": "073bfe6a-5c22-41d4-8497-42c1e7e6832e",
+  "revision": 15,
+  "title": "indigo_ccd_ptp: recorded non-interactive simulator test run after the EOS R6 Mark II exposure fix",
+  "description": "Non-interactive simulator run of the indigo_ccd_ptp hardware-free tests on driver version 3.0.0.63 (after ticket 32c9bae5, commit cbfe9d17a), made with 'python3 tools/run_driver_test.py ccd_ptp'. The script records the run in indigo_drivers/ccd_ptp/README.md '## Testing' and regenerates TEST_SUMMARY.md; both are committed with the ticket. Fix every defect found, rerun the full scope, do not push. Hardware coverage is not part of this run.",
+  "type": "check",
+  "discovered_at": null,
+  "created_at": "2026-11-20T18:55:05.199332Z",
+  "status": "closed",
+  "branch": "ticket/073bfe6a-5c22-41d4-8497-42c1e7e6832e",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "170e8f75-4d09-4a97-abb6-a5ffffaead09",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "7fcb5f63-0ba1-4924-bc63-60da2efa0881",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T19:07:28.181830Z",
+          "last_activity_at": "2026-11-20T19:14:37.039673Z",
+          "ended_at": "2026-11-20T19:14:37.039673Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 428857.843,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T19:07:28.181830Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/073bfe6a-5c22-41d4-8497-42c1e7e6832e"
+        },
+        {
+          "at": "2026-11-20T19:14:37.039673Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 428857.843,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "944cd59a-b984-4225-9631-9ec6644d11f9",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "ee35099b-7a5a-4303-80df-c3791dfa01d8",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T19:14:37.039826Z",
+          "last_activity_at": "2026-11-20T19:15:50.271440Z",
+          "ended_at": "2026-11-20T19:15:50.271440Z",
+          "outcome": {
+            "summary": "Diff vs master (merge base 5782cf7d1) touches only indigo_drivers/ccd_ptp/README.md:65 and TEST_SUMMARY.md:192. README line '- 2026-11-20 20:09 3.0.0.63 mac arm64 fake SDK 184/184 OK' follows the indigo_test/AGENTS.md record format; 3.0.0.63 matches DRIVER_VERSION 0x0300003F (indigo_ptp.h:36). It correctly replaces the previous 'mac arm64 fake SDK' line (same os/arch/type, version not part of match); HW lines untouched and order stays by timestamp. Count 184 = 177 cases in test_ccd_ptp_sdk.c tests[] + 7 in test_ccd_ptp_ica.m (the ica source is .m, not .c); the script selects exactly test_ccd_ptp_sdk and test_ccd_ptp_ica. Delta vs previous 180 (173+7 at a00e5ab4f) is explained by +3 reply_bounds cases and canon_mirror_unknown_value split into two unreported cases. MIGRATION_STATUS.md already shows 184 / 16. tools/make_test_summary.py -o <scratch> output is byte-identical to the branch TEST_SUMMARY.md. Timestamp matches the journal (run started 19:09Z = 20:09 +0100). master has not touched TEST_SUMMARY.md or ccd_ptp since the merge base. Not verified: did not rebuild or rerun the suite; pass/fail result taken from the record and journal.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 73231.614,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T19:14:37.039826Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T19:15:50.271440Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Diff vs master (merge base 5782cf7d1) touches only indigo_drivers/ccd_ptp/README.md:65 and TEST_SUMMARY.md:192. README line '- 2026-11-20 20:09 3.0.0.63 mac arm64 fake SDK 184/184 OK' follows the indigo_test/AGENTS.md record format; 3.0.0.63 matches DRIVER_VERSION 0x0300003F (indigo_ptp.h:36). It correctly replaces the previous 'mac arm64 fake SDK' line (same os/arch/type, version not part of match); HW lines untouched and order stays by timestamp. Count 184 = 177 cases in test_ccd_ptp_sdk.c tests[] + 7 in test_ccd_ptp_ica.m (the ica source is .m, not .c); the script selects exactly test_ccd_ptp_sdk and test_ccd_ptp_ica. Delta vs previous 180 (173+7 at a00e5ab4f) is explained by +3 reply_bounds cases and canon_mirror_unknown_value split into two unreported cases. MIGRATION_STATUS.md already shows 184 / 16. tools/make_test_summary.py -o <scratch> output is byte-identical to the branch TEST_SUMMARY.md. Timestamp matches the journal (run started 19:09Z = 20:09 +0100). master has not touched TEST_SUMMARY.md or ccd_ptp since the merge base. Not verified: did not rebuild or rerun the suite; pass/fail result taken from the record and journal."
+        }
+      ],
+      "result": {
+        "summary": "Diff vs master (merge base 5782cf7d1) touches only indigo_drivers/ccd_ptp/README.md:65 and TEST_SUMMARY.md:192. README line '- 2026-11-20 20:09 3.0.0.63 mac arm64 fake SDK 184/184 OK' follows the indigo_test/AGENTS.md record format; 3.0.0.63 matches DRIVER_VERSION 0x0300003F (indigo_ptp.h:36). It correctly replaces the previous 'mac arm64 fake SDK' line (same os/arch/type, version not part of match); HW lines untouched and order stays by timestamp. Count 184 = 177 cases in test_ccd_ptp_sdk.c tests[] + 7 in test_ccd_ptp_ica.m (the ica source is .m, not .c); the script selects exactly test_ccd_ptp_sdk and test_ccd_ptp_ica. Delta vs previous 180 (173+7 at a00e5ab4f) is explained by +3 reply_bounds cases and canon_mirror_unknown_value split into two unreported cases. MIGRATION_STATUS.md already shows 184 / 16. tools/make_test_summary.py -o <scratch> output is byte-identical to the branch TEST_SUMMARY.md. Timestamp matches the journal (run started 19:09Z = 20:09 +0100). master has not touched TEST_SUMMARY.md or ccd_ptp since the merge base. Not verified: did not rebuild or rerun the suite; pass/fail result taken from the record and journal.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 73231.614,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "983d1725-cc79-4b70-82db-87b180487298",
+      "event": "ticket/created",
+      "at": "2026-11-20T18:55:05.200031Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "5a70362a-b680-4bd7-989c-ecd619aa16b7",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T19:07:24.284527Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "c0083641-6acd-4ea3-b640-e7a648efa77b",
+      "event": "task/progress",
+      "at": "2026-11-20T19:07:28.182130Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "170e8f75-4d09-4a97-abb6-a5ffffaead09",
+      "text": "Implementation started on branch ticket/073bfe6a-5c22-41d4-8497-42c1e7e6832e"
+    },
+    {
+      "event_id": "e35a80cd-52a4-4b74-9147-b50c4b12917d",
+      "event": "ticket/started",
+      "at": "2026-11-20T19:07:28.183667Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/073bfe6a-5c22-41d4-8497-42c1e7e6832e",
+      "base": "master"
+    },
+    {
+      "event_id": "d1c6550e-dbc2-4a4d-b71e-ad1c08fc21c8",
+      "event": "task/progress",
+      "at": "2026-11-20T19:07:43.099160Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "170e8f75-4d09-4a97-abb6-a5ffffaead09",
+      "text": "Implementer launched",
+      "attempt_id": "7fcb5f63-0ba1-4924-bc63-60da2efa0881",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7311ca42-a1c6-4999-9240-a015a576722a",
+      "event": "task/progress",
+      "at": "2026-11-20T19:07:54.995137Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "170e8f75-4d09-4a97-abb6-a5ffffaead09",
+      "text": "Building INDIGO with make all in the worktree"
+    },
+    {
+      "event_id": "bdece301-43e2-4095-aa47-3c859732bcf8",
+      "event": "task/progress",
+      "at": "2026-11-20T19:09:07.367751Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "170e8f75-4d09-4a97-abb6-a5ffffaead09",
+      "text": "Running recorded simulator run: tools/run_driver_test.py ccd_ptp"
+    },
+    {
+      "event_id": "157ec907-a8d6-420c-882f-369a2911d9f0",
+      "event": "task/progress",
+      "at": "2026-11-20T19:14:16.058404Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "170e8f75-4d09-4a97-abb6-a5ffffaead09",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f72dab1e-cbfc-479d-9d52-01552321f27a",
+      "event": "task/progress",
+      "at": "2026-11-20T19:14:16.080887Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "170e8f75-4d09-4a97-abb6-a5ffffaead09",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "32ba9e89-0150-4cb1-9322-c895aec279c9",
+      "event": "check/passed",
+      "at": "2026-11-20T19:14:16.082453Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "a07c5a353b34550b7c6f3a8eceb0fca1a1a452d5",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "9d399864-40b2-4094-8e7f-d62fcec4eebc",
+      "event": "task/progress",
+      "at": "2026-11-20T19:14:19.878163Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "170e8f75-4d09-4a97-abb6-a5ffffaead09",
+      "text": "Recorded run 184/184 OK (sdk 177, ica 7); flow check passed"
+    },
+    {
+      "event_id": "835377ce-56bb-4ec5-a94a-d8fb5ab3f792",
+      "event": "task/progress",
+      "at": "2026-11-20T19:14:37.039889Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "944cd59a-b984-4225-9631-9ec6644d11f9",
+      "text": "Review started"
+    },
+    {
+      "event_id": "188c85fd-cd42-4a31-ba2f-3efd5ab73dfe",
+      "event": "review/started",
+      "at": "2026-11-20T19:14:37.041060Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "bbce43e5-313d-4ef2-a33b-17ef0206f16a",
+      "event": "task/progress",
+      "at": "2026-11-20T19:14:49.886722Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "944cd59a-b984-4225-9631-9ec6644d11f9",
+      "text": "Reviewer launched",
+      "attempt_id": "ee35099b-7a5a-4303-80df-c3791dfa01d8",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "60554c8e-5963-4397-9620-963c52e4746d",
+      "event": "task/progress",
+      "at": "2026-11-20T19:15:50.271528Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "944cd59a-b984-4225-9631-9ec6644d11f9",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "2c770be5-5233-45fa-a286-a5990817090d",
+      "event": "review/passed",
+      "at": "2026-11-20T19:15:50.272880Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "944cd59a-b984-4225-9631-9ec6644d11f9",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "a07c5a353b34550b7c6f3a8eceb0fca1a1a452d5"
+    },
+    {
+      "event_id": "1d2b1866-95c1-40d0-a2eb-ea563ea50665",
+      "event": "ticket/closed",
+      "at": "2026-11-20T19:16:05.655415Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T19:16:05.655393Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "251a1dc66d8d248ada4cf03f684382f1a00a46ff"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "a07c5a353b34550b7c6f3a8eceb0fca1a1a452d5",
+        "tree": "257a7c06cec42c6ab9ea1fe59d62ebe2ecf65746",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T19:14:16.080279Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/073bfe6a-5c22-41d4-8497-42c1e7e6832e/257a7c06cec4-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Diff vs master (merge base 5782cf7d1) touches only indigo_drivers/ccd_ptp/README.md:65 and TEST_SUMMARY.md:192. README line '- 2026-11-20 20:09 3.0.0.63 mac arm64 fake SDK 184/184 OK' follows the indigo_test/AGENTS.md record format; 3.0.0.63 matches DRIVER_VERSION 0x0300003F (indigo_ptp.h:36). It correctly replaces the previous 'mac arm64 fake SDK' line (same os/arch/type, version not part of match); HW lines untouched and order stays by timestamp. Count 184 = 177 cases in test_ccd_ptp_sdk.c tests[] + 7 in test_ccd_ptp_ica.m (the ica source is .m, not .c); the script selects exactly test_ccd_ptp_sdk and test_ccd_ptp_ica. Delta vs previous 180 (173+7 at a00e5ab4f) is explained by +3 reply_bounds cases and canon_mirror_unknown_value split into two unreported cases. MIGRATION_STATUS.md already shows 184 / 16. tools/make_test_summary.py -o <scratch> output is byte-identical to the branch TEST_SUMMARY.md. Timestamp matches the journal (run started 19:09Z = 20:09 +0100). master has not touched TEST_SUMMARY.md or ccd_ptp since the merge base. Not verified: did not rebuild or rerun the suite; pass/fail result taken from the record and journal.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "a07c5a353b34550b7c6f3a8eceb0fca1a1a452d5",
+        "tree": "257a7c06cec42c6ab9ea1fe59d62ebe2ecf65746",
+        "at": "2026-11-20T19:15:50.271259Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "251a1dc66d8d248ada4cf03f684382f1a00a46ff",
+      "tree": "257a7c06cec42c6ab9ea1fe59d62ebe2ecf65746",
+      "base": "master",
+      "at": "2026-11-20T19:16:05.579375Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T18:55:05.199332Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T19:07:24.284321Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 502089.457,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 21,
+    "sha256": "542393b86b4200022631761c716e37b6ac02416b070ec2afead2131a3e1206a4"
+  }
+}
