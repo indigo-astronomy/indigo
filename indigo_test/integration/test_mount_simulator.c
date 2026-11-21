@@ -1341,6 +1341,118 @@ static bool lst_matches_site(void) {
 	return true;
 }
 
+// Every MOUNT_HORIZONTAL_COORDINATES.AZ defined or updated while watched has to be due north as it is published
+static atomic_bool azimuth_watched;
+static atomic_uint azimuth_publications, azimuth_off_north;
+
+// The precession of the pole of date back and forth can end one rounding step of asin() short of 90 degrees, 8.5e-7
+// degree off the pole, where the azimuth is correctly up to about 1.3e-6 degree from north on either side, such as
+// 359.9999988; north within 1e-5 degree is accepted, a full circle, a negative value and -0 are not
+static bool azimuth_is_north(double az, const char *published) {
+	return az >= 0 && az < 360 && !signbit(az) && strcmp(published, "360") && strcmp(published, "-0") && fmin(az, 360 - az) < 1e-5;
+}
+
+static void check_published_azimuth(indigo_property *property) {
+	if (!atomic_load(&azimuth_watched) || strcmp(property->device, mount_simulator.device_name) || strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
+		return;
+	}
+	for (int i = 0; i < property->count; i++) {
+		if (!strcmp(property->items[i].name, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME)) {
+			double az = property->items[i].number.value;
+			char published[32];
+			indigo_dtoa(az, published);
+			atomic_fetch_add(&azimuth_publications, 1);
+			if (!azimuth_is_north(az, published)) {
+				fprintf(stderr, "    MOUNT_HORIZONTAL_COORDINATES.AZ published as '%s' (%.17g), not due north\n", published, az);
+				atomic_fetch_add(&azimuth_off_north, 1);
+			}
+		}
+	}
+}
+
+static indigo_result azimuth_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	check_published_azimuth(property);
+	return simulator_client_define_property(client, device, property, message);
+}
+
+static indigo_result azimuth_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	check_published_azimuth(property);
+	return simulator_client_update_property(client, device, property, message);
+}
+
+// A site whose LST puts the given right ascension of date at the given hour angle; a change of latitude changes the
+// altitude of the pole, so the horizontal coordinates are published again, which unchanged values are not
+static bool set_site_for_hour_angle(double latitude, double ra, double ha) {
+	double longitude = fmod(15 * (ha + ra - indigo_lst(NULL, 0)) + 720, 360);
+	const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME };
+	double values[] = { latitude, longitude };
+	unsigned int revision = property_revision(MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME);
+	if (indigo_change_number_property(&simulator_test_client, mount_simulator.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values) != INDIGO_OK) {
+		return false;
+	}
+	if (!wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, longitude, 1e-6) || !MOUNT_WAIT_UNTIL(property_revision(MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME) > revision, 5)) {
+		fprintf(stderr, "    site %g, %.9f for hour angle %g h was not applied (longitude %.9f)\n", latitude, longitude, ha, cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME));
+		return false;
+	}
+	return true;
+}
+
+// Let the mount poll its position a few times; a value that changes, such as an azimuth alternating between 0 and 360,
+// is published and checked
+static bool azimuth_stays_north(void) {
+	indigo_usleep(1200000);
+	double az = cached_number_value(MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME);
+	char published[32];
+	indigo_dtoa(az, published);
+	return atomic_load(&azimuth_off_north) == 0 && azimuth_is_north(az, published);
+}
+
+// At the celestial pole of date the mount points due north: MOUNT_HORIZONTAL_COORDINATES.AZ is published as 0, never as
+// 360 (2 pi less a rounding error west of the meridian) or -0, at connect, after a site change and on later polls
+static void mount_azimuth_at_the_pole_is_zero(void) {
+	simulator_test_client.define_property = azimuth_define;
+	simulator_test_client.update_property = azimuth_update;
+	atomic_store(&azimuth_watched, false);
+	atomic_store(&azimuth_publications, 0);
+	atomic_store(&azimuth_off_north, 0);
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	// tracking holds the right ascension, so the J2000 coordinates of the pole of date stay where they are
+	SERIAL_CHECK_TRUE(set_mount_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	double ra = 0, dec = 90;
+	indigo_eq_to_j2k(0, &ra, &dec);
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(ra, dec));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, dec, 1e-9));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	double ra_of_date = ra, dec_of_date = dec;
+	indigo_j2k_to_jnow(&ra_of_date, &dec_of_date);
+	SERIAL_CHECK_TRUE(fabs(dec_of_date - 90) < 1e-6);
+	atomic_store(&azimuth_watched, true);
+	// the pole on both sides of the meridian, west of it the azimuth was 2 pi less a rounding error; the last site is
+	// southern, where the north celestial pole is below the horizon and still due north
+	const double sites[][2] = { { 48.15, 6 }, { 50, 18 }, { 45, 3 }, { 40, 21 }, { 35, 9 }, { 30, 15 }, { 48.15, 6 }, { -33.9, 6 }, { 48.15, 6 } };
+	for (int i = 0; i < ARRAY_SIZE(sites); i++) {
+		SERIAL_CHECK_TRUE(set_site_for_hour_angle(sites[i][0], ra_of_date, sites[i][1]));
+		SERIAL_CHECK_TRUE(azimuth_stays_north());
+	}
+	// the connection defines the property with the azimuth computed when it connects
+	disconnect_serial_device(&mount_simulator);
+	unsigned int publications = atomic_load(&azimuth_publications);
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(MOUNT_WAIT_UNTIL(atomic_load(&azimuth_publications) > publications, 5));
+	SERIAL_CHECK_TRUE(azimuth_stays_north());
+	fprintf(stderr, "    %u azimuth publications at the pole, %u not due north\n", atomic_load(&azimuth_publications), atomic_load(&azimuth_off_north));
+	SERIAL_CHECK_EQ_INT(0, (int)atomic_load(&azimuth_off_north));
+	SERIAL_CHECK_TRUE(atomic_load(&azimuth_publications) > ARRAY_SIZE(sites));
+cleanup:
+	atomic_store(&azimuth_watched, false);
+	simulator_test_client.define_property = simulator_client_define_property;
+	simulator_test_client.update_property = simulator_client_update_property;
+	stop_serial_driver(&mount_simulator);
+}
+
 // Reconnecting publishes the state the simulated mount is in, not the defaults the first session started from, and
 // no property is updated while it is not defined
 static void mount_reconnect_publishes_device_state(void) {
@@ -1376,6 +1488,206 @@ static void mount_reconnect_publishes_device_state(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, cached_light(MOUNT_STATE_TRACKING_ITEM_NAME));
 	SERIAL_CHECK_EQ_INT(0, updates_without_define());
 cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
+// A log of the publications of MOUNT_EQUATORIAL_COORDINATES ('E'), MOUNT_HORIZONTAL_COORDINATES ('H') and
+// MOUNT_RAW_COORDINATES ('R') with their states, in the order the client received them. The position handler of the
+// simulator publishes the raw coordinates right after the others, so an 'E' followed by an 'R' is a poll's.
+#define COORDINATES_LOG_SIZE 1024
+
+typedef struct {
+	char kind;
+	indigo_property_state state;
+} coordinates_event;
+
+static coordinates_event coordinates_log[COORDINATES_LOG_SIZE];
+static int coordinates_log_count;
+static pthread_mutex_t coordinates_log_mutex = PTHREAD_MUTEX_INITIALIZER;
+static char coordinates_alert_message[INDIGO_VALUE_SIZE];
+
+static indigo_result coordinates_log_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, mount_simulator.device_name)) {
+		char kind = 0;
+		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+			kind = 'E';
+		} else if (!strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
+			kind = 'H';
+		} else if (!strcmp(property->name, MOUNT_RAW_COORDINATES_PROPERTY_NAME)) {
+			kind = 'R';
+		}
+		pthread_mutex_lock(&coordinates_log_mutex);
+		if (kind && coordinates_log_count < COORDINATES_LOG_SIZE) {
+			coordinates_log[coordinates_log_count].kind = kind;
+			coordinates_log[coordinates_log_count].state = property->state;
+			coordinates_log_count++;
+		}
+		pthread_mutex_unlock(&coordinates_log_mutex);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static indigo_result coordinates_log_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && !strcmp(property->device, mount_simulator.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_ALERT_STATE && message != NULL && *message) {
+		pthread_mutex_lock(&coordinates_log_mutex);
+		INDIGO_COPY_VALUE(coordinates_alert_message, message);
+		pthread_mutex_unlock(&coordinates_log_mutex);
+	}
+	return simulator_client_send_message(client, device, property, message);
+}
+
+// Starts a fresh log; every publication reaches the client, also one that repeats the previous state.
+static void start_coordinates_log(void) {
+	pthread_mutex_lock(&coordinates_log_mutex);
+	coordinates_log_count = 0;
+	coordinates_alert_message[0] = 0;
+	pthread_mutex_unlock(&coordinates_log_mutex);
+	simulator_test_client.force_property_updates = true;
+	simulator_test_client.update_property = coordinates_log_update;
+	simulator_test_client.send_message = coordinates_log_message;
+}
+
+static int stop_coordinates_log(coordinates_event *events) {
+	simulator_test_client.update_property = simulator_client_update_property;
+	simulator_test_client.send_message = simulator_client_send_message;
+	simulator_test_client.force_property_updates = false;
+	pthread_mutex_lock(&coordinates_log_mutex);
+	int count = coordinates_log_count;
+	memcpy(events, coordinates_log, count * sizeof(*events));
+	pthread_mutex_unlock(&coordinates_log_mutex);
+	return count;
+}
+
+static bool coordinates_alert_message_contains(const char *text) {
+	pthread_mutex_lock(&coordinates_log_mutex);
+	bool result = strstr(coordinates_alert_message, text) != NULL;
+	pthread_mutex_unlock(&coordinates_log_mutex);
+	return result;
+}
+
+// Waits until `count` more polls published the raw coordinates.
+static bool wait_for_polls(int count) {
+	unsigned int revision = property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME);
+	return MOUNT_WAIT_UNTIL(property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME) >= revision + count, 5.0 * count);
+}
+
+// The publications of one request: the first is its BUSY, the result follows BUSY publications only, then nothing but
+// polls in the state of the result, at least `polls` of them; the result is published once. A poll that ran between the
+// start of the log and the request, in the state before it, is skipped. MOUNT_HORIZONTAL_COORDINATES is published right
+// before each publication of the equatorial coordinates, in the same state.
+static bool check_coordinates_request(const char *label, coordinates_event *events, int count, indigo_property_state result, int polls) {
+	static const char states[] = "IOBA";
+	int first = -1, outcome = -1, results = 0, poll_results = 0;
+	bool ok = true;
+	for (int i = 0; i < count && ok; i++) {
+		if (events[i].kind != 'E') {
+			continue;
+		}
+		bool poll = i + 1 < count && events[i + 1].kind == 'R';
+		if (i == 0 || events[i - 1].kind != 'H' || events[i - 1].state != events[i].state) {
+			fprintf(stderr, "    %s: publication %d of the coordinates is not preceded by the horizontal coordinates in its state\n", label, i);
+			ok = false;
+		} else if (first < 0 && poll && events[i].state != INDIGO_BUSY_STATE) {
+			continue;
+		} else if (first < 0) {
+			first = i;
+			ok = events[i].state == INDIGO_BUSY_STATE;
+		} else if (outcome < 0 && events[i].state != INDIGO_BUSY_STATE) {
+			outcome = i;
+			ok = events[i].state == result;
+			results++;
+		} else if (outcome >= 0) {
+			ok = events[i].state == result;
+			if (poll) {
+				poll_results++;
+			} else {
+				results++;
+			}
+		}
+	}
+	ok = ok && first >= 0 && outcome >= 0 && results == 1 && poll_results >= polls;
+	if (!ok) {
+		fprintf(stderr, "    %s: expected BUSY, then one result %d and at least %d polls in it (results %d, polls %d):", label, result, polls, results, poll_results);
+		for (int i = 0; i < count; i++) {
+			fprintf(stderr, " %c%c", events[i].kind, states[events[i].state & 3]);
+		}
+		fprintf(stderr, "\n");
+	}
+	return ok;
+}
+
+// A sync of the INDIGO alignment model publishes BUSY and its result once, from the change handler: a refusal stays ALERT
+// across the following polls until the next request, an accepted sync after it ends OK and so does a GoTo after a
+// refused sync. A reconnection starts without the ALERT of the previous session. (The simulator has no way to fail a
+// position readback.)
+static void mount_sync_publishes_busy_and_keeps_a_refusal(void) {
+	static coordinates_event events[COORDINATES_LOG_SIZE];
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	// the unparked simulator rests at the pole, where a sync is refused anyway, so it slews away first
+	SERIAL_CHECK_TRUE(goto_hour_angle(2, 40));
+	SERIAL_CHECK_TRUE(set_mount_switch(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, alignment_point_count());
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	// a refused sync: BUSY, ALERT, and ALERT from the following polls
+	start_coordinates_log();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(ra, 86));
+	SERIAL_CHECK_TRUE(wait_for_polls(4));
+	int count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("refused sync", events, count, INDIGO_ALERT_STATE, 3));
+	SERIAL_CHECK_TRUE(coordinates_alert_message_contains("celestial pole"));
+	SERIAL_CHECK_EQ_INT(0, alignment_point_count());
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 0.01);
+	// an accepted sync after the refused one: BUSY, OK, and OK from the following polls
+	start_coordinates_log();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(fmod(ra + 0.01, 24), dec + 0.05));
+	SERIAL_CHECK_TRUE(wait_for_alignment_point_count(1));
+	SERIAL_CHECK_TRUE(wait_for_polls(3));
+	count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("accepted sync after a refused one", events, count, INDIGO_OK_STATE, 2));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - (dec + 0.05)) < 0.01);
+	// a GoTo after a refused sync: BUSY until it arrives, then OK
+	start_coordinates_log();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(ra, 86));
+	SERIAL_CHECK_TRUE(wait_for_polls(2));
+	count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("second refused sync", events, count, INDIGO_ALERT_STATE, 1));
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(goto_hour_angle(3, 35));
+	SERIAL_CHECK_TRUE(wait_for_polls(2));
+	count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("GoTo after a refused sync", events, count, INDIGO_OK_STATE, 2));
+	// a refused sync, then a reconnection: the next session starts OK
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	start_coordinates_log();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), 86));
+	SERIAL_CHECK_TRUE(wait_for_polls(2));
+	count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("refused sync before reconnection", events, count, INDIGO_ALERT_STATE, 1));
+	disconnect_serial_device(&mount_simulator);
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(wait_for_polls(2));
+	count = stop_coordinates_log(events);
+	int publications = 0;
+	for (int i = 0; i < count; i++) {
+		if (events[i].kind != 'R') {
+			SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, events[i].state);
+			publications++;
+		}
+	}
+	SERIAL_CHECK_TRUE(publications >= 4);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, cached_state(MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME));
+cleanup:
+	stop_coordinates_log(events);
+	if (context.connected && alignment_point_count() > 0) {
+		indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, true);
+		wait_for_alignment_point_count(0);
+	}
 	stop_serial_driver(&mount_simulator);
 }
 
@@ -1786,6 +2098,8 @@ int main(void) {
 		{ "mount_tracking_request_survives_slew_end", mount_tracking_request_survives_slew_end },
 		{ "mount_tracking_request_survives_home_end", mount_tracking_request_survives_home_end },
 		{ "mount_reconnect_publishes_device_state", mount_reconnect_publishes_device_state },
+		{ "mount_sync_publishes_busy_and_keeps_a_refusal", mount_sync_publishes_busy_and_keeps_a_refusal },
+		{ "mount_azimuth_at_the_pole_is_zero", mount_azimuth_at_the_pole_is_zero },
 		{ "mount_disconnect_during_slew_park_and_home", mount_disconnect_during_slew_park_and_home },
 		{ "mount_state_lights_follow_slew_completion", mount_state_lights_follow_slew_completion },
 		{ "mount_tracking_off_keeps_sync_motion_and_pulses", mount_tracking_off_keeps_sync_motion_and_pulses },

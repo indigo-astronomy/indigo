@@ -1,0 +1,533 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e896f9ff-0d84-4d63-b30e-0befaa9d8501",
+  "revision": 23,
+  "title": "Document native platesolver architecture, index generation and distribution",
+  "description": "Owner request (2026-11-20): create indigo_drivers/agent_platesolver/doc/PLATESOLVER.md as a comprehensive English technical reference for the internal plate solver and index generator. Explain component responsibilities and data flow; image decoding/preprocessing and star detection; image quad construction and invariant codes; staged index search, hints and matching; consistency checks, rejection and solution verification; WCS fitting and reported coordinates, scale, rotation, parity and residuals; limits, aborts, caching and memory use. Give the corresponding end-to-end index-generation pipeline, catalogue acquisition/input formats and proper motion, sky sampling and quad selection, index construction and output. Migrate all relevant material from indigo_docs/SOLVER_INDEX_FORMAT.md, preserving format details and attribution; retire that old document at the end of consolidation and update relevant incoming links. Document reproducible index build commands, filenames and scales, GitHub repository/release/assets used for distribution, how to replace/update indexes and how to add new catalogues/scales, including required source/configuration touchpoints and compatibility considerations. Inspect current source and verify live GitHub release details; distinguish implemented behavior from guidance. Documentation-only scope: no solver, generator or index asset changes and no publication. Validation: check technical claims and examples against implementation, migrated-content completeness, local Markdown links/anchors and stale references to the retired path; run configured checks applicable to documentation. Use the existing correct agent_platesolver directory; the spelling in the requested shorthand path is treated as a typo.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T09:21:10.369893Z",
+  "status": "closed",
+  "branch": "ticket/e896f9ff-0d84-4d63-b30e-0befaa9d8501",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "7b0c3932-0382-47aa-bc0b-490862b0a09b",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "2057573a-8521-45a2-90c1-f36577ee6015",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T09:56:48.415721Z",
+          "last_activity_at": "2026-11-20T10:05:05.118952Z",
+          "ended_at": "2026-11-20T10:05:05.118952Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 496703.231,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T09:56:48.415721Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/e896f9ff-0d84-4d63-b30e-0befaa9d8501"
+        },
+        {
+          "at": "2026-11-20T10:05:05.118952Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 496703.231,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "1f343e81-57a9-4e57-9676-d1d113c1370b",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "362c5eb8-a4cd-476b-9688-ac2f6a0bc112",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T10:05:05.119122Z",
+          "last_activity_at": "2026-11-20T10:06:50.769610Z",
+          "ended_at": "2026-11-20T10:06:50.769610Z",
+          "outcome": {
+            "summary": "Independent review of master...HEAD at 5550c7369b1fed29c95dc2be86eed3400efd7353 (tree dafd113311b103a6c5f94266d4314d0da7fd1f62): no substantive defects found. Read the complete new reference and retired format reference; compared detector/filter thresholds, canonical quad geometry, staged search/hints/voting, robust affine fit and output formulas, loader/writer validation, catalogue parsers/proper motion, exact sampling tiers, ownership/compaction, download/update/cache behavior, CLI syntax and Makefile targets with source. All relevant old format tables, conventions, size/working-set example and author/coauthor attribution are preserved, with useful implementation qualifications. Reviewed README/HOME/Xcode relocation and seven asset sizes/URLs against the saved public API response verified on 2026-11-20. Recorded whitespace/link/anchor/plutil validation is appropriate to this documentation-only tree. Coverage limits: static source/documentation review, not a full solver audit; no builds, runtime tests, catalogue or binary asset downloads, index generation or publication performed. Minor nonblocking clarification: stale .part cleanup occurs specifically at agent startup, not CLI startup.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 105650.488,
+          "tokens": null
+        },
+        {
+          "attempt_id": "a0b1046b-2bea-4b71-aaea-6d42f336514d",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-20T10:07:33.569333Z",
+          "last_activity_at": "2026-11-20T10:07:33.569388Z",
+          "ended_at": "2026-11-20T10:07:33.569388Z",
+          "outcome": {
+            "summary": "Final independent review passes snapshot 9d7bf6dd578a990cf12446b22cb57f462bfdc570 (tree 5ca30fc5f30f1f0aacc65748d8519dcb30a5b6ab). Inspected the complete delta from the previously reviewed 5550c7369b: only startup -> agent startup for stale .part cleanup, matching indigo_agent_platesolver.c and removing the minor ambiguity. Worktree is clean and configured whitespace check was refreshed successfully. Prior complete documentation/source review remains applicable: migrated format and attribution, detector/quad/matcher/fit formulas, indexer parsers and tiers, wrappers, build and CLI examples, incoming links/project relocation and saved release metadata show no substantive defects. Coverage remains static documentation/source review; no builds, runtime or hardware tests, catalogue/index downloads, index generation or publication performed.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 0.055,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T10:05:05.119122Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T10:06:50.769610Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Independent review of master...HEAD at 5550c7369b1fed29c95dc2be86eed3400efd7353 (tree dafd113311b103a6c5f94266d4314d0da7fd1f62): no substantive defects found. Read the complete new reference and retired format reference; compared detector/filter thresholds, canonical quad geometry, staged search/hints/voting, robust affine fit and output formulas, loader/writer validation, catalogue parsers/proper motion, exact sampling tiers, ownership/compaction, download/update/cache behavior, CLI syntax and Makefile targets with source. All relevant old format tables, conventions, size/working-set example and author/coauthor attribution are preserved, with useful implementation qualifications. Reviewed README/HOME/Xcode relocation and seven asset sizes/URLs against the saved public API response verified on 2026-11-20. Recorded whitespace/link/anchor/plutil validation is appropriate to this documentation-only tree. Coverage limits: static source/documentation review, not a full solver audit; no builds, runtime tests, catalogue or binary asset downloads, index generation or publication performed. Minor nonblocking clarification: stale .part cleanup occurs specifically at agent startup, not CLI startup."
+        },
+        {
+          "at": "2026-11-20T10:07:33.569333Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T10:07:33.569388Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Final independent review passes snapshot 9d7bf6dd578a990cf12446b22cb57f462bfdc570 (tree 5ca30fc5f30f1f0aacc65748d8519dcb30a5b6ab). Inspected the complete delta from the previously reviewed 5550c7369b: only startup -> agent startup for stale .part cleanup, matching indigo_agent_platesolver.c and removing the minor ambiguity. Worktree is clean and configured whitespace check was refreshed successfully. Prior complete documentation/source review remains applicable: migrated format and attribution, detector/quad/matcher/fit formulas, indexer parsers and tiers, wrappers, build and CLI examples, incoming links/project relocation and saved release metadata show no substantive defects. Coverage remains static documentation/source review; no builds, runtime or hardware tests, catalogue/index downloads, index generation or publication performed."
+        }
+      ],
+      "result": {
+        "summary": "Final independent review passes snapshot 9d7bf6dd578a990cf12446b22cb57f462bfdc570 (tree 5ca30fc5f30f1f0aacc65748d8519dcb30a5b6ab). Inspected the complete delta from the previously reviewed 5550c7369b: only startup -> agent startup for stale .part cleanup, matching indigo_agent_platesolver.c and removing the minor ambiguity. Worktree is clean and configured whitespace check was refreshed successfully. Prior complete documentation/source review remains applicable: migrated format and attribution, detector/quad/matcher/fit formulas, indexer parsers and tiers, wrappers, build and CLI examples, incoming links/project relocation and saved release metadata show no substantive defects. Coverage remains static documentation/source review; no builds, runtime or hardware tests, catalogue/index downloads, index generation or publication performed.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 105650.543,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "01e64094-a461-492b-aaa1-44491bae2b64",
+      "event": "ticket/created",
+      "at": "2026-11-20T09:21:10.370516Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "d0ff5e18-3fe2-4a1b-9f2d-38e757a9299e",
+      "event": "question/asked",
+      "at": "2026-11-20T09:21:15.784676Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Proposed priority medium (requested consolidation of missing technical documentation), severity low (documentation only, no runtime behavior change), profile simple (implementation, targeted documentation checks and independent review). Do you confirm these values and authorize starting this ticket?"
+    },
+    {
+      "event_id": "b6142837-efa4-4dbd-8de5-b03caeeff54f",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T09:56:33.497154Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "1f73112f-74a1-4acd-b0b7-ef4349b85172",
+      "event": "question/answered",
+      "at": "2026-11-20T09:56:33.640411Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner confirmed the proposed priority medium, severity low and simple profile and explicitly authorized starting the ticket (ano)."
+    },
+    {
+      "event_id": "bc629d33-2f7c-49e0-ba2b-acd16d680819",
+      "event": "task/progress",
+      "at": "2026-11-20T09:56:48.416005Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "7b0c3932-0382-47aa-bc0b-490862b0a09b",
+      "text": "Implementation started on branch ticket/e896f9ff-0d84-4d63-b30e-0befaa9d8501"
+    },
+    {
+      "event_id": "30760d01-8eb0-491f-ae53-b636b928db23",
+      "event": "ticket/started",
+      "at": "2026-11-20T09:56:48.417563Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/e896f9ff-0d84-4d63-b30e-0befaa9d8501",
+      "base": "master"
+    },
+    {
+      "event_id": "8961eb4f-c71f-45da-983c-97d1c8af071f",
+      "event": "task/progress",
+      "at": "2026-11-20T09:57:15.468310Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "7b0c3932-0382-47aa-bc0b-490862b0a09b",
+      "text": "Inspecting native solver and indexer sources for the consolidated technical reference",
+      "attempt_id": "2057573a-8521-45a2-90c1-f36577ee6015",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "81b6ff6e-1070-424f-84c1-a3d6a26349c4",
+      "event": "ticket/note",
+      "at": "2026-11-20T09:58:02.497175Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Coordinator verified public GitHub REST metadata on 2026-11-20: indigo-astronomy/indigo release index_release_v2 (Indigo Solver Indexes V2), seven assets match configured scales/names. Full response kept temporarily at /tmp/indigo-index-release-e896f9ff.json. Source URL matches release download base. GitHub CLI upload syntax and clobber replacement semantics checked against official CLI manual. No assets downloaded, built, uploaded or replaced. Documentation-only validation will use source traceability, completeness and links; no hardware or driver test run requested.",
+      "tokens": null
+    },
+    {
+      "event_id": "079e81a5-15c9-49f6-a0fd-aba1c6fd0fa9",
+      "event": "task/progress",
+      "at": "2026-11-20T09:58:36.430937Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "7b0c3932-0382-47aa-bc0b-490862b0a09b",
+      "text": "Writing the solver, index format, catalogue build and distribution reference"
+    },
+    {
+      "event_id": "977d475d-222b-46c1-9e93-6a31d1acfbbf",
+      "event": "task/progress",
+      "at": "2026-11-20T10:03:36.934002Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "7b0c3932-0382-47aa-bc0b-490862b0a09b",
+      "text": "Checking document links, retired-path references, source claims and Xcode plist syntax"
+    },
+    {
+      "event_id": "b99d48a8-42b5-4969-9ac1-483d1de5f2ad",
+      "event": "ticket/note",
+      "at": "2026-11-20T10:04:06.502054Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implemented comprehensive native solver/indexer reference, preserving all relevant v2 layout, original attribution and qualified historical size/working-set example. Corrected inherited approximate claims in the new reference against source: exact tier distance table, cooperative elapsed-time limits, header-only download validation versus mmap validation, JNow centre-only conversion and scalar reconstructed WCS. Consolidated old format document, updated HOME/README links and relocated existing Xcode reference. Validation: 88 local Markdown links/anchors passed; migrated-format facts, fences, whitespace and retired-path scan passed; plutil reports project OK. Source checks included shared raw detector, solver core/geometry, both wrappers, indexer, build targets and project metadata. Coordinator verified live GitHub release API metadata on 2026-11-20: index_release_v2, seven matching assets and exact sizes. Build/solver/index-generation/catalogue-download/publish commands are documentation examples only; no runtime tests, catalogue/index downloads, builds, hardware, or publication performed for this documentation-only change. Catalogue URLs are references, not claims of downloaded input data. Retained current build-time epoch behavior and documented lack of byte-identical reproducibility; no production behavior changed.",
+      "tokens": null
+    },
+    {
+      "event_id": "af32fd8e-1a72-432b-b89c-50d63123f83b",
+      "event": "task/progress",
+      "at": "2026-11-20T10:04:22.232122Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "7b0c3932-0382-47aa-bc0b-490862b0a09b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "82c1fd87-1be9-4966-8863-9851d92737c6",
+      "event": "task/progress",
+      "at": "2026-11-20T10:04:22.255502Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "7b0c3932-0382-47aa-bc0b-490862b0a09b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "da2a414f-c1a6-4f12-93cc-dcf8b07fb8d6",
+      "event": "check/passed",
+      "at": "2026-11-20T10:04:22.257067Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "5550c7369b1fed29c95dc2be86eed3400efd7353",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "9dfec698-3101-47bf-8471-e8e06874f852",
+      "event": "task/progress",
+      "at": "2026-11-20T10:05:05.119216Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1f343e81-57a9-4e57-9676-d1d113c1370b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "53ac8225-a411-40bf-8864-b17ff625fff8",
+      "event": "review/started",
+      "at": "2026-11-20T10:05:05.120640Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "6332666c-321e-4b24-b7b7-d1dc116e2e74",
+      "event": "task/progress",
+      "at": "2026-11-20T10:05:11.663434Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1f343e81-57a9-4e57-9676-d1d113c1370b",
+      "text": "Reviewing solver documentation against source and migrated format details",
+      "attempt_id": "362c5eb8-a4cd-476b-9688-ac2f6a0bc112",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "47096031-a635-44fb-b297-a9ea95203877",
+      "event": "task/progress",
+      "at": "2026-11-20T10:06:50.769737Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1f343e81-57a9-4e57-9676-d1d113c1370b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "28d96602-cd3a-4b07-b7c6-f3040f925bf2",
+      "event": "review/passed",
+      "at": "2026-11-20T10:06:50.771288Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1f343e81-57a9-4e57-9676-d1d113c1370b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5550c7369b1fed29c95dc2be86eed3400efd7353"
+    },
+    {
+      "event_id": "34ceea86-ccdb-41f0-a3ee-96249af2e87d",
+      "event": "task/progress",
+      "at": "2026-11-20T10:07:01.584745Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "7b0c3932-0382-47aa-bc0b-490862b0a09b",
+      "text": "Clarified that stale partial index cleanup occurs at agent startup only"
+    },
+    {
+      "event_id": "8030e544-e3c2-4696-bc9c-e2fcf4cc16db",
+      "event": "task/progress",
+      "at": "2026-11-20T10:07:13.749871Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ee4a1d45-1f8b-41ab-a8a9-98991cd06bb6",
+      "event": "task/progress",
+      "at": "2026-11-20T10:07:13.773288Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ca9c4634-7297-487a-9d12-acaa806ec6c8",
+      "event": "check/passed",
+      "at": "2026-11-20T10:07:13.775052Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "9d7bf6dd578a990cf12446b22cb57f462bfdc570",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "bb9fd0a8-34c7-4a51-bf01-e2e65dd38019",
+      "event": "task/progress",
+      "at": "2026-11-20T10:07:33.569491Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1f343e81-57a9-4e57-9676-d1d113c1370b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "ea3f05c3-d82e-4b53-a2ce-c4efd212691b",
+      "event": "review/passed",
+      "at": "2026-11-20T10:07:33.571061Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1f343e81-57a9-4e57-9676-d1d113c1370b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "9d7bf6dd578a990cf12446b22cb57f462bfdc570"
+    },
+    {
+      "event_id": "0ea14ac5-2a4b-4e1d-99eb-40c23b8e635e",
+      "event": "ticket/closed",
+      "at": "2026-11-20T10:07:48.068122Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T10:07:48.068097Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "62beea80cf1665c31013514111a224d8af02b3ee"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5550c7369b1fed29c95dc2be86eed3400efd7353",
+        "tree": "dafd113311b103a6c5f94266d4314d0da7fd1f62",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T10:04:22.254800Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/e896f9ff-0d84-4d63-b30e-0befaa9d8501/dafd113311b1-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9d7bf6dd578a990cf12446b22cb57f462bfdc570",
+        "tree": "5ca30fc5f30f1f0aacc65748d8519dcb30a5b6ab",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T10:07:13.772511Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/e896f9ff-0d84-4d63-b30e-0befaa9d8501/5ca30fc5f30f-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of master...HEAD at 5550c7369b1fed29c95dc2be86eed3400efd7353 (tree dafd113311b103a6c5f94266d4314d0da7fd1f62): no substantive defects found. Read the complete new reference and retired format reference; compared detector/filter thresholds, canonical quad geometry, staged search/hints/voting, robust affine fit and output formulas, loader/writer validation, catalogue parsers/proper motion, exact sampling tiers, ownership/compaction, download/update/cache behavior, CLI syntax and Makefile targets with source. All relevant old format tables, conventions, size/working-set example and author/coauthor attribution are preserved, with useful implementation qualifications. Reviewed README/HOME/Xcode relocation and seven asset sizes/URLs against the saved public API response verified on 2026-11-20. Recorded whitespace/link/anchor/plutil validation is appropriate to this documentation-only tree. Coverage limits: static source/documentation review, not a full solver audit; no builds, runtime tests, catalogue or binary asset downloads, index generation or publication performed. Minor nonblocking clarification: stale .part cleanup occurs specifically at agent startup, not CLI startup.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "5550c7369b1fed29c95dc2be86eed3400efd7353",
+        "tree": "dafd113311b103a6c5f94266d4314d0da7fd1f62",
+        "at": "2026-11-20T10:06:50.769470Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Final independent review passes snapshot 9d7bf6dd578a990cf12446b22cb57f462bfdc570 (tree 5ca30fc5f30f1f0aacc65748d8519dcb30a5b6ab). Inspected the complete delta from the previously reviewed 5550c7369b: only startup -> agent startup for stale .part cleanup, matching indigo_agent_platesolver.c and removing the minor ambiguity. Worktree is clean and configured whitespace check was refreshed successfully. Prior complete documentation/source review remains applicable: migrated format and attribution, detector/quad/matcher/fit formulas, indexer parsers and tiers, wrappers, build and CLI examples, incoming links/project relocation and saved release metadata show no substantive defects. Coverage remains static documentation/source review; no builds, runtime or hardware tests, catalogue/index downloads, index generation or publication performed.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "9d7bf6dd578a990cf12446b22cb57f462bfdc570",
+        "tree": "5ca30fc5f30f1f0aacc65748d8519dcb30a5b6ab",
+        "at": "2026-11-20T10:07:33.569152Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T09:58:02.496039Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Coordinator verified public GitHub REST metadata on 2026-11-20: indigo-astronomy/indigo release index_release_v2 (Indigo Solver Indexes V2), seven assets match configured scales/names. Full response kept temporarily at /tmp/indigo-index-release-e896f9ff.json. Source URL matches release download base. GitHub CLI upload syntax and clobber replacement semantics checked against official CLI manual. No assets downloaded, built, uploaded or replaced. Documentation-only validation will use source traceability, completeness and links; no hardware or driver test run requested.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T10:04:06.500760Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implemented comprehensive native solver/indexer reference, preserving all relevant v2 layout, original attribution and qualified historical size/working-set example. Corrected inherited approximate claims in the new reference against source: exact tier distance table, cooperative elapsed-time limits, header-only download validation versus mmap validation, JNow centre-only conversion and scalar reconstructed WCS. Consolidated old format document, updated HOME/README links and relocated existing Xcode reference. Validation: 88 local Markdown links/anchors passed; migrated-format facts, fences, whitespace and retired-path scan passed; plutil reports project OK. Source checks included shared raw detector, solver core/geometry, both wrappers, indexer, build targets and project metadata. Coordinator verified live GitHub release API metadata on 2026-11-20: index_release_v2, seven matching assets and exact sizes. Build/solver/index-generation/catalogue-download/publish commands are documentation examples only; no runtime tests, catalogue/index downloads, builds, hardware, or publication performed for this documentation-only change. Catalogue URLs are references, not claims of downloaded input data. Retained current build-time epoch behavior and documented lack of byte-identical reproducibility; no production behavior changed.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Proposed priority medium (requested consolidation of missing technical documentation), severity low (documentation only, no runtime behavior change), profile simple (implementation, targeted documentation checks and independent review). Do you confirm these values and authorize starting this ticket?",
+        "at": "2026-11-20T09:21:15.783615Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner confirmed the proposed priority medium, severity low and simple profile and explicitly authorized starting the ticket (ano).",
+        "answered_at": "2026-11-20T09:56:33.639368Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "62beea80cf1665c31013514111a224d8af02b3ee",
+      "tree": "5ca30fc5f30f1f0aacc65748d8519dcb30a5b6ab",
+      "base": "master",
+      "at": "2026-11-20T10:07:47.976880Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T09:21:10.369893Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T09:56:33.497050Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 602353.774,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 31,
+    "sha256": "20cace458c9daaff907b41fb0b6a3d194d585543cf803259dd86f55bc6c0a3cd"
+  }
+}

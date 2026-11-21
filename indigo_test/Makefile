@@ -157,6 +157,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_agent_imager \
 	$(INTEGRATION_BUILD)/test_agent_guider \
 	$(INTEGRATION_BUILD)/test_agent_mount \
+	$(INTEGRATION_BUILD)/test_agent_mount_simulator \
 	$(INTEGRATION_BUILD)/test_agent_config \
 	$(INTEGRATION_BUILD)/test_agent_mcp \
 	$(INTEGRATION_BUILD)/test_agent_astrometry \
@@ -653,13 +654,13 @@ $(INTEGRATION_BUILD)/test_mount_simulator: integration/test_mount_simulator.c in
 $(INTEGRATION_BUILD)/test_mount_simulator_asan: integration/test_mount_simulator.c ../indigo_drivers/mount_simulator/indigo_mount_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/mount_simulator/indigo_mount_simulator.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address
 
-$(INTEGRATION_BUILD)/test_mount_nexstar_simulator_asan: integration/test_mount_nexstar_simulator.c ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h integration/serial_simulator_test_common.h $(INTEGRATION_BUILD)/mount_nexstar_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_nexstar_simulator_asan: integration/test_mount_nexstar_simulator.c integration/mount_coordinates_test_common.h ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h integration/serial_simulator_test_common.h $(INTEGRATION_BUILD)/mount_nexstar_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -I../indigo_drivers/mount_nexstar/externals/libnexstar/build/include -o $@ $< ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c $(TEST_LDFLAGS) ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a -lindigocat -fsanitize=address,undefined
 
 $(BENCHMARK_BUILD)/bench_mount_simulator_timing: integration/test_mount_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_mount_simulator.a | $(BENCHMARK_BUILD)
 	$(CC) $(TEST_CFLAGS) -DMOUNT_SIMULATOR_TIMING_BENCHMARK -o $@ $< $(MOUNT_SIMULATOR_TEST_LDFLAGS)
 
-$(BENCHMARK_BUILD)/bench_mount_nexstar_guider_timing: integration/test_mount_nexstar_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(INTEGRATION_BUILD)/mount_nexstar_simulator | $(BENCHMARK_BUILD)
+$(BENCHMARK_BUILD)/bench_mount_nexstar_guider_timing: integration/test_mount_nexstar_simulator.c integration/mount_coordinates_test_common.h integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(INTEGRATION_BUILD)/mount_nexstar_simulator | $(BENCHMARK_BUILD)
 	$(CC) $(TEST_CFLAGS) -DMOUNT_NEXSTAR_TIMING_BENCHMARK -o $@ $< $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_polaralign_simulator: integration/test_polaralign_simulator.c integration/simulator_test_common.h test_runner.h integration/serial_simulator_test_common.h $(BUILD_DRIVERS)/indigo_polaralign_simulator.a | $(INTEGRATION_BUILD)
@@ -997,10 +998,10 @@ test-gps-gpsd-simulator-sanitize: $(INTEGRATION_BUILD)/test_gps_gpsd_simulator_s
 
 IOPTRON_TEST_CFLAGS = $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter -Wno-sign-compare
 
-$(INTEGRATION_BUILD)/test_mount_ioptron_simulator: integration/test_mount_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_ioptron_simulator $(BUILD_DRIVERS)/indigo_mount_ioptron.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_ioptron_simulator: integration/test_mount_ioptron_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_ioptron_simulator $(BUILD_DRIVERS)/indigo_mount_ioptron.a | $(INTEGRATION_BUILD)
 	$(CC) $(IOPTRON_TEST_CFLAGS) -o $@ $< $(MOUNT_IOPTRON_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_mount_ioptron_simulator_sanitize: integration/test_mount_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h ../indigo_drivers/mount_ioptron/indigo_mount_ioptron.c $(INTEGRATION_BUILD)/mount_ioptron_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_ioptron_simulator_sanitize: integration/test_mount_ioptron_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h ../indigo_drivers/mount_ioptron/indigo_mount_ioptron.c $(INTEGRATION_BUILD)/mount_ioptron_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/mount_ioptron/indigo_mount_ioptron.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 .PHONY: test-mount-ioptron-tcp
@@ -1012,7 +1013,7 @@ LX200_TEST_CFLAGS = $(TEST_CFLAGS) -Wall -Wextra -Werror -Wno-unused-function -W
 $(INTEGRATION_BUILD)/mount_lx200_simulator: ../indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(LX200_TEST_CFLAGS) -o $@ $< -lm
 
-$(INTEGRATION_BUILD)/test_mount_lx200_simulator: integration/test_mount_lx200_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_lx200_simulator $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_lx200_simulator: integration/test_mount_lx200_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_lx200_simulator $(BUILD_DRIVERS)/indigo_mount_lx200.a | $(INTEGRATION_BUILD)
 	$(CC) $(LX200_TEST_CFLAGS) -o $@ $< $(MOUNT_LX200_SIMULATOR_TEST_LDFLAGS)
 
 MOUNT_ASI_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_asi.a $(TEST_LDFLAGS) -lindigocat
@@ -1022,7 +1023,7 @@ MOUNT_ASI_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_asi.a $(TEST_LD
 $(INTEGRATION_BUILD)/test_mount_asi_simulator: integration/test_mount_asi_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_lx200_simulator $(BUILD_DRIVERS)/indigo_mount_asi.a | $(INTEGRATION_BUILD)
 	$(CC) $(LX200_TEST_CFLAGS) -o $@ $< $(MOUNT_ASI_SIMULATOR_TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/test_mount_lx200_simulator_sanitize: integration/test_mount_lx200_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h ../indigo_drivers/mount_lx200/indigo_mount_lx200.c $(INTEGRATION_BUILD)/mount_lx200_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_lx200_simulator_sanitize: integration/test_mount_lx200_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h ../indigo_drivers/mount_lx200/indigo_mount_lx200.c $(INTEGRATION_BUILD)/mount_lx200_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/mount_lx200/indigo_mount_lx200.c $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 # Detach-abort registry and mount manual-motion ownership: the bus API, the generated mount
@@ -1058,34 +1059,35 @@ test-mount-lx200-tcp: $(INTEGRATION_BUILD)/test_mount_lx200_simulator $(INTEGRAT
 $(INTEGRATION_BUILD)/mount_nexstar_simulator: ../indigo_drivers/mount_nexstar/mount_nexstar_simulator/mount_nexstar_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
-$(INTEGRATION_BUILD)/test_mount_nexstar_deadline: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -DINDIGO_TEST_MOTION_DEADLINE -DNEXSTAR_PARK_TIMEOUT=1 -DNEXSTAR_GOTO_TIMEOUT=1 -I../indigo_drivers/mount_nexstar/externals/libnexstar/build/include -o $@ $< ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c $(TEST_LDFLAGS) ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a -lindigocat
+# The GOTO deadline outlasts the simulator's one second GOTO, so the GOTO after the timed-out one can arrive in time.
+$(INTEGRATION_BUILD)/test_mount_nexstar_deadline: integration/test_mount_nexstar_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DINDIGO_TEST_MOTION_DEADLINE -DNEXSTAR_PARK_TIMEOUT=1 -DNEXSTAR_GOTO_TIMEOUT=3 -I../indigo_drivers/mount_nexstar/externals/libnexstar/build/include -o $@ $< ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c $(TEST_LDFLAGS) ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a -lindigocat
 
-$(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator $(BUILD_DRIVERS)/indigo_mount_nexstar.a ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexstar_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator $(BUILD_DRIVERS)/indigo_mount_nexstar.a ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_nexstaraux_simulator: ../indigo_drivers/mount_nexstaraux/mount_nexstaraux_simulator/mount_nexstaraux_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
-$(INTEGRATION_BUILD)/test_mount_nexstaraux_simulator: integration/test_mount_nexstaraux_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstaraux_simulator $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_nexstaraux_simulator: integration/test_mount_nexstaraux_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstaraux_simulator $(BUILD_DRIVERS)/indigo_mount_nexstaraux.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTARAUX_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_pmc8_simulator: ../indigo_drivers/mount_pmc8/mount_pmc8_simulator/mount_pmc8_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
-$(INTEGRATION_BUILD)/test_mount_pmc8_simulator: integration/test_mount_pmc8_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_pmc8_simulator $(BUILD_DRIVERS)/indigo_mount_pmc8.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_pmc8_simulator: integration/test_mount_pmc8_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_pmc8_simulator $(BUILD_DRIVERS)/indigo_mount_pmc8.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_PMC8_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/mount_rainbow_simulator: ../indigo_drivers/mount_rainbow/mount_rainbow_simulator/mount_rainbow_simulator.c simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
-$(INTEGRATION_BUILD)/test_mount_rainbow_simulator: integration/test_mount_rainbow_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/mount_rainbow/original_reference_trace.txt $(INTEGRATION_BUILD)/mount_rainbow_simulator $(BUILD_DRIVERS)/indigo_mount_rainbow.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_rainbow_simulator: integration/test_mount_rainbow_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/mount_rainbow/original_reference_trace.txt $(INTEGRATION_BUILD)/mount_rainbow_simulator $(BUILD_DRIVERS)/indigo_mount_rainbow.a | $(INTEGRATION_BUILD)
 	$(CC) $(MOUNT_RAINBOW_TEST_CFLAGS) -o $@ $< $(MOUNT_RAINBOW_SIMULATOR_TEST_LDFLAGS)
 
 MOUNT_RAINBOW_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(MOUNT_RAINBOW_TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
 MOUNT_RAINBOW_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined -lindigocat
 
-$(INTEGRATION_BUILD)/test_mount_rainbow_simulator_sanitize: integration/test_mount_rainbow_simulator.c ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.c ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/mount_rainbow/original_reference_trace.txt $(INTEGRATION_BUILD)/mount_rainbow_simulator | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_rainbow_simulator_sanitize: integration/test_mount_rainbow_simulator.c integration/mount_coordinates_test_common.h ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.c ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h fixtures/mount_rainbow/original_reference_trace.txt $(INTEGRATION_BUILD)/mount_rainbow_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(MOUNT_RAINBOW_SANITIZE_CFLAGS) -o $@ $< ../indigo_drivers/mount_rainbow/indigo_mount_rainbow.c $(MOUNT_RAINBOW_SANITIZE_LDFLAGS)
 
 .PHONY: test-mount-rainbow-simulator test-mount-rainbow-simulator-sanitize
@@ -1098,7 +1100,7 @@ test-mount-rainbow-simulator-sanitize: $(INTEGRATION_BUILD)/test_mount_rainbow_s
 $(INTEGRATION_BUILD)/mount_starbook_simulator: ../indigo_drivers/mount_starbook/mount_starbook_simulator/mount_starbook_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/test_mount_starbook_simulator: integration/test_mount_starbook_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_starbook_simulator $(BUILD_DRIVERS)/indigo_mount_starbook.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_starbook_simulator: integration/test_mount_starbook_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_starbook_simulator $(BUILD_DRIVERS)/indigo_mount_starbook.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_STARBOOK_SIMULATOR_TEST_LDFLAGS)
 
 # system_alpaca keeps its JSON parser and HTTP client in the driver directory, so their tests link the driver archive.
@@ -1158,10 +1160,10 @@ $(TEST_BUILD)/hardware/test_system_alpaca_hw: hardware/test_system_alpaca_hw.c h
 $(INTEGRATION_BUILD)/mount_temma_simulator: ../indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
-$(INTEGRATION_BUILD)/test_mount_temma_deadline: integration/test_mount_temma_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_temma_simulator ../indigo_drivers/mount_temma/indigo_mount_temma.c ../indigo_drivers/mount_temma/indigo_mount_temma.driver | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_temma_deadline: integration/test_mount_temma_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_temma_simulator ../indigo_drivers/mount_temma/indigo_mount_temma.c ../indigo_drivers/mount_temma/indigo_mount_temma.driver | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DINDIGO_TEST_MOTION_DEADLINE -DTEMMA_SLEW_TIMEOUT=1 -o $@ $< ../indigo_drivers/mount_temma/indigo_mount_temma.c $(TEST_LDFLAGS) -lindigocat
 
-$(INTEGRATION_BUILD)/test_mount_temma_simulator: integration/test_mount_temma_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_temma_simulator $(BUILD_DRIVERS)/indigo_mount_temma.a | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_mount_temma_simulator: integration/test_mount_temma_simulator.c integration/mount_coordinates_test_common.h integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_temma_simulator $(BUILD_DRIVERS)/indigo_mount_temma.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_TEMMA_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_astromechanics_simulator: integration/test_focuser_astromechanics_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_astromechanics_simulator $(BUILD_DRIVERS)/indigo_focuser_astromechanics.a | $(INTEGRATION_BUILD)
@@ -2671,6 +2673,17 @@ $(INTEGRATION_BUILD)/test_agent_imager_guider_mount: integration/test_agent_imag
 .PHONY: test-agent-imager-guider-mount
 test-agent-imager-guider-mount: check-lib $(INTEGRATION_BUILD)/test_agent_imager_guider_mount
 	$(INTEGRATION_BUILD)/test_agent_imager_guider_mount
+
+# The production Mount Agent with the mount simulator driver and with the SynScan driver on its host-side
+# simulator; configuration is isolated through a private HOME.
+AGENT_MOUNT_SIMULATOR_ARCHIVES = $(BUILD_DRIVERS)/indigo_agent_mount.a $(BUILD_DRIVERS)/indigo_mount_simulator.a $(BUILD_DRIVERS)/indigo_mount_synscan.a
+
+$(INTEGRATION_BUILD)/test_agent_mount_simulator: integration/test_agent_mount_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_synscan_simulator $(AGENT_MOUNT_SIMULATOR_ARCHIVES) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AGENT_MOUNT_SIMULATOR_ARCHIVES) $(TEST_LDFLAGS) -lindigocat
+
+.PHONY: test-agent-mount-simulator
+test-agent-mount-simulator: check-lib $(INTEGRATION_BUILD)/test_agent_mount_simulator
+	$(INTEGRATION_BUILD)/test_agent_mount_simulator
 
 # The Platesolver Agent with its native quad solver against a synthetic index written into INDIGO_CACHE_BASE;
 # no network access, the index download is not exercised.

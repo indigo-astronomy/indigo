@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6a4e8bdf-ff81-4031-8723-df3f84d73b8a",
+  "revision": 1,
+  "title": "test_mount_synscan_hw: session start pointing is captured before the site set by the suite is applied",
+  "description": "Found on 2026-11-19 by the implementer of ticket 4ef695f1-88ae-4fd8-943e-91c6479a9c24 on the AZ-GTi.\n\nmain() of indigo_test/hardware/test_mount_synscan_hw.c reads the session's starting pointing right after set_site(), from coordinates still computed with the driver's site longitude from before the suite set its own (17 degrees). Observed: raw RA jumps by +1.133 h within about 3 s after set_site() while LST stays put. The final 'Restored the starting pointing' therefore leaves the RA axis about 17 degrees (the site longitude difference) away from where the session found it, and the starting RA shifts by -1.13 h from session to session.\n\nFix (test harness only, no driver change): capture the starting pointing only after fresh polls following set_site(), as the case synscan_reports_encoder_position already does, and verify with step counters read before and after a session that the axes return to where they started. Recorded hardware run afterwards.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T19:04:19.432485Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "0a465eb8-8ad6-43a9-bd4d-1d813a103ca8",
+      "event": "ticket/created",
+      "at": "2026-11-19T19:04:19.433587Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T19:04:19.432485Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "fa1949cf1c1835a431164c29550186035c14b37dd27a3aaecef23c0e6bd91599"
+  }
+}

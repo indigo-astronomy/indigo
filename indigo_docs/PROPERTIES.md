@@ -522,6 +522,8 @@ Source: `indigo_drivers/agent_alpaca/indigo_agent_alpaca.c`.
 
 ### Astrometry agent
 
+This external backend shares the solver interface with the native Platesolver Agent; see the [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) for that backend.
+
 | Property name | Type | RO | Items | Comments |
 | ----- | ----- | ----- | ----- | ----- |
 | AGENT_ASTROMETRY_INDEX_41XX | switch | no | dynamic Tycho-2 index names | Installed 41xx index management. Also updates `AGENT_PLATESOLVER_USE_INDEX`. |
@@ -652,6 +654,8 @@ Source: `indigo_drivers/agent_mount/indigo_agent_mount.c`.
 
 ### Plate solver agents
 
+For native solving, hints, WCS output and index setup, see the [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 | Property name | Type | RO | Items | Comments |
 | ----- | ----- | ----- | ----- | ----- |
 | FILTER_RELATED_AGENT_LIST | switch | no | agent name | Exposes the common related-agent selector. |
@@ -676,6 +680,8 @@ Source: `indigo_drivers/agent_mount/indigo_agent_mount.c`.
 Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c` and `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`.
 
 ### Platesolver Agent
+
+The [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) describes the native index format and management workflow.
 
 | Property name | Type | RO | Items | Comments |
 | ----- | ----- | ----- | ----- | ----- |

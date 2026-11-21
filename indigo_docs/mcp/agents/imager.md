@@ -6,6 +6,8 @@ This is an offline-ready draft for owner review. It describes source-visible beh
 
 Load module `indigo_agent_imager` to obtain `Imager Agent` (additional instances have distinct names). It coordinates the imaging camera, filter wheel, focuser and optional external shutter, and cooperates with Guider, Mount and solver agents. It owns preview, exposure batches, streaming, autofocus and synchronized camera processes. A multi-step observing sequence uses the [Sequencer library](sequencer.md) through the [Scripting Agent](scripting.md), after explicit library provisioning; the current Imager process menu does not expose a sequence execution command.
 
+For native plate solving, use the [solver operating manual](platesolver.md); the optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) covers algorithms, WCS and indexes.
+
 Use the [server and device preparation guide](../server-and-devices.md): discover the Server device; if the agent is missing, select its existing `DRIVERS.indigo_agent_imager` switch and wait for server loading to finish and the agent to appear. Load each needed hardware driver through the same mechanism. Set serial port/model/network prerequisites on the physical device while disconnected. Then select the devices on the agent, wait for preparation to complete, configure the agent and start its process. Ordinary imaging is performed through this agent, rather than by sending individual physical-camera exposures.
 
 | Selection on Imager Agent | Meaning and readiness |

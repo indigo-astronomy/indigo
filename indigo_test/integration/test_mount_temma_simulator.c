@@ -27,6 +27,7 @@
 #include <indigo/indigo_align.h>
 
 #include "serial_simulator_test_common.h"
+#include "mount_coordinates_test_common.h"
 
 #ifndef MOUNT_TEMMA_SIMULATOR_EXECUTABLE
 #define MOUNT_TEMMA_SIMULATOR_EXECUTABLE "build/integration/mount_temma_simulator"
@@ -1750,17 +1751,28 @@ static void temma_abort_mid_slew_stops_short_and_idle_abort_keeps_state(void) {
 	static const char *goto_command[] = { "P*" };
 	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, mark, goto_command, 1, NULL, 0));
 	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-	watch_publication(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	// The abort ends the GoTo ALERT and the polls keep that ALERT (indigo_update_coordinates() keeps an ALERT that ended
+	// BUSY until the next request). The publication of the abort itself carries the start, the request is only the target.
+	watch_publication(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(!cached_switch_value(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_watched_publication());
+	SERIAL_CHECK_TRUE(watched_position_is(3, 10));
 	indigo_usleep(1000000);
 	SERIAL_CHECK_EQ_INT(1, trace_count_matching(trace_path, "PS", mark));
 	SERIAL_CHECK_TRUE(fresh_position_is(trace_path, 3, 10));
+	// The first publication of the polls after the abort carries the start, never the target, even when it repeats the
+	// previous values.
+	simulator_test_client.force_property_updates = true;
+	watch_publication(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(fresh_position_is(trace_path, 3, 10));
-	// The first OK publication after the abort carries the start, never the target.
 	SERIAL_CHECK_TRUE(wait_for_watched_publication());
 	SERIAL_CHECK_TRUE(watched_position_is(3, 10));
+	simulator_test_client.force_property_updates = false;
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 3) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 10) < 0.01);
 	// Abort while idle.
 	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 	mark = trace_count(trace_path);
@@ -1771,10 +1783,115 @@ static void temma_abort_mid_slew_stops_short_and_idle_abort_keeps_state(void) {
 	SERIAL_CHECK_TRUE(motion_axis_idle(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
 	SERIAL_CHECK_TRUE(motion_axis_idle(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME));
 cleanup:
+	simulator_test_client.force_property_updates = false;
 	if (driver_started) {
 		stop_serial_driver(&temma_mount);
 	}
 	remove_capture();
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
+// Waits for `count` more position polls.
+static bool wait_for_position_polls(const char *trace_path, int count) {
+	return trace_wait_count(trace_path, "E", trace_count(trace_path), count);
+}
+
+// The coordinate values are the position the mount reports and the request lives in the targets: a GOTO publishes BUSY
+// with the position before it and the horizontal coordinates of that position, keeps publishing the start while the
+// held slew has not moved the mount (the simulated slew jumps to its target, so there is no position on the way), and
+// the target with OK; a SYNC publishes BUSY with the old position, then the synced one; an abort publishes the position
+// the mount holds, never the target; a GOTO the mount refuses keeps the real position.
+static void temma_coordinates_publish_the_mount_position(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = "";
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(3, 10, INDIGO_BUSY_STATE));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fresh_position_is(trace_path, 3, 10));
+	// GOTO, held at the start for a few polls
+	SERIAL_CHECK_TRUE(simulator_control(&simulator, "stall"));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(temma_mount.device_name);
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(20, 60, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_position_polls(trace_path, 3));
+	int count = copy_coordinates_publications(events);
+	int busy = check_request_publication("GOTO", events, count, 0, ra0, dec0, alt0, az0, 20, 60, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_position_kept("held GOTO", events, count, busy, ra0, dec0, 0.01));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(simulator_control(&simulator, "resume"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_position_polls(trace_path, 2));
+	count = stop_coordinates_publications(events);
+	int result = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(result > busy);
+	SERIAL_CHECK_TRUE(coordinates_near(events[result].value[0], events[result].value[1], 20, 60, 0.01));
+	SERIAL_CHECK_TRUE(coordinates_near(events[count - 1].value[0], events[count - 1].value[1], 20, 60, 0.01));
+	// SYNC
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(temma_mount.device_name);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(20.2, 61));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_position_polls(trace_path, 2));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("SYNC", events, count, 0, ra0, dec0, alt0, az0, 20.2, 61, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_sync_result("SYNC", events, count, busy, find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE), 20.2, 61, 0.01));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, events[count - 1].state);
+	SERIAL_CHECK_TRUE(coordinates_near(events[count - 1].value[0], events[count - 1].value[1], 20.2, 61, 0.01));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	// abort of a held GOTO
+	SERIAL_CHECK_TRUE(simulator_control(&simulator, "stall"));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(temma_mount.device_name);
+	int mark = trace_count(trace_path);
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(3, 10, INDIGO_BUSY_STATE));
+	static const char *goto_command[] = { "P*" };
+	SERIAL_CHECK_TRUE(trace_sequence_after(trace_path, mark, goto_command, 1, NULL, 0));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(simulator_control(&simulator, "resume"));
+	SERIAL_CHECK_TRUE(wait_for_position_polls(trace_path, 2));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("aborted GOTO", events, count, 0, ra0, dec0, alt0, az0, 3, 10, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	int aborted = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(aborted > busy);
+	SERIAL_CHECK_TRUE(check_reported_position("abort", events, count, busy, aborted, 3, 10, 0.01));
+	SERIAL_CHECK_TRUE(check_position_kept("aborted GOTO", events, count, busy, ra0, dec0, 0.01));
+	// a GOTO the mount refuses with R2, the declination error
+	SERIAL_CHECK_TRUE(simulator_control(&simulator, "fault P* R2"));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(temma_mount.device_name);
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(10, 20));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_position_polls(trace_path, 2));
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("refused GOTO", events, count, 0, ra0, dec0, alt0, az0, 10, 20, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_position_kept("refused GOTO", events, count, busy, ra0, dec0, 0.01));
+cleanup:
+	stop_coordinates_publications(NULL);
+	if (driver_started) {
+		stop_serial_driver(&temma_mount);
+	}
 	stop_external_serial_simulator(&simulator);
 	if (*trace_path) {
 		unlink(trace_path);
@@ -2223,6 +2340,7 @@ int main(void) {
 #endif
 		{ "temma_goto_refusals_keep_position_and_report_reason", temma_goto_refusals_keep_position_and_report_reason },
 		{ "temma_abort_mid_slew_stops_short_and_idle_abort_keeps_state", temma_abort_mid_slew_stops_short_and_idle_abort_keeps_state },
+		{ "temma_coordinates_publish_the_mount_position", temma_coordinates_publish_the_mount_position },
 		{ "temma_park_position_and_pending_tracking_request", temma_park_position_and_pending_tracking_request },
 		{ "temma_refused_switch_requests_show_device_state", temma_refused_switch_requests_show_device_state },
 		{ "temma_site_changes_resend_latitude_and_sidereal_time", temma_site_changes_resend_latitude_and_sidereal_time },

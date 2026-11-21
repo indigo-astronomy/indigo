@@ -6,6 +6,8 @@ Module `indigo_agent_astrometry` creates `Astrometry Agent`. It is an INDIGO age
 
 The complete shared capture/solve/sync/center/polar/image/settings semantics are in the local [solver operations manual](platesolver.md). They apply to Astrometry Agent with the device name substituted, except the native index-management and native hint-interpretation details. This page supplies the external-backend setup and function-specific route through those recipes; no network documentation lookup is required.
 
+For the alternative native backend algorithms and indexes, see the optional external [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 ## Function inventory
 
 | ID | User function | Recipe |

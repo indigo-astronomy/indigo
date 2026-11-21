@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000043
+#define DRIVER_VERSION       0x03000045
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -254,6 +254,7 @@ typedef struct {
 	bool goto_target_valid, goto_settling, stopping;
 	double goto_target_ra, goto_target_dec;
 	bool park_moving, home_moving;
+	bool park_issued, home_issued;
 	double park_deadline, home_deadline;
 	indigo_device *mount_device, *guider_device;
 	//- data
@@ -1327,6 +1328,7 @@ static bool ioptron_init_mount(indigo_device *device) {
 	PRIVATE_DATA->last_tracking_rate = -1;
 	PRIVATE_DATA->last_custom_tracking_rate = -1;
 	PRIVATE_DATA->goto_issued = false;
+	PRIVATE_DATA->park_issued = PRIVATE_DATA->home_issued = false;
 	PRIVATE_DATA->coordinates_failed = false;
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 	MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
@@ -1645,6 +1647,18 @@ static unsigned ioptron_fingerprint(indigo_property *property) {
 	return fingerprint;
 }
 
+// The position the mount reports, converted to J2000 into the values of MOUNT_EQUATORIAL_COORDINATES as the poll does.
+static bool ioptron_read_position(indigo_device *device) {
+	double ra = 0, dec = 0;
+	if (!ioptron_get_coordinates(device, &ra, &dec)) {
+		return false;
+	}
+	indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+	return true;
+}
+
 // True when the readback is within RA_MIN_DIF / DEC_MIN_DIF degrees of the target of the last GOTO.
 static bool ioptron_at_target(indigo_device *device) {
 	double ra_difference = fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - PRIVATE_DATA->goto_target_ra);
@@ -1662,12 +1676,8 @@ static void ioptron_update_mount_state(indigo_device *device) {
 		fingerprints[i] = ioptron_fingerprint(polled[i]);
 	}
 	const char *coordinates_message = NULL, *park_message = NULL, *home_message = NULL;
-	double ra = 0, dec = 0;
-	bool coordinates_read = ioptron_get_coordinates(device, &ra, &dec);
+	bool coordinates_read = ioptron_read_position(device);
 	if (coordinates_read) {
-		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		if (PRIVATE_DATA->coordinates_failed) {
 			PRIVATE_DATA->coordinates_failed = false;
 			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
@@ -1725,7 +1735,9 @@ static void ioptron_update_mount_state(indigo_device *device) {
 			}
 		}
 		if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with these exceptions
-			if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
+			if (!PRIVATE_DATA->park_issued) {
+				// a park or unpark was accepted but its handler has not sent the command yet
+			} else if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
 				MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
 			} else if (MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
 				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -1741,6 +1753,9 @@ static void ioptron_update_mount_state(indigo_device *device) {
 					park_message = "Park did not complete";
 				}
 			}
+			if (MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE) {
+				PRIVATE_DATA->park_issued = false;
+			}
 		} else { // otherwise mirror state reported by mount
 			if (PRIVATE_DATA->parked) {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
@@ -1751,7 +1766,9 @@ static void ioptron_update_mount_state(indigo_device *device) {
 			}
 		}
 		if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with this exception
-			if (PRIVATE_DATA->homed) {
+			if (!PRIVATE_DATA->home_issued) {
+				// homing was accepted but its handler has not sent the command yet
+			} else if (PRIVATE_DATA->homed) {
 				MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
 			} else if (PRIVATE_DATA->slewing) {
 				PRIVATE_DATA->home_moving = true;
@@ -1761,6 +1778,9 @@ static void ioptron_update_mount_state(indigo_device *device) {
 				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 				MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
 				home_message = "Homing did not complete";
+			}
+			if (MOUNT_HOME_PROPERTY->state != INDIGO_BUSY_STATE) {
+				PRIVATE_DATA->home_issued = false;
 			}
 		} else { // otherwise mirror state reported by mount
 			if (!PRIVATE_DATA->homed) {
@@ -1874,6 +1894,7 @@ static void mount_connection_handler(indigo_device *device) {
 			ioptron_stop(device);
 		}
 		PRIVATE_DATA->goto_issued = PRIVATE_DATA->goto_target_valid = PRIVATE_DATA->stopping = false;
+		PRIVATE_DATA->park_issued = PRIVATE_DATA->home_issued = false;
 		PRIVATE_DATA->last_motion_ra = PRIVATE_DATA->last_motion_dec = 0;
 		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 		MOUNT_MOTION_EAST_ITEM->sw.value = MOUNT_MOTION_WEST_ITEM->sw.value = false;
@@ -1973,6 +1994,7 @@ static void mount_park_handler(indigo_device *device) {
 			MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
 		}
 	}
+	PRIVATE_DATA->park_issued = MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	//- mount.MOUNT_PARK.on_change
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
@@ -2003,6 +2025,7 @@ static void mount_home_handler(indigo_device *device) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
+	PRIVATE_DATA->home_issued = MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE;
 	MOUNT_STATE_HOME_ITEM->light.value = MOUNT_HOME_PROPERTY->state;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	//- mount.MOUNT_HOME.on_change
@@ -2065,6 +2088,12 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		PRIVATE_DATA->goto_target_valid = false;
 		if (ioptron_sync(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			// The result carries the position the mount reports now, a failed readback leaves it to the next poll. The
+			// readback can change the side of pier, which the poll would not see as a change.
+			unsigned side_of_pier = ioptron_fingerprint(MOUNT_SIDE_OF_PIER_PROPERTY);
+			if (ioptron_read_position(device) && ioptron_fingerprint(MOUNT_SIDE_OF_PIER_PROPERTY) != side_of_pier) {
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			}
 		} else {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -2081,6 +2110,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, mount_motion_ra_handler);
 		indigo_cancel_pending_handler(device, mount_motion_dec_handler);
 		indigo_cancel_pending_handler(device, mount_park_handler);
+		PRIVATE_DATA->park_issued = PRIVATE_DATA->home_issued = false;
 		if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_set_switch(MOUNT_PARK_PROPERTY, PRIVATE_DATA->parked ? MOUNT_PARK_PARKED_ITEM : MOUNT_PARK_UNPARKED_ITEM, true);
 			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -2462,7 +2492,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);

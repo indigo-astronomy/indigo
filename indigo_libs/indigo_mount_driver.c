@@ -574,7 +574,6 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 }
 
 indigo_result indigo_mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	char sexagesimal[128], sexagesimal2[128];
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
@@ -628,6 +627,9 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			// a new session starts without the ALERT of a request of the previous one
+			MOUNT_CONTEXT->keep_coordinates_alert = false;
+			MOUNT_CONTEXT->coordinates_state = INDIGO_OK_STATE;
 			indigo_delete_property(device, MOUNT_INFO_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
@@ -796,73 +798,18 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-			// The declination the request asks for; an item the request leaves out keeps its current value
+			// The coordinates the request asks for; an item the request leaves out keeps its current value
+			double sync_ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			double sync_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
+				if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
+					sync_ra = property->items[i].number.value;
+				} else if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
 					sync_dec = property->items[i].number.value;
 				}
 			}
-			if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_coordinates(device, "SYNC in CONTROLLER mode passed to indigo_mount_change_property");
-			} else if (MOUNT_CONTEXT->alignment_point_count >= MOUNT_MAX_ALIGNMENT_POINTS) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_coordinates(device, "Too many alignment points");
-			} else if (fabs(sync_dec) > MOUNT_SYNC_POLE_LIMIT_DEC || fabs(MOUNT_RAW_COORDINATES_DEC_ITEM->number.value) > MOUNT_SYNC_POLE_LIMIT_DEC) {
-				// Near the pole any right ascension points almost the same way, but the RA offset of an alignment point applies to
-				// the targets it is used for: a point made there (for example RA 6:00 / Dec 90 in the home position) would send
-				// later GoTos hours away. The request is refused before its values are adopted, the property keeps the real pointing.
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_coordinates(device, "Sync refused: right ascension is ill-defined within 5 degrees of the celestial pole, sync below 85 degrees of declination");
-			} else {
-				indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-				int index = MOUNT_CONTEXT->alignment_point_count++;
-				indigo_alignment_point *point = MOUNT_CONTEXT->alignment_points + index;
-				time_t utc = indigo_get_mount_utc(device);
-				point->lst = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-				point->ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-				point->dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-				point->raw_ra = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
-				point->raw_dec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
-
-				if (MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
-					double ha = indigo_range24(point->lst - point->ra);
-					if (ha > 12.0) {
-						ha -= 24.0;
-					}
-					point->side_of_pier = (ha >= 0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
-				} else {
-					point->side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
-				}
-
-				char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
-				snprintf(name, INDIGO_NAME_SIZE, "%d", index);
-				snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
-				indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + index, name, label, true);
-				point->used = true;
-
-				//  Deselect other points if using single point mode
-				if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
-					for (int i = 0; i < MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count; i++) {
-						MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[i].sw.value = false;
-						MOUNT_CONTEXT->alignment_points[i].used = false;
-					}
-				}
-
-				indigo_mount_save_alignment_points(device);
-				MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = MOUNT_CONTEXT->alignment_point_count;
-				MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_delete_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
-				indigo_define_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
-				indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + index + 1, name, label, false);
-				MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = MOUNT_CONTEXT->alignment_point_count + 1;
-				MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_delete_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
-				indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_coordinates(device, NULL);
-			}
+			indigo_mount_sync(device, sync_ra, sync_dec);
+			indigo_update_coordinates(device, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_MODE_PROPERTY, property)) {
@@ -1371,7 +1318,85 @@ time_t indigo_get_mount_utc(indigo_device *device) {
 	}
 }
 
+bool indigo_mount_sync(indigo_device *device, double ra, double dec) {
+	char sexagesimal[128], sexagesimal2[128];
+	if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "SYNC in CONTROLLER mode passed to indigo_mount_sync");
+		return false;
+	}
+	if (MOUNT_CONTEXT->alignment_point_count >= MOUNT_MAX_ALIGNMENT_POINTS) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Too many alignment points");
+		return false;
+	}
+	if (fabs(dec) > MOUNT_SYNC_POLE_LIMIT_DEC || fabs(MOUNT_RAW_COORDINATES_DEC_ITEM->number.value) > MOUNT_SYNC_POLE_LIMIT_DEC) {
+		// Near the pole any right ascension points almost the same way, but the RA offset of an alignment point applies to
+		// the targets it is used for: a point made there (for example RA 6:00 / Dec 90 in the home position) would send
+		// later GoTos hours away. The request is refused before its values are adopted, the property keeps the real pointing.
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Sync refused: right ascension is ill-defined within 5 degrees of the celestial pole, sync below 85 degrees of declination");
+		return false;
+	}
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = ra;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = dec;
+	int index = MOUNT_CONTEXT->alignment_point_count++;
+	indigo_alignment_point *point = MOUNT_CONTEXT->alignment_points + index;
+	time_t utc = indigo_get_mount_utc(device);
+	point->lst = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+	point->ra = ra;
+	point->dec = dec;
+	point->raw_ra = MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
+	point->raw_dec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
+	if (MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
+		double ha = indigo_range24(point->lst - point->ra);
+		if (ha > 12.0) {
+			ha -= 24.0;
+		}
+		point->side_of_pier = (ha >= 0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
+	} else {
+		point->side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
+	}
+	char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
+	snprintf(name, INDIGO_NAME_SIZE, "%d", index);
+	snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
+	indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + index, name, label, true);
+	point->used = true;
+	//  Deselect other points if using single point mode
+	if (MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM->sw.value) {
+		for (int i = 0; i < MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count; i++) {
+			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items[i].sw.value = false;
+			MOUNT_CONTEXT->alignment_points[i].used = false;
+		}
+	}
+	indigo_mount_save_alignment_points(device);
+	MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = MOUNT_CONTEXT->alignment_point_count;
+	MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_delete_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
+	indigo_define_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
+	indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + index + 1, name, label, false);
+	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = MOUNT_CONTEXT->alignment_point_count + 1;
+	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_delete_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+	indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	return true;
+}
+
 void indigo_update_coordinates(indigo_device *device, const char *message) {
+	// The keep-ALERT flag: an ALERT published right after BUSY ended a request or a motion in failure and stays until the
+	// next BUSY, a later OK (typically the position poll reporting the unchanged pointing) is published as ALERT. The
+	// state compared is the one this function last published: an ALERT that a driver published by other means sets the
+	// flag only if the next call still has ALERT after this function last published BUSY.
+	indigo_property_state state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	if (state == INDIGO_BUSY_STATE) {
+		MOUNT_CONTEXT->keep_coordinates_alert = false;
+	} else if (state == INDIGO_ALERT_STATE && MOUNT_CONTEXT->coordinates_state == INDIGO_BUSY_STATE) {
+		MOUNT_CONTEXT->keep_coordinates_alert = true;
+	} else if (state == INDIGO_OK_STATE && MOUNT_CONTEXT->keep_coordinates_alert) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	MOUNT_CONTEXT->coordinates_state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
 	time_t utc = indigo_get_mount_utc(device);
 	MOUNT_LST_TIME_ITEM->number.value = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 	if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
@@ -1403,7 +1428,8 @@ static void add_simulated_mount_offset(indigo_simulated_mount_state *state, doub
 void indigo_set_simulated_mount_state(indigo_device *device, indigo_simulated_mount_state *state) {
 	pthread_mutex_lock(&simulated_mount_mutex);
 	if (state != NULL) {
-		if (simulated_mount_owner == device && state->guidable) {
+		// fmod(ra + 24, 24) is not exact, a mount without pending guide offsets gets its own coordinates back unchanged
+		if (simulated_mount_owner == device && state->guidable && (simulated_mount_ra_offset != 0 || simulated_mount_dec_offset != 0)) {
 			add_simulated_mount_offset(state, simulated_mount_ra_offset, simulated_mount_dec_offset);
 		}
 		simulated_mount_ra_offset = simulated_mount_dec_offset = 0;

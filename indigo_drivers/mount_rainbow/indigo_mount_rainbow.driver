@@ -22,7 +22,7 @@ driver rainbow {
 	label = "RainbowAstro Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, generator migration by OpenAI Codex";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 25;
+	version = 27;
 	serial {
 	}
 	include {
@@ -55,6 +55,10 @@ driver rainbow {
 		int message_count;
 		bool messages_scheduled;
 		double ra;
+		// :GD# requests written and their replies processed, so a readback knows which :GD reply is its own
+		unsigned position_requests, position_replies;
+		// a readback processes the replies inside a change handler, which publishes the coordinates itself
+		bool reading_position;
 		bool tracking;
 		int track_rate;
 		char utc_time[INDIGO_VALUE_SIZE], utc_offset[INDIGO_VALUE_SIZE];
@@ -83,6 +87,9 @@ driver rainbow {
 		static bool rainbow_write(indigo_device *device, const char *command) {
 			pthread_mutex_lock(&PRIVATE_DATA->write_mutex);
 			bool result = PRIVATE_DATA->handle != NULL && indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0;
+			for (const char *request = command; result && (request = strstr(request, ":GD#")) != NULL; request += 4) {
+				PRIVATE_DATA->position_requests++;
+			}
 			pthread_mutex_unlock(&PRIVATE_DATA->write_mutex);
 			return result;
 		}
@@ -238,6 +245,10 @@ driver rainbow {
 			PRIVATE_DATA->message_count = 0;
 			PRIVATE_DATA->messages_scheduled = false;
 			pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+			// the replies to the requests written so far are discarded or never come
+			pthread_mutex_lock(&PRIVATE_DATA->write_mutex);
+			PRIVATE_DATA->position_replies = PRIVATE_DATA->position_requests;
+			pthread_mutex_unlock(&PRIVATE_DATA->write_mutex);
 		}
 
 		// :MM0#, or :CL0# after :CL1#, ends the running GOTO or park
@@ -276,9 +287,15 @@ driver rainbow {
 				indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+				// a reply to a request written before the messages were cleared is not counted
+				pthread_mutex_lock(&PRIVATE_DATA->write_mutex);
+				if ((int)(PRIVATE_DATA->position_requests - PRIVATE_DATA->position_replies) > 0) {
+					PRIVATE_DATA->position_replies++;
+				}
+				pthread_mutex_unlock(&PRIVATE_DATA->write_mutex);
 			} else if (!strcmp(response, ":CL0#") && !PRIVATE_DATA->goto_active) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED) {
+				if (IS_CONNECTED && !PRIVATE_DATA->reading_position) {
 					indigo_update_coordinates(device, NULL);
 				}
 			} else if (!strcmp(response, ":CL0#")) {
@@ -305,7 +322,7 @@ driver rainbow {
 			} else if (!strcmp(response, ":CL1#")) {
 				PRIVATE_DATA->goto_moving = PRIVATE_DATA->goto_active;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-				if (IS_CONNECTED) {
+				if (IS_CONNECTED && !PRIVATE_DATA->reading_position) {
 					indigo_update_coordinates(device, NULL);
 				}
 			} else if (!strncmp(response, ":CH", 3)) {
@@ -318,7 +335,7 @@ driver rainbow {
 					indigo_update_property(device, MOUNT_HOME_PROPERTY, found ? "At home" : response[3] == '<' ? "DEC axis homing failed" : "RA axis homing failed");
 				}
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED) {
+				if (IS_CONNECTED && !PRIVATE_DATA->reading_position) {
 					indigo_update_coordinates(device, NULL);
 				}
 			} else if (!strncmp(response, ":GC", 3)) {
@@ -474,6 +491,30 @@ driver rainbow {
 			for (int i = 0; i < count; i++) {
 				rainbow_process_message(device, PRIVATE_DATA->processed[i]);
 			}
+		}
+
+		// Reads the position back from a change handler on the device queue: the replies are taken over from the reader in
+		// turn, and the mount answers the readback after every request written before it. The coordinates the replies
+		// would publish are left to the handler. A lost reply leaves the values to the next poll.
+		static bool rainbow_read_position(indigo_device *device) {
+			if (!rainbow_write(device, ":GR#:GD#")) {
+				return false;
+			}
+			pthread_mutex_lock(&PRIVATE_DATA->write_mutex);
+			unsigned expected = PRIVATE_DATA->position_requests;
+			pthread_mutex_unlock(&PRIVATE_DATA->write_mutex);
+			PRIVATE_DATA->reading_position = true;
+			for (int i = 0; i < 100 && (int)(PRIVATE_DATA->position_replies - expected) < 0; i++) {
+				indigo_usleep(10000);
+				rainbow_process_messages(device);
+			}
+			PRIVATE_DATA->reading_position = false;
+			if ((int)(PRIVATE_DATA->position_replies - expected) < 0) {
+				// a lost reply is not waited for again
+				PRIVATE_DATA->position_replies = expected;
+				return false;
+			}
+			return true;
 		}
 
 		static void mount_goto_finalizer(indigo_device *device) {
@@ -788,8 +829,14 @@ driver rainbow {
 				}
 				if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 					snprintf(command, sizeof(command), ":Ck%07.3f%+07.3f#", ra * 15 >= 360 - 0.0005 ? 0 : ra * 15, dec);
-					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = rainbow_write(device, command) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-					indigo_update_coordinates(device, NULL);
+					// the reference to the finalizer suppresses the generated OK prologue; the result carries the position the
+					// mount reports after the sync, which the replies processed meanwhile do not change into a motion state
+					if (rainbow_write(device, command)) {
+						rainbow_read_position(device);
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+					} else {
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 				} else {
 					const char *rate_command = MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value ? ":CtS#" : MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value ? ":CtM#" : ":CtR#";
 					bool ok = rainbow_write(device, rate_command);
@@ -802,14 +849,13 @@ driver rainbow {
 						indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 					}
 					ok = rainbow_write(device, command) && ok;
-					if (!ok) {
-						PRIVATE_DATA->goto_active = false;
-						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-					}
-					indigo_update_coordinates(device, NULL);
 					if (ok) {
+						// the finalizer runs on this device queue only after the handler published BUSY
 						PRIVATE_DATA->goto_deadline = indigo_monotonic_time() + 600;
 						indigo_execute_handler_in(device, 0.2, mount_goto_finalizer);
+					} else {
+						PRIVATE_DATA->goto_active = false;
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 				}
 			}

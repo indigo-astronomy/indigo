@@ -27,7 +27,7 @@
 - [Multi-instance Support](MULTI-INSTANCE_SUPPORT.md)
 - [Device Access Control and Locking](INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md)
 - [RAW Image Format](INDIGO_RAW_IMAGE_FORMAT.md)
-- [Solver Index Format](SOLVER_INDEX_FORMAT.md)
+- [Native plate solver and index reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md)
 - [Camera Driver Saved Images](CCD_DRIVER_SAVED_IMAGES.md)
 
 ## Agents
@@ -36,6 +36,7 @@
 - [Mount Agent](../indigo_drivers/agent_mount/README.md)
 - [Guider Agent](../indigo_drivers/agent_guider/README.md)
 - [Auxiliary Agent](../indigo_drivers/agent_auxiliary/README.md)
+- [Native Platesolver Agent and technical reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md)
 - [Astrometry Agent](../indigo_drivers/agent_astrometry/README.md)
 - [ASTAP Agent](../obsoleted_drivers/agent_astap/README.md)
 - [Config Agent](../indigo_drivers/agent_config/README.md)

@@ -487,7 +487,7 @@ Apply the shared scope above. Reference scenarios: `integration/test_rotator_asi
 
 #### Rotator hardware acceptance
 
-Perform a small absolute move and supported relative moves in both directions, verify angle readback, abort and move again. Exercise SYNC and available direction/settings, restoring originals. Keep within usable travel; field derotation, plate solving and image orientation accuracy are outside driver tests.
+Perform a small absolute move and supported relative moves in both directions, verify angle readback, abort and move again. Exercise SYNC and available direction/settings, restoring originals. Keep within usable travel; field derotation, [plate solving](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) and image orientation accuracy are outside driver tests.
 
 ## Dome Drivers
 

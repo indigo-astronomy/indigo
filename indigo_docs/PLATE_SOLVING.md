@@ -8,11 +8,13 @@ e-mail: *rumenastro@gmail.com*
 
 ## Introduction
 
-Plate solving is a method used to determine what exactly is depicted on an astronomical image or where the telescope is pointing in the sky by comparing the star field in the image to a database of star positions. Once a match is found the coordinates of the center of the frame (Right Ascension and Declination) are returned, accompanied by several other parameters like frame rotation, pixel scale, field of view etc. This task in INDIGO is performed by two agents:
-- **INDIGO Aastrometry Agent** - uses custom build of astrometry.net engine.
+Plate solving is a method used to determine what exactly is depicted on an astronomical image or where the telescope is pointing in the sky by comparing the star field in the image to a database of star positions. Once a match is found the coordinates of the center of the frame (Right Ascension and Declination) are returned, accompanied by several other parameters like frame rotation, pixel scale, field of view etc. The available backends include:
+
+- **INDIGO Platesolver Agent** - uses the native INDIGO solver; see the [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) for its algorithms, hints and index setup.
+- **INDIGO Astrometry Agent** - uses custom build of astrometry.net engine.
 - **INDIGO ASTAP Agent** - uses ASTAP engine.
 
-ASTAP agent is deprecated and we do not recommend using it. It will not be covered in this document.
+ASTAP agent is deprecated and we do not recommend using it. It will not be covered in this document. The index and hint instructions below describe the Astrometry.net backend; use the native reference above for Platesolver Agent.
 
 ## Choosing right indexes (stellar positions databases)
 The star position database is available in the form of index files specific for the solver engine. Astrometry.net engine can use two separate catalogs Tycho-2 and 2MASS.

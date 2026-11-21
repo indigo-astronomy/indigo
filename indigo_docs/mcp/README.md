@@ -13,6 +13,8 @@ The MCP service starts as soon as `indigo_agent_mcp` is loaded and stops when it
 
 The manuals cover the in-tree agent modules, including the distinct native Platesolver and external Astrometry backends, protocol bridges and the development Test Agent. Hardware-driver-specific service commands remain outside this manual set; a model must report a missing service recipe instead of inventing one from an `X_` label.
 
+The [native INDIGO solver reference](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) is an optional external technical reference for algorithms, WCS and index construction; operating recipes remain in the [bundled solver manual](agents/platesolver.md).
+
 ## Documents
 
 | Agent | Semantic manual |

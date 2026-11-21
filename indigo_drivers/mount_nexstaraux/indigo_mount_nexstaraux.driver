@@ -22,7 +22,7 @@ driver nexstaraux {
 	label = "NexStar AUX Mount";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
-	version = 25;
+	version = 26;
 	serial {
 		no_ports = true;
 	}
@@ -1051,6 +1051,7 @@ driver nexstaraux {
 			// on_detach { }
 		}
 		inherited MOUNT_EQUATORIAL_COORDINATES {
+			preserve_values = true;
 			on_change {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
@@ -1072,6 +1073,13 @@ driver nexstaraux {
 				} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 					if (nexstaraux_sync(device, ra, dec)) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						// The result carries the position the controllers report now, a failed readback leaves it to the next poll.
+						double synced_ra = 0, synced_dec = 0;
+						if (nextstar_get_coordinates(device, &synced_ra, &synced_dec)) {
+							indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &synced_ra, &synced_dec);
+							MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = synced_ra;
+							MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = synced_dec;
+						}
 					} else {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					}

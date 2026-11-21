@@ -72,6 +72,8 @@ Run `make all` from the repository root first if `build/lib/libindigo` or the re
 - `make -C indigo_test test-clean` removes generated `indigo_test/build` binaries and dSYM files.
 - Setting `INDIGO_SIMULATOR_TRACE_DIR=<dir>` on a serial simulator test run copies every fixture's simulator command event log into that directory as `<test case>-<n>.events`. Use it to record a reference trace before a driver refactoring and to compare the ordered protocol interactions afterwards.
 
+For native solver algorithms, index requirements and validation references, see the [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 After validating changes that build tests, run `make -C indigo_test test-clean` unless the user asks to keep build artifacts.
 
 ## Machine Readable Results
@@ -558,6 +560,8 @@ macOS has no equivalent control. A hub with per-port power switching driven by
 otherwise the cable has to be pulled by hand.
 
 ## Building the Real Astrometry.net Solver
+
+The native Platesolver Agent uses a separate in-process backend; see the [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md) for its prerequisites and index setup.
 
 `test_agent_astrometry` runs against fake `solve-field` and `image2xy` scripts.
 Exercising the agent with the real solver needs the INDIGO build of

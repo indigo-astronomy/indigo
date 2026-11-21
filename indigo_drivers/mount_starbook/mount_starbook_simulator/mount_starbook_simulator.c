@@ -156,35 +156,53 @@ static bool parse_args(int argc, char *argv[]) {
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--trace-file")) {
-			if (++i == argc) return false;
+			if (++i == argc) {
+				return false;
+			}
 			options.trace_file = argv[i];
 		} else if (!strcmp(argv[i], "--version")) {
-			if (++i == argc) return false;
+			if (++i == argc) {
+				return false;
+			}
 			state.version = strtod(argv[i], NULL);
 		} else if (!strcmp(argv[i], "--fault-reply")) {
-			if (i + 2 >= argc) return false;
+			if (i + 2 >= argc) {
+				return false;
+			}
 			options.fault_path = argv[++i];
 			options.fault_reply = argv[++i];
 		} else if (!strcmp(argv[i], "--drop-reply")) {
-			if (++i == argc) return false;
+			if (++i == argc) {
+				return false;
+			}
 			options.drop_path = argv[i];
 		} else if (!strcmp(argv[i], "--tracking")) {
-			if (++i == argc) return false;
+			if (++i == argc) {
+				return false;
+			}
 			state.track_state = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--pierside")) {
-			if (++i == argc) return false;
+			if (++i == argc) {
+				return false;
+			}
 			state.pierside = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--place")) {
-			if (i + 3 >= argc) return false;
+			if (i + 3 >= argc) {
+				return false;
+			}
 			snprintf(state.longitude, sizeof(state.longitude), "%s", argv[++i]);
 			snprintf(state.latitude, sizeof(state.latitude), "%s", argv[++i]);
 			state.timezone = atoi(argv[++i]);
 		} else if (!strcmp(argv[i], "--init")) {
 			state.init = true;
 		} else if (!strcmp(argv[i], "--goto-polls")) {
-			if (++i == argc) return false;
+			if (++i == argc) {
+				return false;
+			}
 			goto_poll_count = atoi(argv[i]);
-			if (goto_poll_count < 1) goto_poll_count = 1;
+			if (goto_poll_count < 1) {
+				goto_poll_count = 1;
+			}
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -423,10 +441,18 @@ static void response_body(const char *path, char *body, size_t size) {
 	if (!strncmp(path, "/VERSION", 8)) {
 		snprintf(body, size, "VERSION=%.2f", state.version);
 	} else if (!strncmp(path, "/GETSTATUS2", 11)) {
-		if (state.north) state.dec += 0.01;
-		if (state.south) state.dec -= 0.01;
-		if (state.east) state.ra += 0.01;
-		if (state.west) state.ra -= 0.01;
+		if (state.north) {
+			state.dec += 0.01;
+		}
+		if (state.south) {
+			state.dec -= 0.01;
+		}
+		if (state.east) {
+			state.ra += 0.01;
+		}
+		if (state.west) {
+			state.ra -= 0.01;
+		}
 		advance_goto();
 		snprintf(body, size, "RA=%.6f&DEC=%.6f&GOTO=%d&STATE=%s", state.ra, state.dec, state.goto_state, status_state());
 	} else if (!strncmp(path, "/GETSTATUS", 10)) {
@@ -534,7 +560,6 @@ static void handle_client(int client_fd) {
 		*runtime_drop_path = '\0';
 		return;
 	}
-
 	char body[1024];
 	if (!options.fault_used && path_matches(options.fault_path, path)) {
 		options.fault_used = true;
@@ -548,16 +573,7 @@ static void handle_client(int client_fd) {
 	char html[1400];
 	snprintf(html, sizeof(html), "<html><HEAD></HEAD><!--%s--></html>", body);
 	char response[1800];
-	snprintf(response, sizeof(response),
-		"HTTP/1.1 200 OK\r\n"
-		"Content-Type: text/html\r\n"
-		"Content-Length: %zu\r\n"
-		"Connection: close\r\n"
-		"\r\n"
-		"%s",
-		strlen(html),
-		html
-	);
+	snprintf(response, sizeof(response), "HTTP/1.1 200 OK\r\n" "Content-Type: text/html\r\n" "Content-Length: %zu\r\n" "Connection: close\r\n" "\r\n" "%s", strlen(html), html);
 	write_all(client_fd, response, strlen(response));
 }
 
@@ -580,7 +596,6 @@ int main(int argc, char *argv[]) {
 		printf("StarBook simulator ready on %s\n", endpoint);
 		fflush(stdout);
 	}
-
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 	while (running) {

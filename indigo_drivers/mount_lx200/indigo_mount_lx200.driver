@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 84;
+	version = 85;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -957,6 +957,18 @@ driver lx200 {
 			}
 		}
 		return false;
+	}
+
+	// The position the mount reports, converted to J2000 into the values of MOUNT_EQUATORIAL_COORDINATES as the poll does.
+	static bool meade_read_position(indigo_device *device) {
+		double ra = 0, dec = 0;
+		if (!meade_get_coordinates(device, &ra, &dec)) {
+			return false;
+		}
+		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+		return true;
 	}
 
 	static bool meade_set_tracking(indigo_device *device, bool on);
@@ -2747,14 +2759,9 @@ driver lx200 {
 			PRIVATE_DATA->slewing = *PRIVATE_DATA->response;
 			if (!PRIVATE_DATA->slewing && PRIVATE_DATA->goto_issued) {
 				// GR/GD precede D in the poll; the slew may have ended between those reads.
-				double ra = 0, dec = 0;
-				PRIVATE_DATA->coordinate_read_failed = !meade_get_coordinates(device, &ra, &dec);
+				PRIVATE_DATA->coordinate_read_failed = !meade_read_position(device);
 				if (PRIVATE_DATA->coordinate_read_failed) {
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 				}
 			}
 		}
@@ -3658,14 +3665,10 @@ driver lx200 {
 	}
 
 	static void meade_update_mount_state(indigo_device *device) {
-		double ra = 0, dec = 0;
 		if (PRIVATE_DATA->meade_park_silent) {
 			// A parked Meade that stopped answering is not asked anything, the last position read stands.
 			PRIVATE_DATA->coordinate_read_failed = false;
-		} else if (meade_get_coordinates(device, &ra, &dec)) {
-			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+		} else if (meade_read_position(device)) {
 			if (PRIVATE_DATA->coordinate_read_failed) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -3730,9 +3733,9 @@ driver lx200 {
 		} else if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->goto_issued) {
 			// a GOTO was accepted but its slew command has not been sent yet
 		} else {
-			// The coordinates were read, so the position is valid again whatever left the
-			// property in ALERT. Only a failed readback keeps it there, through the branch
-			// above; a refused GOTO must not poison the property for the rest of the session.
+			// The coordinates were read, so the position is valid again after a failed readback.
+			// The ALERT of a refused or aborted GOTO stays until the next request: it was published
+			// right after BUSY, and indigo_update_coordinates() publishes this OK as ALERT until then.
 			PRIVATE_DATA->goto_issued = false;
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -4677,6 +4680,10 @@ driver lx200 {
 				} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 					if (meade_sync(device, ra, dec)) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						// The result carries the position the mount reports now, a failed readback leaves it to the next poll.
+						if (!PRIVATE_DATA->meade_park_silent) {
+							meade_read_position(device);
+						}
 					} else {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_send_message(device, ALERT_PROPERTY, "Sync failed");
@@ -4716,8 +4723,8 @@ driver lx200 {
 							INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_OK_STATE, NULL);
 						}
 						// An aborted goto did not reach its target, so it ends as a failed request.
-						// The values are the last position read, and the next poll publishes the
-						// position the mount stopped at as valid again.
+						// The values are the last position read; the polls publish the position the
+						// mount stopped at and keep the ALERT until the next request.
 						bool goto_aborted = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
 						if (goto_aborted) {
 							PRIVATE_DATA->goto_issued = false;

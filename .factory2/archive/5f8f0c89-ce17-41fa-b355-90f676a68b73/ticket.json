@@ -1,0 +1,692 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5f8f0c89-ce17-41fa-b355-90f676a68b73",
+  "revision": 38,
+  "title": "Add the INDIGO document header to PLATESOLVER.md",
+  "description": "Add the Revision, Author and e-mail lines directly below the existing title of indigo_drivers/agent_platesolver/doc/PLATESOLVER.md, matching the spacing, date format and emphasis in the adjacent Scheduler technical reference. Proposed metadata: revision 20.11.2026 and Peter Polakovic <peter.polakovic@cloudmakers.eu> from the commit introducing the consolidated guide, subject to owner correction. Preserve the original index-format attribution in the existing section. Verify the diff is confined to the header.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T10:55:46.226327Z",
+  "status": "closed",
+  "branch": "ticket/5f8f0c89-ce17-41fa-b355-90f676a68b73",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "55d591db-c855-417c-a952-2f36d4538c35",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T11:13:11.713494Z",
+          "last_activity_at": "2026-11-20T11:43:23.958865Z",
+          "ended_at": "2026-11-20T11:43:23.958865Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1812245.371,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T11:13:11.713494Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/5f8f0c89-ce17-41fa-b355-90f676a68b73"
+        },
+        {
+          "at": "2026-11-20T11:43:23.958865Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1812245.371,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "f3b7f86a-d542-455f-bc96-c63877a4cc12",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "0cf2b6cd-4d7f-4cd4-9398-cd21993a9503",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T11:43:23.959005Z",
+          "last_activity_at": "2026-11-20T11:44:49.181292Z",
+          "ended_at": "2026-11-20T11:44:49.181292Z",
+          "outcome": {
+            "summary": "Independent review passed at 5e1536b766999fcde8e5d575f9fd1b09650c5248. Reviewed all 30 changed files, decoding the generated MCP help arrays for semantic inspection. Header matches Scheduler conventions; English comparison accurately distinguishes native quad voting/affine TAN fitting, Astrometry.net indexed/Bayesian verification, and ASTAP local distance-ratio quads using the cited primary descriptions. Owner-approved PLATESOLVER.md is byte-identical to 544e0ac9. Maintained-document inventory covers plate/astrometry/ASTAP and solve/solver/solving variants; unchanged hits are historical status/changelog records, executable HTML controls or generic problem-solving text, with vendor/Factory archives excluded. Verified 53 changed-line Markdown link paths; compiled operating links resolve to indigo://help and optional native references retain the canonical GitHub URL. MCP help --check passed for 18 documents; decoded baseline J2000 synchronizations match existing source manuals. Retired SOLVER_INDEX_FORMAT.md remains absent with no maintained references. Whitespace check passed and worktree is clean. No application behavior changed; runtime/hardware tests are not applicable. No blocking findings.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 85222.287,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T11:43:23.959005Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T11:44:49.181292Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Independent review passed at 5e1536b766999fcde8e5d575f9fd1b09650c5248. Reviewed all 30 changed files, decoding the generated MCP help arrays for semantic inspection. Header matches Scheduler conventions; English comparison accurately distinguishes native quad voting/affine TAN fitting, Astrometry.net indexed/Bayesian verification, and ASTAP local distance-ratio quads using the cited primary descriptions. Owner-approved PLATESOLVER.md is byte-identical to 544e0ac9. Maintained-document inventory covers plate/astrometry/ASTAP and solve/solver/solving variants; unchanged hits are historical status/changelog records, executable HTML controls or generic problem-solving text, with vendor/Factory archives excluded. Verified 53 changed-line Markdown link paths; compiled operating links resolve to indigo://help and optional native references retain the canonical GitHub URL. MCP help --check passed for 18 documents; decoded baseline J2000 synchronizations match existing source manuals. Retired SOLVER_INDEX_FORMAT.md remains absent with no maintained references. Whitespace check passed and worktree is clean. No application behavior changed; runtime/hardware tests are not applicable. No blocking findings."
+        }
+      ],
+      "result": {
+        "summary": "Independent review passed at 5e1536b766999fcde8e5d575f9fd1b09650c5248. Reviewed all 30 changed files, decoding the generated MCP help arrays for semantic inspection. Header matches Scheduler conventions; English comparison accurately distinguishes native quad voting/affine TAN fitting, Astrometry.net indexed/Bayesian verification, and ASTAP local distance-ratio quads using the cited primary descriptions. Owner-approved PLATESOLVER.md is byte-identical to 544e0ac9. Maintained-document inventory covers plate/astrometry/ASTAP and solve/solver/solving variants; unchanged hits are historical status/changelog records, executable HTML controls or generic problem-solving text, with vendor/Factory archives excluded. Verified 53 changed-line Markdown link paths; compiled operating links resolve to indigo://help and optional native references retain the canonical GitHub URL. MCP help --check passed for 18 documents; decoded baseline J2000 synchronizations match existing source manuals. Retired SOLVER_INDEX_FORMAT.md remains absent with no maintained references. Whitespace check passed and worktree is clean. No application behavior changed; runtime/hardware tests are not applicable. No blocking findings.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 85222.287,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "7daaf03d-5b97-4105-849a-3f59be75e07b",
+      "event": "ticket/created",
+      "at": "2026-11-20T10:55:46.227133Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "c5c7cc0d-c4e1-474c-8b2d-8b93201dd65d",
+      "event": "question/asked",
+      "at": "2026-11-20T10:55:51.575562Z",
+      "actor": "human/Peter Polakovic",
+      "text": "May we start this low-priority, low-severity, simple documentation ticket with the proposed Scheduler-style header dated 20.11.2026 and the introducing commit author Peter Polakovic (peter.polakovic@cloudmakers.eu)?"
+    },
+    {
+      "event_id": "242f36f2-ea3f-4306-8946-c409f1f3efdf",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T11:13:02.018438Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "f4f9ad99-b4d7-4481-b79b-3cf9fb496010",
+      "event": "question/answered",
+      "at": "2026-11-20T11:13:02.210704Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner confirmed the proposed header, priority, severity, simple profile and start. Keep this ticket open until the owner finishes reading and explicitly permits closure."
+    },
+    {
+      "event_id": "abbaf33f-86a5-4719-b3f0-609b12cd8492",
+      "event": "ticket/note",
+      "at": "2026-11-20T11:13:02.329783Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner requests the header now and the ticket to remain open for possible further edits while reading. Await explicit owner approval before closure.",
+      "tokens": null
+    },
+    {
+      "event_id": "2243337c-c5c3-4e20-81f2-643c9438ee07",
+      "event": "task/progress",
+      "at": "2026-11-20T11:13:11.713898Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Implementation started on branch ticket/5f8f0c89-ce17-41fa-b355-90f676a68b73"
+    },
+    {
+      "event_id": "5b6e6746-f84e-4ea2-af32-12c2ef30a12a",
+      "event": "ticket/started",
+      "at": "2026-11-20T11:13:11.715866Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/5f8f0c89-ce17-41fa-b355-90f676a68b73",
+      "base": "master"
+    },
+    {
+      "event_id": "4d7c0065-ad54-4055-acf6-09f212373ee4",
+      "event": "task/progress",
+      "at": "2026-11-20T11:13:37.942444Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Adding the confirmed document header; verifying header-only diff and configured static checks.",
+      "attempt_id": "55d591db-c855-417c-a952-2f36d4538c35",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "349ace5b-f8ee-4f3a-8faf-7c127c9292f2",
+      "event": "task/progress",
+      "at": "2026-11-20T11:13:58.374172Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "4c2dd779-8e01-436a-b3e8-2bd76435b7bc",
+      "event": "task/progress",
+      "at": "2026-11-20T11:13:58.397187Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "81bdeed7-caa6-4568-9965-15066de113cf",
+      "event": "check/passed",
+      "at": "2026-11-20T11:13:58.398824Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "d873e183d4ce6971b436bdc92e71328d874c070b",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "c7714b64-b231-4ff6-963b-2a74cc22f009",
+      "event": "ticket/note",
+      "at": "2026-11-20T11:26:01.518138Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner requests a new English chapter comparing INDIGO native solving with Astrometry.net and ASTAP, explaining concrete algorithmic differences, and references to both projects. Leave the ticket open for reading as previously requested.",
+      "tokens": null
+    },
+    {
+      "event_id": "d6f932e0-f58d-41b3-b73c-152a09de5530",
+      "event": "task/progress",
+      "at": "2026-11-20T11:26:39.719899Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Comparing solver algorithms with primary documentation and adding the requested chapter.",
+      "attempt_id": "55d591db-c855-417c-a952-2f36d4538c35",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "02c2ca64-74fc-48a5-997e-97c96eb6883f",
+      "event": "task/progress",
+      "at": "2026-11-20T11:27:40.779235Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Checking chapter placement, TOC anchors, citations and preservation of existing document text."
+    },
+    {
+      "event_id": "e0bfbcea-ea1d-4ba1-9268-659321c6aabb",
+      "event": "task/progress",
+      "at": "2026-11-20T11:27:46.604210Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c5ceb0ad-4537-4ce0-a613-338115132555",
+      "event": "task/progress",
+      "at": "2026-11-20T11:27:46.627744Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "0e4a5d0e-a9c8-4e00-ad07-f67aeeb47d4a",
+      "event": "check/passed",
+      "at": "2026-11-20T11:27:46.629646Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "c41c2e11396addd51efade38252aba18ab377107",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "6387e347-fe6c-45bc-b5b7-f2b86a1c230f",
+      "event": "ticket/note",
+      "at": "2026-11-20T11:38:23.038239Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner authorizes closure and requests removal of the original INDIGO Solver Index Format document. Verified the standalone file was deleted by 62beea80c and the maintained tree has no references to the retired path. Retain the current worktree edit to the attribution paragraph as part of the final document.",
+      "tokens": null
+    },
+    {
+      "event_id": "c95a49e0-96fb-4228-901b-dc8ecb44cb7e",
+      "event": "task/progress",
+      "at": "2026-11-20T11:38:32.685447Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3bd16af9-7d05-4e51-9585-ab985823c7b1",
+      "event": "task/progress",
+      "at": "2026-11-20T11:38:32.729784Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b9ff47ec-b13c-4388-96a4-7abf6399dc62",
+      "event": "check/passed",
+      "at": "2026-11-20T11:38:32.731963Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "544e0ac9be91d6ac425256a7ee7de756b4e55e30",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "20fe9d06-2dbc-41a3-8f04-2435558f98bf",
+      "event": "ticket/note",
+      "at": "2026-11-20T11:38:38.877005Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Before authorized closure, add a discoverable link to the native INDIGO solver technical reference everywhere maintained project documentation discusses plate solving, including external backend guides. Inventory naming variants and navigational/CLI references and verify new links relative to their sources. Preserve prose and technical distinctions. Finish review and close after this addition.",
+      "tokens": null
+    },
+    {
+      "event_id": "6ee91dbf-c5ac-49e5-ae36-7fd780cd2508",
+      "event": "task/progress",
+      "at": "2026-11-20T11:40:18.847943Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Adding contextual native solver links across maintained guides and embedded help sources.",
+      "attempt_id": "55d591db-c855-417c-a952-2f36d4538c35",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "afdb57ad-5863-4c53-81c2-457106c61059",
+      "event": "task/progress",
+      "at": "2026-11-20T11:41:50.917734Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Validating new Markdown targets, help URI rewriting, generated content and final search coverage."
+    },
+    {
+      "event_id": "daa9a8ae-9782-4143-a02f-48895974a98e",
+      "event": "ticket/note",
+      "at": "2026-11-20T11:42:25.807574Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Documentation link audit: added native solver references in maintained user/developer/test guides, both HOME indexes, scripting/scheduler references, MCP manuals and the still-linked obsolete ASTAP README. Preserved existing native README link and the owner-edited PLATESOLVER.md byte-for-byte against 544e0ac9. Excluded historical CHANGELOG/MIGRATION_STATUS/TEST_SUMMARY entries, vendor/Factory archives, and executable HTML UI controls; no protected drivers changed. Root README has no plate-solving mention; Introduction PDF was independently checked by coordinator and has none. MCP references outside bundled topics use the canonical GitHub URL; local operating-manual links rewrite to indigo://help. Unchanged help generator and --check passed; decoded changes match eight edited topics plus one pre-existing source/header mismatch in scripting.api-altitude, now synchronized to its existing J2000/precession source text. New link targets and contextual coverage checked; no application or hardware behavior changed.",
+      "tokens": null
+    },
+    {
+      "event_id": "8c46cbb0-c754-4512-9525-b809c002aadf",
+      "event": "task/progress",
+      "at": "2026-11-20T11:42:30.272697Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "cd4f79b1-d887-41cf-809a-b0d46205fe9f",
+      "event": "task/progress",
+      "at": "2026-11-20T11:42:30.316126Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a49e2317-b136-419b-9fc5-97418a733a45",
+      "event": "check/passed",
+      "at": "2026-11-20T11:42:30.318079Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "be919c950bd1f2179d1df1bec18df69bd0ce4576",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "98567ea1-f33e-4ea1-8a08-92be79157253",
+      "event": "ticket/note",
+      "at": "2026-11-20T11:43:08.159772Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Expanded final inventory to plain solve/solver/solving terms: added links in MCP imager, MCP service, preparation and acceptance manuals plus sequencer simulator guidance. Twelve edited help topics now link to the native guide. Remaining general solve references in driver development/generator and guider detection guides describe problem solving, not astrometric solving. All 41 added/changed-line link targets passed; help generator --check and whitespace passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "634dc1da-6394-4a3f-8828-f66b4df7d452",
+      "event": "task/progress",
+      "at": "2026-11-20T11:43:11.285478Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d5297132-afda-4105-9ebd-5a6a023c4a85",
+      "event": "task/progress",
+      "at": "2026-11-20T11:43:11.327474Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b9649fce-b7be-472b-9716-839930ad02ae",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6a538718-e184-4436-a63f-382627831bc6",
+      "event": "check/passed",
+      "at": "2026-11-20T11:43:11.329494Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "5e1536b766999fcde8e5d575f9fd1b09650c5248",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "b6a5f175-dbcc-4f8b-a8a6-81cc71ebebc5",
+      "event": "task/progress",
+      "at": "2026-11-20T11:43:23.959082Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f3b7f86a-d542-455f-bc96-c63877a4cc12",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a9487822-4ddb-49bc-93b2-79d0a4285018",
+      "event": "review/started",
+      "at": "2026-11-20T11:43:23.960596Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "13f88d4b-eacc-411b-b5b6-576fd5c511fd",
+      "event": "task/progress",
+      "at": "2026-11-20T11:43:42.524952Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f3b7f86a-d542-455f-bc96-c63877a4cc12",
+      "text": "Reviewing the complete documentation diff and native solver link coverage",
+      "attempt_id": "0cf2b6cd-4d7f-4cd4-9398-cd21993a9503",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7f38b740-fc42-4d70-ab81-73b6ace145f7",
+      "event": "task/progress",
+      "at": "2026-11-20T11:44:11.896878Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f3b7f86a-d542-455f-bc96-c63877a4cc12",
+      "text": "Checking link targets, maintained-document coverage and decoded MCP help consistency"
+    },
+    {
+      "event_id": "b186b134-607a-47d9-8c35-fd1a14757053",
+      "event": "ticket/note",
+      "at": "2026-11-20T11:44:20.830610Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Independent decoded-bundle inspection refines the previous validation note: regenerating the checked-in MCP help also picked up already-present source wording in three topics (scripting.api-altitude, agents/sequencer.md and reference/sequencer.md, including J2000 clarifications). These are pre-existing source-to-bundle differences synchronized by the unchanged generator.",
+      "tokens": null
+    },
+    {
+      "event_id": "a7907e09-0ea7-42da-bc34-9d961b7156b9",
+      "event": "task/progress",
+      "at": "2026-11-20T11:44:49.181380Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f3b7f86a-d542-455f-bc96-c63877a4cc12",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "92ec0f9f-7bc2-4705-b3ff-8ad004c6a1d8",
+      "event": "review/passed",
+      "at": "2026-11-20T11:44:49.182870Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f3b7f86a-d542-455f-bc96-c63877a4cc12",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5e1536b766999fcde8e5d575f9fd1b09650c5248"
+    },
+    {
+      "event_id": "54154b40-0778-44a2-b891-35bbd5143527",
+      "event": "ticket/closed",
+      "at": "2026-11-20T11:45:04.782284Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T11:45:04.782254Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "e61331cdeab490af93fb52f831218e9cd69d8573"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d873e183d4ce6971b436bdc92e71328d874c070b",
+        "tree": "90819f33bde94d0a310291457d54ce2997890c97",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T11:13:58.396523Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/5f8f0c89-ce17-41fa-b355-90f676a68b73/90819f33bde9-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c41c2e11396addd51efade38252aba18ab377107",
+        "tree": "5dabcfe089a050550c0ba96bde751e1072460c96",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T11:27:46.626933Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/5f8f0c89-ce17-41fa-b355-90f676a68b73/5dabcfe089a0-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "544e0ac9be91d6ac425256a7ee7de756b4e55e30",
+        "tree": "6b5947bcc120e8192cbdaefd19fdeba1cedb9655",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T11:38:32.728950Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/5f8f0c89-ce17-41fa-b355-90f676a68b73/6b5947bcc120-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "be919c950bd1f2179d1df1bec18df69bd0ce4576",
+        "tree": "6820b0c5dd0764a6ae8fb52b1cea55fd2ac2e623",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T11:42:30.315222Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/5f8f0c89-ce17-41fa-b355-90f676a68b73/6820b0c5dd07-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5e1536b766999fcde8e5d575f9fd1b09650c5248",
+        "tree": "344ad0a79ce4a1cdb18b4c92206142d6ee5e1801",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T11:43:11.326543Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/5f8f0c89-ce17-41fa-b355-90f676a68b73/344ad0a79ce4-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review passed at 5e1536b766999fcde8e5d575f9fd1b09650c5248. Reviewed all 30 changed files, decoding the generated MCP help arrays for semantic inspection. Header matches Scheduler conventions; English comparison accurately distinguishes native quad voting/affine TAN fitting, Astrometry.net indexed/Bayesian verification, and ASTAP local distance-ratio quads using the cited primary descriptions. Owner-approved PLATESOLVER.md is byte-identical to 544e0ac9. Maintained-document inventory covers plate/astrometry/ASTAP and solve/solver/solving variants; unchanged hits are historical status/changelog records, executable HTML controls or generic problem-solving text, with vendor/Factory archives excluded. Verified 53 changed-line Markdown link paths; compiled operating links resolve to indigo://help and optional native references retain the canonical GitHub URL. MCP help --check passed for 18 documents; decoded baseline J2000 synchronizations match existing source manuals. Retired SOLVER_INDEX_FORMAT.md remains absent with no maintained references. Whitespace check passed and worktree is clean. No application behavior changed; runtime/hardware tests are not applicable. No blocking findings.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "5e1536b766999fcde8e5d575f9fd1b09650c5248",
+        "tree": "344ad0a79ce4a1cdb18b4c92206142d6ee5e1801",
+        "at": "2026-11-20T11:44:49.181182Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T11:13:02.328668Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Owner requests the header now and the ticket to remain open for possible further edits while reading. Await explicit owner approval before closure.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T11:26:01.516863Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Owner requests a new English chapter comparing INDIGO native solving with Astrometry.net and ASTAP, explaining concrete algorithmic differences, and references to both projects. Leave the ticket open for reading as previously requested.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T11:38:23.035658Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Owner authorizes closure and requests removal of the original INDIGO Solver Index Format document. Verified the standalone file was deleted by 62beea80c and the maintained tree has no references to the retired path. Retain the current worktree edit to the attribution paragraph as part of the final document.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T11:38:38.875506Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Before authorized closure, add a discoverable link to the native INDIGO solver technical reference everywhere maintained project documentation discusses plate solving, including external backend guides. Inventory naming variants and navigational/CLI references and verify new links relative to their sources. Preserve prose and technical distinctions. Finish review and close after this addition.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T11:42:25.806397Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Documentation link audit: added native solver references in maintained user/developer/test guides, both HOME indexes, scripting/scheduler references, MCP manuals and the still-linked obsolete ASTAP README. Preserved existing native README link and the owner-edited PLATESOLVER.md byte-for-byte against 544e0ac9. Excluded historical CHANGELOG/MIGRATION_STATUS/TEST_SUMMARY entries, vendor/Factory archives, and executable HTML UI controls; no protected drivers changed. Root README has no plate-solving mention; Introduction PDF was independently checked by coordinator and has none. MCP references outside bundled topics use the canonical GitHub URL; local operating-manual links rewrite to indigo://help. Unchanged help generator and --check passed; decoded changes match eight edited topics plus one pre-existing source/header mismatch in scripting.api-altitude, now synchronized to its existing J2000/precession source text. New link targets and contextual coverage checked; no application or hardware behavior changed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T11:43:08.158577Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Expanded final inventory to plain solve/solver/solving terms: added links in MCP imager, MCP service, preparation and acceptance manuals plus sequencer simulator guidance. Twelve edited help topics now link to the native guide. Remaining general solve references in driver development/generator and guider detection guides describe problem solving, not astrometric solving. All 41 added/changed-line link targets passed; help generator --check and whitespace passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T11:44:20.829435Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Independent decoded-bundle inspection refines the previous validation note: regenerating the checked-in MCP help also picked up already-present source wording in three topics (scripting.api-altitude, agents/sequencer.md and reference/sequencer.md, including J2000 clarifications). These are pre-existing source-to-bundle differences synchronized by the unchanged generator.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "May we start this low-priority, low-severity, simple documentation ticket with the proposed Scheduler-style header dated 20.11.2026 and the introducing commit author Peter Polakovic (peter.polakovic@cloudmakers.eu)?",
+        "at": "2026-11-20T10:55:51.574370Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner confirmed the proposed header, priority, severity, simple profile and start. Keep this ticket open until the owner finishes reading and explicitly permits closure.",
+        "answered_at": "2026-11-20T11:13:02.209513Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "e61331cdeab490af93fb52f831218e9cd69d8573",
+      "tree": "344ad0a79ce4a1cdb18b4c92206142d6ee5e1801",
+      "base": "master",
+      "at": "2026-11-20T11:45:04.632257Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T10:55:46.226327Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T11:13:02.018079Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 1897467.658,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 44,
+    "sha256": "3d5e8ec54ccd6023d9c9bdf125ff68274d0c76c2c1b91320fa343745844fb69f"
+  }
+}

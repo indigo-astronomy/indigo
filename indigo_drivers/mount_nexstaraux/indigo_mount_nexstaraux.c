@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000019
+#define DRIVER_VERSION       0x0300001A
 #define DRIVER_NAME          "indigo_mount_nexstaraux"
 #define DRIVER_LABEL         "NexStar AUX Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar AUX"
@@ -1182,6 +1182,13 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		if (nexstaraux_sync(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			// The result carries the position the controllers report now, a failed readback leaves it to the next poll.
+			double synced_ra = 0, synced_dec = 0;
+			if (nextstar_get_coordinates(device, &synced_ra, &synced_dec)) {
+				indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &synced_ra, &synced_dec);
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = synced_ra;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = synced_dec;
+			}
 		} else {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -1429,7 +1436,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);

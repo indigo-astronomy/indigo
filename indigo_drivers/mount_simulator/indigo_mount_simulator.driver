@@ -26,7 +26,7 @@ driver simulator {
 	label = "Mount Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 26;
+	version = 27;
 	data {
 		bool parking, parked, going_home, at_home;
 		double ha;
@@ -349,13 +349,11 @@ driver simulator {
 		}
 		inherited MOUNT_EQUATORIAL_COORDINATES {
 			preserve_values = true;
-			on_change_request {
-				if (!MOUNT_PARK_PARKED_ITEM->sw.value && MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
-					return indigo_mount_change_property(device, client, property);
-				}
-			}
 			on_change {
-				if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+				if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+					// a sync of the INDIGO alignment model adds an alignment point, the raw coordinates stay
+					indigo_mount_sync(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
+				} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 					// a controller sync changes the coordinates the controller reports, not where the telescope points
 					PRIVATE_DATA->sync_ra_offset = remainder(PRIVATE_DATA->sync_ra_offset + MOUNT_RAW_COORDINATES_RA_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, 24);
 					PRIVATE_DATA->sync_dec_offset += MOUNT_RAW_COORDINATES_DEC_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;

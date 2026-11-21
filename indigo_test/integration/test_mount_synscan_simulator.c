@@ -1854,8 +1854,43 @@ static indigo_result observe_define(indigo_client *client, indigo_device *device
 	return simulator_client_define_property(client, device, property, message);
 }
 
+// A log of the publications of MOUNT_EQUATORIAL_COORDINATES ('E'), MOUNT_HORIZONTAL_COORDINATES ('H') and
+// MOUNT_RAW_COORDINATES ('R') with their states, in the order the client received them. Only the position poll
+// publishes the raw coordinates, just before it publishes the others, so an 'R' marks the start of a poll.
+#define COORDINATES_LOG_SIZE 1024
+
+typedef struct {
+	char kind;
+	indigo_property_state state;
+} coordinates_event;
+
+static coordinates_event coordinates_log[COORDINATES_LOG_SIZE];
+static int coordinates_log_count;
+static atomic_bool coordinates_logging;
+
+static void log_coordinates_event(indigo_property *property) {
+	char kind = 0;
+	if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+		kind = 'E';
+	} else if (!strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
+		kind = 'H';
+	} else if (!strcmp(property->name, MOUNT_RAW_COORDINATES_PROPERTY_NAME)) {
+		kind = 'R';
+	}
+	if (kind && atomic_load(&coordinates_logging)) {
+		pthread_mutex_lock(&observed_mutex);
+		if (coordinates_log_count < COORDINATES_LOG_SIZE) {
+			coordinates_log[coordinates_log_count].kind = kind;
+			coordinates_log[coordinates_log_count].state = property->state;
+			coordinates_log_count++;
+		}
+		pthread_mutex_unlock(&observed_mutex);
+	}
+}
+
 static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, synscan_mount.device_name)) {
+		log_coordinates_event(property);
 		bool coordinates = !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 		if (coordinates) {
 			double ra = observed_item_value(property, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
@@ -2261,6 +2296,122 @@ static void synscan_mount_points_j2000_coordinates_at_their_place_of_date(void) 
 	SERIAL_CHECK_TRUE(fabs(reached_dec - date_dec) < 0.01);
 
 cleanup:
+	if (driver_started) {
+		if (!isnan(latitude)) {
+			indigo_change_number_property_1(&simulator_test_client, synscan_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, latitude);
+			wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, latitude, 0.001);
+		}
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A poll publishes its coordinates through indigo_update_coordinates() of the mount base driver: after the raw
+// coordinates and the side of pier come MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME, then the equatorial
+// coordinates, and the horizontal coordinates and the sidereal time are those the library derives from the equatorial
+// coordinates. A poll is the sequence from an update of MOUNT_RAW_COORDINATES to the next equatorial update; the bus
+// publishes only what changed, so a poll at a standstill within the same second publishes less.
+static pthread_mutex_t library_path_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool library_path_in_poll, library_path_horizontal_in_poll, library_path_lst_in_poll;
+static int library_path_polls, library_path_horizontal_polls, library_path_lst_polls, library_path_value_errors, library_path_north_errors;
+static indigo_property_state library_path_horizontal_state;
+static double library_path_alt, library_path_az, library_path_lst, library_path_latitude, library_path_longitude, library_path_elevation;
+
+static indigo_result library_path_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, synscan_mount.device_name)) {
+		pthread_mutex_lock(&library_path_mutex);
+		if (!strcmp(property->name, MOUNT_RAW_COORDINATES_PROPERTY_NAME)) {
+			library_path_in_poll = true;
+			library_path_horizontal_in_poll = library_path_lst_in_poll = false;
+		} else if (!strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
+			library_path_alt = observed_item_value(property, MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME);
+			library_path_az = observed_item_value(property, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME);
+			library_path_horizontal_state = property->state;
+			// north is 0, never -0 or an azimuth just below 360
+			if (signbit(library_path_az) || library_path_az >= 359.9999) {
+				library_path_north_errors++;
+			}
+			library_path_horizontal_in_poll = library_path_horizontal_in_poll || library_path_in_poll;
+		} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
+			library_path_lst = observed_item_value(property, MOUNT_LST_TIME_ITEM_NAME);
+			library_path_lst_in_poll = library_path_lst_in_poll || library_path_in_poll;
+		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && library_path_in_poll) {
+			library_path_in_poll = false;
+			library_path_polls++;
+			library_path_horizontal_polls += library_path_horizontal_in_poll;
+			library_path_lst_polls += library_path_lst_in_poll;
+			// the library takes the sidereal time of the current second, the poll is at most a moment old
+			time_t now = time(NULL);
+			time_t utc = now;
+			while (utc > now - 3 && indigo_lst(&utc, library_path_longitude) != library_path_lst) {
+				utc--;
+			}
+			double ra = observed_item_value(property, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+			double dec = observed_item_value(property, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+			double alt = NAN, az = NAN;
+			indigo_j2k_to_jnow(&ra, &dec);
+			indigo_radec_to_altaz(ra, dec, &utc, library_path_latitude, library_path_longitude, library_path_elevation, &alt, &az);
+			double az_error = fabs(az - library_path_az);
+			if (az_error > 180) {
+				az_error = 360 - az_error;
+			}
+			if (utc == now - 3 || fabs(alt - library_path_alt) > 1e-9 || az_error > 1e-9 || library_path_horizontal_state != property->state) {
+				printf("    poll %d: EQ %.9f h %+.9f deg %s, HOR %.9f %.9f %s, LST %.9f, library %.9f %.9f\n", library_path_polls, ra, dec, property->state == INDIGO_BUSY_STATE ? "BUSY" : "OK", library_path_alt, library_path_az, library_path_horizontal_state == INDIGO_BUSY_STATE ? "BUSY" : "OK", library_path_lst, alt, az);
+				library_path_value_errors++;
+			}
+		}
+		pthread_mutex_unlock(&library_path_mutex);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static void synscan_mount_polls_publish_coordinates_through_the_mount_library(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	double latitude = NAN;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	latitude = cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
+	pthread_mutex_lock(&library_path_mutex);
+	library_path_in_poll = false;
+	library_path_polls = library_path_horizontal_polls = library_path_lst_polls = library_path_value_errors = library_path_north_errors = 0;
+	library_path_latitude = 48;
+	library_path_longitude = cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME);
+	library_path_elevation = cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME);
+	pthread_mutex_unlock(&library_path_mutex);
+	simulator_test_client.update_property = library_path_update;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, 48, 0.001));
+	// the axes stand at home after the connection: the pole, due north at the altitude of the latitude
+	SERIAL_CHECK_TRUE(!isnan(synscan_fresh_raw(MOUNT_RAW_COORDINATES_RA_ITEM_NAME)));
+	double home_alt = cached_number_value(MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME);
+	double home_az = cached_number_value(MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME);
+	printf("    home: alt %.12f deg az %.12f deg\n", home_alt, home_az);
+	SERIAL_CHECK_TRUE(fabs(home_alt - 48) < 1e-6);
+	SERIAL_CHECK_TRUE(home_az == 0 && !signbit(home_az));
+	// a GOTO publishes BUSY polls, tracking OK polls, both with values that change from poll to poll
+	double ra = fmod(synscan_lst() + 2 + 24, 24);
+	double dec = 30;
+	indigo_jnow_to_j2k(&ra, &dec);
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, ra, dec));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	unsigned int revision = property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME);
+	for (int i = 0; i < 100 && property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME) < revision + 4; i++) {
+		indigo_usleep(100000);
+	}
+	pthread_mutex_lock(&library_path_mutex);
+	int polls = library_path_polls, horizontal_polls = library_path_horizontal_polls, lst_polls = library_path_lst_polls, value_errors = library_path_value_errors, north_errors = library_path_north_errors;
+	pthread_mutex_unlock(&library_path_mutex);
+	printf("    %d polls, %d with horizontal coordinates and %d with the sidereal time before the equatorial update, %d disagreeing with the library, %d azimuths of north other than 0\n", polls, horizontal_polls, lst_polls, value_errors, north_errors);
+	SERIAL_CHECK_TRUE(polls >= 8);
+	SERIAL_CHECK_TRUE(horizontal_polls >= 5);
+	SERIAL_CHECK_TRUE(lst_polls >= 5);
+	SERIAL_CHECK_EQ_INT(0, value_errors);
+	SERIAL_CHECK_EQ_INT(0, north_errors);
+
+cleanup:
+	simulator_test_client.update_property = simulator_client_update_property;
 	if (driver_started) {
 		if (!isnan(latitude)) {
 			indigo_change_number_property_1(&simulator_test_client, synscan_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, latitude);
@@ -3432,6 +3583,274 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Starts a fresh coordinates log; every publication reaches the client, also one that repeats the previous state.
+static void start_coordinates_log(void) {
+	pthread_mutex_lock(&observed_mutex);
+	coordinates_log_count = 0;
+	pthread_mutex_unlock(&observed_mutex);
+	simulator_test_client.force_property_updates = true;
+	atomic_store(&coordinates_logging, true);
+}
+
+static int stop_coordinates_log(coordinates_event *events) {
+	atomic_store(&coordinates_logging, false);
+	pthread_mutex_lock(&observed_mutex);
+	int count = coordinates_log_count;
+	memcpy(events, coordinates_log, count * sizeof(*events));
+	pthread_mutex_unlock(&observed_mutex);
+	return count;
+}
+
+static void print_coordinates_log(const char *label, coordinates_event *events, int count) {
+	static const char states[] = "IOBA";
+	fprintf(stderr, "    %s:", label);
+	for (int i = 0; i < count; i++) {
+		fprintf(stderr, " %c%c", events[i].kind, states[events[i].state & 3]);
+	}
+	fprintf(stderr, "\n");
+}
+
+// Waits until `count` more polls published the raw coordinates.
+static bool wait_for_synscan_polls(int count) {
+	unsigned int revision = property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME);
+	for (int i = 0; i < 100 * count; i++) {
+		if (property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME) >= revision + count) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
+// The publications of one request: the first is its BUSY, the result follows BUSY publications only, then nothing but
+// polls until the end of the log, all in the state of the result, at least `polls` of them; the result is published
+// once, the next publication of the coordinates is a poll's. A poll that ran between the start of the log and the
+// request, in the state before it, is skipped. MOUNT_HORIZONTAL_COORDINATES is published right before each publication
+// of the equatorial coordinates, in the same state.
+static bool check_coordinates_request(const char *label, coordinates_event *events, int count, indigo_property_state result, int polls) {
+	int first = -1, outcome = -1, results = 0, poll_results = 0;
+	bool ok = true;
+	for (int i = 0; i < count && ok; i++) {
+		if (events[i].kind != 'E') {
+			continue;
+		}
+		bool poll = i >= 2 && events[i - 2].kind == 'R';
+		if (i == 0 || events[i - 1].kind != 'H' || events[i - 1].state != events[i].state) {
+			fprintf(stderr, "    %s: publication %d of the coordinates is not preceded by the horizontal coordinates in its state\n", label, i);
+			ok = false;
+		} else if (first < 0 && poll && events[i].state != INDIGO_BUSY_STATE) {
+			continue;
+		} else if (first < 0) {
+			first = i;
+			ok = events[i].state == INDIGO_BUSY_STATE;
+		} else if (outcome < 0 && events[i].state != INDIGO_BUSY_STATE) {
+			outcome = i;
+			ok = events[i].state == result;
+			results++;
+		} else if (outcome >= 0) {
+			ok = events[i].state == result;
+			// a publication after the result must be a poll's, which publishes the raw coordinates first
+			if (poll) {
+				poll_results++;
+			} else {
+				results++;
+			}
+		}
+	}
+	ok = ok && first >= 0 && outcome >= 0 && results == 1 && poll_results >= polls;
+	if (!ok) {
+		fprintf(stderr, "    %s: expected BUSY, then one result %d and at least %d polls in it (results %d, polls %d)\n", label, result, polls, results, poll_results);
+		print_coordinates_log(label, events, count);
+	}
+	return ok;
+}
+
+static bool synscan_request_coordinates(double ra, double dec) {
+	static const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	return indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK;
+}
+
+// A sync of the alignment model publishes BUSY, and its result once; a refusal stays ALERT across the following polls,
+// also across a failed position readback, until the next request: an accepted sync ends OK, and so does a GoTo after a
+// refused sync. An ALERT of a failed readback that follows OK is replaced by the next good poll, and a reconnection
+// starts without the ALERT of the previous session.
+static void synscan_mount_sync_publishes_busy_and_keeps_a_refusal(void) {
+	static coordinates_event events[COORDINATES_LOG_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+	// a sync near the pole is refused anyway, so the mount leaves its home position first
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 2 + 24, 24), 40));
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+	// a refused sync: BUSY, ALERT, and ALERT from the following polls
+	pthread_mutex_lock(&observed_mutex);
+	observed_coordinates_message[0] = 0;
+	pthread_mutex_unlock(&observed_mutex);
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(synscan_request_coordinates(ra, 86));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(4));
+	int count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("refused sync", events, count, INDIGO_ALERT_STATE, 3));
+	SERIAL_CHECK_TRUE(observed_message_contains(observed_coordinates_message, "celestial pole"));
+	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 0.01);
+	// a failed position readback publishes ALERT by itself, the next good poll keeps the ALERT of the refusal
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":j1", "xyz", 1));
+	for (int i = 0; i < 100 && synscan_fault_pending(&simulator); i++) {
+		indigo_usleep(50000);
+	}
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	count = stop_coordinates_log(events);
+	int alerts = 0;
+	for (int i = 0; i < count; i++) {
+		if (events[i].kind == 'E') {
+			SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, events[i].state);
+			alerts++;
+		}
+	}
+	SERIAL_CHECK_TRUE(alerts >= 2);
+	// an accepted sync after the refused one: BUSY, OK, and OK from the following polls
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(synscan_request_coordinates(fmod(ra + 0.01, 24), dec + 0.05));
+	SERIAL_CHECK_TRUE(wait_for_synscan_alignment_point_count(1));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(3));
+	count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("accepted sync after a refused one", events, count, INDIGO_OK_STATE, 2));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - (dec + 0.05)) < 0.01);
+	// a GoTo after a refused sync: BUSY until it arrives, then OK
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(synscan_request_coordinates(ra, 86));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("second refused sync", events, count, INDIGO_ALERT_STATE, 1));
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 3 + 24, 24), 35));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("GoTo after a refused sync", events, count, INDIGO_OK_STATE, 2));
+	// a failed readback that follows OK publishes ALERT, the next good poll OK again
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":j1", "xyz", 1));
+	for (int i = 0; i < 100 && synscan_fault_pending(&simulator); i++) {
+		indigo_usleep(50000);
+	}
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	count = stop_coordinates_log(events);
+	int failed = -1, last = -1;
+	for (int i = 0; i < count; i++) {
+		if (events[i].kind == 'E') {
+			if (failed < 0 && events[i].state == INDIGO_ALERT_STATE) {
+				failed = i;
+			}
+			last = i;
+		}
+	}
+	if (failed < 0 || last <= failed || events[last].state != INDIGO_OK_STATE) {
+		print_coordinates_log("failed readback after OK", events, count);
+	}
+	SERIAL_CHECK_TRUE(failed >= 0 && last > failed && events[last].state == INDIGO_OK_STATE);
+	// a refused sync, then a reconnection: the next session starts OK
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(synscan_request_coordinates(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), 86));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("refused sync before reconnection", events, count, INDIGO_ALERT_STATE, 1));
+	disconnect_serial_device(&synscan_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, NULL));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)->state);
+cleanup:
+	atomic_store(&coordinates_logging, false);
+	simulator_test_client.force_property_updates = false;
+	remove_synscan_fault(&simulator);
+	remove_observer();
+	if (driver_started) {
+		if (context.connected && synscan_alignment_point_count() > 0) {
+			indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, true);
+			wait_for_synscan_alignment_point_count(0);
+		}
+		if (context.connected) {
+			stop_serial_driver(&synscan_mount);
+		} else {
+			tear_down_serial_driver(&synscan_mount);
+		}
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// An abort that overtakes a queued sync cancels its handler: the sync must not keep the coordinates BUSY, no alignment point
+// is added and the next GoTo is taken and ends OK. The device queue is held while the sync and the abort are requested, so
+// the urgent abort runs before the handler of the sync.
+static void synscan_mount_abort_cancels_a_queued_sync(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	bool queue_held = false;
+	indigo_client finder = { .name = "SynScan queue finder", .version = INDIGO_VERSION_CURRENT, .define_property = abort_test_capture };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 2 + 24, 24), 40));
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true));
+	abort_test_name = synscan_mount.device_name;
+	abort_test_device = NULL;
+	indigo_attach_client(&finder);
+	indigo_enumerate_properties(&finder, &INDIGO_ALL_PROPERTIES);
+	indigo_detach_client(&finder);
+	SERIAL_CHECK_TRUE(abort_test_device != NULL);
+	atomic_store(&abort_test_entered, false);
+	atomic_store(&abort_test_released, false);
+	atomic_store(&abort_test_drained, false);
+	indigo_execute_handler(abort_test_device, abort_test_block);
+	queue_held = true;
+	SERIAL_CHECK_TRUE(abort_test_wait(&abort_test_entered));
+	unsigned int busy = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(synscan_request_coordinates(fmod(ra + 0.01, 24), dec + 0.05));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, busy));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	indigo_execute_handler(abort_test_device, abort_test_drain);
+	atomic_store(&abort_test_released, true);
+	queue_held = false;
+	SERIAL_CHECK_TRUE(abort_test_wait(&abort_test_drained));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(4));
+	printf("    after the abort and 4 polls: coordinates state %d, alignment points %d\n", find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state, synscan_alignment_point_count());
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 3 + 24, 24), 35));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+cleanup:
+	if (queue_held) {
+		atomic_store(&abort_test_released, true);
+	}
+	if (driver_started) {
+		if (context.connected && synscan_alignment_point_count() > 0) {
+			indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, true);
+			wait_for_synscan_alignment_point_count(0);
+		}
+		if (context.connected) {
+			stop_serial_driver(&synscan_mount);
+		} else {
+			tear_down_serial_driver(&synscan_mount);
+		}
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 // X_ENCODER_POSITION. The simulator started with --encoder-counts answers :d with the encoder ticks of the axis turn,
 // SIM_ENCODER_COUNTS per revolution against the SIM_STEPS_PER_REVOLUTION steps of the step counter, as an AZ-GTi
 // counts 1068 against 2073600, plus 512 ticks on RA and 1024 ticks on DEC, all around 0x800000. The driver has to
@@ -3887,6 +4306,7 @@ int main(void) {
 		{ "synscan_mount_defines_options_from_feature_bits", synscan_mount_defines_options_from_feature_bits },
 		{ "synscan_mount_moves_the_requested_way_on_both_pier_sides", synscan_mount_moves_the_requested_way_on_both_pier_sides },
 		{ "synscan_mount_points_j2000_coordinates_at_their_place_of_date", synscan_mount_points_j2000_coordinates_at_their_place_of_date },
+		{ "synscan_mount_polls_publish_coordinates_through_the_mount_library", synscan_mount_polls_publish_coordinates_through_the_mount_library },
 		{ "synscan_mount_takes_the_park_position_from_the_current_pointing", synscan_mount_takes_the_park_position_from_the_current_pointing },
 		{ "synscan_mount_sends_rates_in_axis_units", synscan_mount_sends_rates_in_axis_units },
 		{ "synscan_mount_aborts_goto_mid_slew", synscan_mount_aborts_goto_mid_slew },
@@ -3903,6 +4323,8 @@ int main(void) {
 		{ "synscan_guider_pulse_and_goto_share_the_axes", synscan_guider_pulse_and_goto_share_the_axes },
 		{ "synscan_mount_releases_motion_of_detached_client", synscan_mount_releases_motion_of_detached_client },
 		{ "synscan_mount_refuses_sync_near_the_pole", synscan_mount_refuses_sync_near_the_pole },
+		{ "synscan_mount_sync_publishes_busy_and_keeps_a_refusal", synscan_mount_sync_publishes_busy_and_keeps_a_refusal },
+		{ "synscan_mount_abort_cancels_a_queued_sync", synscan_mount_abort_cancels_a_queued_sync },
 		{ "synscan_mount_encoder_position_with_one_encoder", synscan_mount_encoder_position_with_one_encoder },
 		{ "synscan_mount_encoder_position_reports_raw_counts", synscan_mount_encoder_position_reports_raw_counts },
 		{ "synscan_mount_encoder_position_follows_a_goto", synscan_mount_encoder_position_follows_a_goto },

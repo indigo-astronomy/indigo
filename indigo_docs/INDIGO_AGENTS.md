@@ -29,6 +29,8 @@ Agent code contains the most of the application logic for the typical operations
 
 - **Scripting Agent** manages and executes INDIGO scripts. The agent name is "*indigo_agent_scripting*". More on INDIGO scripting can be found in the agent's [README.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/README.md) and in [Basics of INDIGO Scripting](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/SCRIPTING_BASICS.md)
 
+- **Platesolver Agent** solves images inside INDIGO using native quad indexes. Its module is `indigo_agent_platesolver`; see the [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 - **Astrometry Agent** solves images using Astrometry.net, manages indexes and syncs the current position to the mount. It is also responsible for the mount polar alignment. The agent name is "*indigo_agent_astrometry*"
 
 - **Configuration Agent** is responsible for managing the system configuration. The agent's [README.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_config/README.md) contains useful information. The agent name is "*indigo_agent_config*".

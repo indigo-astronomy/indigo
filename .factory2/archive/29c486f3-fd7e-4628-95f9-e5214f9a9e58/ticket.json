@@ -1,0 +1,702 @@
+{
+  "schema_version": 1,
+  "ticket_id": "29c486f3-fd7e-4628-95f9-e5214f9a9e58",
+  "revision": 36,
+  "title": "indigo_libs: azimuth due north is published as 360 instead of 0",
+  "description": "Owner decision (2026-11-19): an azimuth of 360 is a defect, due north has to be 0. Found by the version comparison of ticket 9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1.\n\nObservation (mount_synscan on its simulator, home position at the north celestial pole, northern site): MOUNT_HORIZONTAL_COORDINATES.AZ published through the library is 360.000000000 (2 pi minus about 1e-15 rad) at connect, after a site change and, once the driver's poll uses indigo_update_coordinates(), on every poll. Cause: indigo_cartesian_to_spherical() in indigo_libs/indigo_align.c maps a tiny negative angle to just below 2 pi (spoint.a = -atan2(y, x); if (spoint.a < 0) spoint.a += TWO_PI), and indigo_radec_to_altaz() passes it on in degrees; nothing brings a value that rounds to a full circle back to 0. Callers: indigo_mount_driver.c (connect and indigo_update_coordinates()), so every mount driver on the library path is affected, plus any other user of these functions.\n\nFix: the azimuth returned for the horizontal coordinates must be in [0, 360) also after rounding to the precision at which it is published, so that due north is 0 and never 360; decide the narrowest correct place (indigo_radec_to_altaz() or the spherical conversion) after checking every caller of the changed function, and report the choice and the callers. No change for azimuths that are not within rounding of a full circle.\n\nTests: unit test of the conversion at and around due north (pole from both sides of the meridian, tiny positive and negative hour angles, southern site where the pole is at azimuth 180) and a mount_simulator case that the published azimuth at the pole is 0; run the affected unit and mount_simulator tests.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T21:20:41.933532Z",
+  "status": "closed",
+  "branch": "ticket/29c486f3-fd7e-4628-95f9-e5214f9a9e58",
+  "related_ticket_id": "9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1",
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "dcbf6775-cd15-4962-bbfa-6b3c21ac7157",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:21:42.659084Z",
+          "last_activity_at": "2026-11-19T21:40:57.523416Z",
+          "ended_at": "2026-11-19T21:40:57.523416Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1154864.332,
+          "tokens": null
+        },
+        {
+          "attempt_id": "c7cfaeb5-22e4-47fe-9c99-b2df9d38b9bb",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:47:18.338190Z",
+          "last_activity_at": "2026-11-19T21:56:09.478239Z",
+          "ended_at": "2026-11-19T21:56:09.478239Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 531140.049,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T21:21:42.659084Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/29c486f3-fd7e-4628-95f9-e5214f9a9e58"
+        },
+        {
+          "at": "2026-11-19T21:40:57.523416Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-19T21:47:18.338190Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-19T21:56:09.478239Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1686004.381,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "1ec15dc5-a6fc-4783-a4ad-929ef02cba37",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": null
+          },
+          "status": "failed",
+          "started_at": "2026-11-19T21:40:57.523592Z",
+          "last_activity_at": "2026-11-19T21:47:18.338092Z",
+          "ended_at": "2026-11-19T21:47:18.338092Z",
+          "outcome": {
+            "summary": "BLOCKING\n1. indigo_test/integration/test_mount_simulator.c:1418 (SERIAL_CHECK_TRUE(dec_of_date == 90)) and :1349 / :1391 (az >= 0 && az < 1e-9): the new case mount_azimuth_at_the_pole_is_zero depends on wall-clock time, about 1.4% of runs fail for a reason that has nothing to do with the fix. indigo_precess() ends with asin(z1); when z1 rounds to 1 - 1 ulp instead of 1, dec of date comes out as 89.999999146 instead of 90, so the mount is 8.5e-7 deg off the pole. The azimuth is then a real azimuth up to 1.3e-6 deg from north (seen: 359.9999988, published '359.9999988', which is correct and not 360). The case rejects it, either through the exact-equality precondition (the round trip eq_to_j2k -> j2k_to_jnow at the same second) or through the 1e-9 bound at a later poll second, because indigo_jnow() moves on every second. Evidence: probe linked against the worktree libindigo.a, 42492 start times over 30 days, 21 consecutive seconds each, 584 had at least one dec_of_date != 90 and an off-north azimuth (1.37%). Concrete bad instants in the next hour: t=1795124965, 1795126639, 1795128351. Required fix: drop the exact dec_of_date == 90 check or give it a tolerance (e.g. 1e-6). Assert the actual requirement for every publication: az in [0, 360), !signbit(az), indigo_dtoa(az) != \"360\", and fmin(az, 360 - az) < about 1e-5. Without the fix the case still fails: west of the meridian at dec exactly 90 the old code publishes '360', and '-0' at HA 0. Apply the same change to azimuth_stays_north().\n\nVERIFIED (no change needed)\n- Fix location: indigo_equatorial_to_hotizontal() has one caller in the repository, indigo_radec_to_altaz(). It works in radians, so it cannot express the degree threshold that publication needs. Normalising in indigo_radec_to_altaz() is the narrowest correct place. Its other callers keep the old -0 and 2 pi.\n- Threshold: indigo_dtoa is \"%.10g\" and is the only formatter in the XML (indigo_xml.c, indigo_driver.c) and JSON (indigo_json.c) adapters. double(360-5e",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 380814.5,
+          "tokens": null
+        },
+        {
+          "attempt_id": "16918614-7f54-4fab-867e-53fdf673f995",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:56:09.478380Z",
+          "last_activity_at": "2026-11-19T21:57:22.972887Z",
+          "ended_at": "2026-11-19T21:57:22.972887Z",
+          "outcome": {
+            "summary": "Round 2, commit 3e089fcf5. The round-1 blocker is fixed; nothing blocks the merge.\n- Change since tree e025e5e6: only indigo_test/integration/test_mount_simulator.c. New azimuth_is_north() accepts an azimuth in [0, 360), not -0, whose published text is neither '360' nor '-0', within 1e-5 degree of north. check_published_azimuth() and azimuth_stays_north() use it. The precondition is now fabs(dec_of_date - 90) < 1e-6, and a comment explains why. The library fix is unchanged.\n- Probe linked against the worktree libindigo.a. It covers 42495 start times (30 days, every 61 s, plus the 3 instants that failed in round 1), 31 consecutive seconds each, and the test's own 8 sites with the longitude chosen as the case does. With the fixed library: 0 failures, 0 precondition failures. With the old indigo_align.c: every run fails ('360' west of the meridian), so the case still detects the defect.\n- I ran the single case once: PASS, 15 publications, 0 not due north. git diff --check is clean and test-clean was run.\nNon-blocking: the 1e-5 bound has margin only because of the case's latitudes. At 8.5e-7 degree from the pole the azimuth offset is about 8.5e-7/cos(latitude), at most 1.3e-6 for |latitude| <= 50. A site at latitude 89 would exceed the bound (about 4.9e-5). The case does not use such a site, so it is fine as written. The out-of-scope producers reported in round 1 (agent_alpaca %f, system_alpaca device azimuth, mount_synscan's own 1e-5 rad zeroing, the public indigo_equatorial_to_hotizontal) remain for the owner.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 73494.507,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T21:40:57.523592Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T21:47:18.338092Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "BLOCKING\n1. indigo_test/integration/test_mount_simulator.c:1418 (SERIAL_CHECK_TRUE(dec_of_date == 90)) and :1349 / :1391 (az >= 0 && az < 1e-9): the new case mount_azimuth_at_the_pole_is_zero depends on wall-clock time, about 1.4% of runs fail for a reason that has nothing to do with the fix. indigo_precess() ends with asin(z1); when z1 rounds to 1 - 1 ulp instead of 1, dec of date comes out as 89.999999146 instead of 90, so the mount is 8.5e-7 deg off the pole. The azimuth is then a real azimuth up to 1.3e-6 deg from north (seen: 359.9999988, published '359.9999988', which is correct and not 360). The case rejects it, either through the exact-equality precondition (the round trip eq_to_j2k -> j2k_to_jnow at the same second) or through the 1e-9 bound at a later poll second, because indigo_jnow() moves on every second. Evidence: probe linked against the worktree libindigo.a, 42492 start times over 30 days, 21 consecutive seconds each, 584 had at least one dec_of_date != 90 and an off-north azimuth (1.37%). Concrete bad instants in the next hour: t=1795124965, 1795126639, 1795128351. Required fix: drop the exact dec_of_date == 90 check or give it a tolerance (e.g. 1e-6). Assert the actual requirement for every publication: az in [0, 360), !signbit(az), indigo_dtoa(az) != \"360\", and fmin(az, 360 - az) < about 1e-5. Without the fix the case still fails: west of the meridian at dec exactly 90 the old code publishes '360', and '-0' at HA 0. Apply the same change to azimuth_stays_north().\n\nVERIFIED (no change needed)\n- Fix location: indigo_equatorial_to_hotizontal() has one caller in the repository, indigo_radec_to_altaz(). It works in radians, so it cannot express the degree threshold that publication needs. Normalising in indigo_radec_to_altaz() is the narrowest correct place. Its other callers keep the old -0 and 2 pi.\n- Threshold: indigo_dtoa is \"%.10g\" and is the only formatter in the XML (indigo_xml.c, indigo_driver.c) and JSON (indigo_json.c) adapters. double(360-5e"
+        },
+        {
+          "at": "2026-11-19T21:56:09.478380Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T21:57:22.972887Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Round 2, commit 3e089fcf5. The round-1 blocker is fixed; nothing blocks the merge.\n- Change since tree e025e5e6: only indigo_test/integration/test_mount_simulator.c. New azimuth_is_north() accepts an azimuth in [0, 360), not -0, whose published text is neither '360' nor '-0', within 1e-5 degree of north. check_published_azimuth() and azimuth_stays_north() use it. The precondition is now fabs(dec_of_date - 90) < 1e-6, and a comment explains why. The library fix is unchanged.\n- Probe linked against the worktree libindigo.a. It covers 42495 start times (30 days, every 61 s, plus the 3 instants that failed in round 1), 31 consecutive seconds each, and the test's own 8 sites with the longitude chosen as the case does. With the fixed library: 0 failures, 0 precondition failures. With the old indigo_align.c: every run fails ('360' west of the meridian), so the case still detects the defect.\n- I ran the single case once: PASS, 15 publications, 0 not due north. git diff --check is clean and test-clean was run.\nNon-blocking: the 1e-5 bound has margin only because of the case's latitudes. At 8.5e-7 degree from the pole the azimuth offset is about 8.5e-7/cos(latitude), at most 1.3e-6 for |latitude| <= 50. A site at latitude 89 would exceed the bound (about 4.9e-5). The case does not use such a site, so it is fine as written. The out-of-scope producers reported in round 1 (agent_alpaca %f, system_alpaca device azimuth, mount_synscan's own 1e-5 rad zeroing, the public indigo_equatorial_to_hotizontal) remain for the owner."
+        }
+      ],
+      "result": {
+        "summary": "Round 2, commit 3e089fcf5. The round-1 blocker is fixed; nothing blocks the merge.\n- Change since tree e025e5e6: only indigo_test/integration/test_mount_simulator.c. New azimuth_is_north() accepts an azimuth in [0, 360), not -0, whose published text is neither '360' nor '-0', within 1e-5 degree of north. check_published_azimuth() and azimuth_stays_north() use it. The precondition is now fabs(dec_of_date - 90) < 1e-6, and a comment explains why. The library fix is unchanged.\n- Probe linked against the worktree libindigo.a. It covers 42495 start times (30 days, every 61 s, plus the 3 instants that failed in round 1), 31 consecutive seconds each, and the test's own 8 sites with the longitude chosen as the case does. With the fixed library: 0 failures, 0 precondition failures. With the old indigo_align.c: every run fails ('360' west of the meridian), so the case still detects the defect.\n- I ran the single case once: PASS, 15 publications, 0 not due north. git diff --check is clean and test-clean was run.\nNon-blocking: the 1e-5 bound has margin only because of the case's latitudes. At 8.5e-7 degree from the pole the azimuth offset is about 8.5e-7/cos(latitude), at most 1.3e-6 for |latitude| <= 50. A site at latitude 89 would exceed the bound (about 4.9e-5). The case does not use such a site, so it is fine as written. The out-of-scope producers reported in round 1 (agent_alpaca %f, system_alpaca device azimuth, mount_synscan's own 1e-5 rad zeroing, the public indigo_equatorial_to_hotizontal) remain for the owner.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 454309.007,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "fddc992e-6d74-4cef-9a41-f5ce5187fe23",
+      "event": "ticket/created",
+      "at": "2026-11-19T21:20:41.934221Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "3c5e6325-cbf9-4a12-ae07-11abab290424",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T21:21:37.759369Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "782a2c34-7297-4a61-a6fb-f89c3ee11740",
+      "event": "task/progress",
+      "at": "2026-11-19T21:21:42.659339Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Implementation started on branch ticket/29c486f3-fd7e-4628-95f9-e5214f9a9e58"
+    },
+    {
+      "event_id": "459c3aad-258e-4d88-9a10-4de96de33ea9",
+      "event": "ticket/started",
+      "at": "2026-11-19T21:21:42.660814Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/29c486f3-fd7e-4628-95f9-e5214f9a9e58",
+      "base": "ticket/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1"
+    },
+    {
+      "event_id": "b549fbb6-b27e-48b6-9ef3-ee30b68b75a9",
+      "event": "task/progress",
+      "at": "2026-11-19T21:22:08.709030Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Implementer launched",
+      "attempt_id": "dcbf6775-cd15-4962-bbfa-6b3c21ac7157",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "d788f408-c363-459c-9cc3-52d9a80a322f",
+      "event": "task/progress",
+      "at": "2026-11-19T21:24:08.027869Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Writing due-north unit cases in test_align_math.c; path is indigo_equatorial_to_hotizontal"
+    },
+    {
+      "event_id": "7bbc7d94-674f-456d-9f58-4c86705be06f",
+      "event": "task/progress",
+      "at": "2026-11-19T21:26:32.340387Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Reproduced: pole az 360 (exact or 359.9999999999998) and -0 on unchanged lib; 3 new cases fail"
+    },
+    {
+      "event_id": "04dbc739-696f-4c34-896a-811f98b34915",
+      "event": "task/progress",
+      "at": "2026-11-19T21:29:38.417155Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Running new mount_simulator pole azimuth case against the unfixed library"
+    },
+    {
+      "event_id": "1fed5f03-7efd-47d2-8112-e9b55253d9d5",
+      "event": "task/progress",
+      "at": "2026-11-19T21:31:31.975969Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Running unit tests: test_align_math, test_mount_alignment_load, test_agent_scheduler_night/sky"
+    },
+    {
+      "event_id": "7f8254ec-ebe5-41eb-9926-1f347c9adbd7",
+      "event": "task/progress",
+      "at": "2026-11-19T21:31:42.403710Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Running mount_simulator integration suite: test_mount_simulator"
+    },
+    {
+      "event_id": "d4d0ef46-acdc-440a-b826-f4167728f57d",
+      "event": "task/progress",
+      "at": "2026-11-19T21:35:02.914662Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Recorded run: tools/run_driver_test.py mount_simulator (simulator)"
+    },
+    {
+      "event_id": "ce78ad42-3520-4d48-8fb4-3cf2ed858ff9",
+      "event": "ticket/note",
+      "at": "2026-11-19T21:35:39.459137Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction and fix. Path: indigo_radec_to_altaz() -> indigo_equatorial_to_hotizontal() (atan2 + 2 pi); indigo_cartesian_to_spherical() is not on this path and is unchanged. Before the fix (unit test_align_math, fixed UTC, lat 48.15): pole dec 90 at HA 1e-12..12 h west of the meridian gave az exactly 360 (published '360'), lat 89 gave 359.99999999999983 (published '360'), HA exactly 0 gave -0 (published '-0'); dec 75/60 at HA +1e-9 h gave 359.9999999914 (published '360'); east of the meridian tiny positive values. mount_simulator at the J2000 position of the pole of date, site chosen for HA 6 h: MOUNT_HORIZONTAL_COORDINATES.AZ published '360'. Fix in indigo_radec_to_altaz(): az <= 0 or az >= 360 - 5e-8 becomes 0; 5e-8 is half of the 1e-7 degree that indigo_dtoa() ('%.10g') resolves at 360, so only values published as 360 (or -0) change; 359.9999999 stays. After: all due-north cases publish 0 or a tiny positive value, 4 new unit cases pass, new mount_simulator case mount_azimuth_at_the_pole_is_zero passes (13 publications, 0 off north), full test_mount_simulator 29/29.",
+      "tokens": null
+    },
+    {
+      "event_id": "df5450db-9406-4471-a3d4-4d902efd5aad",
+      "event": "task/progress",
+      "at": "2026-11-19T21:38:28.580945Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "a3c80d66-d257-48da-9706-ebca02241e39",
+      "event": "task/progress",
+      "at": "2026-11-19T21:38:28.623798Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "83f4d559-2eb4-4977-a76f-245bf7106d8d",
+      "event": "task/progress",
+      "at": "2026-11-19T21:38:28.626343Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "5218f5e5-7b59-4a19-b547-3b46816f5aca",
+      "event": "task/progress",
+      "at": "2026-11-19T21:40:00.763485Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "6e73f0af-dfa8-4311-9a56-42b67030cb64",
+      "event": "check/passed",
+      "at": "2026-11-19T21:40:00.768163Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "93079561f092e29bdd7cb2aab88834e2f18cb053",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "b08fca81-0d02-4d90-a80e-cc2e48f45221",
+      "event": "task/progress",
+      "at": "2026-11-19T21:40:18.617164Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "flow check passed (whitespace, unit); recorded run 29/28 with known flaky mount_abort_allows_fresh_goto"
+    },
+    {
+      "event_id": "90a721be-8312-4f67-a9ba-935bbd484ab8",
+      "event": "task/progress",
+      "at": "2026-11-19T21:40:57.523660Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f9c6c6ca-06eb-4e68-a420-0e6271ee348f",
+      "event": "review/started",
+      "at": "2026-11-19T21:40:57.524966Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "a840fe06-b791-44db-95c7-38c8dba63291",
+      "event": "task/progress",
+      "at": "2026-11-19T21:41:23.017391Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "text": "Reviewer started: reading diff and callers",
+      "attempt_id": "1ec15dc5-a6fc-4783-a4ad-929ef02cba37",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": null
+      }
+    },
+    {
+      "event_id": "8b325f67-94e3-4f78-8ed9-2fa09ccc9ac6",
+      "event": "task/progress",
+      "at": "2026-11-19T21:46:09.649131Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "text": "Reviewer running mount_simulator case mount_azimuth_at_the_pole_is_zero"
+    },
+    {
+      "event_id": "4be480b9-0403-4872-bb40-7eae00659612",
+      "event": "task/progress",
+      "at": "2026-11-19T21:47:18.338186Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "773ae7f8-4b1d-4dbd-9bdc-95340d3566ca",
+      "event": "task/progress",
+      "at": "2026-11-19T21:47:18.338210Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "ee99e10d-69f5-40aa-b8c4-00c322c8919b",
+      "event": "review/changes_requested",
+      "at": "2026-11-19T21:47:18.339453Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "93079561f092e29bdd7cb2aab88834e2f18cb053"
+    },
+    {
+      "event_id": "ed85dde4-01b0-4ad2-b052-50c180b2dd57",
+      "event": "task/progress",
+      "at": "2026-11-19T21:48:11.893795Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Review changes: relaxing pole precondition and azimuth bounds in mount_azimuth_at_the_pole_is_zero"
+    },
+    {
+      "event_id": "bedd8581-d88c-485a-91e4-425548270d22",
+      "event": "task/progress",
+      "at": "2026-11-19T21:48:58.952334Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Running mount_azimuth_at_the_pole_is_zero 5 times on the fixed library"
+    },
+    {
+      "event_id": "9165011e-98db-40ae-90dd-0d0b91da09ee",
+      "event": "task/progress",
+      "at": "2026-11-19T21:50:15.618329Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Verifying the relaxed case still fails on the unfixed library"
+    },
+    {
+      "event_id": "3a88af8a-598d-432b-8f9d-3def9a0aac9d",
+      "event": "task/progress",
+      "at": "2026-11-19T21:50:42.862106Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Running mount_simulator suite once: test_mount_simulator"
+    },
+    {
+      "event_id": "6c5abee1-dc1a-47c4-9e2e-4b5fe56a84c9",
+      "event": "task/progress",
+      "at": "2026-11-19T21:53:58.563059Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1fe98346-c54c-4fcb-94f8-e92d52447acd",
+      "event": "task/progress",
+      "at": "2026-11-19T21:53:58.614545Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "cbd150c6-003e-43ef-950c-58fc08ed2a0c",
+      "event": "task/progress",
+      "at": "2026-11-19T21:53:58.616858Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "3361da47-03de-486f-950b-ffb18d04a9e5",
+      "event": "task/progress",
+      "at": "2026-11-19T21:55:33.014718Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "b245dc99-ee2e-4294-9907-5c723a04a012",
+      "event": "check/passed",
+      "at": "2026-11-19T21:55:33.019086Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "3e089fcf5e3981c601368a6c6e16d0496a267cd0",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "fa7c1440-595b-4242-8297-aeaf8c2dee0e",
+      "event": "task/progress",
+      "at": "2026-11-19T21:55:38.154662Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "fae1be85-f551-4ac8-95eb-73d69ca59cd5",
+      "text": "Review fix done: flow check passed; suite 28/29, known flaky mount_abort_allows_fresh_goto"
+    },
+    {
+      "event_id": "9069b12a-f342-4c63-b832-31b1baf75fa1",
+      "event": "task/progress",
+      "at": "2026-11-19T21:56:09.478455Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "text": "Review started"
+    },
+    {
+      "event_id": "4c0023b6-07e5-4ae4-bb81-fe174a96565d",
+      "event": "review/started",
+      "at": "2026-11-19T21:56:09.479744Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "313fb793-3c22-4cd1-abbc-58d84b18753f",
+      "event": "task/progress",
+      "at": "2026-11-19T21:56:31.246348Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "text": "Reviewer round 2: probing new azimuth_is_north criterion and running the case"
+    },
+    {
+      "event_id": "7cb3b61f-1031-46c2-a754-bed756dc95b9",
+      "event": "task/progress",
+      "at": "2026-11-19T21:57:22.972979Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "5b297f36-8ddb-427a-9780-6c76148ae01f",
+      "event": "review/passed",
+      "at": "2026-11-19T21:57:22.974411Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8ac707b6-238e-44b0-a6f9-b86b318e7263",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "3e089fcf5e3981c601368a6c6e16d0496a267cd0"
+    },
+    {
+      "event_id": "5787d83f-29ae-489f-a0fd-5b555384bc1b",
+      "event": "ticket/closed",
+      "at": "2026-11-19T21:57:38.576930Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-19T21:57:38.576918Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "9d41dfae9e19b286b658fef10b06ac7fe61a962d"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "ticket/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "93079561f092e29bdd7cb2aab88834e2f18cb053",
+        "tree": "e025e5e6e53e2808acb411312c833a51b3f7880e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T21:38:28.623027Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/29c486f3-fd7e-4628-95f9-e5214f9a9e58/e025e5e6e53e-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "93079561f092e29bdd7cb2aab88834e2f18cb053",
+        "tree": "e025e5e6e53e2808acb411312c833a51b3f7880e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T21:40:00.760780Z",
+        "duration_s": 92.1,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/29c486f3-fd7e-4628-95f9-e5214f9a9e58/e025e5e6e53e-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "3e089fcf5e3981c601368a6c6e16d0496a267cd0",
+        "tree": "8f68cf188c4b278baaa065b431ef466ad68e2cb4",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T21:53:58.613589Z",
+        "duration_s": 0.1,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/29c486f3-fd7e-4628-95f9-e5214f9a9e58/8f68cf188c4b-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "3e089fcf5e3981c601368a6c6e16d0496a267cd0",
+        "tree": "8f68cf188c4b278baaa065b431ef466ad68e2cb4",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T21:55:33.012456Z",
+        "duration_s": 94.4,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/29c486f3-fd7e-4628-95f9-e5214f9a9e58/8f68cf188c4b-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "BLOCKING\n1. indigo_test/integration/test_mount_simulator.c:1418 (SERIAL_CHECK_TRUE(dec_of_date == 90)) and :1349 / :1391 (az >= 0 && az < 1e-9): the new case mount_azimuth_at_the_pole_is_zero depends on wall-clock time, about 1.4% of runs fail for a reason that has nothing to do with the fix. indigo_precess() ends with asin(z1); when z1 rounds to 1 - 1 ulp instead of 1, dec of date comes out as 89.999999146 instead of 90, so the mount is 8.5e-7 deg off the pole. The azimuth is then a real azimuth up to 1.3e-6 deg from north (seen: 359.9999988, published '359.9999988', which is correct and not 360). The case rejects it, either through the exact-equality precondition (the round trip eq_to_j2k -> j2k_to_jnow at the same second) or through the 1e-9 bound at a later poll second, because indigo_jnow() moves on every second. Evidence: probe linked against the worktree libindigo.a, 42492 start times over 30 days, 21 consecutive seconds each, 584 had at least one dec_of_date != 90 and an off-north azimuth (1.37%). Concrete bad instants in the next hour: t=1795124965, 1795126639, 1795128351. Required fix: drop the exact dec_of_date == 90 check or give it a tolerance (e.g. 1e-6). Assert the actual requirement for every publication: az in [0, 360), !signbit(az), indigo_dtoa(az) != \"360\", and fmin(az, 360 - az) < about 1e-5. Without the fix the case still fails: west of the meridian at dec exactly 90 the old code publishes '360', and '-0' at HA 0. Apply the same change to azimuth_stays_north().\n\nVERIFIED (no change needed)\n- Fix location: indigo_equatorial_to_hotizontal() has one caller in the repository, indigo_radec_to_altaz(). It works in radians, so it cannot express the degree threshold that publication needs. Normalising in indigo_radec_to_altaz() is the narrowest correct place. Its other callers keep the old -0 and 2 pi.\n- Threshold: indigo_dtoa is \"%.10g\" and is the only formatter in the XML (indigo_xml.c, indigo_driver.c) and JSON (indigo_json.c) adapters. double(360-5e-8) = 359.99999995000001718, nextafter below = 359.99999994999996 prints '359.9999999', so no value below the threshold prints '360'. `*az <= 0` only ever catches +0 and -0: atan2 + 2 pi cannot be negative, and NaN is not affected.\n- Unit tests: with the old indigo_align.c linked in, 3 of the 4 new cases fail (40 published '360', HA 0 published '-0'). With the fix all pass. UTC and site are fixed, so they are deterministic. The away-from-north case guards against changes away from north.\n- Callers: indigo_mount_driver.c:589/:1381 and system_alpaca_mount.c:538 only publish the value. agent_mount.c:1139 publishes it and passes it to indigo_derotation_rate (cos(az) is continuous). system_alpaca stall detection wraps at 360. scheduler and scripting throw az away. The alpaca test mount_cases.h:486 is far from north.\n- mount_simulator.c:459 `west = az <= 180`: at the pole, and for targets within 5e-8 deg west of the north meridian, the side of pier is now WEST instead of EAST. This is a boundary where both sides are valid, and the choice is now deterministic. Not a defect.\n- The new case passed when I ran it once (16 publications, 0 off north). The recorded failure in mount_abort_allows_fresh_goto (targets dec 10/30) is unrelated to this change. MIGRATION_STATUS 29 / 0 matches the 29 cases. The header doc line is fine, git diff --check is clean and no new files were added.\n\nNON-BLOCKING / OUT OF SCOPE (for the owner)\n- agent_alpaca serialises with \"%f\" (indigo_alpaca_common.c:400), so an Alpaca client gets 360.000000 for az in [359.9999995, 359.99999995).\n- system_alpaca_mount.c:533 publishes the Azimuth reported by the device unchanged, so it can be 360.\n- mount_synscan.c:965 bypasses the library and zeroes |az| < 1e-5 rad (about 2 arcsec). It cannot produce 360, but it does not match the library.\n- indigo_equatorial_to_hotizontal() is public and still returns -0 / 2 pi to external callers.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "93079561f092e29bdd7cb2aab88834e2f18cb053",
+        "tree": "e025e5e6e53e2808acb411312c833a51b3f7880e",
+        "at": "2026-11-19T21:47:18.337934Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2, commit 3e089fcf5. The round-1 blocker is fixed; nothing blocks the merge.\n- Change since tree e025e5e6: only indigo_test/integration/test_mount_simulator.c. New azimuth_is_north() accepts an azimuth in [0, 360), not -0, whose published text is neither '360' nor '-0', within 1e-5 degree of north. check_published_azimuth() and azimuth_stays_north() use it. The precondition is now fabs(dec_of_date - 90) < 1e-6, and a comment explains why. The library fix is unchanged.\n- Probe linked against the worktree libindigo.a. It covers 42495 start times (30 days, every 61 s, plus the 3 instants that failed in round 1), 31 consecutive seconds each, and the test's own 8 sites with the longitude chosen as the case does. With the fixed library: 0 failures, 0 precondition failures. With the old indigo_align.c: every run fails ('360' west of the meridian), so the case still detects the defect.\n- I ran the single case once: PASS, 15 publications, 0 not due north. git diff --check is clean and test-clean was run.\nNon-blocking: the 1e-5 bound has margin only because of the case's latitudes. At 8.5e-7 degree from the pole the azimuth offset is about 8.5e-7/cos(latitude), at most 1.3e-6 for |latitude| <= 50. A site at latitude 89 would exceed the bound (about 4.9e-5). The case does not use such a site, so it is fine as written. The out-of-scope producers reported in round 1 (agent_alpaca %f, system_alpaca device azimuth, mount_synscan's own 1e-5 rad zeroing, the public indigo_equatorial_to_hotizontal) remain for the owner.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "3e089fcf5e3981c601368a6c6e16d0496a267cd0",
+        "tree": "8f68cf188c4b278baaa065b431ef466ad68e2cb4",
+        "at": "2026-11-19T21:57:22.972725Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T21:35:39.457884Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction and fix. Path: indigo_radec_to_altaz() -> indigo_equatorial_to_hotizontal() (atan2 + 2 pi); indigo_cartesian_to_spherical() is not on this path and is unchanged. Before the fix (unit test_align_math, fixed UTC, lat 48.15): pole dec 90 at HA 1e-12..12 h west of the meridian gave az exactly 360 (published '360'), lat 89 gave 359.99999999999983 (published '360'), HA exactly 0 gave -0 (published '-0'); dec 75/60 at HA +1e-9 h gave 359.9999999914 (published '360'); east of the meridian tiny positive values. mount_simulator at the J2000 position of the pole of date, site chosen for HA 6 h: MOUNT_HORIZONTAL_COORDINATES.AZ published '360'. Fix in indigo_radec_to_altaz(): az <= 0 or az >= 360 - 5e-8 becomes 0; 5e-8 is half of the 1e-7 degree that indigo_dtoa() ('%.10g') resolves at 360, so only values published as 360 (or -0) change; 359.9999999 stays. After: all due-north cases publish 0 or a tiny positive value, 4 new unit cases pass, new mount_simulator case mount_azimuth_at_the_pole_is_zero passes (13 publications, 0 off north), full test_mount_simulator 29/29.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "9d41dfae9e19b286b658fef10b06ac7fe61a962d",
+      "tree": "8f68cf188c4b278baaa065b431ef466ad68e2cb4",
+      "base": "ticket/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1",
+      "at": "2026-11-19T21:57:38.507383Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T21:20:41.933532Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-19T21:21:37.759240Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 2140313.388,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 49,
+    "sha256": "6150645d286c76f403192a2447b08d19ac3bda2894919a49a24dbeecf5c1c371"
+  }
+}

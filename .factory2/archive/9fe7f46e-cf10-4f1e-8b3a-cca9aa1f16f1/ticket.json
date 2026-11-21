@@ -1,0 +1,642 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1",
+  "revision": 33,
+  "title": "indigo_mount_synscan: publish the coordinates from the position poll through indigo_update_coordinates() like the other mount drivers",
+  "description": "Owner request (2026-11-19), first step of the work started in ticket 42b85be0-1f19-4607-b3c3-746e60317d17. The owner's rule: the systemic way for a mount driver to publish coordinates from its position poll is indigo_update_coordinates(); a driver that does not use it is defective.\n\nCurrent state (indigo_drivers/mount_synscan/indigo_mount_synscan.driver, 3.0.0.23): the driver never calls indigo_update_coordinates(). synscan_read_mount_coordinates() computes the horizontal coordinates and MOUNT_LST_TIME itself, and synscan_update_mount_coordinates() (called from the poll and the guider finalizers) sets the states and publishes MOUNT_RAW_COORDINATES, MOUNT_EQUATORIAL_COORDINATES, MOUNT_SIDE_OF_PIER and the rest with indigo_update_property(). The other mount drivers (ioptron, lx200, nexstar, nexstaraux, pmc8, rainbow, starbook, temma, simulator) set the equatorial values and state and call indigo_update_coordinates(device, NULL), which derives MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME and publishes them together with MOUNT_EQUATORIAL_COORDINATES.\n\nChange: make the poll path of mount_synscan publish MOUNT_EQUATORIAL_COORDINATES, MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME through indigo_update_coordinates() and remove the driver's own duplicate computation and publication of those properties where the library function provides them; keep the driver-specific properties (MOUNT_RAW_COORDINATES, MOUNT_SIDE_OF_PIER, MOUNT_STATE, X_ENCODER_POSITION) as they are. Driver version incremented; .driver edited and outputs regenerated.\n\nScope limits: no change of indigo_libs/indigo_mount_driver.c and no change of which state the poll publishes (the poll still sets OK/BUSY as today; keeping an ALERT of a refused request is a later step). No change of published coordinate values is intended.\n\nVerification: before changing behaviour, run one identical scenario (home position, GoTo on both sides of the pier, tracking, both hemispheres, and the alt-az operating mode if the simulator supports it) against the driver built from master and from the change and compare every published value and state of MOUNT_EQUATORIAL_COORDINATES, MOUNT_HORIZONTAL_COORDINATES, MOUNT_LST_TIME and MOUNT_RAW_COORDINATES; report any difference (for example horizontal coordinates derived from the alignment-corrected pointing versus from the published equatorial coordinates) instead of hiding it. Simulator suite updated where the publication order or count is asserted; recorded runs with tools/run_driver_test.py mount_synscan and, when the mount is available and power-cycled in its home position, --hw; MIGRATION_STATUS.md counts updated.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-19T21:00:22.648555Z",
+  "status": "closed",
+  "branch": "ticket/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1",
+  "related_ticket_id": "42b85be0-1f19-4607-b3c3-746e60317d17",
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "1355759e-e076-42ed-a2ce-e3a64f2cf842",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:01:11.219286Z",
+          "last_activity_at": "2026-11-19T22:22:43.940434Z",
+          "ended_at": "2026-11-19T22:22:43.940434Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 4892721.148,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T21:01:11.219286Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1"
+        },
+        {
+          "at": "2026-11-19T22:22:43.940434Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 4892721.148,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "93d8626a-5ffd-473a-901a-999eddf0932d",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "17c3d0ee-26be-4b38-9512-610004b7591a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": null
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T22:22:43.940606Z",
+          "last_activity_at": "2026-11-19T22:44:37.633067Z",
+          "ended_at": "2026-11-19T22:44:37.633067Z",
+          "outcome": {
+            "summary": "Reviewed 9d41dfae9..HEAD (mount_synscan 3.0.0.23 -> 24, test, MIGRATION_STATUS). No blocking defects.\nVerified: (1) Callers: poll, autohome/park/home/goto finalizers and synscan_wait_axis_stopped all go through synscan_update_mount_coordinates(), which resolves device->master_device before indigo_update_coordinates() and returns before it when !IS_CONNECTED, so MOUNT_* context is always the mount's; connect path calls only synscan_read_mount_coordinates(), and indigo_mount_change_property(CONNECTION) derives HOR from the freshly read EQ before defining it, then the generated handler queues mount_timer_callback at once (LST stale only between define and that first poll, owner-accepted). (2) No driver code reads MOUNT_HORIZONTAL_* or MOUNT_LST_TIME_ITEM values for decisions; GoTo/park/home/side-of-pier use indigo_lst(NULL) or axis positions; the driver accepts no HOR requests. (3) States: library copies EQ state to HOR when HOR and GEOGRAPHIC are visible, same as the removed code; failed-read path (on_timer -> synscan_set_coordinate_state ALERT for EQ+HOR, LST not published) and connect ALERT path are unchanged. Hidden HOR now still gets LST updated (previously LST value froze) - an improvement. (4) synscan_de2h removed, no remaining references; its math equals indigo_radec_to_altaz (no refraction). (5) Regenerating the .driver with the worktree build/bin/indigo_generator in a temp dir gives .c/.h/_main.c byte-identical to the checked-in files. (6) New case passes 3/3 alone (20-21 polls, 18-19 with HOR, 13-14 with LST, 0 value errors); built against the pre-change .c (9d41dfae9) it fails (0 polls with HOR before EQ, 20 disagreeing). LST whole-second matching is exact-double against indigo_lst over a 3 s window, deterministic. Full synscan simulator suite run once: 104/104 PASS; test-clean done. (7) MIGRATION_STATUS 104 / 21 matches 104 registered simulator cases and 21 hardware cases. Version bumped in .driver and DRIVER_VERSION 0x03000018. No README, PROPERTIES or Xc",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1313692.461,
+          "tokens": null
+        },
+        {
+          "attempt_id": "b5545b03-1b03-4f78-92c5-02a7d78e9606",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-19T22:47:40.769830Z",
+          "last_activity_at": "2026-11-19T22:47:40.769863Z",
+          "ended_at": "2026-11-19T22:47:40.769863Z",
+          "outcome": {
+            "summary": "Re-review after merge 710604924 (ticket/42b85be0 into this branch). Verified: git diff 83d067eae 710604924 -- indigo_drivers/mount_synscan indigo_libs/indigo_align.c indigo_test/integration/test_mount_synscan_simulator.c indigo_test/integration/test_mount_simulator.c is empty; every file changed only by this branch equals 83d067eae and every file changed only by the parent equals 32e3954d2 in the merge; only MIGRATION_STATUS.md and TEST_SUMMARY.md were changed by both sides. No conflict markers in the merge tree. MIGRATION_STATUS rows: mount_rainbow 40 / 0, mount_simulator 29 / 0, mount_starbook 27 / 0, mount_synscan 104 / 21 equal the registered cases (40 in test_mount_rainbow_simulator.c, 29 in test_mount_simulator.c (non-benchmark main), 27 in test_mount_starbook_simulator.c, 104 in test_mount_synscan_simulator.c, 21 in hardware/test_mount_synscan_hw.c). indigo_libs, the mount_synscan driver (Makefile.drv) and test_mount_synscan_simulator build without errors or warnings on the merged tree; test-clean done. The earlier code-review findings for 83d067eae still apply unchanged (pass, two non-blocking remarks). Note only: TEST_SUMMARY's mount_simulator row (29 / 28 Failed, 2026-11-19 22:35) comes from this branch's already merged sub-ticket 29c486f3, not from the conflict resolution.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 0.033,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T22:22:43.940606Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T22:44:37.633067Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Reviewed 9d41dfae9..HEAD (mount_synscan 3.0.0.23 -> 24, test, MIGRATION_STATUS). No blocking defects.\nVerified: (1) Callers: poll, autohome/park/home/goto finalizers and synscan_wait_axis_stopped all go through synscan_update_mount_coordinates(), which resolves device->master_device before indigo_update_coordinates() and returns before it when !IS_CONNECTED, so MOUNT_* context is always the mount's; connect path calls only synscan_read_mount_coordinates(), and indigo_mount_change_property(CONNECTION) derives HOR from the freshly read EQ before defining it, then the generated handler queues mount_timer_callback at once (LST stale only between define and that first poll, owner-accepted). (2) No driver code reads MOUNT_HORIZONTAL_* or MOUNT_LST_TIME_ITEM values for decisions; GoTo/park/home/side-of-pier use indigo_lst(NULL) or axis positions; the driver accepts no HOR requests. (3) States: library copies EQ state to HOR when HOR and GEOGRAPHIC are visible, same as the removed code; failed-read path (on_timer -> synscan_set_coordinate_state ALERT for EQ+HOR, LST not published) and connect ALERT path are unchanged. Hidden HOR now still gets LST updated (previously LST value froze) - an improvement. (4) synscan_de2h removed, no remaining references; its math equals indigo_radec_to_altaz (no refraction). (5) Regenerating the .driver with the worktree build/bin/indigo_generator in a temp dir gives .c/.h/_main.c byte-identical to the checked-in files. (6) New case passes 3/3 alone (20-21 polls, 18-19 with HOR, 13-14 with LST, 0 value errors); built against the pre-change .c (9d41dfae9) it fails (0 polls with HOR before EQ, 20 disagreeing). LST whole-second matching is exact-double against indigo_lst over a 3 s window, deterministic. Full synscan simulator suite run once: 104/104 PASS; test-clean done. (7) MIGRATION_STATUS 104 / 21 matches 104 registered simulator cases and 21 hardware cases. Version bumped in .driver and DRIVER_VERSION 0x03000018. No README, PROPERTIES or Xc"
+        },
+        {
+          "at": "2026-11-19T22:47:40.769830Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T22:47:40.769863Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Re-review after merge 710604924 (ticket/42b85be0 into this branch). Verified: git diff 83d067eae 710604924 -- indigo_drivers/mount_synscan indigo_libs/indigo_align.c indigo_test/integration/test_mount_synscan_simulator.c indigo_test/integration/test_mount_simulator.c is empty; every file changed only by this branch equals 83d067eae and every file changed only by the parent equals 32e3954d2 in the merge; only MIGRATION_STATUS.md and TEST_SUMMARY.md were changed by both sides. No conflict markers in the merge tree. MIGRATION_STATUS rows: mount_rainbow 40 / 0, mount_simulator 29 / 0, mount_starbook 27 / 0, mount_synscan 104 / 21 equal the registered cases (40 in test_mount_rainbow_simulator.c, 29 in test_mount_simulator.c (non-benchmark main), 27 in test_mount_starbook_simulator.c, 104 in test_mount_synscan_simulator.c, 21 in hardware/test_mount_synscan_hw.c). indigo_libs, the mount_synscan driver (Makefile.drv) and test_mount_synscan_simulator build without errors or warnings on the merged tree; test-clean done. The earlier code-review findings for 83d067eae still apply unchanged (pass, two non-blocking remarks). Note only: TEST_SUMMARY's mount_simulator row (29 / 28 Failed, 2026-11-19 22:35) comes from this branch's already merged sub-ticket 29c486f3, not from the conflict resolution."
+        }
+      ],
+      "result": {
+        "summary": "Re-review after merge 710604924 (ticket/42b85be0 into this branch). Verified: git diff 83d067eae 710604924 -- indigo_drivers/mount_synscan indigo_libs/indigo_align.c indigo_test/integration/test_mount_synscan_simulator.c indigo_test/integration/test_mount_simulator.c is empty; every file changed only by this branch equals 83d067eae and every file changed only by the parent equals 32e3954d2 in the merge; only MIGRATION_STATUS.md and TEST_SUMMARY.md were changed by both sides. No conflict markers in the merge tree. MIGRATION_STATUS rows: mount_rainbow 40 / 0, mount_simulator 29 / 0, mount_starbook 27 / 0, mount_synscan 104 / 21 equal the registered cases (40 in test_mount_rainbow_simulator.c, 29 in test_mount_simulator.c (non-benchmark main), 27 in test_mount_starbook_simulator.c, 104 in test_mount_synscan_simulator.c, 21 in hardware/test_mount_synscan_hw.c). indigo_libs, the mount_synscan driver (Makefile.drv) and test_mount_synscan_simulator build without errors or warnings on the merged tree; test-clean done. The earlier code-review findings for 83d067eae still apply unchanged (pass, two non-blocking remarks). Note only: TEST_SUMMARY's mount_simulator row (29 / 28 Failed, 2026-11-19 22:35) comes from this branch's already merged sub-ticket 29c486f3, not from the conflict resolution.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1313692.494,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "b4febc96-e5de-4f41-8e41-919e9b5562e7",
+      "event": "ticket/created",
+      "at": "2026-11-19T21:00:22.649306Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "3bc49b6d-15c5-45c2-ada2-7c5edb8703c2",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T21:01:05.327076Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "59ddcd7c-b056-456c-98bf-613cd09ce925",
+      "event": "task/progress",
+      "at": "2026-11-19T21:01:11.220572Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Implementation started on branch ticket/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1"
+    },
+    {
+      "event_id": "8603770d-a56b-4a78-92a7-32d6b1d63f76",
+      "event": "ticket/started",
+      "at": "2026-11-19T21:01:11.225363Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1",
+      "base": "ticket/42b85be0-1f19-4607-b3c3-746e60317d17"
+    },
+    {
+      "event_id": "950568ae-e543-4b99-b3c8-f2a48cd99375",
+      "event": "task/progress",
+      "at": "2026-11-19T21:01:48.044790Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Implementer launched",
+      "attempt_id": "1355759e-e076-42ed-a2ce-e3a64f2cf842",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "313774e7-9e35-4bc2-9145-3616c6a717ea",
+      "event": "task/progress",
+      "at": "2026-11-19T21:04:49.314645Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Building library in worktree for the master-vs-change comparison harness"
+    },
+    {
+      "event_id": "0b3501d1-27f7-4419-bf12-041079189fbc",
+      "event": "task/progress",
+      "at": "2026-11-19T21:09:33.432078Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Running the master-vs-change comparison scenario on the synscan simulator (both in parallel)"
+    },
+    {
+      "event_id": "96d200b6-704f-48df-acf3-f06443e4769c",
+      "event": "task/progress",
+      "at": "2026-11-19T21:13:40.597894Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Stopped before finalising: comparison found az 0->360 at the north pole and a stale LST define at first connect"
+    },
+    {
+      "event_id": "c761a8d8-b88c-4a89-8b53-a6cbf63d034f",
+      "event": "question/asked",
+      "at": "2026-11-19T21:14:17.125428Z",
+      "actor": "human/Peter Polakovic",
+      "text": "The version comparison on the simulator (master driver vs the change, same scenario) shows identical states, side of pier, equatorial and raw coordinates, and alt/az equal to 1e-12 deg, with these differences from publishing through indigo_update_coordinates(): (1) azimuth at the north pole (home position) is published as 360.000000 instead of 0.000000, because the driver's own conversion snapped |az| < 2 arcsec to 0 and the library does not (master already alternates 360/0 there: the library publishes 360 at connect and on a site change, the poll 0); (2) MOUNT_LST_TIME is defined with a stale value (0 on the first connect) and corrected by an update inside the same connection handler, as in every other driver on the library path; (3) the order of updates per poll changes from RAW, EQ, SIDE_OF_PIER, HOR, LST to RAW, SIDE_OF_PIER, HOR, LST, EQ. Accept the library behaviour and finish the ticket (A), keep a private LST assignment in the driver (B), or fix the two points in indigo_mount_driver.c in a separate ticket first (C)?"
+    },
+    {
+      "event_id": "edc8347f-ea89-44d5-b3f9-e9b35fab2b73",
+      "event": "question/answered",
+      "at": "2026-11-19T21:20:41.852737Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner (2026-11-19): azimuth 360 at the pole is a defect, it has to be 0. To be fixed in the library conversion in its own ticket, for all drivers; this ticket continues after that fix so that the synscan poll publishes 0 through indigo_update_coordinates(). The MOUNT_LST_TIME value defined at connect is not decided yet."
+    },
+    {
+      "event_id": "c4ff83b2-0f0b-4857-bc28-b1721bc1845b",
+      "event": "sub_ticket/merged",
+      "at": "2026-11-19T21:57:38.574852Z",
+      "actor": "human/Peter Polakovic",
+      "sub_ticket_id": "29c486f3-fd7e-4628-95f9-e5214f9a9e58",
+      "commit": "9d41dfae9e19b286b658fef10b06ac7fe61a962d"
+    },
+    {
+      "event_id": "75ca5dec-29dc-4ab8-a473-b3f9a1b751f5",
+      "event": "ticket/note",
+      "at": "2026-11-19T21:57:53.938853Z",
+      "actor": "human/Peter Polakovic",
+      "text": "2026-11-19: the library azimuth fix (sub-ticket 29c486f3, due north published as 0) is merged into this ticket's branch. Owner: continue autonomously; the MOUNT_LST_TIME value defined at connect stays as the library does it for every other driver unless he says otherwise. The recorded simulator run of mount_synscan is made in the owner-ordered final recorded run of all mount drivers at the end of the series, not separately here.",
+      "tokens": null
+    },
+    {
+      "event_id": "cc76acf3-a1fa-469b-9261-c3ddb0b080d2",
+      "event": "task/progress",
+      "at": "2026-11-19T21:58:08.603944Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Resumed: rebuilding library with the azimuth fix and rerunning the pole comparison"
+    },
+    {
+      "event_id": "5039eb85-c484-4017-ad30-4bbeece41e3d",
+      "event": "task/progress",
+      "at": "2026-11-19T22:02:54.607562Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Running the new synscan library-path case alone: test_mount_synscan_simulator filter"
+    },
+    {
+      "event_id": "e2710fac-dcff-4b70-b11b-b69a11b1a6e8",
+      "event": "task/progress",
+      "at": "2026-11-19T22:03:46.222887Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Running the full synscan simulator suite: test_mount_synscan_simulator"
+    },
+    {
+      "event_id": "328c14b7-2ab5-4c66-ad1b-c4129691f52c",
+      "event": "task/progress",
+      "at": "2026-11-19T22:20:37.708122Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ca7ea20c-13b7-476f-a3e9-e7bb8c555eef",
+      "event": "task/progress",
+      "at": "2026-11-19T22:20:37.754468Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4488d861-7907-4542-a7a6-3a50e14e2a8b",
+      "event": "task/progress",
+      "at": "2026-11-19T22:20:37.756439Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "4c944d22-2d1f-4af0-8376-59e711aff470",
+      "event": "task/progress",
+      "at": "2026-11-19T22:22:08.356773Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "2ca0eda1-2dae-4d4a-9da3-923e271a1215",
+      "event": "check/passed",
+      "at": "2026-11-19T22:22:08.361130Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "83d067eae358519fc48dedf4adfb518d51f1fb1c",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "770aebe7-a589-41fa-b3bf-2ca446ff36b9",
+      "event": "task/progress",
+      "at": "2026-11-19T22:22:19.053043Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "413b994b-b743-4047-81f8-ff21eb0b039e",
+      "text": "Synscan suite 104/104 passed, flow check passed, test-clean done"
+    },
+    {
+      "event_id": "8fe2b964-0f1c-4cc0-9db7-5972ee7cdc2f",
+      "event": "task/progress",
+      "at": "2026-11-19T22:22:43.940670Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "93d8626a-5ffd-473a-901a-999eddf0932d",
+      "text": "Review started"
+    },
+    {
+      "event_id": "faa8de53-8fc9-4524-b83b-a3ad4faa3a9b",
+      "event": "review/started",
+      "at": "2026-11-19T22:22:43.941870Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "accf86c9-63b3-4302-afd9-f422dd9f146a",
+      "event": "task/progress",
+      "at": "2026-11-19T22:23:09.394927Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "93d8626a-5ffd-473a-901a-999eddf0932d",
+      "text": "Reviewing synscan coordinates change 9d41dfae9..HEAD",
+      "attempt_id": "17c3d0ee-26be-4b38-9512-610004b7591a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": null
+      }
+    },
+    {
+      "event_id": "6c4c42e0-e54e-431e-81f4-5381bac06785",
+      "event": "task/progress",
+      "at": "2026-11-19T22:25:10.937491Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "93d8626a-5ffd-473a-901a-999eddf0932d",
+      "text": "Building and running the new synscan poll case"
+    },
+    {
+      "event_id": "0d506797-b62d-43c8-8770-002feddcc2c6",
+      "event": "task/progress",
+      "at": "2026-11-19T22:27:46.007287Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "93d8626a-5ffd-473a-901a-999eddf0932d",
+      "text": "Running the synscan simulator suite once (reviewer)"
+    },
+    {
+      "event_id": "be376cc8-f4c4-4272-950d-aea7d74e644d",
+      "event": "task/progress",
+      "at": "2026-11-19T22:44:37.633154Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "93d8626a-5ffd-473a-901a-999eddf0932d",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "6cb16744-0562-4c78-830a-626745c332cb",
+      "event": "review/passed",
+      "at": "2026-11-19T22:44:37.634673Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "93d8626a-5ffd-473a-901a-999eddf0932d",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "83d067eae358519fc48dedf4adfb518d51f1fb1c"
+    },
+    {
+      "event_id": "dea3a78f-41c7-4b67-b61d-96bc7acf4ea6",
+      "event": "task/progress",
+      "at": "2026-11-19T22:45:16.374388Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "95a4ebd6-59c2-4fe8-af8b-3bf2dbf90506",
+      "event": "task/progress",
+      "at": "2026-11-19T22:45:16.425965Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4870a6a6-7875-4e16-8ca7-8445a604dbe6",
+      "event": "task/progress",
+      "at": "2026-11-19T22:45:16.428227Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "22f6d4cb-343f-44f9-bb79-bef0cf2d2fe5",
+      "event": "task/progress",
+      "at": "2026-11-19T22:46:46.993282Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "3e257d1e-0475-4c4d-a4af-5b713b4e7a9b",
+      "event": "check/passed",
+      "at": "2026-11-19T22:46:46.998781Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "7106049242c3d1664b856e378c4f419acc3da5a0",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "7efeecce-3682-4c5f-b7ef-7c2c58a7020e",
+      "event": "task/progress",
+      "at": "2026-11-19T22:47:40.769935Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "93d8626a-5ffd-473a-901a-999eddf0932d",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d877d724-3130-482d-94a8-d806a57b6970",
+      "event": "review/passed",
+      "at": "2026-11-19T22:47:40.771357Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "93d8626a-5ffd-473a-901a-999eddf0932d",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "7106049242c3d1664b856e378c4f419acc3da5a0"
+    },
+    {
+      "event_id": "c6505ae1-b943-493c-a509-3d1a8f129f70",
+      "event": "ticket/closed",
+      "at": "2026-11-19T22:47:55.598267Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-19T22:47:55.598254Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "b0e98e2015c5074ae19fa58e9fc4827ef91b8760"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "ticket/42b85be0-1f19-4607-b3c3-746e60317d17",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "83d067eae358519fc48dedf4adfb518d51f1fb1c",
+        "tree": "d3704db039cad71bcd840b43139277237c75b2ac",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T22:20:37.753718Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1/d3704db039ca-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "83d067eae358519fc48dedf4adfb518d51f1fb1c",
+        "tree": "d3704db039cad71bcd840b43139277237c75b2ac",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T22:22:08.354194Z",
+        "duration_s": 90.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1/d3704db039ca-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7106049242c3d1664b856e378c4f419acc3da5a0",
+        "tree": "d56d9c1bc969d782831e1de90301fca7b8a7df4c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T22:45:16.424956Z",
+        "duration_s": 0.1,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1/d56d9c1bc969-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "7106049242c3d1664b856e378c4f419acc3da5a0",
+        "tree": "d56d9c1bc969d782831e1de90301fca7b8a7df4c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T22:46:46.989370Z",
+        "duration_s": 90.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/9fe7f46e-cf10-4f1e-8b3a-cca9aa1f16f1/d56d9c1bc969-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed 9d41dfae9..HEAD (mount_synscan 3.0.0.23 -> 24, test, MIGRATION_STATUS). No blocking defects.\nVerified: (1) Callers: poll, autohome/park/home/goto finalizers and synscan_wait_axis_stopped all go through synscan_update_mount_coordinates(), which resolves device->master_device before indigo_update_coordinates() and returns before it when !IS_CONNECTED, so MOUNT_* context is always the mount's; connect path calls only synscan_read_mount_coordinates(), and indigo_mount_change_property(CONNECTION) derives HOR from the freshly read EQ before defining it, then the generated handler queues mount_timer_callback at once (LST stale only between define and that first poll, owner-accepted). (2) No driver code reads MOUNT_HORIZONTAL_* or MOUNT_LST_TIME_ITEM values for decisions; GoTo/park/home/side-of-pier use indigo_lst(NULL) or axis positions; the driver accepts no HOR requests. (3) States: library copies EQ state to HOR when HOR and GEOGRAPHIC are visible, same as the removed code; failed-read path (on_timer -> synscan_set_coordinate_state ALERT for EQ+HOR, LST not published) and connect ALERT path are unchanged. Hidden HOR now still gets LST updated (previously LST value froze) - an improvement. (4) synscan_de2h removed, no remaining references; its math equals indigo_radec_to_altaz (no refraction). (5) Regenerating the .driver with the worktree build/bin/indigo_generator in a temp dir gives .c/.h/_main.c byte-identical to the checked-in files. (6) New case passes 3/3 alone (20-21 polls, 18-19 with HOR, 13-14 with LST, 0 value errors); built against the pre-change .c (9d41dfae9) it fails (0 polls with HOR before EQ, 20 disagreeing). LST whole-second matching is exact-double against indigo_lst over a 3 s window, deterministic. Full synscan simulator suite run once: 104/104 PASS; test-clean done. (7) MIGRATION_STATUS 104 / 21 matches 104 registered simulator cases and 21 hardware cases. Version bumped in .driver and DRIVER_VERSION 0x03000018. No README, PROPERTIES or Xcode change needed; git diff --check clean; formatting follows the rules.\nNon-blocking remarks: (a) EQ is computed from the LST of the read, LST/HOR from time(NULL) at publish; if a second boundary falls between them HOR/LST lag EQ by 1 s of hour angle (~15 arcsec). Library-wide behaviour shared by every mount driver using indigo_update_coordinates(), within the owner's accepted scope. (b) Test: the update hook is installed before the latitude change to 48; a poll whose RAW publish starts after the hook and computes HOR before the latitude write (microsecond window) would be flagged as a value error. Installing the hook after wait_for_number_item_value() would remove that theoretical race.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "83d067eae358519fc48dedf4adfb518d51f1fb1c",
+        "tree": "d3704db039cad71bcd840b43139277237c75b2ac",
+        "at": "2026-11-19T22:44:37.632140Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review after merge 710604924 (ticket/42b85be0 into this branch). Verified: git diff 83d067eae 710604924 -- indigo_drivers/mount_synscan indigo_libs/indigo_align.c indigo_test/integration/test_mount_synscan_simulator.c indigo_test/integration/test_mount_simulator.c is empty; every file changed only by this branch equals 83d067eae and every file changed only by the parent equals 32e3954d2 in the merge; only MIGRATION_STATUS.md and TEST_SUMMARY.md were changed by both sides. No conflict markers in the merge tree. MIGRATION_STATUS rows: mount_rainbow 40 / 0, mount_simulator 29 / 0, mount_starbook 27 / 0, mount_synscan 104 / 21 equal the registered cases (40 in test_mount_rainbow_simulator.c, 29 in test_mount_simulator.c (non-benchmark main), 27 in test_mount_starbook_simulator.c, 104 in test_mount_synscan_simulator.c, 21 in hardware/test_mount_synscan_hw.c). indigo_libs, the mount_synscan driver (Makefile.drv) and test_mount_synscan_simulator build without errors or warnings on the merged tree; test-clean done. The earlier code-review findings for 83d067eae still apply unchanged (pass, two non-blocking remarks). Note only: TEST_SUMMARY's mount_simulator row (29 / 28 Failed, 2026-11-19 22:35) comes from this branch's already merged sub-ticket 29c486f3, not from the conflict resolution.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "7106049242c3d1664b856e378c4f419acc3da5a0",
+        "tree": "d56d9c1bc969d782831e1de90301fca7b8a7df4c",
+        "at": "2026-11-19T22:47:40.769675Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T21:57:53.937709Z",
+        "actor": "human/Peter Polakovic",
+        "text": "2026-11-19: the library azimuth fix (sub-ticket 29c486f3, due north published as 0) is merged into this ticket's branch. Owner: continue autonomously; the MOUNT_LST_TIME value defined at connect stays as the library does it for every other driver unless he says otherwise. The recorded simulator run of mount_synscan is made in the owner-ordered final recorded run of all mount drivers at the end of the series, not separately here.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "The version comparison on the simulator (master driver vs the change, same scenario) shows identical states, side of pier, equatorial and raw coordinates, and alt/az equal to 1e-12 deg, with these differences from publishing through indigo_update_coordinates(): (1) azimuth at the north pole (home position) is published as 360.000000 instead of 0.000000, because the driver's own conversion snapped |az| < 2 arcsec to 0 and the library does not (master already alternates 360/0 there: the library publishes 360 at connect and on a site change, the poll 0); (2) MOUNT_LST_TIME is defined with a stale value (0 on the first connect) and corrected by an update inside the same connection handler, as in every other driver on the library path; (3) the order of updates per poll changes from RAW, EQ, SIDE_OF_PIER, HOR, LST to RAW, SIDE_OF_PIER, HOR, LST, EQ. Accept the library behaviour and finish the ticket (A), keep a private LST assignment in the driver (B), or fix the two points in indigo_mount_driver.c in a separate ticket first (C)?",
+        "at": "2026-11-19T21:14:17.123944Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner (2026-11-19): azimuth 360 at the pole is a defect, it has to be 0. To be fixed in the library conversion in its own ticket, for all drivers; this ticket continues after that fix so that the synscan poll publishes 0 through indigo_update_coordinates(). The MOUNT_LST_TIME value defined at connect is not decided yet.",
+        "answered_at": "2026-11-19T21:20:41.851416Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "sub_ticket_merged_at": "2026-11-19T21:57:38.574315Z",
+    "landing": {
+      "commit": "b0e98e2015c5074ae19fa58e9fc4827ef91b8760",
+      "tree": "d56d9c1bc969d782831e1de90301fca7b8a7df4c",
+      "base": "ticket/42b85be0-1f19-4607-b3c3-746e60317d17",
+      "at": "2026-11-19T22:47:55.525500Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-19T21:00:22.648555Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-19T21:01:05.326891Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 6206413.642,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 41,
+    "sha256": "dfc29ab5aae2ac110b78c9f49ba03878860cdb82763cc0e187f4d49f42850ea0"
+  }
+}

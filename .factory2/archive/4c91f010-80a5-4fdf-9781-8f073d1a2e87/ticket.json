@@ -1,0 +1,438 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4c91f010-80a5-4fdf-9781-8f073d1a2e87",
+  "revision": 19,
+  "title": "Document Bahtinov mask focusing in the Imager Agent",
+  "description": "Create indigo_drivers/agent_imager/doc/BAHTINOV.md in English using the established technical reference format and header. Explain the optical origin of the three diffraction spikes and the focus criterion. Trace the actual indigo_libs/indigo_bahtinov.c analysis pipeline from supported pixels to measured spike lines, outer-line intersection and signed pixel error, including known/free mask angles, confidence and rejection. Explain what the Imager Agent learns, displays and uses to drive iterative autofocus. Document concrete implementation and practical optical limitations, supported frames, failure behavior and interpretation of the sign/units. Link source and existing tests, distinguishing tested behavior from practical guidance. Verify against the current implementation and documentation links. Documentation only.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T12:00:05.643345Z",
+  "status": "closed",
+  "branch": "ticket/4c91f010-80a5-4fdf-9781-8f073d1a2e87",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "5041d0b2-bd0d-4f8a-bddf-1a9b4fff7443",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "4b517d37-5c31-469e-98c6-23b29dbbcb6d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T12:00:52.897022Z",
+          "last_activity_at": "2026-11-20T12:06:10.985778Z",
+          "ended_at": "2026-11-20T12:06:10.985778Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 318088.756,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T12:00:52.897022Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/4c91f010-80a5-4fdf-9781-8f073d1a2e87"
+        },
+        {
+          "at": "2026-11-20T12:06:10.985778Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 318088.756,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "0f5eda36-28a6-4329-acbe-f3d01124a200",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3de23e2e-1db2-422b-b70d-ec3d71feefc8",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T12:06:10.985884Z",
+          "last_activity_at": "2026-11-20T12:07:29.479489Z",
+          "ended_at": "2026-11-20T12:07:29.479489Z",
+          "outcome": {
+            "summary": "Independent review of snapshot 839bc15452: no actionable defects. Verified the complete Bahtinov guide against analyzer/header constants and control flow, Imager angle learning/fallback, frame gate, published coordinates and error, iterative quality selection/reversals/travel/failure/recovery, and the actual assertions in 12 synthetic library cases plus both cited agent integration cases. The optical description agrees with the primary stac845 article text accessible through indexed publisher content (direct publisher fetch was unavailable). Reviewed contextual tuning-guide corrections and Xcode group registration. Independently verified 27 local links/anchors in BAHTINOV.md, its whitespace/fences, plutil Xcode syntax and git diff --check. Production source is unchanged; this documentation review did not run simulator, hardware or runtime tests, and makes no hardware-accuracy claim.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 78493.605,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T12:06:10.985884Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T12:07:29.479489Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Independent review of snapshot 839bc15452: no actionable defects. Verified the complete Bahtinov guide against analyzer/header constants and control flow, Imager angle learning/fallback, frame gate, published coordinates and error, iterative quality selection/reversals/travel/failure/recovery, and the actual assertions in 12 synthetic library cases plus both cited agent integration cases. The optical description agrees with the primary stac845 article text accessible through indexed publisher content (direct publisher fetch was unavailable). Reviewed contextual tuning-guide corrections and Xcode group registration. Independently verified 27 local links/anchors in BAHTINOV.md, its whitespace/fences, plutil Xcode syntax and git diff --check. Production source is unchanged; this documentation review did not run simulator, hardware or runtime tests, and makes no hardware-accuracy claim."
+        }
+      ],
+      "result": {
+        "summary": "Independent review of snapshot 839bc15452: no actionable defects. Verified the complete Bahtinov guide against analyzer/header constants and control flow, Imager angle learning/fallback, frame gate, published coordinates and error, iterative quality selection/reversals/travel/failure/recovery, and the actual assertions in 12 synthetic library cases plus both cited agent integration cases. The optical description agrees with the primary stac845 article text accessible through indexed publisher content (direct publisher fetch was unavailable). Reviewed contextual tuning-guide corrections and Xcode group registration. Independently verified 27 local links/anchors in BAHTINOV.md, its whitespace/fences, plutil Xcode syntax and git diff --check. Production source is unchanged; this documentation review did not run simulator, hardware or runtime tests, and makes no hardware-accuracy claim.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 78493.605,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9511a4d2-0f43-40f0-84f4-48009af5e564",
+      "event": "ticket/created",
+      "at": "2026-11-20T12:00:05.644094Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "0ab66fec-f40d-419a-a333-b41bce09042d",
+      "event": "question/asked",
+      "at": "2026-11-20T12:00:10.937700Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Do you confirm medium priority (missing technical reference), low severity (documentation only), simple profile (one guide with independent review), and authorize starting this ticket?"
+    },
+    {
+      "event_id": "9f417909-2a63-4c0c-9016-d11f3628976c",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T12:00:44.610250Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "db99f30f-879e-40db-8329-8cd9c5f75c43",
+      "event": "question/answered",
+      "at": "2026-11-20T12:00:44.751929Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner confirmed proposed values and authorized starting the ticket."
+    },
+    {
+      "event_id": "b594f0de-e15e-4289-a7b2-96ec85a82f1d",
+      "event": "task/progress",
+      "at": "2026-11-20T12:00:52.897363Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5041d0b2-bd0d-4f8a-bddf-1a9b4fff7443",
+      "text": "Implementation started on branch ticket/4c91f010-80a5-4fdf-9781-8f073d1a2e87"
+    },
+    {
+      "event_id": "4cd8db2f-1781-463f-ae1c-4e451dc3002d",
+      "event": "ticket/started",
+      "at": "2026-11-20T12:00:52.899198Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/4c91f010-80a5-4fdf-9781-8f073d1a2e87",
+      "base": "master"
+    },
+    {
+      "event_id": "c7ec6cdb-6fc6-4d34-a75b-f38795eddc83",
+      "event": "task/progress",
+      "at": "2026-11-20T12:01:14.983335Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5041d0b2-bd0d-4f8a-bddf-1a9b4fff7443",
+      "text": "Tracing Bahtinov analysis, Imager integration and existing documentation conventions",
+      "attempt_id": "4b517d37-5c31-469e-98c6-23b29dbbcb6d",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e2f846de-5430-41d4-a5ff-c6d2c5d506ba",
+      "event": "task/progress",
+      "at": "2026-11-20T12:02:07.821168Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5041d0b2-bd0d-4f8a-bddf-1a9b4fff7443",
+      "text": "Writing the optical and implementation reference, geometry example and limitations"
+    },
+    {
+      "event_id": "9f83c57a-da13-4421-bb08-0475007b738b",
+      "event": "task/progress",
+      "at": "2026-11-20T12:05:05.732568Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5041d0b2-bd0d-4f8a-bddf-1a9b4fff7443",
+      "text": "Checking document links, headings, numerical constants and Xcode registration"
+    },
+    {
+      "event_id": "96fa9dd3-4914-4316-bec4-9b860171609d",
+      "event": "ticket/note",
+      "at": "2026-11-20T12:05:40.483101Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Documentation verification: checked analyzer/agent source and synthetic test assertions; 40 relative links/anchors and code fences pass; new document header, credit and whitespace pass; plutil validates Xcode registration; git diff --check passes. An initial whole-guide whitespace assertion encountered existing untouched trailing whitespace in IMAGING_AF_TUNING.md; scoped verification to the new document and changed-line git check to avoid unrelated churn. No production behavior changed; no simulator or hardware run requested or performed. Incoming guide text corrected only for supported narrowband analysis and the required mask-use exception.",
+      "tokens": null
+    },
+    {
+      "event_id": "d5c5ac3b-7721-486d-b45a-4019f479993a",
+      "event": "ticket/note",
+      "at": "2026-11-20T12:05:48.045921Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Correction to preceding verification note: the link checker reported 30 relative links/anchors, not 40. All 30 passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "c30b2a52-823e-4d50-9387-4b0500bfe165",
+      "event": "task/progress",
+      "at": "2026-11-20T12:05:58.105731Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5041d0b2-bd0d-4f8a-bddf-1a9b4fff7443",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c59c396d-d555-4d0d-989c-7789e3ab7ff0",
+      "event": "task/progress",
+      "at": "2026-11-20T12:05:58.128887Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5041d0b2-bd0d-4f8a-bddf-1a9b4fff7443",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "962b7d14-7bb6-40c3-8a2c-a9912562da25",
+      "event": "check/passed",
+      "at": "2026-11-20T12:05:58.130701Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "839bc15452972c7103c51770f8ce2fb35e14e044",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "ef066046-0f0b-4cb8-bacc-66527ffde8a5",
+      "event": "task/progress",
+      "at": "2026-11-20T12:06:10.985953Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f5eda36-28a6-4329-acbe-f3d01124a200",
+      "text": "Review started"
+    },
+    {
+      "event_id": "32d21f9c-712c-4d14-8ea9-4f9b1a046e88",
+      "event": "review/started",
+      "at": "2026-11-20T12:06:10.987089Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "ff81491b-5b16-4b63-ad2d-55832b4f82bf",
+      "event": "task/progress",
+      "at": "2026-11-20T12:06:32.487551Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f5eda36-28a6-4329-acbe-f3d01124a200",
+      "text": "Reviewing Bahtinov documentation against analyzer, agent and optics references",
+      "attempt_id": "3de23e2e-1db2-422b-b70d-ec3d71feefc8",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "aecc2b85-6bfd-4f8d-b4d4-d89226b2c957",
+      "event": "task/progress",
+      "at": "2026-11-20T12:07:20.269887Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f5eda36-28a6-4329-acbe-f3d01124a200",
+      "text": "Checking document links, whitespace and Xcode metadata; no runtime test scope"
+    },
+    {
+      "event_id": "3bd7ed8f-e181-476e-b939-18da224588ed",
+      "event": "task/progress",
+      "at": "2026-11-20T12:07:29.479619Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f5eda36-28a6-4329-acbe-f3d01124a200",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "090322b4-77dd-4c8e-aafe-b5c8f54ba24c",
+      "event": "review/passed",
+      "at": "2026-11-20T12:07:29.481311Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0f5eda36-28a6-4329-acbe-f3d01124a200",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "839bc15452972c7103c51770f8ce2fb35e14e044"
+    },
+    {
+      "event_id": "c8d5ce6a-6169-4090-8615-a4a1d074f345",
+      "event": "ticket/closed",
+      "at": "2026-11-20T12:07:42.950671Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-20T12:07:42.950635Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "9b952bd012cf68dea0e72759fc19c832fd7e31c8"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "839bc15452972c7103c51770f8ce2fb35e14e044",
+        "tree": "02103bbe9a50b55a1a4fb0555531b44ed12fda31",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T12:05:58.128170Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4c91f010-80a5-4fdf-9781-8f073d1a2e87/02103bbe9a50-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of snapshot 839bc15452: no actionable defects. Verified the complete Bahtinov guide against analyzer/header constants and control flow, Imager angle learning/fallback, frame gate, published coordinates and error, iterative quality selection/reversals/travel/failure/recovery, and the actual assertions in 12 synthetic library cases plus both cited agent integration cases. The optical description agrees with the primary stac845 article text accessible through indexed publisher content (direct publisher fetch was unavailable). Reviewed contextual tuning-guide corrections and Xcode group registration. Independently verified 27 local links/anchors in BAHTINOV.md, its whitespace/fences, plutil Xcode syntax and git diff --check. Production source is unchanged; this documentation review did not run simulator, hardware or runtime tests, and makes no hardware-accuracy claim.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "839bc15452972c7103c51770f8ce2fb35e14e044",
+        "tree": "02103bbe9a50b55a1a4fb0555531b44ed12fda31",
+        "at": "2026-11-20T12:07:29.479286Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-20T12:05:40.481774Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Documentation verification: checked analyzer/agent source and synthetic test assertions; 40 relative links/anchors and code fences pass; new document header, credit and whitespace pass; plutil validates Xcode registration; git diff --check passes. An initial whole-guide whitespace assertion encountered existing untouched trailing whitespace in IMAGING_AF_TUNING.md; scoped verification to the new document and changed-line git check to avoid unrelated churn. No production behavior changed; no simulator or hardware run requested or performed. Incoming guide text corrected only for supported narrowband analysis and the required mask-use exception.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T12:05:48.044817Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Correction to preceding verification note: the link checker reported 30 relative links/anchors, not 40. All 30 passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Do you confirm medium priority (missing technical reference), low severity (documentation only), simple profile (one guide with independent review), and authorize starting this ticket?",
+        "at": "2026-11-20T12:00:10.936552Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner confirmed proposed values and authorized starting the ticket.",
+        "answered_at": "2026-11-20T12:00:44.750768Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "9b952bd012cf68dea0e72759fc19c832fd7e31c8",
+      "tree": "02103bbe9a50b55a1a4fb0555531b44ed12fda31",
+      "base": "master",
+      "at": "2026-11-20T12:07:42.860057Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T12:00:05.643345Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T12:00:44.610159Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 396582.361,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 25,
+    "sha256": "a940019f817fa1b9cc55731419875c02aade0f444879aa6b0e7253f57b2218ee"
+  }
+}

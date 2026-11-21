@@ -21,6 +21,7 @@
 #include <indigo_drivers/mount_lx200/indigo_mount_lx200.h>
 
 #include "serial_simulator_test_common.h"
+#include "mount_coordinates_test_common.h"
 
 #ifndef MOUNT_LX200_SIMULATOR_EXECUTABLE
 #define MOUNT_LX200_SIMULATOR_EXECUTABLE "build/integration/mount_lx200_simulator"
@@ -885,8 +886,10 @@ static void lx200_agotino_abort_reports_the_unreached_target(void) {
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "Q", 0));
 	// The goto ends well before the slew would have, which is what says the abort reached the
-	// controller rather than that the slew ran out.
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// controller rather than that the slew ran out; the aborted goto ends ALERT and the polls keep it.
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	// And the position it reports is the target, although the axes never got there.
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 60) < 0.01);
 	// The next goto has to be taken straight away and finish.
@@ -983,8 +986,9 @@ static void lx200_gemini_refuses_an_unaligned_sync(void) {
 	// The refused sync has to end in ALERT, not in the OK a successful one publishes.
 	SERIAL_CHECK_TRUE(lx_coordinates(23.5, -0.5, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "CM", 0));
-	// And the mount has to keep the position it had, because that is what it did.
-	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	// And the mount has to keep the position it had, because that is what it did; the polls keep the ALERT.
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - right_ascension) < 0.01);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - declination) < 0.01);
 cleanup:
@@ -1741,7 +1745,10 @@ static void lx200_goto_progress_abort_and_restart(void) {
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 1));
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "Q", 0));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// the aborted GoTo ends ALERT and the polls keep it until the next request
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	indigo_usleep(1500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 80) > 1);
 	SERIAL_CHECK_TRUE(lx_coordinates(9, 15, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
@@ -1780,21 +1787,21 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// A refused GOTO leaves MOUNT_EQUATORIAL_COORDINATES in ALERT, and the very next successful
-// readback has to publish it as valid again without any further request. An OnStep controller
-// that refused one slew otherwise reported its position as invalid for the whole session, so
-// every later scenario that waited for the property to settle waited out its timeout.
-static void lx200_refused_goto_recovers_on_the_next_poll(void) {
+// A refused GOTO leaves MOUNT_EQUATORIAL_COORDINATES in ALERT, and the polls keep that ALERT
+// (indigo_update_coordinates() keeps an ALERT that ended BUSY) until the next request, which
+// clears it. An OnStep controller that refused one slew once reported its position as invalid
+// for the whole session, so every later scenario that waited for the property to settle waited
+// out its timeout: the next slew has to be taken straight away and end OK.
+static void lx200_refused_goto_stays_alert_until_the_next_request(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
-	unsigned int revision = 0;
 	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
 	online = true;
 	// Error 3 is "controller in standby", which is what the mount answered on hardware.
 	SERIAL_CHECK_TRUE(inject_reply(&simulator, "MS", "3"));
 	SERIAL_CHECK_TRUE(lx_coordinates(7.5, 15, INDIGO_ALERT_STATE));
-	revision = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
-	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	// And the mount takes the next slew straight away.
 	SERIAL_CHECK_TRUE(lx_coordinates(7.5, 15, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
@@ -4413,8 +4420,8 @@ static void lx200_goto_abort_ends_alert_and_idle_abort_keeps_state(void) {
 	printf("    the aborted goto stopped at RA %.4f DEC %.4f, the target was RA 18 DEC -80\n", second_ra, second_dec);
 	SERIAL_CHECK_TRUE(fabs(first_ra - second_ra) < 0.0001 && fabs(first_dec - second_dec) < 0.0001);
 	SERIAL_CHECK_TRUE(fabs(second_dec + 80) > 1 && fabs(second_ra - 18) > 0.1);
-	// The readback of a stopped mount is valid, so the poll restores OK, and the next goto is taken.
-	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	// The polls keep the ALERT of the aborted goto until the next request, and the next goto is taken.
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	int slews = event_count(&simulator, "MS", NULL);
 	arm_slew_light_capture();
 	SERIAL_CHECK_TRUE(lx_coordinates(9, 15, INDIGO_BUSY_STATE));
@@ -5266,6 +5273,52 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The OK publication of an accepted sync carries the position the mount reports after it, not the one from before the
+// sync: a client such as the Mount Agent compares it with its request. Every profile reads it the way its poll does
+// (:GR#/:GD# with the profile's formats, :GRH#/:GDH# for NYX, the Gemini double precision) after its own sync command
+// (:CM#, the reply a Meade Autostar sends late, :CMR# of a GTO servo controller).
+static void check_lx200_sync_result(const char *label, external_serial_simulator *simulator, bool started) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	if (!started) {
+		fprintf(stderr, "    %s: the profile did not start\n", label);
+	}
+	SERIAL_CHECK_TRUE(started);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	double ra = fmod(floor(ra0 * 60) / 60 + 0.5, 24);
+	double dec = dec0 > 60 ? 40 : floor(dec0) + 2;
+	start_coordinates_publications(lx200_mount.device_name);
+	SERIAL_CHECK_TRUE(lx_coordinates(ra, dec, INDIGO_OK_STATE));
+	int count = stop_coordinates_publications(events);
+	int busy = check_request_publication(label, events, count, 0, ra0, dec0, alt0, az0, ra, dec, 0.01);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_sync_result(label, events, count, busy, find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE), ra, dec, 0.01));
+cleanup:
+	stop_coordinates_publications(NULL);
+	if (started) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(simulator);
+}
+
+static void lx200_sync_result_carries_the_reported_position(void) {
+	for (int i = 0; i < ARRAY_SIZE(profiles); i++) {
+		external_serial_simulator simulator = { 0 };
+		check_lx200_sync_result(profiles[i].model, &simulator, start_profile(&simulator, profiles[i].model, i == 5 || i == 6 ? profiles[i].type : NULL));
+	}
+	external_serial_simulator classic = { 0 };
+	check_lx200_sync_result("classic", &classic, start_profile(&classic, "classic", "CLASSIC"));
+	const char *late_sync[] = { "--meade-late-sync", NULL };
+	external_serial_simulator meade = { 0 };
+	check_lx200_sync_result("meade late sync reply", &meade, start_meade_device(&meade, &lx200_mount, late_sync));
+	const char *double_precision[] = { "--double-precision", NULL };
+	external_serial_simulator gemini = { 0 };
+	check_lx200_sync_result("gemini double precision", &gemini, start_gemini_device(&gemini, &lx200_mount, double_precision, NULL));
+}
+
 int main(int argc, char **argv) {
 	setbuf(stdout, NULL);
 	simulator_test_client.update_property = timed_client_update;
@@ -5363,7 +5416,7 @@ int main(int argc, char **argv) {
 		{ "lx200_shared_connection_orders_and_last_close", lx200_shared_connection_orders_and_last_close },
 		{ "lx200_goto_progress_abort_and_restart", lx200_goto_progress_abort_and_restart },
 		{ "lx200_coordinate_command_failures_recover", lx200_coordinate_command_failures_recover },
-		{ "lx200_refused_goto_recovers_on_the_next_poll", lx200_refused_goto_recovers_on_the_next_poll },
+		{ "lx200_refused_goto_stays_alert_until_the_next_request", lx200_refused_goto_stays_alert_until_the_next_request },
 		{ "lx200_prime_meridian_longitude_is_zero", lx200_prime_meridian_longitude_is_zero },
 		{ "lx200_onstep_without_auxiliary_features", lx200_onstep_without_auxiliary_features },
 		{ "lx200_onstep_sets_a_clock_lost_in_a_restart", lx200_onstep_sets_a_clock_lost_in_a_restart },
@@ -5377,6 +5430,7 @@ int main(int argc, char **argv) {
 		{ "lx200_meade_tracking_rate_has_one_decimal", lx200_meade_tracking_rate_has_one_decimal },
 		{ "lx200_meade_products_are_detected", lx200_meade_products_are_detected },
 		{ "lx200_meade_late_sync_reply_is_accepted", lx200_meade_late_sync_reply_is_accepted },
+		{ "lx200_sync_result_carries_the_reported_position", lx200_sync_result_carries_the_reported_position },
 		{ "lx200_meade_without_gw_uses_the_ack", lx200_meade_without_gw_uses_the_ack },
 		{ "lx200_meade_old_autostar_guides_host_timed", lx200_meade_old_autostar_guides_host_timed },
 		{ "lx200_meade_silent_park_is_parked", lx200_meade_silent_park_is_parked },

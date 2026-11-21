@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0923e7a5-f9d4-4fdd-afd5-e18ae569881b",
+  "revision": 1,
+  "title": "indigo_mount_nexstaraux: coordinates ALERTs bypass indigo_update_coordinates(); MOUNT_PARK writes the park position into the equatorial targets",
+  "description": "Two defects: (1) MOUNT_EQUATORIAL_COORDINATES ALERTs are published with indigo_update_property() instead of indigo_update_coordinates(), so they are not kept; (2) MOUNT_PARK writes the park position into the targets of MOUNT_EQUATORIAL_COORDINATES, although targets may hold only the client's request. Found while working on ticket 42b85be0-1f19-4607-b3c3-746e60317d17 (closed, commit a09e0f878), which introduced the kept coordinates ALERT in indigo_update_coordinates(): an ALERT published after a BUSY stays until the next BUSY. Reproduce in the driver's simulator suite before changing code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:04.188052Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "70254dcc-0da5-48d8-8303-3c4ee8a7586a",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:04.188836Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:04.188052Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "335e07053d5a734485c89ffaf87acabc27ae3a4998cd2e12ebdaa77bc9e9b4f0"
+  }
+}

@@ -500,6 +500,32 @@ static void abort_dispatch_uses_urgent_priority(void) {
 	}
 }
 
+// The change branch of MOUNT_EQUATORIAL_COORDINATES publishes the BUSY of the request through indigo_update_coordinates(),
+// with the copy of the values or of the targets kept as preserve_values selects; other mount properties keep the plain macro.
+static void mount_coordinates_busy_goes_through_update_coordinates(void) {
+	for (int preserve = 0; preserve < 2; preserve++) {
+		char definition[4096], generated[131072];
+		snprintf(definition, sizeof(definition), "driver architecture_test {\nlabel = \"Coordinates test\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\nmount { name = \"Mount\";\ninherited MOUNT_EQUATORIAL_COORDINATES { preserve_values = %s; on_change { indigo_send_message(device, \"goto\"); } }\ninherited MOUNT_HOME { on_change { indigo_send_message(device, \"home\"); } }\n}\n}\n", preserve ? "true" : "false");
+		ASSERT_TRUE(write_text(DEFINITION, definition));
+		char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+		ASSERT_TRUE(run(arguments));
+		ASSERT_TRUE(read_text("indigo_mount_architecture_test.c", generated, sizeof(generated)));
+		ASSERT_TRUE(strstr(generated, preserve ? "INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);" : "INDIGO_COPY_VALUES_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);") != NULL);
+		ASSERT_TRUE(strstr(generated, "PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY") == NULL);
+		ASSERT_TRUE(strstr(generated, "INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_PROPERTY, mount_home_handler);") != NULL);
+		// the parked-mount admission check still precedes the copy
+		char *parked = strstr(generated, "INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY");
+		char *copy = strstr(generated, "_PROCESS_COORDINATES_CHANGE(");
+		ASSERT_TRUE(parked && copy && parked < copy);
+		// the handler still ends with the coordinates publication
+		char *handler = strstr(generated, "static void mount_equatorial_coordinates_handler(indigo_device *device) {");
+		ASSERT_TRUE(handler != NULL);
+		char *end = strstr(handler, "\n}\n");
+		char *publication = strstr(handler, "indigo_update_coordinates(device, NULL);");
+		ASSERT_TRUE(end && publication && publication < end);
+	}
+}
+
 static void polaralign_device_generation(void) {
 	const char *definition = "driver architecture_test {\nlabel = \"Polar align test\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\npolaralign { name = \"Polar align test device\"; }\n}\n";
 	ASSERT_TRUE(write_text(DEFINITION, definition));
@@ -786,6 +812,7 @@ int main(void) {
 		{ "Generated transport scaffolding compiles as C11 and C++11", generated_code_compiles_as_c_and_cpp },
 		{ "Old and C++ compatible USB registration preserve VID/PID on extraction", usb_registration_reverse_extraction },
 		{ "Abort priority and unchanged synchronous, normal and guiding dispatch", abort_dispatch_uses_urgent_priority },
+		{ "Mount coordinates BUSY is published through indigo_update_coordinates()", mount_coordinates_busy_goes_through_update_coordinates },
 		{ "nine platform/CPU conditions and three reverse extractions", conditions_and_reverse_extraction },
 		{ "unsupported fallback without SDK headers or linkage", unsupported_fallback },
 		{ "unrestricted default", unrestricted_default },

@@ -1,0 +1,417 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8b40b2d3-3e8a-4cd6-b579-2dfffef29d85",
+  "revision": 18,
+  "title": "indigo_mount_starbook: MOUNT_EQUATORIAL_COORDINATES handler publishes the coordinates twice",
+  "description": "Owner request (2026-11-19): the duplicate is an obvious defect, fix it. Found by the survey recorded in ticket 42b85be0-1f19-4607-b3c3-746e60317d17.\n\nindigo_drivers/mount_starbook/indigo_mount_starbook.driver (3.0.0.12), on_change of the inherited MOUNT_EQUATORIAL_COORDINATES: every path calls indigo_update_coordinates() itself (start failure with NULL, sync result and refused GoTo with starbook_error_text(error), accepted GoTo with NULL), and the generator appends its own indigo_update_coordinates(device, NULL) at the end of mount_equatorial_coordinates_handler, so every request publishes MOUNT_EQUATORIAL_COORDINATES, MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME twice.\n\nFix: one publication per path through the generated epilogue. The error text that today travels with the hand-written update must still reach the client exactly once (decide how within the generator's existing semantics, without changing the generator; report the choice). Keep the state assignments, the restored position values and the scheduling of mount_goto_finalizer correct; inspect the regenerated handler. Driver version incremented, outputs regenerated. Tests: assert one coordinates update per request in each path and that the error message is still delivered; recorded run with tools/run_driver_test.py mount_starbook; MIGRATION_STATUS.md counts.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T21:16:37.597172Z",
+  "status": "closed",
+  "branch": "ticket/8b40b2d3-3e8a-4cd6-b579-2dfffef29d85",
+  "related_ticket_id": "42b85be0-1f19-4607-b3c3-746e60317d17",
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "c8faa3a3-1fba-4387-8b9f-f62560344125",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "6f09c877-82e3-41f8-8d7a-01e46899f431",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:16:46.700314Z",
+          "last_activity_at": "2026-11-19T21:35:54.022519Z",
+          "ended_at": "2026-11-19T21:35:54.022519Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1147322.205,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T21:16:46.700314Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/8b40b2d3-3e8a-4cd6-b579-2dfffef29d85"
+        },
+        {
+          "at": "2026-11-19T21:35:54.022519Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1147322.205,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "6b32acad-ebf4-4c9e-94f2-96119540102d",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "b2292508-bcbc-4de9-aea9-df0e36b61b7d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-19T21:35:54.022697Z",
+          "last_activity_at": "2026-11-19T21:42:53.121130Z",
+          "ended_at": "2026-11-19T21:42:53.121130Z",
+          "outcome": {
+            "summary": "Reviewed git diff 1c2d5cb3d4...HEAD (5ded940c4), worktree clean. Correctness: regenerated mount_equatorial_coordinates_handler (indigo_mount_starbook.c:700-735) now ends every on_change path in the single generated indigo_update_coordinates(device, NULL): start failure ALERT, sync OK, sync/readback failure ALERT, refused GoTo ALERT, accepted GoTo BUSY; parked guard unchanged (message + one INDIGO_UPDATE_PROPERTY_STATE, return). No hand-written coordinates update remains in the on_change; other handlers' on_change blocks only update other properties (TIMEZONE<->GEOGRAPHIC), ABORT/finalizer/poll publish once. Error text: indigo_update_property(..., msg) is itself serialised as update_property(client, ..., NULL) followed by a separate send_message(client, device, property, msg) (indigo_bus.c:1326-1331), and the XML adapter emits <message device name=...> either way, so the new indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, ...) yields the same wire message, once; only the order changes (message now precedes the update, as in the generator's own parked guard). No agent/client in the repo pairs a message with the coordinates update (client update_property callbacks always receive NULL). Finalizer: indigo_execute_handler_in queues on the same single-threaded device queue (indigo_timer.c queue_func), so it cannot run before the BUSY update. Generator: worktree build/bin/indigo_generator regenerated .c/.h/_main.c in a temp dir, all identical; no generator source change. Tests: new case passes 5/5 repeated runs; rebuilt against the 1c2d5cb3d4 driver it fails (refused START 2/2/2), so it detects the defect; poll and finalizer share the queue, grouping by trace count is deterministic. Full test_mount_starbook_simulator 27/27, 27 registered cases = MIGRATION_STATUS 27 / 0. Version 12 -> 13 (0x0300000D). README/TEST_SUMMARY: only the script record replacing the older mac simulator line. Non-blocking: the new test's cleanup uses brace-less 'if (driver_started)",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 419098.433,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-19T21:35:54.022697Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-19T21:42:53.121130Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Reviewed git diff 1c2d5cb3d4...HEAD (5ded940c4), worktree clean. Correctness: regenerated mount_equatorial_coordinates_handler (indigo_mount_starbook.c:700-735) now ends every on_change path in the single generated indigo_update_coordinates(device, NULL): start failure ALERT, sync OK, sync/readback failure ALERT, refused GoTo ALERT, accepted GoTo BUSY; parked guard unchanged (message + one INDIGO_UPDATE_PROPERTY_STATE, return). No hand-written coordinates update remains in the on_change; other handlers' on_change blocks only update other properties (TIMEZONE<->GEOGRAPHIC), ABORT/finalizer/poll publish once. Error text: indigo_update_property(..., msg) is itself serialised as update_property(client, ..., NULL) followed by a separate send_message(client, device, property, msg) (indigo_bus.c:1326-1331), and the XML adapter emits <message device name=...> either way, so the new indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, ...) yields the same wire message, once; only the order changes (message now precedes the update, as in the generator's own parked guard). No agent/client in the repo pairs a message with the coordinates update (client update_property callbacks always receive NULL). Finalizer: indigo_execute_handler_in queues on the same single-threaded device queue (indigo_timer.c queue_func), so it cannot run before the BUSY update. Generator: worktree build/bin/indigo_generator regenerated .c/.h/_main.c in a temp dir, all identical; no generator source change. Tests: new case passes 5/5 repeated runs; rebuilt against the 1c2d5cb3d4 driver it fails (refused START 2/2/2), so it detects the defect; poll and finalizer share the queue, grouping by trace count is deterministic. Full test_mount_starbook_simulator 27/27, 27 registered cases = MIGRATION_STATUS 27 / 0. Version 12 -> 13 (0x0300000D). README/TEST_SUMMARY: only the script record replacing the older mac simulator line. Non-blocking: the new test's cleanup uses brace-less 'if (driver_started)"
+        }
+      ],
+      "result": {
+        "summary": "Reviewed git diff 1c2d5cb3d4...HEAD (5ded940c4), worktree clean. Correctness: regenerated mount_equatorial_coordinates_handler (indigo_mount_starbook.c:700-735) now ends every on_change path in the single generated indigo_update_coordinates(device, NULL): start failure ALERT, sync OK, sync/readback failure ALERT, refused GoTo ALERT, accepted GoTo BUSY; parked guard unchanged (message + one INDIGO_UPDATE_PROPERTY_STATE, return). No hand-written coordinates update remains in the on_change; other handlers' on_change blocks only update other properties (TIMEZONE<->GEOGRAPHIC), ABORT/finalizer/poll publish once. Error text: indigo_update_property(..., msg) is itself serialised as update_property(client, ..., NULL) followed by a separate send_message(client, device, property, msg) (indigo_bus.c:1326-1331), and the XML adapter emits <message device name=...> either way, so the new indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, ...) yields the same wire message, once; only the order changes (message now precedes the update, as in the generator's own parked guard). No agent/client in the repo pairs a message with the coordinates update (client update_property callbacks always receive NULL). Finalizer: indigo_execute_handler_in queues on the same single-threaded device queue (indigo_timer.c queue_func), so it cannot run before the BUSY update. Generator: worktree build/bin/indigo_generator regenerated .c/.h/_main.c in a temp dir, all identical; no generator source change. Tests: new case passes 5/5 repeated runs; rebuilt against the 1c2d5cb3d4 driver it fails (refused START 2/2/2), so it detects the defect; poll and finalizer share the queue, grouping by trace count is deterministic. Full test_mount_starbook_simulator 27/27, 27 registered cases = MIGRATION_STATUS 27 / 0. Version 12 -> 13 (0x0300000D). README/TEST_SUMMARY: only the script record replacing the older mac simulator line. Non-blocking: the new test's cleanup uses brace-less 'if (driver_started)",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 419098.433,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "8b588f0a-ea9f-4889-a774-d383710ff4ed",
+      "event": "ticket/created",
+      "at": "2026-11-19T21:16:37.598193Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "73950874-b322-4f9a-8393-d9b97e776503",
+      "event": "task/progress",
+      "at": "2026-11-19T21:16:46.700709Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c8faa3a3-1fba-4387-8b9f-f62560344125",
+      "text": "Implementation started on branch ticket/8b40b2d3-3e8a-4cd6-b579-2dfffef29d85"
+    },
+    {
+      "event_id": "7356a8ff-5503-488d-9a87-c7ea5702c636",
+      "event": "ticket/started",
+      "at": "2026-11-19T21:16:46.702667Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/8b40b2d3-3e8a-4cd6-b579-2dfffef29d85",
+      "base": "ticket/42b85be0-1f19-4607-b3c3-746e60317d17"
+    },
+    {
+      "event_id": "6f3d53ba-f574-4f98-bdb9-5ae35bcdd9ed",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T21:18:44.004598Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "af737341-3f45-4837-b161-30c1bbdc0442",
+      "event": "task/progress",
+      "at": "2026-11-19T21:19:27.773156Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c8faa3a3-1fba-4387-8b9f-f62560344125",
+      "text": "Implementer launched",
+      "attempt_id": "6f09c877-82e3-41f8-8d7a-01e46899f431",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "8cdaa610-f020-40c0-8d24-c8de420cbd90",
+      "event": "task/progress",
+      "at": "2026-11-19T21:23:47.646515Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c8faa3a3-1fba-4387-8b9f-f62560344125",
+      "text": "Wrote per-path coordinates update counting test; building worktree to reproduce"
+    },
+    {
+      "event_id": "2b810033-a8ae-4240-b9e9-fc99fc3bfc4a",
+      "event": "task/progress",
+      "at": "2026-11-19T21:26:40.202255Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c8faa3a3-1fba-4387-8b9f-f62560344125",
+      "text": "Reproduced (3.0.0.12): every path 2 EQ/HOR/LST updates; message after 1st update in refused GOTO/SYNC"
+    },
+    {
+      "event_id": "d1c1ff87-c430-4f07-9e0b-0eba024dfed3",
+      "event": "task/progress",
+      "at": "2026-11-19T21:27:30.269873Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c8faa3a3-1fba-4387-8b9f-f62560344125",
+      "text": "Fixed in .driver (3.0.0.13); running test_mount_starbook_simulator full suite"
+    },
+    {
+      "event_id": "b31b7b55-441c-431e-b070-f3ff68505425",
+      "event": "task/progress",
+      "at": "2026-11-19T21:29:11.109354Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c8faa3a3-1fba-4387-8b9f-f62560344125",
+      "text": "Recorded run: tools/run_driver_test.py mount_starbook (non-interactive simulator)"
+    },
+    {
+      "event_id": "1a4f7d5f-5a92-46db-8e3a-86fc26db9670",
+      "event": "ticket/note",
+      "at": "2026-11-19T21:30:51.804733Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction and result (implementer). New case starbook_coordinates_request_publishes_once in indigo_test/integration/test_mount_starbook_simulator.c counts, with force_property_updates on (the bus otherwise drops an unchanged repeat), the MOUNT_EQUATORIAL_COORDINATES/MOUNT_HORIZONTAL_COORDINATES/MOUNT_LST_TIME updates and coordinates messages the handler publishes after its last simulator command. Before (3.0.0.12): refused START 2/2/2 no message; refused GOTO 2/2/2, message BELOW HORIZON with the first of the two ALERT updates; accepted GOTO 2/2/2 BUSY; successful SYNC 2/2/2 OK; refused SYNC 2/2/2, message FORMAT with the first update. After (3.0.0.13): every path 1/1/1 with the same state; refused GOTO/SYNC send their reason exactly once via indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, ...) just before the single generated update (the pattern the generator itself uses for the parked guard in this handler); the other paths send no message. Accepted GOTO: BUSY is the first publication after /GOTORADEC; mount_goto_finalizer is queued on the same single-threaded device queue (indigo_execute_handler_in -> indigo_queue_add, queue_func runs one task at a time), so it cannot publish before the handler returns. Other handlers checked: MOUNT_ABORT_MOTION publishes the coordinates once (no generated epilogue for it), mount_goto_finalizer and on_timer once per run, guider handlers update in exclusive branches; no other duplicate. Full suite 27/27; recorded run 2026-11-19 22:29 3.0.0.13 mac arm64 simulator 27/27 OK. No hardware run (no device).",
+      "tokens": null
+    },
+    {
+      "event_id": "76298500-4245-4f52-909a-5a7132864066",
+      "event": "task/progress",
+      "at": "2026-11-19T21:30:57.802794Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c8faa3a3-1fba-4387-8b9f-f62560344125",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "0729f3dd-0bf2-4492-ba69-4d29f83fb83f",
+      "event": "task/progress",
+      "at": "2026-11-19T21:30:57.845142Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c8faa3a3-1fba-4387-8b9f-f62560344125",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "57194574-6c84-4be8-b520-e14e9da85070",
+      "event": "check/passed",
+      "at": "2026-11-19T21:30:57.847000Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "5ded940c42af0aaca71707dd6b8aa83c1f999d62",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "3f631a26-0fe8-4378-a7ad-beb32d4e0d61",
+      "event": "task/progress",
+      "at": "2026-11-19T21:35:54.022769Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6b32acad-ebf4-4c9e-94f2-96119540102d",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b850d7db-1601-48c6-b4d4-89cda994bbdf",
+      "event": "review/started",
+      "at": "2026-11-19T21:35:54.024041Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "cbc48344-8de6-48bd-828a-1cb30c463929",
+      "event": "task/progress",
+      "at": "2026-11-19T21:36:30.990113Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6b32acad-ebf4-4c9e-94f2-96119540102d",
+      "text": "Reviewer started: reading diff 1c2d5cb3d4...HEAD",
+      "attempt_id": "b2292508-bcbc-4de9-aea9-df0e36b61b7d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a0d454f3-0570-4719-904a-50953efad64a",
+      "event": "task/progress",
+      "at": "2026-11-19T21:38:22.612943Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6b32acad-ebf4-4c9e-94f2-96119540102d",
+      "text": "Building and running test_mount_starbook_simulator (current and old driver)"
+    },
+    {
+      "event_id": "f71447df-f850-4ead-8e9a-3c59aa7b6011",
+      "event": "task/progress",
+      "at": "2026-11-19T21:42:53.121231Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6b32acad-ebf4-4c9e-94f2-96119540102d",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "7a8c356d-75ea-4adb-9ae3-c789cde1655c",
+      "event": "review/passed",
+      "at": "2026-11-19T21:42:53.122491Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6b32acad-ebf4-4c9e-94f2-96119540102d",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5ded940c42af0aaca71707dd6b8aa83c1f999d62"
+    },
+    {
+      "event_id": "26ab58aa-8230-46a8-8b32-5f9f49a79b34",
+      "event": "ticket/closed",
+      "at": "2026-11-19T21:43:14.755794Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-19T21:43:14.755782Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "ae8b646d82f56361a7533116d3875e4abf6be13d"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "ticket/42b85be0-1f19-4607-b3c3-746e60317d17",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5ded940c42af0aaca71707dd6b8aa83c1f999d62",
+        "tree": "c6e0d2da03b179cd23e1540affd0c1a7f1dfe0cd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-19T21:30:57.844374Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/8b40b2d3-3e8a-4cd6-b579-2dfffef29d85/c6e0d2da03b1-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed git diff 1c2d5cb3d4...HEAD (5ded940c4), worktree clean. Correctness: regenerated mount_equatorial_coordinates_handler (indigo_mount_starbook.c:700-735) now ends every on_change path in the single generated indigo_update_coordinates(device, NULL): start failure ALERT, sync OK, sync/readback failure ALERT, refused GoTo ALERT, accepted GoTo BUSY; parked guard unchanged (message + one INDIGO_UPDATE_PROPERTY_STATE, return). No hand-written coordinates update remains in the on_change; other handlers' on_change blocks only update other properties (TIMEZONE<->GEOGRAPHIC), ABORT/finalizer/poll publish once. Error text: indigo_update_property(..., msg) is itself serialised as update_property(client, ..., NULL) followed by a separate send_message(client, device, property, msg) (indigo_bus.c:1326-1331), and the XML adapter emits <message device name=...> either way, so the new indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, ...) yields the same wire message, once; only the order changes (message now precedes the update, as in the generator's own parked guard). No agent/client in the repo pairs a message with the coordinates update (client update_property callbacks always receive NULL). Finalizer: indigo_execute_handler_in queues on the same single-threaded device queue (indigo_timer.c queue_func), so it cannot run before the BUSY update. Generator: worktree build/bin/indigo_generator regenerated .c/.h/_main.c in a temp dir, all identical; no generator source change. Tests: new case passes 5/5 repeated runs; rebuilt against the 1c2d5cb3d4 driver it fails (refused START 2/2/2), so it detects the defect; poll and finalizer share the queue, grouping by trace count is deterministic. Full test_mount_starbook_simulator 27/27, 27 registered cases = MIGRATION_STATUS 27 / 0. Version 12 -> 13 (0x0300000D). README/TEST_SUMMARY: only the script record replacing the older mac simulator line. Non-blocking: the new test's cleanup uses brace-less 'if (driver_started) stop_serial_driver(...)' / 'if (*trace_path) unlink(...)' (test_mount_starbook_simulator.c, end of starbook_coordinates_request_publishes_once), copied from the file's existing pattern (19 occurrences) but contrary to the always-use-braces rule.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "5ded940c42af0aaca71707dd6b8aa83c1f999d62",
+        "tree": "c6e0d2da03b179cd23e1540affd0c1a7f1dfe0cd",
+        "at": "2026-11-19T21:42:53.120949Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-19T21:30:51.803266Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction and result (implementer). New case starbook_coordinates_request_publishes_once in indigo_test/integration/test_mount_starbook_simulator.c counts, with force_property_updates on (the bus otherwise drops an unchanged repeat), the MOUNT_EQUATORIAL_COORDINATES/MOUNT_HORIZONTAL_COORDINATES/MOUNT_LST_TIME updates and coordinates messages the handler publishes after its last simulator command. Before (3.0.0.12): refused START 2/2/2 no message; refused GOTO 2/2/2, message BELOW HORIZON with the first of the two ALERT updates; accepted GOTO 2/2/2 BUSY; successful SYNC 2/2/2 OK; refused SYNC 2/2/2, message FORMAT with the first update. After (3.0.0.13): every path 1/1/1 with the same state; refused GOTO/SYNC send their reason exactly once via indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, ...) just before the single generated update (the pattern the generator itself uses for the parked guard in this handler); the other paths send no message. Accepted GOTO: BUSY is the first publication after /GOTORADEC; mount_goto_finalizer is queued on the same single-threaded device queue (indigo_execute_handler_in -> indigo_queue_add, queue_func runs one task at a time), so it cannot publish before the handler returns. Other handlers checked: MOUNT_ABORT_MOTION publishes the coordinates once (no generated epilogue for it), mount_goto_finalizer and on_timer once per run, guider handlers update in exclusive branches; no other duplicate. Full suite 27/27; recorded run 2026-11-19 22:29 3.0.0.13 mac arm64 simulator 27/27 OK. No hardware run (no device).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "ae8b646d82f56361a7533116d3875e4abf6be13d",
+      "tree": "c6e0d2da03b179cd23e1540affd0c1a7f1dfe0cd",
+      "base": "ticket/42b85be0-1f19-4607-b3c3-746e60317d17",
+      "at": "2026-11-19T21:43:14.684698Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T21:16:37.597172Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-19T21:18:44.004200Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 1566420.638,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 24,
+    "sha256": "a0eda377d7be2a22a16c3f0aa514f64e224a70f9e72da5ba2f92f69fd8bfa2fe"
+  }
+}

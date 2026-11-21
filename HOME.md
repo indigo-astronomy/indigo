@@ -23,6 +23,7 @@
   - [Mount Agent](../indigo_drivers/agent_mount/README.md)
   - [Guider Agent](../indigo_drivers/agent_guider/README.md)
   - [aux Agent](../indigo_drivers/agent_auxiliary/README.md)
+  - [Native INDIGO solver reference](indigo_drivers/agent_platesolver/doc/PLATESOLVER.md)
   - [Astrometry Agent](../indigo_drivers/agent_astrometry/README.md)
   - [Astap Agent](../obsoleted_drivers/agent_astap/README.md)
   - [Config Agent](../indigo_drivers/agent_config/README.md)

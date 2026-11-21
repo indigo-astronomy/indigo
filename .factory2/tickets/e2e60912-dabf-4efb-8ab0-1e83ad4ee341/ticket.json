@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e2e60912-dabf-4efb-8ab0-1e83ad4ee341",
+  "revision": 1,
+  "title": "indigo_mount_pmc8: coordinates ALERTs bypass indigo_update_coordinates()",
+  "description": "MOUNT_EQUATORIAL_COORDINATES ALERTs are published with indigo_update_property() instead of indigo_update_coordinates(), so the kept-ALERT state of the mount base class does not see them. Found while working on ticket 42b85be0-1f19-4607-b3c3-746e60317d17 (closed, commit a09e0f878), which introduced the kept coordinates ALERT in indigo_update_coordinates(): an ALERT published after a BUSY stays until the next BUSY. Reproduce in the driver's simulator suite before changing code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:04.332884Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1cd98f8a-7a4e-4f6a-a904-866fac76c043",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:04.333614Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:04.332884Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "01aa9c394ae5cf4d395791ba4054b52791fe1b99484659288632c6b8046d018e"
+  }
+}

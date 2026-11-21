@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001A
+#define DRIVER_VERSION       0x0300001B
 #define DRIVER_NAME          "indigo_mount_simulator"
 #define DRIVER_LABEL         "Mount Simulator"
 #define MOUNT_DEVICE_NAME    DRIVER_LABEL
@@ -433,7 +433,10 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	}
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
-	if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+	if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+		// a sync of the INDIGO alignment model adds an alignment point, the raw coordinates stay
+		indigo_mount_sync(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
+	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		// a controller sync changes the coordinates the controller reports, not where the telescope points
 		PRIVATE_DATA->sync_ra_offset = remainder(PRIVATE_DATA->sync_ra_offset + MOUNT_RAW_COORDINATES_RA_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, 24);
 		PRIVATE_DATA->sync_dec_offset += MOUNT_RAW_COORDINATES_DEC_ITEM->number.value - MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
@@ -636,12 +639,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request
-		if (!MOUNT_PARK_PARKED_ITEM->sw.value && MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
-			return indigo_mount_change_property(device, client, property);
-		}
-		//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_MOTION_DEC_PROPERTY, "Mount is parked!");

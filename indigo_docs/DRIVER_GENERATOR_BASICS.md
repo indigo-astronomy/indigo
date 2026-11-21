@@ -263,6 +263,7 @@ The dispatch macro is chosen as follows:
 | `on_change { }` empty | copy, `state = OK`, `indigo_update_property()` | none | no handler |
 | `asynchronous_change = false` | `INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE` / `..._TARGETS_...` with `preserve_values` | yes | runs inline |
 | `CCD_ABORT_EXPOSURE`, `FOCUSER_ABORT_MOTION`, `ROTATOR_ABORT_MOTION`, `MOUNT_ABORT_MOTION`, `DOME_ABORT_MOTION`, `POLARALIGN_ABORT_MOTION` | `INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE` | yes | `URGENT` |
+| `MOUNT_EQUATORIAL_COORDINATES` | `INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE` with `preserve_values`, `INDIGO_COPY_VALUES_PROCESS_COORDINATES_CHANGE` otherwise; BUSY is published through `indigo_update_coordinates()` | yes | `NORMAL` |
 | `preserve_values = true` | `INDIGO_COPY_TARGETS_PROCESS_CHANGE` | yes | `NORMAL` |
 | `MOUNT_MOTION_*` | `INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME` | **no** | `NORMAL` |
 | `GUIDER_GUIDE_RA`, `GUIDER_GUIDE_DEC` | `INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE` (`..._ANYTIME` with `accept_while_busy`) | yes (no) | `TIME` |
@@ -407,7 +408,7 @@ inherited FOCUSER_POSITION {
 
 The generator emits `INDIGO_REJECT_CHANGE_IF(condition, PROPERTY, "message")` at the top of the change branch, before `on_change_request` and before anything is copied. On a match `indigo_reject_change()` answers and returns: a property that is not BUSY is published in ALERT with every item marked for update (so the client sees the driver's real values again) and the message; a BUSY property belongs to a running operation, so it is left untouched and the message is sent as a BUSY message, which cannot race with the updates of that operation. Several `reject_change` blocks are tested in declaration order. The condition may include the property's own BUSY state, which turns the silent drop of the dispatch macro into an answered request.
 
-Use `on_change_request` only for request-scoped bookkeeping that `reject_change` cannot express, such as zeroing items before a guide pulse is copied, or delegating a request to the base class (`mount_simulator` forwards a plain SYNC to `indigo_mount_change_property()`). It has no generated epilogue; if it returns early, it must publish any rejection itself.
+Use `on_change_request` only for request-scoped bookkeeping that `reject_change` cannot express, such as zeroing items before a guide pulse is copied, or claiming an operation before a position poll could publish over the BUSY state of the request (`mount_synscan` claims a slew or a sync). It has no generated epilogue; if it returns early, it must publish any rejection itself.
 
 ---
 
@@ -426,7 +427,7 @@ The six abort properties listed in the dispatch table are queued at `INDIGO_TASK
 * **Parked-mount admission.** For `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA` and `MOUNT_TRACKING` the change branch starts with `INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, ..., "Mount is parked!")`, before any `reject_change` or `on_change_request`, so a refused request never reaches the property values. The handler repeats the check before the `on_change` code, for a request admitted just before a park request was accepted: it sends "Mount is parked!", publishes ALERT and returns. Do not duplicate either check in the `.driver` file.
 * **Manual motion is processed anytime.** `MOUNT_MOTION_DEC` and `MOUNT_MOTION_RA` use `INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME`, because the release (all items off) or a change of direction must be accepted while the motion is BUSY. The handler therefore has to cope with any combination of items at any time.
 * **Motion ownership.** The generator records the requesting client and commits the motion ownership, see the next section.
-* **Coordinates.** The `MOUNT_EQUATORIAL_COORDINATES` handler ends with `indigo_update_coordinates()` instead of `indigo_update_property()`; do not call it yourself at the end of `on_change`. Use `preserve_values = true;` so the request lands in the targets.
+* **Coordinates.** The `MOUNT_EQUATORIAL_COORDINATES` change branch publishes the BUSY of the request and the handler ends with `indigo_update_coordinates()` instead of `indigo_update_property()`; do not call it yourself at the end of `on_change`. Use `preserve_values = true;` so the request lands in the targets. `indigo_update_coordinates()` keeps an ALERT that ends a BUSY state (a refused sync, a failed GoTo) until the next BUSY, so the position poll, which also publishes through it, cannot turn the failure into OK. A driver whose controller has no sync of its own calls `indigo_mount_sync(device, ra, dec)` with the requested targets in its handler; it adds the alignment point or sets ALERT and sends the reason, and the generated epilogue publishes the result once (see `mount_simulator` and `mount_synscan`).
 * **Abort.** `MOUNT_ABORT_MOTION` is urgent. It has to stop slews, park, home and manual motion, cancel their pending handlers and finalizers, switch all `MOUNT_MOTION_*` items off and publish the affected properties (see `mount_simulator`).
 
 ---

@@ -22,6 +22,7 @@
 
 #include "serial_simulator_test_common.h"
 #include "abort_queue_test_common.h"
+#include "mount_coordinates_test_common.h"
 
 #ifndef MOUNT_PMC8_SIMULATOR_EXECUTABLE
 #define MOUNT_PMC8_SIMULATOR_EXECUTABLE "build/integration/mount_pmc8_simulator"
@@ -1680,6 +1681,79 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The coordinate values are the position the controller reports and the request lives in the targets: a GOTO publishes
+// BUSY with the position before it and the horizontal coordinates of that position, then the positions on the way and
+// the target with OK; a SYNC publishes BUSY with the old position, then the synced one; an abort mid-slew publishes a
+// position the mount reached, never the target; a GOTO whose axis never moves ends ALERT with the real position.
+static void pmc8_mount_coordinates_publish_the_mount_position(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	external_serial_simulator simulator = { 0 };
+	double ra0 = 0, dec0 = 0, alt0 = 0, az0 = 0;
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, NULL));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	// GOTO
+	double ra = ra_at_hour_angle(-5);
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(pmc8_mount.device_name);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra, 80));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 60));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	int count = stop_coordinates_publications(events);
+	int busy = check_request_publication("GOTO", events, count, 0, ra0, dec0, alt0, az0, ra, 80, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_motion_publications("GOTO", events, count, busy, ra0, dec0, ra, 80, 0.05, INDIGO_OK_STATE));
+	// SYNC
+	ra = ra_at_hour_angle(-5);
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(pmc8_mount.device_name);
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, ra, 78));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("SYNC", events, count, 0, ra0, dec0, alt0, az0, ra, 78, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_sync_result("SYNC", events, count, busy, find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE), ra, 78, 0.05));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, events[count - 1].state);
+	SERIAL_CHECK_TRUE(coordinates_near(events[count - 1].value[0], events[count - 1].value[1], ra, 78, 0.05));
+	// abort mid-slew; six hours of hour angle is 90 degrees of the axis, a slew of over twenty seconds
+	ra = ra_at_hour_angle(0.5);
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(pmc8_mount.device_name);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra, 60));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	indigo_usleep(2000000);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, 5));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE, 5));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("aborted GOTO", events, count, 0, ra0, dec0, alt0, az0, ra, 60, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	int aborted = find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(aborted > busy);
+	SERIAL_CHECK_TRUE(check_reported_position("abort", events, count, busy, aborted, ra, 60, 0.5));
+	// a GOTO whose declination axis never moves
+	SERIAL_CHECK_TRUE(axis_fault(&simulator, "@stall", 1));
+	cached_coordinates(&ra0, &dec0, &alt0, &az0);
+	start_coordinates_publications(pmc8_mount.device_name);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra0, dec0 + 1));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, 25));
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	count = stop_coordinates_publications(events);
+	busy = check_request_publication("stalled GOTO", events, count, 0, ra0, dec0, alt0, az0, ra0, dec0 + 1, 0.05);
+	SERIAL_CHECK_TRUE(busy >= 0);
+	SERIAL_CHECK_TRUE(check_position_kept("stalled GOTO", events, count, busy, ra0, dec0, 0.2));
+cleanup:
+	stop_coordinates_publications(NULL);
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 // Completion comes from the controller: a point whose axis reports its speed but never moves is
 // abandoned within the time the distance allows, and a slew the controller ends short of the target
 // fails. Both end ALERT with the real position, and the next GOTO is accepted.
@@ -2227,6 +2301,7 @@ int main(void) {
 		{ "pmc8_mount_detects_an_iexos100", pmc8_mount_detects_an_iexos100 },
 		{ "pmc8_mount_slews_and_syncs_through_the_controller", pmc8_mount_slews_and_syncs_through_the_controller },
 		{ "pmc8_mount_aborts_a_running_slew", pmc8_mount_aborts_a_running_slew },
+		{ "pmc8_mount_coordinates_publish_the_mount_position", pmc8_mount_coordinates_publish_the_mount_position },
 		{ "pmc8_mount_parks_and_unparks", pmc8_mount_parks_and_unparks },
 		{ "pmc8_mount_aborts_a_park", pmc8_mount_aborts_a_park },
 		{ "pmc8_mount_fails_a_stalled_park", pmc8_mount_fails_a_stalled_park },

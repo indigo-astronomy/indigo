@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001B
+#define DRIVER_VERSION       0x0300001C
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -99,7 +99,6 @@ typedef struct {
 	indigo_property *high_speed_property;
 	indigo_property *zenith_property;
 	//+ data
-	double current_ra, current_dec;
 	double goto_deadline, park_deadline;
 	char telescope_side;
 	bool is_busy, start_tracking, stop_tracking;
@@ -232,12 +231,6 @@ static bool temma_set_high_speed(indigo_device *device, bool high) {
 	return true;
 }
 
-// A refused request publishes the position the mount reported last, not the rejected target.
-static void temma_restore_position(indigo_device *device) {
-	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->current_ra;
-	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
-}
-
 static unsigned char temma_motion_byte(indigo_device *device) {
 	unsigned char motion_mask = PRIVATE_DATA->mount_motion_mask | PRIVATE_DATA->guider_motion_mask;
 	return motion_mask == 0 ? 'A' : 0x40 | motion_mask | (PRIVATE_DATA->mount_motion_mask != 0 && PRIVATE_DATA->mount_high_speed ? 1 : 0);
@@ -283,10 +276,8 @@ static bool temma_update_position(indigo_device *device) {
 		dec = -dec;
 	}
 	indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-	PRIVATE_DATA->current_ra = ra;
-	PRIVATE_DATA->current_dec = dec;
-	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->current_ra;
-	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->current_dec;
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 	// F says the automatic introduction has just finished, not which side the mount is
 	// on, so the last known side is kept instead of being replaced by a value that is
 	// not a side at all. The GOTO state is followed through s. The mount changes side by
@@ -359,7 +350,6 @@ static bool temma_prepare_position(indigo_device *device) {
 
 static void mount_goto_finalizer(indigo_device *device) {
 	if (!IS_CONNECTED || !temma_update_position(device) || !temma_command(device, true, "s") || (strcmp(PRIVATE_DATA->response, "s0") && strcmp(PRIVATE_DATA->response, "s1"))) {
-		temma_restore_position(device);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (PRIVATE_DATA->response[1] == '1' && indigo_monotonic_time() < PRIVATE_DATA->goto_deadline) {
 		indigo_update_coordinates(device, NULL);
@@ -652,7 +642,6 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		indigo_update_coordinates(device, NULL);
 		indigo_execute_handler_in(device, 0.1, mount_goto_finalizer);
 	} else {
-		temma_restore_position(device);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_coordinates(device, NULL);
 	}
@@ -889,7 +878,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(MOUNT_ABORT_MOTION_PROPERTY, mount_abort_motion_handler);

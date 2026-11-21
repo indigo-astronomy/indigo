@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000033
+#define DRIVER_VERSION       0x03000034
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -351,6 +351,20 @@ static bool nexstar_configure_mount(indigo_device *device) {
 	return true;
 }
 
+// The position the controller reports, as J2000 hours and degrees, and as the degrees of the epoch the controller
+// uses in device_ra and device_dec. The caller holds the serial mutex.
+static bool nexstar_read_position(indigo_device *device, double *ra, double *dec, double *device_ra, double *device_dec) {
+	int res = tc_get_rade_p(PRIVATE_DATA->dev_id, device_ra, device_dec);
+	if (res != RC_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_rade_p(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+		return false;
+	}
+	*ra = d2h(*device_ra);
+	*dec = *device_dec;
+	indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, ra, dec);
+	return true;
+}
+
 static void nexstar_update_position(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	if (dev_id < 0) {
@@ -380,18 +394,11 @@ static void nexstar_update_position(indigo_device *device) {
 		if (goto_in_progress < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_in_progress(%d) = %d (%s)", dev_id, goto_in_progress, strerror(errno));
 		}
-		int res = tc_get_rade_p(dev_id, &ra, &dec);
-		if (res != RC_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_rade_p(%d) = %d (%s)", dev_id, res, strerror(errno));
-		}
-		if (goto_in_progress >= 0 && res == RC_OK) {
-			device_ra = ra;
-			device_dec = dec;
-			ra = d2h(ra);
-			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+		bool read = nexstar_read_position(device, &ra, &dec, &device_ra, &device_dec);
+		if (goto_in_progress >= 0 && read) {
 			position_valid = true;
 		}
-		res = tc_get_location(dev_id, &lon, &lat);
+		int res = tc_get_location(dev_id, &lon, &lat);
 		if (res != RC_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_location(%d) = %d (%s)", dev_id, res, strerror(errno));
 			if (MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -1113,6 +1120,17 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	if (nexstar_set_coordinates(device)) {
 		if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else if (!PRIVATE_DATA->guiding_in_progress) {
+			// The result of an accepted sync carries the position the controller reports now, a failed readback
+			// leaves it to the next poll.
+			double ra = 0, dec = 0, device_ra = 0, device_dec = 0;
+			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+			bool read = nexstar_read_position(device, &ra, &dec, &device_ra, &device_dec);
+			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+			if (read) {
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+			}
 		}
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1424,7 +1442,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, mount_equatorial_coordinates_handler);
+		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, mount_geographic_coordinates_handler);

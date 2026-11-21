@@ -68,6 +68,8 @@ upload the data to http://localhost:7624/blob/0x10381d798 with PUT method
   </newBLOBVector>
 ```
 
+For the native backend that accepts images for solving, see the [native INDIGO solver reference](../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md).
+
 INDI style BLOB uploads are not supported by INDIGO for performance reasons.
 
 HTTP BLOB PUT requests require one decimal `Content-Length` header; duplicate lengths, transfer encodings, malformed or incomplete headers and invalid sizes are rejected. The default maximum upload is 64 MiB. Pending uploads and retained uploaded cache content share a 256 MiB budget; exceeding it fails without replacing the previous BLOB. Builds may override `INDIGO_BLOB_UPLOAD_LIMIT` and `INDIGO_BLOB_UPLOAD_BUDGET` consistently for the library and its consumers. Empty uploads are allowed. A complete body is received privately before atomic publication; failed or incomplete uploads leave the prior cache unchanged. Uploads allow at most 5 seconds without progress and 60 seconds in total, including headers, and close the HTTP connection after their response. These defaults can be changed at build time with `INDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT` and `INDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT` in seconds.
