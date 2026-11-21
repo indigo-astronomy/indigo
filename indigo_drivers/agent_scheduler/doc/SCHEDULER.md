@@ -77,7 +77,7 @@ The scheduler is a separate C agent rather than a JavaScript library, for these 
   - `indigocat_sun_equatorial_coords()` and `indigocat_moon_equatorial_coords_coarse()` (`indigocat/indigocat_solar_system.h`) give the Sun and Moon positions in J2000, which the agent precesses to the equinox of the evaluated time with `indigo_precess()`. The coarse Moon call truncates the ELP2000/82 series at 1e-6 rad per term; it stays within about 3.5 arcsec of the full theory and is about 50 times faster.
 
   No moon phase helper exists yet. The moon illumination and the number of days from full moon are derived from the Sun–Moon elongation. The elongation does not distinguish a waxing from a waning moon, which the constraints do not need, because the Lorentzian limit is symmetric about full moon.
-- Any client can submit an urgent task with a single property change. This includes AIN, the web UI, MCP clients and a future GCN/VOEvent bridge.
+- Any client can submit an urgent task with a single property change. This includes the INDIGO clients, MCP clients and a future GCN/VOEvent bridge.
 
 The Scheduler Agent is a device with its own client, like the Scripting Agent. It does not select hardware devices, so it is not a filter agent.
 
@@ -823,7 +823,7 @@ The agent relates the frames to the task that produced them by changing `CCD_LOC
 
 The scheduler starts no task until the Scripting Agent is present. When the Scripting Agent does not yet define `SEQUENCE_STATE`, the scheduler loads the library into it through `AGENT_SCRIPTING_RUN_SCRIPT`. A library that a client loaded already, possibly of another version, is used as it is.
 
-**Library reloads.** Clients such as the web UI send the whole library again before every script they run. A reload keeps the `indigo_sequencer` object while it has a sequence running, and the flipper while a flip is enabled; only an idle sequencer is replaced. A client that runs a script during a scheduled task therefore does not disturb it.
+**Library reloads.** Some clients send the whole library again before every script they run. A reload keeps the `indigo_sequencer` object while it has a sequence running, and the flipper while a flip is enabled; only an idle sequencer is replaced. A client that runs a script during a scheduled task therefore does not disturb it.
 
 **Wrapper script.** To estimate or run a task, the agent sends one wrapper script through `AGENT_SCRIPTING_RUN_SCRIPT`. The wrapper:
 
@@ -867,7 +867,6 @@ Phases 1, 2, 3 and 5 are implemented. Phases 4, 6 and 7 are planned.
 6. Safety: a related AUX safety or weather device, selected through the filter agent's AUX device list. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
 7. Optional extensions:
    - `@timeout minutes`: a hard limit on the length of one run, independent of `@duration`, which stays a planning value. When a run exceeds it, the agent aborts the run the same way as `ABORT` (the sequence, then the Guider Agent, waiting at most `STOP_TIMEOUT`) and counts it as a failure: the history records `timed out`, and `@retry` decides whether the task runs again. Hook tasks and urgent tasks obey it too. Without the key, runs are not limited, as now;
-   - task upload, download and editing in the web UI;
    - `@window` times in a local time zone;
    - image grading;
    - mosaics;

@@ -72,7 +72,7 @@ Add `indigo_agent_imager`, `indigo_agent_guider` and a plate solver agent for ta
 
 ## How to talk to the scheduler
 
-There is no dedicated scheduler window in the INDIGO clients yet. You control the scheduler by setting its properties and watch it by reading them, with two general tools:
+You can use the dedicated scheduler windows of the INDIGO clients. The command examples in this guide use `indigo_prop_tool`. Both set and read the properties of the Scheduler Agent:
 
 - **`indigo_prop_tool`** for everything: uploading and editing tasks, starting and stopping, task commands, deleting, settings and hooks, and reading the scheduler state. You keep each task in a text file and upload it with `set_script`, which sends the file's content as the `TASK` item:
 
@@ -80,8 +80,8 @@ There is no dedicated scheduler window in the INDIGO clients yet. You control th
   indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=m31.task"
   ```
 
-  Use `set` only for short values on one line; it splits values at `;` and cannot send a task. `ITEM=` or `ITEM=""` sends an empty value, which clears a text item such as a hook. `indigo_prop_tool` prints the messages of the Scheduler Agent that answer your change, such as the reason of a rejection. It shows light items only as `ON`/`OFF` without their labels, so read the task list, the night plan and the history in a client.
-- **Any INDIGO client that shows all properties**, such as the server's web control panel (`http://<server>:7624/ctrl.html`). It shows the task list, the night plan and the run history with their labels and lights, shows the messages, and lets you press the control switches. It edits text items in a single line, so upload tasks with `indigo_prop_tool`.
+  Use `set` only for short values on one line; it splits values at `;` and cannot send a task. `ITEM=` or `ITEM=""` sends an empty value, which clears a text item such as a hook. `indigo_prop_tool` prints the messages of the Scheduler Agent that answer your change, such as the reason of a rejection. It shows light items only as `ON`/`OFF` without their labels, so read the task list, the night plan and the history in an INDIGO client.
+- **The scheduler window of an INDIGO client**, or any client that shows all properties. Use it to watch the task list, the night plan, the run history and the messages, and to press the control switches. A generic property editor may edit text items in a single line only; then upload tasks with `indigo_prop_tool`.
 
 All examples assume the server runs on the local computer. For a remote one, add `-r host` after the command word, for example `indigo_prop_tool get -r host ...`; options placed before the command word are not recognised. Add `-s` to see the state of the property you change, for example `[OK]` for an accepted upload and `[ALERT]` for a rejected one.
 
@@ -242,6 +242,8 @@ The night plan applies exactly the same rules to the rest of the night, so it sh
 
 #### Choosing a strategy
 
+**Priority under each strategy.** `COMPACT` decides by priority at every start: whenever it can start something, it starts the best task that can run then (class first, then level and sky bonuses, see [Priorities](#priorities)). A `normal` task can run before a `high` one whose constraints do not hold yet. `VISIBILITY` uses priority only to decide which runs get into the night plan: it starts from the runs `COMPACT` would make and never plans fewer, see *What `VISIBILITY` respects* below. It then places the runs by when their targets stand highest, not by priority, so a `high` task may run after a `normal` one. Urgent tasks are the exception: `VISIBILITY` never moves them; they keep their `COMPACT` times in the plan and still start at once when they can.
+
 `AGENT_SCHEDULER_STRATEGY` decides how the scheduler uses the night. It has two settings, one of them on:
 
 - **`COMPACT`** (the default) starts the best task as soon as one can run. The night fills from dusk, and the equipment is never idle while a task could run. With a short queue all tasks run one after another from dusk and the rest of the night stays empty.
@@ -249,7 +251,7 @@ The night plan applies exactly the same rules to the rest of the night, so it sh
 
 **The quality of a run** is the mean altitude of the target during the run, in percent of the altitude it reaches at its culmination: 100 % is a run centred on the culmination, a target that sinks towards the horizon scores less. `VISIBILITY` makes the sum of these qualities as large as it can, each weighted by the length of its run, so two hours at 95 % count more than twenty minutes at 99 %. A task without `@target` has no quality; it runs where the plan has room for it, as early as it can there.
 
-**What the other settings do under `VISIBILITY`.** Task constraints such as `@altitude`, `@airmass`, `@ha`, `@window`, `@moon` and `@twilight` remain hard limits and must hold for the whole run: a run is never placed where its target would drop below the limit before it ends. The altitude limit only rules out times; the quality is still measured against the culmination, not the limit. `COMPACT`, guided by priority and the weights, picks the runs the plan starts from; `VISIBILITY` adds the runs `COMPACT` leaves out where they still fit, by the quality they gain, and when it plans again it never drops an urgent run or a run of a higher class than the runs it keeps. Within the plan a `high` run may still come after a `normal` one when that gives a better night. `SETTING_WEIGHT` and `ALTITUDE_WEIGHT` do not move runs: they shape the `COMPACT` plan that `VISIBILITY` starts from, and they decide whenever the scheduler falls back to the `COMPACT` choice. That happens when no plan beats `COMPACT`, when a night has more than 64 runs or the plan reaches more than 24 hours ahead, or when a planned run cannot start at its time even after the night is planned again. A target that sets early is still placed early, because it stands highest then.
+**What the other settings do under `VISIBILITY`.** Task constraints such as `@altitude`, `@airmass`, `@ha`, `@window`, `@moon` and `@twilight` remain hard limits and must hold for the whole run: a run is never placed where its target would drop below the limit before it ends. The altitude limit only rules out times; the quality is still measured against the culmination, not the limit. The runs that `COMPACT` leaves out are added where they still fit, by the quality they gain, not by priority. `SETTING_WEIGHT` and `ALTITUDE_WEIGHT` do not move runs: they shape the `COMPACT` plan that `VISIBILITY` starts from, and they decide whenever the scheduler falls back to the `COMPACT` choice. That happens when no plan beats `COMPACT`, when a night has more than 64 runs or the plan reaches more than 24 hours ahead, or when a planned run cannot start at its time even after the night is planned again. A target that sets early is still placed early, because it stands highest then.
 
 **Example.** At 42° N, 23° E on 19 November 2026, six tasks with `@twilight astronomical` and `@altitude > 20` (`> 10` for Pleiades and Soul), Orion with `@priority high`, astronomical dusk at 16:45 UTC, with the meridian flip disabled (or `VISIBILITY_FLIP_PENALTY` 0); with the flip enabled at `OFFSET` 0 and the default penalty, Soul, Pleiades and Jellyfish start once they have crossed the meridian and the night has no flip, see [Meridian flips](#meridian-flips):
 
@@ -274,7 +276,7 @@ With `COMPACT` everything runs from dusk: Jellyfish more than three hours before
 
 **What `VISIBILITY` respects.**
 
-- It never plans fewer runs in total than `COMPACT`. Priority decides which runs are in the plan: it starts from the runs of `COMPACT`, and to keep the runs it planned before it may leave out a `COMPACT` run whose priority class is not above theirs, never a run of a higher class or an urgent one; within the plan a `high` run may come after a `normal` one when that puts both higher in the sky.
+- It never plans fewer runs in total than `COMPACT`. When it plans again, it prefers the runs it planned before. To keep them it may leave out a `COMPACT` run whose priority class is not above the lowest class among them, never a run of a higher class or an urgent one.
 - Urgent tasks never wait: they run at once, also during a wait, and keep the times `COMPACT` gives them in the plan.
 - Every run keeps all its constraints for its whole duration: `@window`, nightly windows, `@ha`, `@twilight`, `@altitude` and the Moon. `@repeat … every` keeps its spacing, also when other runs come between two runs of a task, and repeat and retry delays are kept. `@ha` stays the hard limit; the strategy is a preference within it.
 - Hooks are not blocked: a hook due during a run runs after it, and a hook delays the next run by its duration.
@@ -1052,7 +1054,7 @@ indigo_prop_tool set_script -s "Scheduler Agent.AGENT_SCHEDULER_TASK_0.TASK=m31.
 - An edit keeps the task's state and counters, but forgets its measured duration. To run a finished task again, use `RESET`.
 - An edit of a running task takes effect when the task ends.
 
-Keep your task files: they are the easiest copy to edit. `indigo_prop_tool get` prints only the first 80 characters of a long text, so to see the full text of a stored task, open its property in a client such as the web control panel.
+Keep your task files: they are the easiest copy to edit. `indigo_prop_tool get` prints only the first 80 characters of a long text, so to see the full text of a stored task, open it in an INDIGO client.
 
 ### Deleting a task
 
@@ -1100,7 +1102,7 @@ It puts the site on the equator and moves its longitude to choose the time of da
 | `status`, `plan`, `history` | The task list, the night plan and the history |
 | `wait 10`, `until TEXT 60` | Wait while new scheduler messages are printed, or until one contains `TEXT` |
 
-New messages of the scheduler are printed after every command. The server runs on a free port, not on 7624, and is announced on the network as "Scheduler Sandbox" (`--name` changes it, `--no-bonjour` turns it off), so clients that list INDIGO servers show it. At the start the tool prints the port and the address of the web control panel, both for this computer and for other computers on the network, where you can watch the same scheduler. Use `--port` to choose the port; a port already in use is refused. It starts with `IDLE_CHECK_INTERVAL` at 1 second and `IDLE_HOOK_DELAY` at 0. Constraints are checked on a five-minute grid, so a task with `@twilight` starts up to five minutes after the twilight limit; tasks without constraints start at once.
+New messages of the scheduler are printed after every command. The server runs on a free port, not on 7624, and is announced on the network as "Scheduler Sandbox" (`--name` changes it, `--no-bonjour` turns it off), so clients that list INDIGO servers show it. At the start the tool prints the port and the addresses for this computer and for other computers on the network, where an INDIGO client can watch the same scheduler. Use `--port` to choose the port; a port already in use is refused. It starts with `IDLE_CHECK_INTERVAL` at 1 second and `IDLE_HOOK_DELAY` at 0. Constraints are checked on a five-minute grid, so a task with `@twilight` starts up to five minutes after the twilight limit; tasks without constraints start at once.
 
 A night with all the hooks takes about a minute, see `tools/scheduler_sandbox_night.txt`:
 
@@ -1129,7 +1131,7 @@ With `--script`, or with commands on standard input, an `until` that times out e
 | The equipment stays parked after a pause | Set a `RESUME` hook, or make every task prepare what it needs |
 | The idle hook does not run again | After `IDLE` or `NIGHT_END` the equipment is in standby; `IDLE` runs again after a task or the night start hook has run |
 | An urgent task does not interrupt the running task | Its own constraints do not hold yet, its duration estimate is still running, the running task is a hook, or a `STOP` is pending; see `REASON` |
-| A failed run in the history has no reason | The sequence was aborted by hand outside the scheduler, for example in the web UI or through `AGENT_ABORT_PROCESS` of the Scripting Agent |
+| A failed run in the history has no reason | The sequence was aborted by hand outside the scheduler, for example in an INDIGO client or through `AGENT_ABORT_PROCESS` of the Scripting Agent |
 | A finished task should run again | `RESET` it, or `RESET_ALL` for all tasks |
 | The tasks run in an unexpected order | The order is decided by the priority class, the level and the sky bonuses, not by the list; see [Priorities](#priorities) |
 
