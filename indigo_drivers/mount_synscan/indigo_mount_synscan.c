@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001A
+#define DRIVER_VERSION       0x0300001B
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -67,6 +67,9 @@
 #define SYNSCAN_UDP_COMMAND_ATTEMPTS 3
 #define SYNSCAN_COMMAND_TIMEOUT INDIGO_DELAY(1)
 #define SYNSCAN_NEXT_BYTE_TIMEOUT INDIGO_DELAY(0.1)
+// A motion in progress stays BUSY over this many consecutive polls whose position readback failed, the next poll
+// retries; one more failure ends it ALERT.
+#define POSITION_READ_RETRIES 2
 
 #define SYNSCAN_STATUS_INITIALIZED 0x0100
 #define SYNSCAN_STATUS_RUNNING 0x0001
@@ -264,6 +267,8 @@ typedef struct {
 	synscan_global_mode global_mode;
 	// an admitted sync waits for its handler; the position poll keeps its BUSY instead of publishing OK over it
 	bool sync_pending;
+	// consecutive failed position readbacks of the poll, see POSITION_READ_RETRIES
+	int position_failures;
 	double motion_deadline;
 	synscan_axis_mode ra_axis_mode;
 	synscan_axis_mode dec_axis_mode;
@@ -1013,6 +1018,7 @@ static bool synscan_read_mount_coordinates(indigo_device *device) {
 	MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = raw_dec_degrees;
 	indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier == MOUNT_SIDE_EAST ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 	indigo_raw_to_translated_with_lst(device, lst, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, side_of_pier, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+	PRIVATE_DATA->position_failures = 0;
 	return true;
 }
 
@@ -1086,13 +1092,11 @@ static double synscan_dec_north_sign(indigo_device *device) {
 	return MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value ? 1 : -1;
 }
 
+// Published by indigo_update_coordinates(), which publishes MOUNT_HORIZONTAL_COORDINATES in the same state with them and
+// keeps an ALERT that ends a BUSY motion until the next BUSY.
 static void synscan_set_coordinate_state(indigo_device *device, indigo_property_state state) {
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = state;
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-	if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-		MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = state;
-		indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-	}
+	indigo_update_coordinates(device, NULL);
 }
 
 static void synscan_ha_dec_to_steps(indigo_device *device, double ha_hours, double dec_degrees, long *ra_steps, long *dec_steps) {
@@ -1419,6 +1423,7 @@ static bool synscan_configure(indigo_device *device) {
 	PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
 	PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
 	PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
+	PRIVATE_DATA->position_failures = 0;
 	PRIVATE_DATA->configured = true;
 	PRIVATE_DATA->parked = false;
 	PRIVATE_DATA->homed = false;
@@ -2021,11 +2026,16 @@ static void mount_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED || PRIVATE_DATA->handle == NULL) {
 		return;
 	}
-	// A failed reading keeps the last valid coordinates with ALERT, the next good poll restores the state
+	// A failed reading keeps the last valid coordinates with ALERT, the next good poll restores the state. During a
+	// motion or a request the reading is retried by the next poll and the coordinates stay BUSY: an ALERT published
+	// after BUSY is kept and would turn the successful end of the motion into ALERT. A reading that keeps failing,
+	// or one failing while nothing runs, is an ALERT.
 	if (synscan_update_mount_coordinates(device)) {
 		synscan_update_encoder_position(device);
 	} else if (PRIVATE_DATA->handle != NULL && IS_CONNECTED) {
-		synscan_set_coordinate_state(device, INDIGO_ALERT_STATE);
+		bool running = PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_IDLE || MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
+		PRIVATE_DATA->position_failures++;
+		synscan_set_coordinate_state(device, running && PRIVATE_DATA->position_failures <= POSITION_READ_RETRIES ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE);
 		synscan_update_mount_state(device);
 		if (!MOUNT_ENCODER_POSITION_PROPERTY->hidden) {
 			INDIGO_UPDATE_PROPERTY_STATE(MOUNT_ENCODER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -2264,7 +2274,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			} else {
 				const char *reason = synscan_failure_reason(device);
 				mount_motion_failed(device);
-				INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, "Slew failed, %s.", reason);
+				indigo_reject_coordinates_change(device, "Slew failed, %s.", reason);
 				synscan_update_mount_state(device);
 			}
 		}
@@ -2470,10 +2480,8 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	} else {
 		synscan_clear_tracking_state(device);
 	}
-	if (autohome_active) {
+	if (autohome_active || MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 		synscan_set_coordinate_state(device, INDIGO_ALERT_STATE);
-	} else if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	// The manual motion switches show the stopped axes
 	MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
@@ -2749,8 +2757,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
 			if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 				PRIVATE_DATA->sync_pending = !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
-			} else if (PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE) {
-				PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;
+			} else {
+				PRIVATE_DATA->sync_pending = false;
+				if (PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE) {
+					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;
+				}
 			}
 		}
 		//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request

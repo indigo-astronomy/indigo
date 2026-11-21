@@ -1337,7 +1337,7 @@ cleanup:
 // A gate handler holds the mount's device queue, so a request is copied and queued while a finalizer or timer comes
 // due behind it. Those are INDIGO_TASK_PRIORITY_TIME tasks and run ahead of a queued change handler once the gate ends.
 static _Atomic(indigo_device *) gate_device;
-static atomic_bool gate_entered, gate_release, gate_on_home_busy;
+static atomic_bool gate_entered, gate_release, gate_on_home_busy, gate_release_on_coordinates_busy;
 
 static void gate_handler(indigo_device *device) {
 	atomic_store(&gate_entered, true);
@@ -1346,22 +1346,33 @@ static void gate_handler(indigo_device *device) {
 	}
 }
 
-static void queue_gate(indigo_device *device) {
+static void queue_gate_with_priority(indigo_device *device, int priority) {
 	atomic_store(&gate_entered, false);
 	atomic_store(&gate_release, false);
-	indigo_execute_handler(device, gate_handler);
+	indigo_execute_priority_handler(device, priority, gate_handler);
+}
+
+static void queue_gate(indigo_device *device) {
+	queue_gate_with_priority(device, INDIGO_TASK_PRIORITY_NORMAL);
 }
 
 static indigo_result gate_device_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, synscan_mount.device_name)) {
 		atomic_store(&gate_device, device);
-		// The home handler publishes the busy home light before it schedules its finalizer, so a gate queued from here
-		// is in the queue before the finalizer comes due.
+		// The home handler publishes the busy home light before it schedules its finalizer. The gate queued from here is
+		// urgent, so it runs right after the home handler, ahead of the poll and the finalizer, which are time critical
+		// tasks and would otherwise overtake a normal gate that is still waiting when they come due.
+		// Released from here when the coordinates request is published BUSY, not after the test thread noticed it: the
+		// change handler of the request has to run before the home finalizer comes due 0.2 s after the home handler.
+		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_BUSY_STATE && atomic_load(&gate_release_on_coordinates_busy)) {
+			atomic_store(&gate_release_on_coordinates_busy, false);
+			atomic_store(&gate_release, true);
+		}
 		if (!strcmp(property->name, MOUNT_STATE_PROPERTY_NAME) && atomic_load(&gate_on_home_busy)) {
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, MOUNT_STATE_HOME_ITEM_NAME) && property->items[i].light.value == INDIGO_BUSY_STATE) {
 					atomic_store(&gate_on_home_busy, false);
-					queue_gate(device);
+					queue_gate_with_priority(device, INDIGO_TASK_PRIORITY_URGENT);
 				}
 			}
 		}
@@ -1373,12 +1384,14 @@ static void install_gate(void) {
 	atomic_store(&gate_device, NULL);
 	atomic_store(&gate_release, true);
 	atomic_store(&gate_on_home_busy, false);
+	atomic_store(&gate_release_on_coordinates_busy, false);
 	simulator_test_client.update_property = gate_device_update;
 }
 
 static void remove_gate(void) {
 	atomic_store(&gate_release, true);
 	atomic_store(&gate_on_home_busy, false);
+	atomic_store(&gate_release_on_coordinates_busy, false);
 	simulator_test_client.update_property = simulator_client_update_property;
 }
 
@@ -1904,10 +1917,19 @@ static void log_coordinates_event(indigo_property *property) {
 	}
 }
 
+// While armed, the first publication of the coordinates after the simulator used up its fault, which is the publication
+// of the poll whose position readback failed, queues an urgent gate: it runs right after that poll and holds the queue.
+static atomic_bool poll_failure_gate_armed;
+static external_serial_simulator *poll_failure_simulator;
+
 static indigo_result observe_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, synscan_mount.device_name)) {
 		log_coordinates_event(property);
 		bool coordinates = !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		if (coordinates && atomic_load(&poll_failure_gate_armed) && !synscan_fault_pending(poll_failure_simulator)) {
+			atomic_store(&poll_failure_gate_armed, false);
+			queue_gate_with_priority(device, INDIGO_TASK_PRIORITY_URGENT);
+		}
 		if (coordinates) {
 			double ra = observed_item_value(property, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 			double dec = observed_item_value(property, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
@@ -3867,6 +3889,372 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The ALERT that ends a GoTo, a park or a home in failure stays until the next request. Every end of a motion publishes
+// the coordinates through indigo_update_coordinates(), which publishes the horizontal coordinates in the same state right
+// before them and keeps an ALERT that follows BUSY: the polls after it report the unchanged pointing in ALERT, not OK.
+// The refused slew of the GoTo handler, the failure seen by the GoTo, park and home finalizers and the abort of a GoTo, a
+// park and an auto home used to publish their ALERT with indigo_update_property(), and the next poll replaced it with OK.
+typedef enum {
+	SYNSCAN_MOTION_GOTO,
+	SYNSCAN_MOTION_PARK,
+	SYNSCAN_MOTION_HOME,
+	SYNSCAN_MOTION_AUTOHOME
+} synscan_motion;
+
+static const char *synscan_motion_name(synscan_motion motion) {
+	switch (motion) {
+		case SYNSCAN_MOTION_GOTO:
+			return "GoTo";
+		case SYNSCAN_MOTION_PARK:
+			return "park";
+		case SYNSCAN_MOTION_HOME:
+			return "home";
+		default:
+			return "auto home";
+	}
+}
+
+// Starts the motion `degrees` away from the current pointing on both axes and returns when the coordinates are BUSY and
+// the axes under way.
+static bool synscan_start_motion(synscan_motion motion, double degrees) {
+	double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double ha = synscan_wrap_hours(synscan_lst() - cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME));
+	double values[] = { synscan_wrap_hours(ha + degrees / 15), synscan_far_dec(dec, degrees) };
+	unsigned int busy = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	switch (motion) {
+		case SYNSCAN_MOTION_GOTO:
+			if (!synscan_start_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - values[0] + 48, 24), values[1])) {
+				return false;
+			}
+			break;
+		case SYNSCAN_MOTION_PARK: {
+			static const char *items[] = { MOUNT_PARK_POSITION_HA_ITEM_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME };
+			if (indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_POSITION_PROPERTY_NAME, 2, items, values) != INDIGO_OK || !wait_for_property_state(MOUNT_PARK_POSITION_PROPERTY_NAME, INDIGO_OK_STATE)) {
+				return false;
+			}
+			if (indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true) != INDIGO_OK || !wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE)) {
+				return false;
+			}
+			break;
+		}
+		case SYNSCAN_MOTION_HOME: {
+			static const char *items[] = { MOUNT_HOME_POSITION_HA_ITEM_NAME, MOUNT_HOME_POSITION_DEC_ITEM_NAME };
+			if (indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_POSITION_PROPERTY_NAME, 2, items, values) != INDIGO_OK || !wait_for_property_state(MOUNT_HOME_POSITION_PROPERTY_NAME, INDIGO_OK_STATE)) {
+				return false;
+			}
+			if (indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true) != INDIGO_OK || !wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_BUSY_STATE)) {
+				return false;
+			}
+			break;
+		}
+		case SYNSCAN_MOTION_AUTOHOME:
+			if (indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true) != INDIGO_OK || !wait_for_property_state(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_BUSY_STATE)) {
+				return false;
+			}
+			// the auto home moves the axes by small steps, two polls in BUSY are enough
+			return wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, busy) && wait_for_synscan_polls(2) && find_cached_property(MOUNT_AUTOHOME_PROPERTY_NAME)->state == INDIGO_BUSY_STATE;
+	}
+	return wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, busy) && synscan_wait_for_dec_motion(dec, 3);
+}
+
+// A log started in the middle of a poll can open with the equatorial coordinates of that poll, whose horizontal
+// coordinates came before the log; returns the index of the first event after them.
+static int synscan_skip_partial_poll(const coordinates_event *events, int count) {
+	int start = 0;
+	while (start < count && events[start].kind == 'E') {
+		start++;
+	}
+	return start;
+}
+
+// The motion is started, then its finalizer reads a refused axis status; both axes are stopped and the motion ends in
+// ALERT, which the following polls keep.
+static void motion_failure_keeps_alert(synscan_motion motion) {
+	static coordinates_event events[COORDINATES_LOG_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	const char *name = synscan_motion_name(motion);
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(synscan_start_motion(motion, 60));
+	int mark = synscan_mark(&simulator);
+	// the log opens with a poll of the running motion in BUSY
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(1));
+	// only the finalizers query the axis status, the poll reads the positions
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":f1", "!0", 1));
+	for (int i = 0; i < 100 && synscan_fault_pending(&simulator); i++) {
+		indigo_usleep(50000);
+	}
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(4));
+	int count = stop_coordinates_log(events);
+	int start = synscan_skip_partial_poll(events, count);
+	printf("    failed %s: %d publications logged\n", name, count);
+	SERIAL_CHECK_TRUE(check_coordinates_request(name, events + start, count - start, INDIGO_ALERT_STATE, 3));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L1", NULL, 0, NULL) > 0);
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L2", NULL, 0, NULL) > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	if (motion == SYNSCAN_MOTION_PARK) {
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+		SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
+	} else if (motion == SYNSCAN_MOTION_HOME) {
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state);
+	}
+cleanup:
+	atomic_store(&coordinates_logging, false);
+	simulator_test_client.force_property_updates = false;
+	remove_synscan_fault(&simulator);
+	remove_observer();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_mount_failed_goto_keeps_alert(void) {
+	motion_failure_keeps_alert(SYNSCAN_MOTION_GOTO);
+}
+
+static void synscan_mount_failed_park_keeps_alert(void) {
+	motion_failure_keeps_alert(SYNSCAN_MOTION_PARK);
+}
+
+static void synscan_mount_failed_home_keeps_alert(void) {
+	motion_failure_keeps_alert(SYNSCAN_MOTION_HOME);
+}
+
+// The motion is started and aborted; the abort ends it in ALERT, which the following polls keep.
+static void abort_keeps_alert(synscan_motion motion) {
+	static coordinates_event events[COORDINATES_LOG_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	const char *name = synscan_motion_name(motion);
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(synscan_start_motion(motion, 60));
+	// the log opens with a poll of the running motion in BUSY
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(1));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(synscan_abort());
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(4));
+	int count = stop_coordinates_log(events);
+	int start = synscan_skip_partial_poll(events, count);
+	printf("    aborted %s: %d publications logged\n", name, count);
+	SERIAL_CHECK_TRUE(check_coordinates_request(name, events + start, count - start, INDIGO_ALERT_STATE, 3));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+cleanup:
+	atomic_store(&coordinates_logging, false);
+	simulator_test_client.force_property_updates = false;
+	remove_observer();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_mount_aborted_goto_keeps_alert(void) {
+	abort_keeps_alert(SYNSCAN_MOTION_GOTO);
+}
+
+static void synscan_mount_aborted_park_keeps_alert(void) {
+	abort_keeps_alert(SYNSCAN_MOTION_PARK);
+}
+
+static void synscan_mount_aborted_autohome_keeps_alert(void) {
+	abort_keeps_alert(SYNSCAN_MOTION_AUTOHOME);
+}
+
+// The publications of the equatorial coordinates from the first poll of the log on: a poll that read the position
+// publishes the raw coordinates first, a poll whose readback failed does not. Returns the number of such failed polls
+// and stores the index of each.
+static int synscan_failed_polls(const coordinates_event *events, int count, int *failed, int size) {
+	int first = -1, failures = 0;
+	for (int i = 0; i < count; i++) {
+		if (first < 0) {
+			if (events[i].kind == 'R') {
+				first = i;
+			}
+		} else if (events[i].kind == 'E' && i >= 2 && events[i - 2].kind != 'R' && failures < size) {
+			failed[failures++] = i;
+		}
+	}
+	return failures;
+}
+
+// One failed position readback during a GoTo or a home is retried: the poll keeps the coordinates BUSY, and the motion,
+// whose axes reach the target while the queue is held right after that poll, ends OK, followed by OK polls. The poll used
+// to publish ALERT after BUSY, which indigo_update_coordinates() keeps, so the successful end of the motion was ALERT.
+static void poll_failure_during_motion(synscan_motion motion) {
+	static coordinates_event events[COORDINATES_LOG_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	const char *name = synscan_motion_name(motion);
+	int failed[8];
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	// 20 degrees take about 2 s at the simulated high speed
+	SERIAL_CHECK_TRUE(synscan_start_motion(motion, 20));
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(1));
+	// only the poll reads the positions while the axes run, the finalizer reads them once they stopped
+	poll_failure_simulator = &simulator;
+	atomic_store(&gate_entered, false);
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":j2", "!0", 1));
+	atomic_store(&poll_failure_gate_armed, true);
+	SERIAL_CHECK_TRUE(wait_for_gate());
+	// the axes reach the target while the queue is held; the finalizer, due before the next poll, sees the stop first
+	indigo_usleep(3500000);
+	atomic_store(&gate_release, true);
+	for (int i = 0; i < 100 && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	int count = stop_coordinates_log(events);
+	int failures = synscan_failed_polls(events, count, failed, ARRAY_SIZE(failed));
+	int next = -1, later = 0;
+	bool ok = failures == 1 && events[failed[0]].state == INDIGO_BUSY_STATE && events[failed[0] - 1].kind == 'H' && events[failed[0] - 1].state == INDIGO_BUSY_STATE;
+	for (int i = failures > 0 ? failed[0] + 1 : count; ok && i < count; i++) {
+		if (events[i].kind != 'E') {
+			continue;
+		}
+		if (next < 0) {
+			next = i;
+		} else {
+			later++;
+		}
+		ok = events[i].state == INDIGO_OK_STATE;
+	}
+	ok = ok && next >= 0 && later >= 2;
+	if (!ok) {
+		fprintf(stderr, "    %s: expected one failed poll in BUSY, then the end of the motion and the following polls in OK (failed polls %d)\n", name, failures);
+		print_coordinates_log(name, events, count);
+	}
+	SERIAL_CHECK_TRUE(ok);
+	if (motion == SYNSCAN_MOTION_HOME) {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state);
+	}
+cleanup:
+	atomic_store(&poll_failure_gate_armed, false);
+	atomic_store(&gate_release, true);
+	atomic_store(&coordinates_logging, false);
+	simulator_test_client.force_property_updates = false;
+	remove_synscan_fault(&simulator);
+	remove_observer();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_mount_goto_survives_a_failed_poll(void) {
+	poll_failure_during_motion(SYNSCAN_MOTION_GOTO);
+}
+
+static void synscan_mount_home_survives_a_failed_poll(void) {
+	poll_failure_during_motion(SYNSCAN_MOTION_HOME);
+}
+
+// Position readbacks that keep failing during a GoTo: the first two failed polls keep the coordinates BUSY, the third
+// publishes ALERT, which every later failed poll keeps.
+static void synscan_mount_failed_polls_end_goto_alert(void) {
+	static coordinates_event events[COORDINATES_LOG_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	int failed[64];
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	// 60 degrees take more than 5 s, the failures start in the first second
+	SERIAL_CHECK_TRUE(synscan_start_motion(SYNSCAN_MOTION_GOTO, 60));
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(1));
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":j2", "!0", 1000));
+	int failures = 0, count = 0;
+	for (int i = 0; i < 100 && failures < 5; i++) {
+		indigo_usleep(50000);
+		pthread_mutex_lock(&observed_mutex);
+		count = coordinates_log_count;
+		memcpy(events, coordinates_log, count * sizeof(*events));
+		pthread_mutex_unlock(&observed_mutex);
+		failures = synscan_failed_polls(events, count, failed, ARRAY_SIZE(failed));
+	}
+	count = stop_coordinates_log(events);
+	failures = synscan_failed_polls(events, count, failed, ARRAY_SIZE(failed));
+	bool ok = failures >= 5;
+	for (int i = 0; ok && i < failures; i++) {
+		ok = events[failed[i]].state == (i < 2 ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE);
+	}
+	for (int i = failures >= 3 ? failed[2] : count; ok && i < count; i++) {
+		ok = events[i].kind != 'E' || events[i].state == INDIGO_ALERT_STATE;
+	}
+	if (!ok) {
+		fprintf(stderr, "    expected two failed polls in BUSY, then ALERT from the third on (failed polls %d)\n", failures);
+		print_coordinates_log("failed polls", events, count);
+	}
+	SERIAL_CHECK_TRUE(ok);
+	SERIAL_CHECK_TRUE(synscan_abort());
+cleanup:
+	atomic_store(&coordinates_logging, false);
+	simulator_test_client.force_property_updates = false;
+	remove_synscan_fault(&simulator);
+	remove_observer();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A slew the controller refuses in the GoTo handler publishes BUSY, then the ALERT with the controller's reason once, and
+// the following polls keep it; the next GoTo clears it, runs and ends OK.
+static void synscan_mount_refused_goto_keeps_alert(void) {
+	static coordinates_event events[COORDINATES_LOG_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
+	double target_ra = fmod(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) + 0.5, 24);
+	double target_dec = synscan_far_dec(dec, 10);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":G1", "!4", 1));
+	pthread_mutex_lock(&observed_mutex);
+	observed_coordinates_message[0] = 0;
+	pthread_mutex_unlock(&observed_mutex);
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(synscan_request_coordinates(target_ra, target_dec));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(4));
+	int count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+	SERIAL_CHECK_TRUE(check_coordinates_request("refused GoTo", events, count, INDIGO_ALERT_STATE, 3));
+	SERIAL_CHECK_TRUE(observed_message_contains(observed_coordinates_message, "not initialized"));
+	SERIAL_CHECK_TRUE(fabs(synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME) - dec) < 0.01);
+	start_coordinates_log();
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, target_ra, target_dec));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	count = stop_coordinates_log(events);
+	SERIAL_CHECK_TRUE(check_coordinates_request("GoTo after a refused GoTo", events, count, INDIGO_OK_STATE, 2));
+cleanup:
+	atomic_store(&coordinates_logging, false);
+	simulator_test_client.force_property_updates = false;
+	remove_synscan_fault(&simulator);
+	remove_observer();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 // X_ENCODER_POSITION. The simulator started with --encoder-counts answers :d with the encoder ticks of the axis turn,
 // SIM_ENCODER_COUNTS per revolution against the SIM_STEPS_PER_REVOLUTION steps of the step counter, as an AZ-GTi
 // counts 1068 against 2073600, plus 512 ticks on RA and 1024 ticks on DEC, all around 0x800000. The driver has to
@@ -4259,6 +4647,7 @@ static void synscan_mount_goto_admitted_during_homing_is_refused(void) {
 	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	double values[] = { fmod(ra0 + 1, 24), 10 };
 	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	atomic_store(&gate_release_on_coordinates_busy, true);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
 	atomic_store(&gate_release, true);
@@ -4401,6 +4790,16 @@ int main(void) {
 		{ "synscan_mount_refuses_sync_near_the_pole", synscan_mount_refuses_sync_near_the_pole },
 		{ "synscan_mount_sync_publishes_busy_and_keeps_a_refusal", synscan_mount_sync_publishes_busy_and_keeps_a_refusal },
 		{ "synscan_mount_abort_cancels_a_queued_sync", synscan_mount_abort_cancels_a_queued_sync },
+		{ "synscan_mount_refused_goto_keeps_alert", synscan_mount_refused_goto_keeps_alert },
+		{ "synscan_mount_failed_goto_keeps_alert", synscan_mount_failed_goto_keeps_alert },
+		{ "synscan_mount_failed_park_keeps_alert", synscan_mount_failed_park_keeps_alert },
+		{ "synscan_mount_failed_home_keeps_alert", synscan_mount_failed_home_keeps_alert },
+		{ "synscan_mount_aborted_goto_keeps_alert", synscan_mount_aborted_goto_keeps_alert },
+		{ "synscan_mount_aborted_park_keeps_alert", synscan_mount_aborted_park_keeps_alert },
+		{ "synscan_mount_aborted_autohome_keeps_alert", synscan_mount_aborted_autohome_keeps_alert },
+		{ "synscan_mount_goto_survives_a_failed_poll", synscan_mount_goto_survives_a_failed_poll },
+		{ "synscan_mount_home_survives_a_failed_poll", synscan_mount_home_survives_a_failed_poll },
+		{ "synscan_mount_failed_polls_end_goto_alert", synscan_mount_failed_polls_end_goto_alert },
 		{ "synscan_mount_encoder_position_with_one_encoder", synscan_mount_encoder_position_with_one_encoder },
 		{ "synscan_mount_encoder_position_reports_raw_counts", synscan_mount_encoder_position_reports_raw_counts },
 		{ "synscan_mount_encoder_position_follows_a_goto", synscan_mount_encoder_position_follows_a_goto },
