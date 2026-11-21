@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1078b2c4-480e-4555-93ad-9b512c258b12",
+  "revision": 1,
+  "title": "indigo_mount_synscan: MOUNT_STATE slew light shows IDLE while the coordinates hold a kept ALERT",
+  "description": "Found on 2026-11-21 while working on ticket 3beb3554-f847-4155-b5e7-5bed700096f0. The MOUNT_STATE slew light is computed before indigo_update_coordinates() turns the poll's OK into the kept ALERT, so polls show the light IDLE while MOUNT_EQUATORIAL_COORDINATES stays ALERT; an existing simulator case asserts IDLE there. Decide with the owner what the light should show in that state (and whether other generated mount drivers do the same), then fix and adjust the test.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-21T12:32:13.546516Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "768da447-c0df-409d-abd0-1034cbe7b7f4",
+      "event": "ticket/created",
+      "at": "2026-11-21T12:32:13.547208Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-21T12:32:13.546516Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "bab0d33b269957824772bdb6e557b0a532d9ee289bf0e85715f5c5835b4a71ef"
+  }
+}
