@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001B
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -1602,9 +1602,15 @@ static void mount_autohome_finish(indigo_device *device, bool ok) {
 		synscan_clear_tracking_state(device);
 	}
 	MOUNT_AUTOHOME_ITEM->sw.value = false;
-	ok = synscan_update_mount_coordinates(device) && ok;
+	// The result is published once through indigo_update_coordinates(): a successful reading in OK, otherwise
+	// ALERT, which follows the BUSY of the auto home and is kept until the next BUSY
+	if (ok) {
+		ok = synscan_update_mount_coordinates(device);
+	}
 	PRIVATE_DATA->homed = ok;
-	synscan_set_coordinate_state(device, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
+	if (!ok) {
+		synscan_set_coordinate_state(device, INDIGO_ALERT_STATE);
+	}
 	synscan_update_mount_state(device);
 	INDIGO_UPDATE_PROPERTY_STATE(MOUNT_AUTOHOME_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, ok ? NULL : "Auto home failed or timed out; stop requested on both axes.");
 }

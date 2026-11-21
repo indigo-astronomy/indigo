@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 27;
+	version = 29;
 	serial {
 		configurable_speed = true;
 	}
@@ -1534,9 +1534,15 @@ driver synscan {
 					synscan_clear_tracking_state(device);
 				}
 				MOUNT_AUTOHOME_ITEM->sw.value = false;
-				ok = synscan_update_mount_coordinates(device) && ok;
+				// The result is published once through indigo_update_coordinates(): a successful reading in OK, otherwise
+				// ALERT, which follows the BUSY of the auto home and is kept until the next BUSY
+				if (ok) {
+					ok = synscan_update_mount_coordinates(device);
+				}
 				PRIVATE_DATA->homed = ok;
-				synscan_set_coordinate_state(device, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
+				if (!ok) {
+					synscan_set_coordinate_state(device, INDIGO_ALERT_STATE);
+				}
 				synscan_update_mount_state(device);
 				INDIGO_UPDATE_PROPERTY_STATE(MOUNT_AUTOHOME_PROPERTY, ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, ok ? NULL : "Auto home failed or timed out; stop requested on both axes.");
 			}

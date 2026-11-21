@@ -292,7 +292,9 @@ static bool parse_args(int argc, char *argv[]) {
 static volatile sig_atomic_t running = 1;
 
 // Command log for tests and reference traces, "<ready-file>.events": one "<monotonic seconds>\t<command>"
-// line per command the simulator executed, including commands whose reply is withheld.
+// line per command the simulator executed, including commands whose reply is withheld. Physical events are logged
+// the same way with an '@' instead of the command: "@index<axis>" when an axis crosses its home sensor and
+// "@arrived<axis>" when a GoTo of an axis reaches its target and the axis stops.
 static FILE *events;
 
 static double monotonic_seconds(void) {
@@ -707,6 +709,9 @@ static void process_axis_timer(uint8_t axis) {
 					axis_position[axis] += steps;
 				}
 			} else {
+				char event[32];
+				snprintf(event, sizeof(event), "@arrived%d", axis + 1);
+				record_event(event);
 				axis_status[axis] &= ~RUNNING;
 			}
 		}

@@ -3894,6 +3894,7 @@ cleanup:
 // before them and keeps an ALERT that follows BUSY: the polls after it report the unchanged pointing in ALERT, not OK.
 // The refused slew of the GoTo handler, the failure seen by the GoTo, park and home finalizers and the abort of a GoTo, a
 // park and an auto home used to publish their ALERT with indigo_update_property(), and the next poll replaced it with OK.
+// A failed auto home published OK and then its ALERT, which did not follow BUSY and was not kept either.
 typedef enum {
 	SYNSCAN_MOTION_GOTO,
 	SYNSCAN_MOTION_PARK,
@@ -3968,7 +3969,7 @@ static int synscan_skip_partial_poll(const coordinates_event *events, int count)
 }
 
 // The motion is started, then its finalizer reads a refused axis status; both axes are stopped and the motion ends in
-// ALERT, which the following polls keep.
+// ALERT, which the following polls keep. The auto home queries the status of the axis it moves, either one.
 static void motion_failure_keeps_alert(synscan_motion motion) {
 	static coordinates_event events[COORDINATES_LOG_SIZE];
 	external_serial_simulator simulator = { 0 };
@@ -3984,15 +3985,20 @@ static void motion_failure_keeps_alert(synscan_motion motion) {
 	start_coordinates_log();
 	SERIAL_CHECK_TRUE(wait_for_synscan_polls(1));
 	// only the finalizers query the axis status, the poll reads the positions
-	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":f1", "!0", 1));
-	for (int i = 0; i < 100 && synscan_fault_pending(&simulator); i++) {
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, motion == SYNSCAN_MOTION_AUTOHOME ? ":f" : ":f1", "!0", 1));
+	// The auto home sends no ':f' while it polls a home index (about 4 s) and during the sensor clearance dwell (3 s)
+	// that can follow, so it gets 30 s, safely longer than its longest stretch without one, whatever stage it is in
+	int attempts = motion == SYNSCAN_MOTION_AUTOHOME ? 600 : 100;
+	double armed = indigo_monotonic_time();
+	for (int i = 0; i < attempts && synscan_fault_pending(&simulator); i++) {
 		indigo_usleep(50000);
 	}
 	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+	double consumed = indigo_monotonic_time() - armed;
 	SERIAL_CHECK_TRUE(wait_for_synscan_polls(4));
 	int count = stop_coordinates_log(events);
 	int start = synscan_skip_partial_poll(events, count);
-	printf("    failed %s: %d publications logged\n", name, count);
+	printf("    failed %s: fault used after %.1f s, %d publications logged\n", name, consumed, count);
 	SERIAL_CHECK_TRUE(check_coordinates_request(name, events + start, count - start, INDIGO_ALERT_STATE, 3));
 	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L1", NULL, 0, NULL) > 0);
 	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L2", NULL, 0, NULL) > 0);
@@ -4002,6 +4008,9 @@ static void motion_failure_keeps_alert(synscan_motion motion) {
 		SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
 	} else if (motion == SYNSCAN_MOTION_HOME) {
 		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state);
+	} else if (motion == SYNSCAN_MOTION_AUTOHOME) {
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_AUTOHOME_PROPERTY_NAME)->state);
+		assert_switch_item_value(MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, false);
 	}
 cleanup:
 	atomic_store(&coordinates_logging, false);
@@ -4024,6 +4033,41 @@ static void synscan_mount_failed_park_keeps_alert(void) {
 
 static void synscan_mount_failed_home_keeps_alert(void) {
 	motion_failure_keeps_alert(SYNSCAN_MOTION_HOME);
+}
+
+static void synscan_mount_failed_autohome_keeps_alert(void) {
+	motion_failure_keeps_alert(SYNSCAN_MOTION_AUTOHOME);
+}
+
+// A successful auto home publishes BUSY and its OK once; the end of the auto home used to publish the coordinates twice.
+static void synscan_mount_autohome_publishes_one_result(void) {
+	static coordinates_event events[COORDINATES_LOG_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	install_observer();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	start_coordinates_log();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(4));
+	int count = stop_coordinates_log(events);
+	int start = synscan_skip_partial_poll(events, count);
+	printf("    auto home: %d publications logged\n", count);
+	SERIAL_CHECK_TRUE(count < COORDINATES_LOG_SIZE);
+	SERIAL_CHECK_TRUE(check_coordinates_request("auto home", events + start, count - start, INDIGO_OK_STATE, 3));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)->state);
+cleanup:
+	atomic_store(&coordinates_logging, false);
+	simulator_test_client.force_property_updates = false;
+	remove_observer();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
 }
 
 // The motion is started and aborted; the abort ends it in ALERT, which the following polls keep.
@@ -4087,9 +4131,25 @@ static int synscan_failed_polls(const coordinates_event *events, int count, int 
 	return failures;
 }
 
+// Waits until the simulator logged since `mark` that the GoTo of each axis reached its target.
+static bool synscan_wait_for_arrival(external_serial_simulator *simulator, int mark) {
+	for (int i = 0; i < 600; i++) {
+		if (count_synscan_commands(simulator, mark, "@arrived1", NULL, 0, NULL) > 0 && count_synscan_commands(simulator, mark, "@arrived2", NULL, 0, NULL) > 0) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	return false;
+}
+
 // One failed position readback during a GoTo or a home is retried: the poll keeps the coordinates BUSY, and the motion,
 // whose axes reach the target while the queue is held right after that poll, ends OK, followed by OK polls. The poll used
 // to publish ALERT after BUSY, which indigo_update_coordinates() keeps, so the successful end of the motion was ALERT.
+// The motion starts away from the pole: at the pole of the date the J2000 coordinates synscan_start_motion() takes the
+// hour angle from are those of one fixed point whatever the RA axis position, so the hour angle it derived followed the
+// sidereal time and the RA move of the motion took from almost nothing to several times the planned 20 degrees,
+// depending on the time of day. At hour angle 2 h and declination 40 degrees both moves are 20 degrees, within the
+// fraction of a degree between the J2000 and the date frame, at any sidereal time.
 static void poll_failure_during_motion(synscan_motion motion) {
 	static coordinates_event events[COORDINATES_LOG_SIZE];
 	external_serial_simulator simulator = { 0 };
@@ -4100,6 +4160,8 @@ static void poll_failure_during_motion(synscan_motion motion) {
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
 	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
 	driver_started = true;
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 2 + 24, 24), 40));
+	int mark = synscan_mark(&simulator);
 	// 20 degrees take about 2 s at the simulated high speed
 	SERIAL_CHECK_TRUE(synscan_start_motion(motion, 20));
 	start_coordinates_log();
@@ -4111,7 +4173,7 @@ static void poll_failure_during_motion(synscan_motion motion) {
 	atomic_store(&poll_failure_gate_armed, true);
 	SERIAL_CHECK_TRUE(wait_for_gate());
 	// the axes reach the target while the queue is held; the finalizer, due before the next poll, sees the stop first
-	indigo_usleep(3500000);
+	SERIAL_CHECK_TRUE(synscan_wait_for_arrival(&simulator, mark));
 	atomic_store(&gate_release, true);
 	for (int i = 0; i < 100 && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
 		indigo_usleep(100000);
@@ -4794,6 +4856,8 @@ int main(void) {
 		{ "synscan_mount_failed_goto_keeps_alert", synscan_mount_failed_goto_keeps_alert },
 		{ "synscan_mount_failed_park_keeps_alert", synscan_mount_failed_park_keeps_alert },
 		{ "synscan_mount_failed_home_keeps_alert", synscan_mount_failed_home_keeps_alert },
+		{ "synscan_mount_failed_autohome_keeps_alert", synscan_mount_failed_autohome_keeps_alert },
+		{ "synscan_mount_autohome_publishes_one_result", synscan_mount_autohome_publishes_one_result },
 		{ "synscan_mount_aborted_goto_keeps_alert", synscan_mount_aborted_goto_keeps_alert },
 		{ "synscan_mount_aborted_park_keeps_alert", synscan_mount_aborted_park_keeps_alert },
 		{ "synscan_mount_aborted_autohome_keeps_alert", synscan_mount_aborted_autohome_keeps_alert },
