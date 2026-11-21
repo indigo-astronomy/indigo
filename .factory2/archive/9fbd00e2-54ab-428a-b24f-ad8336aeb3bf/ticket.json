@@ -1,0 +1,755 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9fbd00e2-54ab-428a-b24f-ad8336aeb3bf",
+  "revision": 56,
+  "title": "indigo_mount_synscan: X_MOUNT_USE_ENCODERS treats encoder counts as motor steps and re-bases the step counter (AZ-GTi)",
+  "description": "Found on 2026-11-19 while working on ticket 4ef695f1-88ae-4fd8-943e-91c6479a9c24, measured by direct UDP commands on an AZ-GTi (firmware 3.16, CPR 2073600, extended status =098000); not yet reproduced through the driver.\n\nObservations:\n- The ':d<axis>' reply (auxiliary encoder) counts about 1068 per revolution, the step counter ':j<axis>' 2073600 (ratio 1941.57; DEC quarter turn: j2 518400, d2 267). The protocol document in the repository gives no encoder resolution and no query for it.\n- With X_MOUNT_USE_ENCODERS on, synscan_update_axis_positions() reads ':d' instead of ':j' and uses the value as motor steps, so the published coordinates cannot be right on this mount.\n- Enabling the dual encoders (':W<axis>040000', sent by the X_MOUNT_USE_ENCODERS handler) makes the firmware re-base the step counter from the encoder at once: with the mount standing, j1 went from -66767 to -2576467. The axis reference of the session is lost and stays lost after the encoders are disabled again.\n\nTo do: reproduce through the driver on the AZ-GTi with the same scenario (coordinates and step counters before / after switching the item on and off, then a GoTo), compare with the behaviour of mounts whose encoders count in steps if one is available, and decide with the owner what X_MOUNT_USE_ENCODERS should do on mounts whose encoder resolution differs from the step counter (scale by a measured ratio, hide the item, or refuse). X_ENCODER_POSITION (raw counts, driver 3.0.0.23) is not affected. Driver version to be incremented with the fix; recorded simulator and hardware runs.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T19:04:19.267212Z",
+  "status": "closed",
+  "branch": "ticket/9fbd00e2-54ab-428a-b24f-ad8336aeb3bf",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "12ac6cde-27ae-43e4-bf0f-26e78977f8ac",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T08:25:33.412403Z",
+          "last_activity_at": "2026-11-21T17:42:39.850214Z",
+          "ended_at": "2026-11-21T17:42:39.850214Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 33426437.811,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T08:25:33.412403Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/9fbd00e2-54ab-428a-b24f-ad8336aeb3bf"
+        },
+        {
+          "at": "2026-11-21T17:42:39.850214Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 33426437.811,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "70b58c0a-9a09-429d-9e99-9855da136f2e",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "ca1c9421-3fe3-4085-836e-e8fc41acd287",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T17:42:39.850359Z",
+          "last_activity_at": "2026-11-21T17:51:02.552987Z",
+          "ended_at": "2026-11-21T17:51:02.552987Z",
+          "outcome": {
+            "summary": "Reviewed master...HEAD (ae4f10ec5, merge base 2a91e57eb). The change implements the owner's option 1 correctly; no blocking defect.\n\nVerified:\n- Version 30 -> 31. The generated .c has DRIVER_VERSION 0x0300001F. The unchanged generator, run in scratch, reproduces .c/.h/_main.c byte for byte, and the .c diff against master holds exactly the .driver diff plus the version define.\n- synscan_update_axis_positions() always reads :j. The 'd' branch and the *_axis_position_from_encoder fields are gone. synscan_read_encoder_position() always queries :d, so X_ENCODER_POSITION is unchanged; the encoder_position cases pass.\n- Every other user of positions works in steps: park save/restore (:E plus a park file of :j values, checked by keeps_side_of_pier_and_park_in_steps), side of pier, sync (alignment model only) and auto home. Auto home turns the encoders off at its start, clears the items and ra_encoder/dec_encoder, and defers an X_MOUNT_USE_ENCODERS change while it runs, all consistent with synscan_set_encoders().\n- synscan_set_encoders() sends :W..04/05; the items and private flags show what the controller accepted.\n- on_change then calls synscan_update_mount_coordinates() on the master queue. Its state is BUSY while a slew or home runs or a request is claimed (on_change_request claims SLEWING/sync_pending at admission), otherwise OK. A kept ALERT is preserved by indigo_update_coordinates(). Client targets are untouched and there are no foreign-frame values.\n- Connect: :W is sent only when the property is visible (hidden when no axis reports the encoder bit, so no :W there), after :F/:E and before the first :j. A failed :W sets ALERT and the connection survives unless the port is lost. Sending :W..05 at connect cannot re-base: the firmware re-bases only on enable, per the phase 1 hardware note, and phase 2 found coordinates matching :j after the connect-time :W05.\n- Simulator: --encoder-offsets defaults to 512,1024 (the old array values), and the re-base happens only on :W..",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 502702.628,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T17:42:39.850359Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T17:51:02.552987Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Reviewed master...HEAD (ae4f10ec5, merge base 2a91e57eb). The change implements the owner's option 1 correctly; no blocking defect.\n\nVerified:\n- Version 30 -> 31. The generated .c has DRIVER_VERSION 0x0300001F. The unchanged generator, run in scratch, reproduces .c/.h/_main.c byte for byte, and the .c diff against master holds exactly the .driver diff plus the version define.\n- synscan_update_axis_positions() always reads :j. The 'd' branch and the *_axis_position_from_encoder fields are gone. synscan_read_encoder_position() always queries :d, so X_ENCODER_POSITION is unchanged; the encoder_position cases pass.\n- Every other user of positions works in steps: park save/restore (:E plus a park file of :j values, checked by keeps_side_of_pier_and_park_in_steps), side of pier, sync (alignment model only) and auto home. Auto home turns the encoders off at its start, clears the items and ra_encoder/dec_encoder, and defers an X_MOUNT_USE_ENCODERS change while it runs, all consistent with synscan_set_encoders().\n- synscan_set_encoders() sends :W..04/05; the items and private flags show what the controller accepted.\n- on_change then calls synscan_update_mount_coordinates() on the master queue. Its state is BUSY while a slew or home runs or a request is claimed (on_change_request claims SLEWING/sync_pending at admission), otherwise OK. A kept ALERT is preserved by indigo_update_coordinates(). Client targets are untouched and there are no foreign-frame values.\n- Connect: :W is sent only when the property is visible (hidden when no axis reports the encoder bit, so no :W there), after :F/:E and before the first :j. A failed :W sets ALERT and the connection survives unless the port is lost. Sending :W..05 at connect cannot re-base: the firmware re-bases only on enable, per the phase 1 hardware note, and phase 2 found coordinates matching :j after the connect-time :W05.\n- Simulator: --encoder-offsets defaults to 512,1024 (the old array values), and the re-base happens only on :W.."
+        }
+      ],
+      "result": {
+        "summary": "Reviewed master...HEAD (ae4f10ec5, merge base 2a91e57eb). The change implements the owner's option 1 correctly; no blocking defect.\n\nVerified:\n- Version 30 -> 31. The generated .c has DRIVER_VERSION 0x0300001F. The unchanged generator, run in scratch, reproduces .c/.h/_main.c byte for byte, and the .c diff against master holds exactly the .driver diff plus the version define.\n- synscan_update_axis_positions() always reads :j. The 'd' branch and the *_axis_position_from_encoder fields are gone. synscan_read_encoder_position() always queries :d, so X_ENCODER_POSITION is unchanged; the encoder_position cases pass.\n- Every other user of positions works in steps: park save/restore (:E plus a park file of :j values, checked by keeps_side_of_pier_and_park_in_steps), side of pier, sync (alignment model only) and auto home. Auto home turns the encoders off at its start, clears the items and ra_encoder/dec_encoder, and defers an X_MOUNT_USE_ENCODERS change while it runs, all consistent with synscan_set_encoders().\n- synscan_set_encoders() sends :W..04/05; the items and private flags show what the controller accepted.\n- on_change then calls synscan_update_mount_coordinates() on the master queue. Its state is BUSY while a slew or home runs or a request is claimed (on_change_request claims SLEWING/sync_pending at admission), otherwise OK. A kept ALERT is preserved by indigo_update_coordinates(). Client targets are untouched and there are no foreign-frame values.\n- Connect: :W is sent only when the property is visible (hidden when no axis reports the encoder bit, so no :W there), after :F/:E and before the first :j. A failed :W sets ALERT and the connection survives unless the port is lost. Sending :W..05 at connect cannot re-base: the firmware re-bases only on enable, per the phase 1 hardware note, and phase 2 found coordinates matching :j after the connect-time :W05.\n- Simulator: --encoder-offsets defaults to 512,1024 (the old array values), and the re-base happens only on :W..",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 502702.628,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "620f67d8-2dda-42b0-9df1-6871570d5231",
+      "event": "ticket/created",
+      "at": "2026-11-19T19:04:19.268623Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "d11d77bc-c4d9-4e29-ba09-b49e63220c58",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T19:06:41.919759Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "8e58b30e-c181-4656-85bf-c93cf61e05d8",
+      "event": "task/progress",
+      "at": "2026-11-21T08:25:33.412805Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Implementation started on branch ticket/9fbd00e2-54ab-428a-b24f-ad8336aeb3bf"
+    },
+    {
+      "event_id": "4e630744-5803-472a-9fa4-d2aafaa3e8fd",
+      "event": "ticket/started",
+      "at": "2026-11-21T08:25:33.415212Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/9fbd00e2-54ab-428a-b24f-ad8336aeb3bf",
+      "base": "master"
+    },
+    {
+      "event_id": "f3a5e062-2115-4eaa-888a-0e61b084575e",
+      "event": "task/progress",
+      "at": "2026-11-21T08:26:02.006825Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Implementer launched (phase 1: HW reproduction and measurement only)",
+      "attempt_id": "12ac6cde-27ae-43e4-bf0f-26e78977f8ac",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "747bc31f-ed60-4748-9474-49040d77d9ee",
+      "event": "task/progress",
+      "at": "2026-11-21T08:27:57.859232Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Locating the AZ-GTi by UDP broadcast (read-only :e1 probe)"
+    },
+    {
+      "event_id": "63d53155-f3dd-4904-b712-5a4259ae23b2",
+      "event": "task/progress",
+      "at": "2026-11-21T08:28:37.166644Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Building libindigo, indigo_server, indigo_prop_tool and the synscan driver in the worktree"
+    },
+    {
+      "event_id": "db9db325-43da-4a89-afb2-07024e43ee02",
+      "event": "task/progress",
+      "at": "2026-11-21T08:30:55.080155Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Starting indigo_server (port 17999, isolated HOME) with the synscan driver under the test lock"
+    },
+    {
+      "event_id": "854bb579-eb08-4e85-b272-741c6d2dc62d",
+      "event": "task/progress",
+      "at": "2026-11-21T08:37:45.678222Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Connecting the driver to the AZ-GTi (synscan://192.168.111.139:11880) and taking the baseline"
+    },
+    {
+      "event_id": "5f9b2b65-7b57-4caf-9674-9820a599c8b2",
+      "event": "task/progress",
+      "at": "2026-11-21T08:40:40.833497Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "GoTo B: 1.5 deg on both axes with X_MOUNT_USE_ENCODERS off"
+    },
+    {
+      "event_id": "d5474d5f-0d74-4ac4-8975-38609699d4a3",
+      "event": "task/progress",
+      "at": "2026-11-21T08:40:58.101189Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "C: switching X_MOUNT_USE_ENCODERS RA+DEC on through the driver"
+    },
+    {
+      "event_id": "2b62c815-80c1-4367-b2b7-d8623c48781d",
+      "event": "task/progress",
+      "at": "2026-11-21T08:41:41.631284Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "D: guarded 1.5 deg GoTo (computed in step-counter space) with X_MOUNT_USE_ENCODERS on"
+    },
+    {
+      "event_id": "7b207521-b700-4f45-b396-2add9f0fb332",
+      "event": "ticket/note",
+      "at": "2026-11-21T08:41:51.578521Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner (2026-11-21): the recorded hardware run on the AZ-GTi is a non-interactive hardware run: fix defects found, rerun the full scope, record with tools/run_driver_test.py mount_synscan --hw. No physical hot-plug; hot-plug coverage is not established.",
+      "tokens": null
+    },
+    {
+      "event_id": "5cec875d-95f1-4cd4-968a-054b7693415a",
+      "event": "task/progress",
+      "at": "2026-11-21T08:42:15.544466Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "E: switching X_MOUNT_USE_ENCODERS off again"
+    },
+    {
+      "event_id": "25cbd951-2001-4ea8-902f-70c2e0eff512",
+      "event": "task/progress",
+      "at": "2026-11-21T08:42:32.353941Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "F: guarded 1.5 deg GoTo with X_MOUNT_USE_ENCODERS off after the on/off cycle"
+    },
+    {
+      "event_id": "ec0be7f8-2675-4ed0-95ae-6bdbec91d12f",
+      "event": "task/progress",
+      "at": "2026-11-21T08:43:15.356974Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Restoring the session reference (:E1 with the measured -39061 step re-base) and the original pointing"
+    },
+    {
+      "event_id": "badf4bbc-e485-4f1b-a7f7-bb5e90230439",
+      "event": "ticket/note",
+      "at": "2026-11-21T08:44:39.450692Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Phase 1 reproduction through the driver (3.0.0.25, ae5a33f77) on the AZ-GTi, firmware 3.16, synscan://192.168.111.139:11880, 2026-11-21 09:38-09:44 CET, site 48.1/17.1, no alignment points, SLEW mode. A baseline off: RA 1.3507 DEC 60.963, j1 -480194 j2 351953, d1 -267 d2 181. B GoTo 1.5 deg off: j moved +8622/-8640, d -263/177, coordinates = target. C X_MOUNT_USE_ENCODERS on (driver sends :W1040000, :W2040000): j1 re-based at once -471572 -> -510633 (= -263 x 1941.57, -39061 steps, -6.78 deg), j2 unchanged (difference to d2 x 1941.57 was 345 steps, under one count); published RA 19.828 DEC -0.039 (d read as steps) against true RA 1.27 DEC 59.46. D guarded 1.5 deg GoTo on: driver moved the axes correctly by :j, reported OK at RA 19.845 DEC -0.0385 for a target RA 1.6428 DEC 60.967. A GoTo to the displayed coordinates would have moved +88.6/-59.6 deg (predicted only, not run). E off: no re-base back; coordinates from j again but 6.76 deg off in RA axis. F GoTo off back to the B position: d -263/177 as at B, published RA differs from B by 0.450 h minus LST change = 6.76 deg: reference stays lost. No documented read-only query reports the encoder resolution (a,b,D,g,s,c,i,m answered, q 000000 and k unknown); 2073600/1941.57 = 1068 counts/rev. Restored: :E1 with +39061 (this also re-based d1 -263 -> -242), then GoTo to j1 -480197 j2 351953; X_MOUNT_USE_ENCODERS and the firmware dual encoder left off; d1 now -246 instead of -267 at the original pointing. Legacy driver before 49acc55af only sent :W04/05 and always read :j.",
+      "tokens": null
+    },
+    {
+      "event_id": "84b2e9b3-c4ec-4308-a156-aa22983bdf72",
+      "event": "question/asked",
+      "at": "2026-11-21T08:45:33.224620Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduced on the AZ-GTi (see note). What should X_MOUNT_USE_ENCODERS do? Option 1 (recommended): restore the pre-3.0 meaning - the item only switches the firmware dual encoders (:W04/05), positions are always read with :j, never :d as steps; simulator models the re-base. Option 2: scale :d by a per-model ratio. Option 3: hide/refuse the item."
+    },
+    {
+      "event_id": "62446c9c-5310-4a2d-84e4-2937f7f0989d",
+      "event": "question/answered",
+      "at": "2026-11-21T12:38:48.420229Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner: implement option 1 - X_MOUNT_USE_ENCODERS only switches the firmware dual encoders (:W04/05); positions are always read with :j, never :d as steps; simulator models the re-base."
+    },
+    {
+      "event_id": "c828e348-d901-44d8-855b-91fa1e6ee3d9",
+      "event": "task/progress",
+      "at": "2026-11-21T12:38:57.835430Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Phase 2: merging master into the ticket branch"
+    },
+    {
+      "event_id": "35435095-5d83-4009-8868-292bcc57e17d",
+      "event": "task/progress",
+      "at": "2026-11-21T12:42:17.856197Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Driver: :j only for positions, :W helper shared by handler and connect, re-read after :W"
+    },
+    {
+      "event_id": "49e2ab90-7b06-479b-b3bf-bd056791fe7d",
+      "event": "task/progress",
+      "at": "2026-11-21T12:45:37.790671Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Simulator re-base model done; writing the replacement integration tests"
+    },
+    {
+      "event_id": "930001f0-8679-4c5f-9b54-5bc9c85401b5",
+      "event": "task/progress",
+      "at": "2026-11-21T12:49:42.876800Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Running the new X_MOUNT_USE_ENCODERS simulator cases (filter synscan_mount_use_encoders) under the lock"
+    },
+    {
+      "event_id": "0031164d-0f9e-44fa-ac9a-ed14afe8ae8c",
+      "event": "task/progress",
+      "at": "2026-11-21T13:02:03.088274Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Fixed park file path in the test helper; rerunning the park/side-of-pier case"
+    },
+    {
+      "event_id": "5e370b74-9df0-44df-a75a-862825e82ccd",
+      "event": "task/progress",
+      "at": "2026-11-21T13:02:43.817829Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Checking that the new cases fail with the unfixed driver (temporary swap of the generated .c)"
+    },
+    {
+      "event_id": "d5dd48ed-ede0-4947-ae5c-35222da87bc4",
+      "event": "task/progress",
+      "at": "2026-11-21T13:03:43.277162Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Recorded simulator run: tools/run_driver_test.py mount_synscan (parallel tickets not landed yet)"
+    },
+    {
+      "event_id": "fee71b7e-cd55-4732-a58e-6896346bfa4b",
+      "event": "task/progress",
+      "at": "2026-11-21T13:23:16.876120Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Run 1: 119/117 (legacy defect-dependent case and handshake order); fixed both, rerunning full scope"
+    },
+    {
+      "event_id": "0432eb44-dc28-4d80-9d6d-4e4ade0d64c2",
+      "event": "task/progress",
+      "at": "2026-11-21T13:44:03.857933Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Coordinator: driver version is 31 (landing after e2f19dd5 v29 and 0b4af839 v30)"
+    },
+    {
+      "event_id": "2ca0d730-48b5-4e19-b684-ed52bedd77aa",
+      "event": "task/progress",
+      "at": "2026-11-21T14:21:55.390502Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Hardware: repeating the phase-1 measurement with the fixed driver (3.0.0.31) on the AZ-GTi"
+    },
+    {
+      "event_id": "a127f8ba-5df6-44f0-8f64-4d2a541a6176",
+      "event": "task/progress",
+      "at": "2026-11-21T14:51:27.013802Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Hardware: returning the axes and restoring the found counter reference"
+    },
+    {
+      "event_id": "c4341640-f8bc-48cb-aad8-e2908593f944",
+      "event": "task/progress",
+      "at": "2026-11-21T14:53:16.184764Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Hardware: RA encoder reading runs away after the last GoTo while the motor stands; stopping, no further commands"
+    },
+    {
+      "event_id": "b61a612e-5013-4e71-bfb8-87d6e295d4d1",
+      "event": "task/progress",
+      "at": "2026-11-21T14:53:45.940422Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Final recorded simulator run with 3.0.0.31 (e2f19dd5 and 0b4af839 not landed on master)"
+    },
+    {
+      "event_id": "92154569-68e1-4ba2-8e17-1ca7e31d58a2",
+      "event": "ticket/note",
+      "at": "2026-11-21T14:53:59.724497Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Phase 2 hardware check (unrecorded) with driver 3.0.0.31 on the AZ-GTi 3.16, 2026-11-21 15:49-15:52 CET. Connect sent :W1050000/:W2050000 before the first :j1. In every state (off, on, after a guarded 1.5 deg GoTo on and off, after a reconnect with the item on, which resent :W1040000/:W2040000 before the first :j1) the published raw coordinates equal the :j geometry within 0.001 deg; switching on or off re-read :j within 70 ms of the :W commands. No firmware re-base could be shown: the mount was found with d1 -298 against j1 -480173 (51 counts apart, cause unknown), and :E1 (used to shift the counter reference so the re-base would stay on one side of the pier) resyncs the encoder count to trunc(j / 1941.57) even with the dual encoders on, which removed the disagreement; the remaining sub-count differences gave no re-base. After the last GoTo (15:51:28, RA -8691 steps) the RA encoder reading :d1 kept falling at 50-230 counts/s (to below -10000) while j1 stood at -480181 and :f1 reported stopped, also after the driver disconnected; no further commands were sent. Pointing and counter reference restored to j1 -480181 (found -480173), j2 351953 (found 351952), dual encoders off. The RA encoder state needs the owner's attention.",
+      "tokens": null
+    },
+    {
+      "event_id": "b1404e9f-022d-4641-8820-1f180ba5f282",
+      "event": "task/progress",
+      "at": "2026-11-21T15:16:34.890079Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Run 3: 119/118, synscan_mount_goto_admitted_during_homing_is_refused failed; repeating that case alone"
+    },
+    {
+      "event_id": "4075c9e9-f8bf-454a-84c2-b3bf6354ac8a",
+      "event": "task/progress",
+      "at": "2026-11-21T15:19:45.461144Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Homing GoTo case passed 6/6 alone (intermittent, outside the encoder paths); repeating the full recorded run"
+    },
+    {
+      "event_id": "2e094571-a593-462c-b057-5ccef2aa3f52",
+      "event": "task/progress",
+      "at": "2026-11-21T15:43:34.301846Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Run 4: 119/116 (homing GoTo, goto/home survive a failed poll); repeating those cases alone"
+    },
+    {
+      "event_id": "212b3f01-228e-433f-bdbb-91c877d4a124",
+      "event": "task/progress",
+      "at": "2026-11-21T15:47:01.878143Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Failed-poll cases now fail 8/8; checking the same cases with the unfixed driver (temporary swap)"
+    },
+    {
+      "event_id": "8a8d8284-1e0f-417a-9da9-07ab3e85b899",
+      "event": "task/progress",
+      "at": "2026-11-21T15:48:05.004584Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Failed-poll cases fail identically with the unfixed master driver (baseline); running flow check"
+    },
+    {
+      "event_id": "e2200e91-db85-475b-b338-30df22f2b8a6",
+      "event": "task/progress",
+      "at": "2026-11-21T15:48:05.372177Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "fd281e29-9e0f-406e-9688-bc06be89ccef",
+      "event": "task/progress",
+      "at": "2026-11-21T15:48:05.393688Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6585bf67-3fb2-4690-a063-620069a526d5",
+      "event": "check/passed",
+      "at": "2026-11-21T15:48:05.395543Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "9725be309509ee9248660209fe7cba7b9c5d2855",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "cae02cbf-4fe8-4a44-86ca-e8fd3da6df46",
+      "event": "task/progress",
+      "at": "2026-11-21T17:20:37.193221Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Merging master 2a91e57eb (e2f19dd5, 0b4af839 landed)"
+    },
+    {
+      "event_id": "fb1b2ec8-81a0-4006-89fc-651c80484d97",
+      "event": "task/progress",
+      "at": "2026-11-21T17:21:45.045793Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Merged master 2a91e57eb (version 31, count 123); recorded simulator run"
+    },
+    {
+      "event_id": "f7aac34b-c48b-4ebe-8fd0-96ef7ced76fc",
+      "event": "task/progress",
+      "at": "2026-11-21T17:42:22.014882Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Recorded simulator run 123/123 OK (3.0.0.31); running flow check"
+    },
+    {
+      "event_id": "2ba7522b-cc3b-4d5a-a748-03ed302e4416",
+      "event": "task/progress",
+      "at": "2026-11-21T17:42:22.261637Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "43d55792-7087-4e75-8687-c7642c249d79",
+      "event": "task/progress",
+      "at": "2026-11-21T17:42:22.288348Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "bb66a647-313c-4906-a036-7f678e2fd037",
+      "event": "check/passed",
+      "at": "2026-11-21T17:42:22.290154Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "ae4f10ec52c95475307b9a80041bc0bd559a2559",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a5abc3ba-25e9-49bc-99a5-fbc88ca1b7ef",
+      "event": "task/progress",
+      "at": "2026-11-21T17:42:39.675589Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c641a6b4-f59a-4099-afe3-61f0985c7603",
+      "event": "task/progress",
+      "at": "2026-11-21T17:42:39.703070Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "37c86b50-2101-438b-b3b2-7dea20de9968",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6af3d0ea-f582-438a-bfc6-255cbbbed83c",
+      "event": "check/passed",
+      "at": "2026-11-21T17:42:39.705039Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "ae4f10ec52c95475307b9a80041bc0bd559a2559",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a1a04247-4cf3-47d7-a90b-50c74aa1b75c",
+      "event": "task/progress",
+      "at": "2026-11-21T17:42:39.850423Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "70b58c0a-9a09-429d-9e99-9855da136f2e",
+      "text": "Review started"
+    },
+    {
+      "event_id": "fdb0c81d-574c-4e3c-8154-f50add63d5e0",
+      "event": "review/started",
+      "at": "2026-11-21T17:42:39.851651Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "9463ec8f-7a88-4cf8-be13-31647905e119",
+      "event": "task/progress",
+      "at": "2026-11-21T17:43:08.790667Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "70b58c0a-9a09-429d-9e99-9855da136f2e",
+      "text": "Reviewer launched",
+      "attempt_id": "ca1c9421-3fe3-4085-836e-e8fc41acd287",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "bd53950d-4fa5-40f7-90c7-b0c7bfe6726e",
+      "event": "task/progress",
+      "at": "2026-11-21T17:45:33.925865Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "70b58c0a-9a09-429d-9e99-9855da136f2e",
+      "text": "Regenerating the driver in scratch and checking the generated diff"
+    },
+    {
+      "event_id": "e621732c-c1e7-459c-a9c7-ddbacadac700",
+      "event": "task/progress",
+      "at": "2026-11-21T17:45:43.225329Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "70b58c0a-9a09-429d-9e99-9855da136f2e",
+      "text": "Running the four new encoder cases and the handshake in a scratch copy"
+    },
+    {
+      "event_id": "cab1b539-2746-4586-a566-4b41d000ebd6",
+      "event": "task/progress",
+      "at": "2026-11-21T17:51:02.553081Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "70b58c0a-9a09-429d-9e99-9855da136f2e",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "05ab337a-5d37-479c-b8a4-999ba9aa909b",
+      "event": "review/passed",
+      "at": "2026-11-21T17:51:02.554539Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "70b58c0a-9a09-429d-9e99-9855da136f2e",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "ae4f10ec52c95475307b9a80041bc0bd559a2559"
+    },
+    {
+      "event_id": "aad20670-181a-4458-bb5d-f0f9e06c3bd5",
+      "event": "ticket/closed",
+      "at": "2026-11-21T17:51:26.933887Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-21T17:51:26.933862Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "7dff96e973bcefc06a619cac8f91978fcf7d57f8"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "high",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9725be309509ee9248660209fe7cba7b9c5d2855",
+        "tree": "9d9ca443f29c7e9d1acf2e6feba4e46be63e8ed3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T15:48:05.392918Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/9fbd00e2-54ab-428a-b24f-ad8336aeb3bf/9d9ca443f29c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ae4f10ec52c95475307b9a80041bc0bd559a2559",
+        "tree": "a7117cd5446f7d1f433d7db21e4e3300af53d9b3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T17:42:39.702237Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/9fbd00e2-54ab-428a-b24f-ad8336aeb3bf/a7117cd5446f-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed master...HEAD (ae4f10ec5, merge base 2a91e57eb). The change implements the owner's option 1 correctly; no blocking defect.\n\nVerified:\n- Version 30 -> 31. The generated .c has DRIVER_VERSION 0x0300001F. The unchanged generator, run in scratch, reproduces .c/.h/_main.c byte for byte, and the .c diff against master holds exactly the .driver diff plus the version define.\n- synscan_update_axis_positions() always reads :j. The 'd' branch and the *_axis_position_from_encoder fields are gone. synscan_read_encoder_position() always queries :d, so X_ENCODER_POSITION is unchanged; the encoder_position cases pass.\n- Every other user of positions works in steps: park save/restore (:E plus a park file of :j values, checked by keeps_side_of_pier_and_park_in_steps), side of pier, sync (alignment model only) and auto home. Auto home turns the encoders off at its start, clears the items and ra_encoder/dec_encoder, and defers an X_MOUNT_USE_ENCODERS change while it runs, all consistent with synscan_set_encoders().\n- synscan_set_encoders() sends :W..04/05; the items and private flags show what the controller accepted.\n- on_change then calls synscan_update_mount_coordinates() on the master queue. Its state is BUSY while a slew or home runs or a request is claimed (on_change_request claims SLEWING/sync_pending at admission), otherwise OK. A kept ALERT is preserved by indigo_update_coordinates(). Client targets are untouched and there are no foreign-frame values.\n- Connect: :W is sent only when the property is visible (hidden when no axis reports the encoder bit, so no :W there), after :F/:E and before the first :j. A failed :W sets ALERT and the connection survives unless the port is lost. Sending :W..05 at connect cannot re-base: the firmware re-bases only on enable, per the phase 1 hardware note, and phase 2 found coordinates matching :j after the connect-time :W05.\n- Simulator: --encoder-offsets defaults to 512,1024 (the old array values), and the re-base happens only on :W..04 with --encoder-counts, so default behaviour is unchanged.\n- Park path fix: the driver's file is indigo_uni_config_folder()/synscan-EQ8.park = HOME/.indigo. The old helper removed nothing. The existing callers remove the file in cleanup after a park, and the driver itself deletes the file on connect, so no case depended on the file surviving; 123/123 recorded.\n- PROPERTIES.md text is accurate, no property added or removed. MIGRATION_STATUS 121 -> 123 (123 cases registered), Comment column untouched. README and TEST_SUMMARY change only the record line. No library or generator change. Formatting is fine and git diff --check is clean.\n\nScratch copy, ticket driver: the 4 new cases, the handshake and the 5 encoder_position cases PASS. Master's driver compiled against the same test: all 4 new cases and the handshake FAIL (pointing moved by the :d offsets / :d read as steps / no connect-time :W); the encoder_position cases still PASS. The new cases are event-driven (property revisions, polls, GoTo completion); the 3 s sleep helper was removed.\n\nFor the owner (behaviour, not a defect): every connect now sends the item's value. A new driver, or one whose item is off, turns OFF dual encoders that were enabled elsewhere, for example AZ-GTi Freedom Find from the SynScan app. Legacy only sent :W on change. This is documented in PROPERTIES.md and is the price of the item matching the unqueryable controller state, but the owner should confirm it.\n\nMinor, not blocking:\n(1) The simulator's rebase_from_encoder() and the test replay round the steps up (ceil) for positive counts, which keeps the encoder reading. Their comments say 'rounded towards zero', true only for negative counts; the hardware measurement was trunc, a 1-step difference.\n(2) The old comment 'The :d reading of an axis ...' now sits above encoder_ticks() instead of encoder_reading().\n(3) The simulator's :E does not resync the encoder as the AZ-GTi does (phase 2 note); no case depends on it.\n(4) synscan_set_encoders() addresses both axes even when only one reports an encoder, as on_change already did; on such a mount every connect could leave the property ALERT. Hypothetical, no such model known.\n\nMaster's reject_change 'Mount is homing' and the BUSY guard do not interact with this change: X_MOUNT_USE_ENCODERS has its own auto-home deferral and the coordinates publication goes through the same state rules as the poll.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "ae4f10ec52c95475307b9a80041bc0bd559a2559",
+        "tree": "a7117cd5446f7d1f433d7db21e4e3300af53d9b3",
+        "at": "2026-11-21T17:51:02.552789Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-21T08:41:51.577114Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Owner (2026-11-21): the recorded hardware run on the AZ-GTi is a non-interactive hardware run: fix defects found, rerun the full scope, record with tools/run_driver_test.py mount_synscan --hw. No physical hot-plug; hot-plug coverage is not established.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T08:44:39.449526Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Phase 1 reproduction through the driver (3.0.0.25, ae5a33f77) on the AZ-GTi, firmware 3.16, synscan://192.168.111.139:11880, 2026-11-21 09:38-09:44 CET, site 48.1/17.1, no alignment points, SLEW mode. A baseline off: RA 1.3507 DEC 60.963, j1 -480194 j2 351953, d1 -267 d2 181. B GoTo 1.5 deg off: j moved +8622/-8640, d -263/177, coordinates = target. C X_MOUNT_USE_ENCODERS on (driver sends :W1040000, :W2040000): j1 re-based at once -471572 -> -510633 (= -263 x 1941.57, -39061 steps, -6.78 deg), j2 unchanged (difference to d2 x 1941.57 was 345 steps, under one count); published RA 19.828 DEC -0.039 (d read as steps) against true RA 1.27 DEC 59.46. D guarded 1.5 deg GoTo on: driver moved the axes correctly by :j, reported OK at RA 19.845 DEC -0.0385 for a target RA 1.6428 DEC 60.967. A GoTo to the displayed coordinates would have moved +88.6/-59.6 deg (predicted only, not run). E off: no re-base back; coordinates from j again but 6.76 deg off in RA axis. F GoTo off back to the B position: d -263/177 as at B, published RA differs from B by 0.450 h minus LST change = 6.76 deg: reference stays lost. No documented read-only query reports the encoder resolution (a,b,D,g,s,c,i,m answered, q 000000 and k unknown); 2073600/1941.57 = 1068 counts/rev. Restored: :E1 with +39061 (this also re-based d1 -263 -> -242), then GoTo to j1 -480197 j2 351953; X_MOUNT_USE_ENCODERS and the firmware dual encoder left off; d1 now -246 instead of -267 at the original pointing. Legacy driver before 49acc55af only sent :W04/05 and always read :j.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T14:53:59.723233Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Phase 2 hardware check (unrecorded) with driver 3.0.0.31 on the AZ-GTi 3.16, 2026-11-21 15:49-15:52 CET. Connect sent :W1050000/:W2050000 before the first :j1. In every state (off, on, after a guarded 1.5 deg GoTo on and off, after a reconnect with the item on, which resent :W1040000/:W2040000 before the first :j1) the published raw coordinates equal the :j geometry within 0.001 deg; switching on or off re-read :j within 70 ms of the :W commands. No firmware re-base could be shown: the mount was found with d1 -298 against j1 -480173 (51 counts apart, cause unknown), and :E1 (used to shift the counter reference so the re-base would stay on one side of the pier) resyncs the encoder count to trunc(j / 1941.57) even with the dual encoders on, which removed the disagreement; the remaining sub-count differences gave no re-base. After the last GoTo (15:51:28, RA -8691 steps) the RA encoder reading :d1 kept falling at 50-230 counts/s (to below -10000) while j1 stood at -480181 and :f1 reported stopped, also after the driver disconnected; no further commands were sent. Pointing and counter reference restored to j1 -480181 (found -480173), j2 351953 (found 351952), dual encoders off. The RA encoder state needs the owner's attention.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Reproduced on the AZ-GTi (see note). What should X_MOUNT_USE_ENCODERS do? Option 1 (recommended): restore the pre-3.0 meaning - the item only switches the firmware dual encoders (:W04/05), positions are always read with :j, never :d as steps; simulator models the re-base. Option 2: scale :d by a per-model ratio. Option 3: hide/refuse the item.",
+        "at": "2026-11-21T08:45:33.223431Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner: implement option 1 - X_MOUNT_USE_ENCODERS only switches the firmware dual encoders (:W04/05); positions are always read with :j, never :d as steps; simulator models the re-base.",
+        "answered_at": "2026-11-21T12:38:48.418919Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "7dff96e973bcefc06a619cac8f91978fcf7d57f8",
+      "tree": "a7117cd5446f7d1f433d7db21e4e3300af53d9b3",
+      "base": "master",
+      "at": "2026-11-21T17:51:26.837392Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-19T19:04:19.267212Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-19T19:06:41.919485Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 33929140.439,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 62,
+    "sha256": "403a9762c6caaae2b7e686a0fdbe8600dc62db22fbe74e4c1ccb6a3220dedd1a"
+  }
+}
