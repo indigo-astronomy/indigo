@@ -458,39 +458,6 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-static void synscan_mount_uses_aux_encoders_for_coordinates(void) {
-	const char *encoder_items[] = {
-		MOUNT_USE_RA_ENCODER_ITEM_NAME,
-		MOUNT_USE_DEC_ENCODER_ITEM_NAME
-	};
-	bool encoder_values[] = {
-		true,
-		true
-	};
-	external_serial_simulator simulator = { 0 };
-	double initial_ra = 0;
-	double initial_dec = 0;
-
-	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
-	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
-	indigo_item *ra_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
-	indigo_item *dec_item = find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
-	SERIAL_CHECK_TRUE(ra_item != NULL && dec_item != NULL);
-	initial_ra = ra_item->number.value;
-	initial_dec = dec_item->number.value;
-
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property(&simulator_test_client, synscan_mount.device_name, MOUNT_USE_ENCODERS_PROPERTY_NAME, ARRAY_SIZE(encoder_items), encoder_items, encoder_values));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_USE_ENCODERS_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_coordinate_value_change(initial_ra, initial_dec, 0.001));
-
-cleanup:
-	if (context.connected) {
-		stop_serial_driver(&synscan_mount);
-	}
-	stop_external_serial_simulator(&simulator);
-}
-
 static void synscan_mount_tracks_after_coordinate_slew_when_requested(void) {
 	const char *coordinate_items[] = {
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
@@ -1780,10 +1747,14 @@ static bool synscan_set_switch(const char *property_name, const char *item_name,
 	return wait_for_property_not_busy_after(property_name, revision) && wait_for_switch_item_value(property_name, item_name, value);
 }
 
-// The position a park saves in the private configuration folder of the suite
+// The position a park saves in the configuration folder of the suite's private home, $HOME/.indigo
+static void synscan_park_file_path(char *path, size_t size) {
+	snprintf(path, size, "%s/.indigo/synscan-EQ8.park", park_folder);
+}
+
 static void synscan_remove_park_file(void) {
 	char park_path[PATH_MAX];
-	snprintf(park_path, sizeof(park_path), "%s/synscan-EQ8.park", park_folder);
+	synscan_park_file_path(park_path, sizeof(park_path));
 	unlink(park_path);
 }
 
@@ -1872,6 +1843,11 @@ static atomic_int observed_encoder_define_state;
 static atomic_bool observed_encoder_alert;
 static _Atomic double observed_encoder_previous_ra, observed_encoder_previous_dec, observed_encoder_alert_ra, observed_encoder_alert_dec, observed_encoder_alert_previous_ra, observed_encoder_alert_previous_dec;
 
+// The raw coordinates last published and their copy at the moment X_MOUNT_USE_ENCODERS was published OK, with the
+// sidereal time then, so a case can tell which axis readings the client had when the switch was answered.
+static _Atomic double observed_raw_ra, observed_raw_dec, observed_encoders_raw_ra, observed_encoders_raw_dec, observed_encoders_lst, observed_longitude;
+static atomic_bool observed_encoders_ok;
+
 static double observed_item_value(indigo_property *property, const char *name) {
 	for (int i = 0; i < property->count; i++) {
 		if (!strcmp(property->items[i].name, name)) {
@@ -1953,6 +1929,16 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 			atomic_store(&observed_previous_ra, ra);
 			atomic_store(&observed_previous_dec, dec);
 		}
+		if (!strcmp(property->name, MOUNT_RAW_COORDINATES_PROPERTY_NAME)) {
+			atomic_store(&observed_raw_ra, observed_item_value(property, MOUNT_RAW_COORDINATES_RA_ITEM_NAME));
+			atomic_store(&observed_raw_dec, observed_item_value(property, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME));
+		}
+		if (!strcmp(property->name, MOUNT_USE_ENCODERS_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+			atomic_store(&observed_encoders_raw_ra, atomic_load(&observed_raw_ra));
+			atomic_store(&observed_encoders_raw_dec, atomic_load(&observed_raw_dec));
+			atomic_store(&observed_encoders_lst, indigo_lst(NULL, atomic_load(&observed_longitude)));
+			atomic_store(&observed_encoders_ok, true);
+		}
 		if (!strcmp(property->name, MOUNT_ENCODER_POSITION_PROPERTY_NAME)) {
 			double ra = observed_item_value(property, MOUNT_ENCODER_POSITION_RA_ITEM_NAME);
 			double dec = observed_item_value(property, MOUNT_ENCODER_POSITION_DEC_ITEM_NAME);
@@ -1990,6 +1976,9 @@ static void install_observer(void) {
 	atomic_store(&observed_coordinates_alert, false);
 	atomic_store(&observed_encoder_define_state, -1);
 	atomic_store(&observed_encoder_alert, false);
+	atomic_store(&observed_raw_ra, NAN);
+	atomic_store(&observed_raw_dec, NAN);
+	atomic_store(&observed_encoders_ok, false);
 	pthread_mutex_lock(&observed_mutex);
 	observed_coordinates_message[0] = observed_park_message[0] = 0;
 	pthread_mutex_unlock(&observed_mutex);
@@ -2098,9 +2087,9 @@ static int sibling_pulse(const char *property_name, const char *item_name, doubl
 static void synscan_mount_reports_identity_and_handshake(void) {
 	// The commands from opening the port to the first coordinate read, in order. The axes start uninitialized, so
 	// the driver initializes them and restores the saved position; the value depends on what an earlier case parked.
-	// The axes have encoders that X_MOUNT_USE_ENCODERS does not select, so X_ENCODER_POSITION reads them after the
-	// step counters.
-	static const char *handshake[] = { ":e1", ":e1", ":f1", ":f2", ":a1", ":a2", ":s1", ":s2", ":b1", ":b2", ":g1", ":g2", ":q1010000", ":q2010000", ":V100", ":F1", ":E1", ":F2", ":E2", ":j2", ":j1", ":d2", ":d1" };
+	// The axes have encoders: the driver sends X_MOUNT_USE_ENCODERS, off in a new driver, before the first reading, so
+	// the dual encoders of the controller agree with it, and X_ENCODER_POSITION reads the encoders after the step counters.
+	static const char *handshake[] = { ":e1", ":e1", ":f1", ":f2", ":a1", ":a2", ":s1", ":s2", ":b1", ":b2", ":g1", ":g2", ":q1010000", ":q2010000", ":V100", ":F1", ":E1", ":F2", ":E2", ":W1050000", ":W2050000", ":j2", ":j1", ":d2", ":d1" };
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
 	char path[PATH_MAX];
@@ -4336,17 +4325,30 @@ cleanup:
 #define SIM_RA_ENCODER_OFFSET            512
 #define SIM_DEC_ENCODER_OFFSET           1024
 
+// The offsets of the encoders of the running simulator, in counts: the defaults, or those of --encoder-offsets.
+static long sim_encoder_offsets[2] = { SIM_RA_ENCODER_OFFSET, SIM_DEC_ENCODER_OFFSET };
+
 static bool start_encoder_simulator(external_serial_simulator *simulator, const char *ra_features, const char *dec_features) {
 	const char *arguments[] = { "--encoder-counts", SIM_ENCODER_COUNTS_TEXT, "--ra-features", ra_features, "--dec-features", dec_features, NULL };
+	sim_encoder_offsets[0] = SIM_RA_ENCODER_OFFSET;
+	sim_encoder_offsets[1] = SIM_DEC_ENCODER_OFFSET;
 	return start_external_serial_simulator_with_args(simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments);
 }
 
+// The encoder ticks of a step counter alone, from the step zero 0x800000, rounded down, as the simulator counts them.
+static long synscan_simulated_encoder_ticks(long step_counter) {
+	return lrint(floor((double)(step_counter - 0x800000) * SIM_ENCODER_COUNTS / SIM_STEPS_PER_REVOLUTION));
+}
+
 // The step counter the simulator holds for an axis, replayed from its command log: the start value, the last :E that
-// set it and each GoTo since, a :H increment or :S target started with :J in a GoTo mode (:G mode 0 or 2) with the
-// direction of the mode. Valid while the axis only stands or completes its GoTos, as in the cases using it.
-static long synscan_replayed_step_counter(external_serial_simulator *simulator, char axis) {
+// set it, each GoTo since, a :H increment or :S target started with :J in a GoTo mode (:G mode 0 or 2) with the
+// direction of the mode, and the re-base of a :W..04 that enabled the dual encoder while the encoder disagreed: the
+// counter becomes the encoder count times the steps per count, rounded towards zero, and the encoder offset 0. Valid
+// while the axis only stands or completes its GoTos, as in the cases using it. `offset` receives the encoder offset.
+static long synscan_replayed_axis(external_serial_simulator *simulator, char axis, long *offset) {
 	char path[PATH_MAX];
 	long position = axis == '1' ? 0x800000 : 0x800000 + lrint(SIM_STEPS_PER_REVOLUTION / 4);
+	long encoder_offset = sim_encoder_offsets[axis == '1' ? 0 : 1];
 	long increment = 0, target = 0;
 	bool goto_mode = false, backward = false, increment_set = false, target_set = false;
 	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
@@ -4391,21 +4393,31 @@ static long synscan_replayed_step_counter(external_serial_simulator *simulator, 
 				}
 				increment_set = target_set = false;
 				break;
+			case 'W':
+				if (synscan_command_value(command) == 4 && encoder_offset != 0) {
+					long long product = (long long)(synscan_simulated_encoder_ticks(position) + encoder_offset) * lrint(SIM_STEPS_PER_REVOLUTION);
+					position = 0x800000 + (long)(product >= 0 ? (product + SIM_ENCODER_COUNTS - 1) / SIM_ENCODER_COUNTS : -(-product / SIM_ENCODER_COUNTS));
+					encoder_offset = 0;
+				}
+				break;
 		}
 	}
 	fclose(file);
+	if (offset != NULL) {
+		*offset = encoder_offset;
+	}
 	return position;
 }
 
-// The count the simulator's :d reply carries for an axis whose step counter is `step_counter`, minus 0x800000.
-static long synscan_simulated_encoder_count(long step_counter, long offset) {
-	return lrint(floor((double)(step_counter - 0x800000) * SIM_ENCODER_COUNTS / SIM_STEPS_PER_REVOLUTION)) + offset;
+static long synscan_replayed_step_counter(external_serial_simulator *simulator, char axis) {
+	return synscan_replayed_axis(simulator, axis, NULL);
 }
 
-// The counts of both axes the simulator answers :d with now.
+// The counts of both axes the simulator answers :d with now, minus 0x800000.
 static void synscan_simulated_encoder_counts(external_serial_simulator *simulator, long *ra, long *dec) {
-	*ra = synscan_simulated_encoder_count(synscan_replayed_step_counter(simulator, '1'), SIM_RA_ENCODER_OFFSET);
-	*dec = synscan_simulated_encoder_count(synscan_replayed_step_counter(simulator, '2'), SIM_DEC_ENCODER_OFFSET);
+	long ra_offset = 0, dec_offset = 0;
+	*ra = synscan_simulated_encoder_ticks(synscan_replayed_axis(simulator, '1', &ra_offset)) + ra_offset;
+	*dec = synscan_simulated_encoder_ticks(synscan_replayed_axis(simulator, '2', &dec_offset)) + dec_offset;
 }
 
 // The X_ENCODER_POSITION values after the third poll from this call; false unless they are OK. The bus publishes the
@@ -4445,20 +4457,6 @@ static bool synscan_select_encoders(bool ra, bool dec) {
 		return false;
 	}
 	return wait_for_property_state_after(MOUNT_USE_ENCODERS_PROPERTY_NAME, INDIGO_OK_STATE, revision) && find_cached_item(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_RA_ENCODER_ITEM_NAME)->sw.value == ra && find_cached_item(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_DEC_ENCODER_ITEM_NAME)->sw.value == dec;
-}
-
-// The RA step counter and encoder queries of the idle polls during three seconds. Only polls publish
-// MOUNT_RAW_COORDINATES, once each, so its revisions count the polls; the window may cut one poll on either side.
-static bool synscan_poll_queries(external_serial_simulator *simulator, int *polls, int *counter_queries, int *encoder_queries) {
-	synscan_fresh_raw(MOUNT_RAW_COORDINATES_RA_ITEM_NAME);
-	unsigned int revision = property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME);
-	int mark = synscan_mark(simulator);
-	indigo_usleep(3000000);
-	*polls = (int)(property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME) - revision);
-	*counter_queries = count_synscan_commands(simulator, mark, ":j1", NULL, 0, NULL);
-	*encoder_queries = count_synscan_commands(simulator, mark, ":d1", NULL, 0, NULL);
-	printf("    %d polls: %d RA step counter and %d RA encoder queries\n", *polls, *counter_queries, *encoder_queries);
-	return *polls >= 2;
 }
 
 // X_ENCODER_POSITION is a read-only integer number in the alignment group with the 24-bit signed range. A mount with
@@ -4570,36 +4568,240 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// X_MOUNT_USE_ENCODERS does not change the encoder position: without it each poll reads the step counters and then the
-// encoders once; with it the poll reads the encoders for the coordinates and the property reuses that reading instead of
-// asking again, with the same values.
-static void synscan_mount_encoder_position_ignores_x_mount_use_encoders(void) {
+// X_MOUNT_USE_ENCODERS switches the dual encoders of the firmware and nothing else; the coordinates always come from the
+// step counters (:j). The simulator models an AZ-GTi: --encoder-counts 1068 against 864000 steps, the RA encoder 20
+// counts and the DEC encoder -3 counts away from the counters, so enabling the dual encoders re-bases both counters onto
+// the encoder grid, by about 6.7 and -1.0 degrees.
+#define SIM_REBASE_RA_OFFSET             20
+#define SIM_REBASE_DEC_OFFSET            -3
+#define SIM_REBASE_OFFSETS_TEXT          "20,-3"
+
+static bool start_rebase_simulator(external_serial_simulator *simulator) {
+	const char *arguments[] = { "--encoder-counts", SIM_ENCODER_COUNTS_TEXT, "--encoder-offsets", SIM_REBASE_OFFSETS_TEXT, "--ra-features", "6007", "--dec-features", "6007", NULL };
+	sim_encoder_offsets[0] = SIM_REBASE_RA_OFFSET;
+	sim_encoder_offsets[1] = SIM_REBASE_DEC_OFFSET;
+	return start_external_serial_simulator_with_args(simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments);
+}
+
+// The pointing of the date (hour angle, declination) and the side of the OTA of the given step counters in the northern
+// hemisphere, by the axis geometry of the driver: the RA zero a quarter turn before 0x800000, the DEC zero at 0x800000.
+static void synscan_steps_date_pointing(long ra_steps, long dec_steps, double *ha, double *dec, bool *ota_west) {
+	double ra_position = (ra_steps - (0x800000 - SIM_STEPS_PER_REVOLUTION / 4)) / SIM_STEPS_PER_REVOLUTION;
+	double dec_position = (dec_steps - 0x800000) / SIM_STEPS_PER_REVOLUTION;
+	if (dec_position < 0) {
+		dec_position += 1;
+	}
+	*ota_west = dec_position >= 0.25 && dec_position < 0.75;
+	*dec = (*ota_west ? 0.5 - dec_position : dec_position < 0.25 ? dec_position : dec_position - 1) * 360;
+	*ha = synscan_wrap_hours((*ota_west ? (ra_position < 0.5 ? ra_position : ra_position - 1) : ra_position - 0.5) * 24);
+}
+
+// The pointing of the date of J2000 raw coordinates at the sidereal time `lst`.
+static void synscan_raw_date_pointing(double ra, double dec, double lst, double *ha, double *date_dec) {
+	*date_dec = dec;
+	indigo_j2k_to_jnow(&ra, date_dec);
+	*ha = synscan_wrap_hours(lst - ra);
+}
+
+// The fresh published pointing is the one of the simulator's step counters, replayed from its log; prints both.
+static bool synscan_pointing_matches_steps(external_serial_simulator *simulator, const char *where) {
+	double ha = NAN, dec = NAN, expected_ha = NAN, expected_dec = NAN;
+	bool ota_west = false;
+	synscan_fresh_date_pointing(&ha, &dec);
+	long ra_steps = synscan_replayed_step_counter(simulator, '1');
+	long dec_steps = synscan_replayed_step_counter(simulator, '2');
+	synscan_steps_date_pointing(ra_steps, dec_steps, &expected_ha, &expected_dec, &ota_west);
+	printf("    %s: pointing HA %+.4f h DEC %+.4f deg, the step counters %ld %ld give HA %+.4f h DEC %+.4f deg\n", where, ha, dec, ra_steps - 0x800000, dec_steps - 0x800000, expected_ha, expected_dec);
+	return fabs(synscan_wrap_hours(ha - expected_ha)) < 0.01 && fabs(dec - expected_dec) < 0.05;
+}
+
+// Switching the dual encoders on re-bases the step counters, and the client has the re-based pointing when the switch is
+// answered, before any later poll; the polls keep reading the step counters, a GoTo with the encoders on ends at its
+// target with matching coordinates, and switching them off leaves the counters as they are.
+static void synscan_mount_use_encoders_rebases_and_keeps_step_counters(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
-	double ra = NAN, dec = NAN, selected_ra = NAN, selected_dec = NAN, deselected_ra = NAN, deselected_dec = NAN;
-	int polls = 0, counter_queries = 0, encoder_queries = 0;
-	SERIAL_CHECK_TRUE(start_encoder_simulator(&simulator, "6007", "6007"));
+	double ha = NAN, dec = NAN, expected_ha = NAN, expected_dec = NAN;
+	bool ota_west = false;
+	install_observer();
+	SERIAL_CHECK_TRUE(start_rebase_simulator(&simulator));
 	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
 	driver_started = true;
+	SERIAL_CHECK_TRUE(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) >= 0);
+	atomic_store(&observed_longitude, cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME));
 	SERIAL_CHECK_TRUE(synscan_select_encoders(false, false));
-	SERIAL_CHECK_TRUE(synscan_encoder_matches_simulator(&simulator, "encoders not selected", &ra, &dec));
-	SERIAL_CHECK_TRUE(synscan_poll_queries(&simulator, &polls, &counter_queries, &encoder_queries));
-	SERIAL_CHECK_TRUE(abs(counter_queries - polls) <= 1);
-	SERIAL_CHECK_TRUE(abs(encoder_queries - polls) <= 1);
+	double target_dec = 30;
+	double target_ra = synscan_j2000_ra_at_hour_angle(-2.5, &target_dec);
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, target_ra, target_dec));
+	SERIAL_CHECK_TRUE(synscan_pointing_matches_steps(&simulator, "encoders off"));
+	long ra_steps = synscan_replayed_step_counter(&simulator, '1');
+	long dec_steps = synscan_replayed_step_counter(&simulator, '2');
+	// on: the controller re-bases both counters, the handler publishes the pointing of the re-based counters
+	atomic_store(&observed_encoders_ok, false);
 	SERIAL_CHECK_TRUE(synscan_select_encoders(true, true));
-	SERIAL_CHECK_TRUE(synscan_encoder_matches_simulator(&simulator, "encoders selected", &selected_ra, &selected_dec));
-	SERIAL_CHECK_TRUE(selected_ra == ra && selected_dec == dec);
-	SERIAL_CHECK_TRUE(synscan_poll_queries(&simulator, &polls, &counter_queries, &encoder_queries));
-	SERIAL_CHECK_EQ_INT(0, counter_queries);
-	SERIAL_CHECK_TRUE(abs(encoder_queries - polls) <= 1);
+	SERIAL_CHECK_TRUE(atomic_load(&observed_encoders_ok));
+	long rebased_ra_steps = synscan_replayed_step_counter(&simulator, '1');
+	long rebased_dec_steps = synscan_replayed_step_counter(&simulator, '2');
+	synscan_steps_date_pointing(rebased_ra_steps, rebased_dec_steps, &expected_ha, &expected_dec, &ota_west);
+	synscan_raw_date_pointing(atomic_load(&observed_encoders_raw_ra), atomic_load(&observed_encoders_raw_dec), atomic_load(&observed_encoders_lst), &ha, &dec);
+	printf("    switched on: counters re-based by %+ld %+ld steps, the client had HA %+.4f h DEC %+.4f deg with the answer, the re-based counters give HA %+.4f h DEC %+.4f deg\n", rebased_ra_steps - ra_steps, rebased_dec_steps - dec_steps, ha, dec, expected_ha, expected_dec);
+	SERIAL_CHECK_TRUE(labs(rebased_ra_steps - ra_steps) > 10000 && labs(rebased_dec_steps - dec_steps) > 1000);
+	SERIAL_CHECK_TRUE(fabs(synscan_wrap_hours(ha - expected_ha)) < 0.01 && fabs(dec - expected_dec) < 0.05);
+	// the polls keep reading the step counters, the encoders only for X_ENCODER_POSITION
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":j1", NULL, 0, NULL) >= 2 && count_synscan_commands(&simulator, mark, ":j2", NULL, 0, NULL) >= 2);
+	SERIAL_CHECK_TRUE(synscan_pointing_matches_steps(&simulator, "encoders on"));
+	// a GoTo with the encoders on ends at its target
+	target_dec = 40;
+	target_ra = synscan_j2000_ra_at_hour_angle(-1, &target_dec);
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, target_ra, target_dec));
+	synscan_fresh_date_pointing(&ha, &dec);
+	printf("    GoTo with the encoders on to HA -1.0000 h DEC +40.0000 deg reached HA %+.4f h DEC %+.4f deg\n", ha, dec);
+	SERIAL_CHECK_TRUE(fabs(synscan_wrap_hours(ha + 1)) < 0.01 && fabs(dec - 40) < 0.05);
+	SERIAL_CHECK_TRUE(synscan_pointing_matches_steps(&simulator, "after the GoTo"));
+	// off: the counters stay where the controller has them, no position is set
+	ra_steps = synscan_replayed_step_counter(&simulator, '1');
+	dec_steps = synscan_replayed_step_counter(&simulator, '2');
+	mark = synscan_mark(&simulator);
 	SERIAL_CHECK_TRUE(synscan_select_encoders(false, false));
-	SERIAL_CHECK_TRUE(synscan_encoder_matches_simulator(&simulator, "encoders deselected", &deselected_ra, &deselected_dec));
-	SERIAL_CHECK_TRUE(deselected_ra == ra && deselected_dec == dec);
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":E", NULL, 0, NULL));
+	SERIAL_CHECK_TRUE(synscan_replayed_step_counter(&simulator, '1') == ra_steps && synscan_replayed_step_counter(&simulator, '2') == dec_steps);
+	SERIAL_CHECK_TRUE(synscan_pointing_matches_steps(&simulator, "encoders off again"));
+	synscan_fresh_date_pointing(&ha, &dec);
+	SERIAL_CHECK_TRUE(fabs(synscan_wrap_hours(ha + 1)) < 0.01 && fabs(dec - 40) < 0.05);
 
 cleanup:
 	if (driver_started) {
 		synscan_select_encoders(false, false);
 		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	remove_observer();
+}
+
+// With the dual encoders on, the side of pier comes from the step counters too, and a park saves the step counters in
+// the park file, not encoder counts, so the position restored after a power cycle is right.
+static void synscan_mount_use_encoders_keeps_side_of_pier_and_park_in_steps(void) {
+	static const char *items[] = { MOUNT_PARK_POSITION_HA_ITEM_NAME, MOUNT_PARK_POSITION_DEC_ITEM_NAME };
+	double values[] = { 2, 35 };
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	double ha = NAN, dec = NAN;
+	char park_path[PATH_MAX];
+	synscan_park_file_path(park_path, sizeof(park_path));
+	synscan_remove_park_file();
+	SERIAL_CHECK_TRUE(start_rebase_simulator(&simulator));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) >= 0);
+	SERIAL_CHECK_TRUE(synscan_select_encoders(true, true));
+	// west of the meridian the OTA is east of the pier
+	double target_dec = 30;
+	double target_ra = synscan_j2000_ra_at_hour_angle(2.5, &target_dec);
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, target_ra, target_dec));
+	SERIAL_CHECK_TRUE(synscan_pointing_matches_steps(&simulator, "GoTo with the encoders on"));
+	bool east = find_cached_item(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME)->sw.value;
+	printf("    at HA +2.5 h DEC +30 deg the side of pier is %s\n", east ? "east" : "west");
+	SERIAL_CHECK_TRUE(east);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_POSITION_PROPERTY_NAME, 2, items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	synscan_fresh_date_pointing(&ha, &dec);
+	SERIAL_CHECK_TRUE(fabs(synscan_wrap_hours(ha - values[0])) < 0.01 && fabs(dec - values[1]) < 0.05);
+	long ra_steps = synscan_replayed_step_counter(&simulator, '1');
+	long dec_steps = synscan_replayed_step_counter(&simulator, '2');
+	long saved_ra = -1, saved_dec = -1;
+	FILE *file = fopen(park_path, "r");
+	SERIAL_CHECK_TRUE(file != NULL);
+	int fields = fscanf(file, "%lx %lx", &saved_ra, &saved_dec);
+	fclose(file);
+	printf("    parked at HA %+.4f h DEC %+.4f deg: the park file holds %06lx %06lx, the step counters are %06lx %06lx\n", ha, dec, saved_ra, saved_dec, ra_steps, dec_steps);
+	SERIAL_CHECK_EQ_INT(2, fields);
+	SERIAL_CHECK_TRUE(saved_ra == ra_steps && saved_dec == dec_steps);
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+
+cleanup:
+	if (driver_started) {
+		synscan_select_encoders(false, false);
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	synscan_remove_park_file();
+}
+
+// X_MOUNT_USE_ENCODERS sends the dual encoder commands and nothing else. The default simulator's encoders read the step
+// counters plus 512 and 1024 steps and need no re-base, so the pointing stays where the step counters have it; the
+// driver used to read the encoders as steps here and moved the coordinates by those offsets.
+static void synscan_mount_use_encoders_switches_only_the_dual_encoders(void) {
+	external_serial_simulator simulator = { 0 };
+	double ha = NAN, dec = NAN, initial_ha = NAN, initial_dec = NAN;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	// away from the pole, where the hour angle of the raw coordinates is not defined
+	double target_dec = 40;
+	double target_ra = synscan_j2000_ra_at_hour_angle(-2, &target_dec);
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, target_ra, target_dec));
+	synscan_fresh_date_pointing(&initial_ha, &initial_dec);
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(synscan_select_encoders(true, true));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":W1040000", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":W2040000", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, ":E", NULL, 0, NULL));
+	synscan_fresh_date_pointing(&ha, &dec);
+	printf("    pointing HA %+.4f h DEC %+.4f deg with the encoders off, HA %+.4f h DEC %+.4f deg with them on\n", initial_ha, initial_dec, ha, dec);
+	SERIAL_CHECK_TRUE(fabs(synscan_wrap_hours(ha - initial_ha)) < 0.01 && fabs(dec - initial_dec) < 0.05);
+	mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(synscan_select_encoders(false, false));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":W1050000", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":W2050000", NULL, 0, NULL));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The controller keeps the dual encoder setting of the last command it got, which no query reports. The driver sends
+// the item at connect, before reading the axes: a new driver turns the encoders off, a reconnect turns them on again when
+// they were on, and the pointing after the reconnect is the one of the step counters.
+static void synscan_mount_use_encoders_agree_with_the_controller_after_connect(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_rebase_simulator(&simulator));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	assert_switch_item_value(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_RA_ENCODER_ITEM_NAME, false);
+	assert_switch_item_value(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_DEC_ENCODER_ITEM_NAME, false);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_USE_ENCODERS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, 0, ":W1050000", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, 0, ":W2050000", NULL, 0, NULL));
+	SERIAL_CHECK_TRUE(first_synscan_command_line(&simulator, 0, ":W2050000") < first_synscan_command_line(&simulator, 0, ":j1"));
+	SERIAL_CHECK_TRUE(synscan_select_encoders(true, true));
+	disconnect_serial_device(&synscan_mount);
+	int mark = synscan_mark(&simulator);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, simulator.port));
+	assert_switch_item_value(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_RA_ENCODER_ITEM_NAME, true);
+	assert_switch_item_value(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_DEC_ENCODER_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_USE_ENCODERS_PROPERTY_NAME)->state);
+	int on = first_synscan_command_line(&simulator, mark, ":W2040000");
+	int first_reading = first_synscan_command_line(&simulator, mark, ":j1");
+	printf("    reconnect: :W1040000 sent %d time(s), :W2040000 at line %d, the first :j1 at line %d\n", count_synscan_commands(&simulator, mark, ":W1040000", NULL, 0, NULL), on, first_reading);
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(&simulator, mark, ":W1040000", NULL, 0, NULL));
+	SERIAL_CHECK_TRUE(on >= 0 && on < first_reading);
+	SERIAL_CHECK_TRUE(synscan_pointing_matches_steps(&simulator, "after the reconnect"));
+
+cleanup:
+	if (driver_started) {
+		if (context.connected) {
+			synscan_select_encoders(false, false);
+			stop_serial_driver(&synscan_mount);
+		} else {
+			tear_down_serial_driver(&synscan_mount);
+		}
 	}
 	stop_external_serial_simulator(&simulator);
 }
@@ -4870,7 +5072,7 @@ int main(void) {
 		{ "synscan_mount_parks_after_axis_status_initialized_reply", synscan_mount_parks_after_axis_status_initialized_reply },
 		{ "synscan_mount_keeps_state_when_parked_request_is_refused", synscan_mount_keeps_state_when_parked_request_is_refused },
 		{ "synscan_mount_hides_autohome_without_both_home_indexers", synscan_mount_hides_autohome_without_both_home_indexers },
-		{ "synscan_mount_uses_aux_encoders_for_coordinates", synscan_mount_uses_aux_encoders_for_coordinates },
+		{ "synscan_mount_use_encoders_switches_only_the_dual_encoders", synscan_mount_use_encoders_switches_only_the_dual_encoders },
 		{ "synscan_mount_tracks_after_coordinate_slew_when_requested", synscan_mount_tracks_after_coordinate_slew_when_requested },
 		{ "synscan_mount_resumes_tracking_after_ra_motion", synscan_mount_resumes_tracking_after_ra_motion },
 		{ "synscan_mount_sync_adds_alignment_point", synscan_mount_sync_adds_alignment_point },
@@ -4936,7 +5138,9 @@ int main(void) {
 		{ "synscan_mount_encoder_position_with_one_encoder", synscan_mount_encoder_position_with_one_encoder },
 		{ "synscan_mount_encoder_position_reports_raw_counts", synscan_mount_encoder_position_reports_raw_counts },
 		{ "synscan_mount_encoder_position_follows_a_goto", synscan_mount_encoder_position_follows_a_goto },
-		{ "synscan_mount_encoder_position_ignores_x_mount_use_encoders", synscan_mount_encoder_position_ignores_x_mount_use_encoders },
+		{ "synscan_mount_use_encoders_rebases_and_keeps_step_counters", synscan_mount_use_encoders_rebases_and_keeps_step_counters },
+		{ "synscan_mount_use_encoders_keeps_side_of_pier_and_park_in_steps", synscan_mount_use_encoders_keeps_side_of_pier_and_park_in_steps },
+		{ "synscan_mount_use_encoders_agree_with_the_controller_after_connect", synscan_mount_use_encoders_agree_with_the_controller_after_connect },
 		{ "synscan_mount_encoder_position_ignores_a_sync", synscan_mount_encoder_position_ignores_a_sync },
 		{ "synscan_mount_encoder_position_alert_on_a_failed_query", synscan_mount_encoder_position_alert_on_a_failed_query }
 	};

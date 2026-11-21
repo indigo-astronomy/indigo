@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 30;
+	version = 31;
 	serial {
 		configurable_speed = true;
 	}
@@ -224,8 +224,6 @@ driver synscan {
 		long dec_zero_position;
 		long ra_axis_position;
 		long dec_axis_position;
-		bool ra_axis_position_from_encoder;
-		bool dec_axis_position_from_encoder;
 		bool ra_axis_config_valid;
 		bool dec_axis_config_valid;
 		int ra_axis_config_mode;
@@ -786,12 +784,11 @@ driver synscan {
 		}
 
 		static bool synscan_update_axis_positions(indigo_device *device) {
-			bool ok = true;
-			// which of the two counters each axis was read from, X_ENCODER_POSITION reuses an encoder reading
-			PRIVATE_DATA->dec_axis_position_from_encoder = MOUNT_USE_DEC_ENCODER_ITEM->sw.value && (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER);
-			PRIVATE_DATA->ra_axis_position_from_encoder = MOUNT_USE_RA_ENCODER_ITEM->sw.value && (PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER);
-			ok = ok && synscan_axis_long_query(device, PRIVATE_DATA->dec_axis_position_from_encoder ? 'd' : 'j', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_axis_position);
-			ok = ok && synscan_axis_long_query(device, PRIVATE_DATA->ra_axis_position_from_encoder ? 'd' : 'j', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_axis_position);
+			// Always the step counters: ':d' counts in the resolution of the axis encoder (an AZ-GTi 1068 per revolution against
+			// 2073600 steps), which the controller does not report. With X_MOUNT_USE_ENCODERS on, the firmware corrects the step
+			// counters from the encoders itself.
+			bool ok = synscan_axis_long_query(device, 'j', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_axis_position);
+			ok = ok && synscan_axis_long_query(device, 'j', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_axis_position);
 			if (PRIVATE_DATA->ra_total_steps > 0) {
 				PRIVATE_DATA->ra_position = (double)(PRIVATE_DATA->ra_axis_position - PRIVATE_DATA->ra_zero_position) / (double)PRIVATE_DATA->ra_total_steps;
 			}
@@ -975,24 +972,15 @@ driver synscan {
 
 		// X_ENCODER_POSITION: the signed count of the encoder of each axis exactly as ':d' reports it (the 24-bit reply minus
 		// 0x800000), without scaling or a zero position; the resolution is model dependent, so the driver does not interpret
-		// it. An axis without an encoder shows 0. An axis that synscan_update_axis_positions() just read from its encoder,
-		// because X_MOUNT_USE_ENCODERS selects it, is not queried again.
+		// it. An axis without an encoder shows 0.
 		static bool synscan_read_encoder_position(indigo_device *device) {
 			long ra_count = 0x800000;
 			long dec_count = 0x800000;
-			if (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER) {
-				if (PRIVATE_DATA->dec_axis_position_from_encoder) {
-					dec_count = PRIVATE_DATA->dec_axis_position;
-				} else if (!synscan_axis_long_query(device, 'd', SYNSCAN_AXIS_DEC, &dec_count)) {
-					return false;
-				}
+			if ((PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER) && !synscan_axis_long_query(device, 'd', SYNSCAN_AXIS_DEC, &dec_count)) {
+				return false;
 			}
-			if (PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER) {
-				if (PRIVATE_DATA->ra_axis_position_from_encoder) {
-					ra_count = PRIVATE_DATA->ra_axis_position;
-				} else if (!synscan_axis_long_query(device, 'd', SYNSCAN_AXIS_RA, &ra_count)) {
-					return false;
-				}
+			if ((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER) && !synscan_axis_long_query(device, 'd', SYNSCAN_AXIS_RA, &ra_count)) {
+				return false;
 			}
 			MOUNT_ENCODER_POSITION_RA_ITEM->number.value = ra_count - 0x800000;
 			MOUNT_ENCODER_POSITION_DEC_ITEM->number.value = dec_count - 0x800000;
@@ -1063,6 +1051,23 @@ driver synscan {
 			char buffer[16];
 			snprintf(buffer, sizeof(buffer), ":W%c%s", axis, synscan_hex24(setting));
 			return synscan_command(device, buffer, NULL, 0);
+		}
+
+		// X_MOUNT_USE_ENCODERS switches the dual encoders of the firmware and nothing else. Turning them on makes the
+		// controller re-base the step counter of an axis from its encoder at once (an AZ-GTi snaps it to the encoder grid);
+		// the coordinates keep coming from the step counters. The items show what the controller accepted.
+		static bool synscan_set_encoders(indigo_device *device, bool ra, bool dec) {
+			bool ok = synscan_ext_setting(device, SYNSCAN_AXIS_RA, ra ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
+			if (ok) {
+				PRIVATE_DATA->ra_encoder = ra;
+			}
+			ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_DEC, dec ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
+			if (ok) {
+				PRIVATE_DATA->dec_encoder = dec;
+			}
+			MOUNT_USE_RA_ENCODER_ITEM->sw.value = PRIVATE_DATA->ra_encoder;
+			MOUNT_USE_DEC_ENCODER_ITEM->sw.value = PRIVATE_DATA->dec_encoder;
+			return ok;
 		}
 
 		static void synscan_ppec_training_timer(indigo_device *device) {
@@ -1361,6 +1366,15 @@ driver synscan {
 			PRIVATE_DATA->current_tracking_rate = 0;
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+			// The controller keeps the dual encoder setting of the last command it got, which no query reports, so the item
+			// (off in a new driver, the last selection after a reconnect, a saved selection only after a configuration load) is
+			// sent before the first reading: the controller and the item agree and the coordinates carry any re-base.
+			if (!MOUNT_USE_ENCODERS_PROPERTY->hidden) {
+				MOUNT_USE_ENCODERS_PROPERTY->state = synscan_set_encoders(device, MOUNT_USE_RA_ENCODER_ITEM->sw.value, MOUNT_USE_DEC_ENCODER_ITEM->sw.value) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				if (PRIVATE_DATA->handle == NULL) {
+					return false;
+				}
+			}
 			// A bad first reading marks only the coordinates, the first poll reads them again; a lost port fails the connection
 			bool coordinates_read = synscan_read_mount_coordinates(device);
 			if (!coordinates_read) {
@@ -2356,21 +2370,12 @@ driver synscan {
 				}
 				// Auto home turns the encoders off and writes the values between the copy of a request and this handler,
 				// the targets keep the request. The values show what the mount accepted.
-				bool ra = indigo_get_switch_target(MOUNT_USE_ENCODERS_PROPERTY, MOUNT_USE_RA_ENCODER_ITEM_NAME);
-				bool dec = indigo_get_switch_target(MOUNT_USE_ENCODERS_PROPERTY, MOUNT_USE_DEC_ENCODER_ITEM_NAME);
-				bool ok = synscan_ext_setting(device, SYNSCAN_AXIS_RA, ra ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
-				if (ok) {
-					PRIVATE_DATA->ra_encoder = ra;
-				}
-				ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_DEC, dec ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
-				if (ok) {
-					PRIVATE_DATA->dec_encoder = dec;
-				}
-				MOUNT_USE_RA_ENCODER_ITEM->sw.value = PRIVATE_DATA->ra_encoder;
-				MOUNT_USE_DEC_ENCODER_ITEM->sw.value = PRIVATE_DATA->dec_encoder;
+				bool ok = synscan_set_encoders(device, indigo_get_switch_target(MOUNT_USE_ENCODERS_PROPERTY, MOUNT_USE_RA_ENCODER_ITEM_NAME), indigo_get_switch_target(MOUNT_USE_ENCODERS_PROPERTY, MOUNT_USE_DEC_ENCODER_ITEM_NAME));
 				if (!ok) {
 					MOUNT_USE_ENCODERS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
+				// the client sees a re-base of the step counters at once, not with the next poll; a failed reading is left to it
+				synscan_update_mount_coordinates(device);
 			}
 			// on_attach { }
 			// on_detach { }

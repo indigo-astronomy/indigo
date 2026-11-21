@@ -109,6 +109,7 @@ typedef struct {
 	double home_start_degrees;
 	double ppec_training_seconds;
 	int encoder_counts;
+	int32_t encoder_offsets[2];
 } simulator_options;
 
 static simulator_options options = {
@@ -127,7 +128,8 @@ static simulator_options options = {
 	.ready_file = NULL,
 	.stop_lag = 0,
 	.ppec_training_seconds = 0,
-	.encoder_counts = 0
+	.encoder_counts = 0,
+	.encoder_offsets = { 512, 1024 }
 };
 
 static const char *simulator_name = "mount_synscan";
@@ -147,7 +149,11 @@ static void usage(const char *name) {
 	printf("  --ppec-training-seconds <s>  End PPEC training by itself s seconds after it started, as the\n");
 	printf("                          mount does after one worm revolution (default: never)\n");
 	printf("  --encoder-counts <n>    Count the :d encoder reading n times per axis revolution instead of in steps\n");
-	printf("                          (an AZ-GTi counts 1068 against 2073600 steps; default: in steps)\n");
+	printf("                          (an AZ-GTi counts 1068 against 2073600 steps; default: in steps). Enabling the\n");
+	printf("                          dual encoder (:W..04) then re-bases the step counter from the encoder reading\n");
+	printf("                          when they disagree, snapped to the encoder grid, as an AZ-GTi does\n");
+	printf("  --encoder-offsets <ra>,<dec>  Offset of the :d reading from the step counter, in encoder counts with\n");
+	printf("                          --encoder-counts, in steps without it (default 512,1024)\n");
 	printf("  The tests inject refused commands through <ready-file>.fault, \"<prefix> <reply> <count>\"\n");
 	printf("  --model-code <hex>      Motor controller model code for :e replies\n");
 	printf("  --ra-features <hex>     Override RA axis feature bits for :q1000100 replies\n");
@@ -273,6 +279,26 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.encoder_counts = (int)value;
+		} else if (!strcmp(argv[i], "--encoder-offsets")) {
+			if (++i == argc) {
+				fprintf(stderr, "--encoder-offsets requires a value\n");
+				return false;
+			}
+			char *end = NULL;
+			long ra = strtol(argv[i], &end, 10);
+			long dec = 0;
+			bool valid = end != argv[i] && *end == ',';
+			if (valid) {
+				char *dec_text = end + 1;
+				dec = strtol(dec_text, &end, 10);
+				valid = end != dec_text && *end == 0;
+			}
+			if (!valid || labs(ra) > STEPS_PER_REVOLUTION || labs(dec) > STEPS_PER_REVOLUTION) {
+				fprintf(stderr, "--encoder-offsets requires two numbers <ra>,<dec> within one revolution\n");
+				return false;
+			}
+			options.encoder_offsets[0] = (int32_t)ra;
+			options.encoder_offsets[1] = (int32_t)dec;
 		} else if (!strcmp(argv[i], "--ready-file")) {
 			if (++i == argc) {
 				fprintf(stderr, "--ready-file requires a path\n");
@@ -338,16 +364,43 @@ static bool axis_home_index_hit[2] = { false, false };
 
 // The :d reading of an axis: the step counter plus an offset, or with --encoder-counts the encoder ticks of the axis
 // turn from the step zero 0x800000 (rounded down) plus the same offset in ticks, around the same 0x800000.
+// The encoder ticks of the step counter of an axis alone, from the step zero 0x800000, rounded down.
+static int64_t encoder_ticks(int axis) {
+	int64_t ticks = (int64_t)(int32_t)(axis_position[axis] - 0x800000) * options.encoder_counts;
+	return ticks >= 0 ? ticks / STEPS_PER_REVOLUTION : -((-ticks + STEPS_PER_REVOLUTION - 1) / STEPS_PER_REVOLUTION);
+}
+
 static uint32_t encoder_reading(int axis) {
 	if (options.encoder_counts == 0) {
 		return axis_position[axis] + axis_aux_position_offset[axis];
 	}
-	int64_t ticks = (int64_t)(int32_t)(axis_position[axis] - 0x800000) * options.encoder_counts;
-	int64_t counts = ticks >= 0 ? ticks / STEPS_PER_REVOLUTION : -((-ticks + STEPS_PER_REVOLUTION - 1) / STEPS_PER_REVOLUTION);
-	return (uint32_t)(0x800000 + counts + axis_aux_position_offset[axis]) & 0xFFFFFF;
+	return (uint32_t)(0x800000 + encoder_ticks(axis) + axis_aux_position_offset[axis]) & 0xFFFFFF;
+}
+
+// Enabling the dual encoder of an AZ-GTi re-bases its step counter from the encoder at once when the two disagree: the
+// counter becomes the encoder count times the steps per count, rounded towards zero (2073600 / 1068 per count, so -263
+// counts give -510633 steps), and the encoder keeps its reading. Disabling it leaves the counter as it is. Modelled
+// with --encoder-counts only; an encoder that counts in steps is left alone.
+static void rebase_from_encoder(int axis) {
+	if (options.encoder_counts == 0) {
+		return;
+	}
+	int64_t counts = (int64_t)((encoder_reading(axis) - 0x800000) & 0xFFFFFF);
+	if (counts >= 0x800000) {
+		counts -= 0x1000000;
+	}
+	if (counts == encoder_ticks(axis)) {
+		return;
+	}
+	int64_t product = counts * STEPS_PER_REVOLUTION;
+	int64_t steps = product >= 0 ? (product + options.encoder_counts - 1) / options.encoder_counts : -(-product / options.encoder_counts);
+	axis_position[axis] = (uint32_t)(0x800000 + steps) & 0xFFFFFF;
+	axis_aux_position_offset[axis] = 0;
 }
 
 static void initialize_state(void) {
+	axis_aux_position_offset[0] = (uint32_t)options.encoder_offsets[0];
+	axis_aux_position_offset[1] = (uint32_t)options.encoder_offsets[1];
 	axis_abs_position[0] = axis_abs_position[1] = (int32_t)(options.home_start_degrees / 360.0 * STEPS_PER_REVOLUTION);
 	if (options.pcdirect) {
 		axis_status[0] = INITIALIZED;
@@ -593,8 +646,11 @@ static char *process_command(char *buffer) {
 					axis_features[axis] &= ~IN_PPEC;
 					return "=";
 				case ENCODER_ON_CMD:
+					rebase_from_encoder(axis);
 					return "=";
 				case ENCODER_OFF_CMD:
+					// the step counter and the encoder of the simulator never slip apart, so with the dual encoder off
+					// nothing re-bases the counter any more and the counter keeps its value
 					return "=";
 				case DISABLE_FULL_CURRENT_LOW_SPEED_CMD:
 					return "=";
