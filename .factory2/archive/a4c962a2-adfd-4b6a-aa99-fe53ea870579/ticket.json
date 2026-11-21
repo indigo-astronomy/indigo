@@ -1,0 +1,665 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a4c962a2-adfd-4b6a-aa99-fe53ea870579",
+  "revision": 33,
+  "title": "indigo_agent_scheduler: add the unsafe hold with UNSAFE and SAFE hooks driven by AGENT_AUX_SAFETY",
+  "description": "Requested by the owner on 2026-11-21. Depends on ticket edf38e12-685f-4848-be72-3489f0871c19, which defines the light AGENT_AUX_SAFETY (item SAFE; IDLE = no information, OK = safe, ALERT = unsafe) on the Auxiliary Agent. The scheduler reads it from the \"Auxiliary Agent\" as it reads the Mount and Imager Agents. This replaces the planned two-level safety phase in indigo_drivers/agent_scheduler/doc/SCHEDULER.md (warning/alert with debounce and grace period).\n\nConfiguration:\n- AGENT_SCHEDULER_HOOKS gets two items, UNSAFE and SAFE (task names, like the other hooks).\n- AGENT_SCHEDULER_SETTINGS gets SAFE_DELAY in minutes: the hysteresis before the hold ends.\n- A new switch selects how a missing safety property is treated: as safe or as unsafe. Missing means the Auxiliary Agent or AGENT_AUX_SAFETY is absent, or the property reports IDLE (no information). The default is safe, so existing setups behave as now.\n\nBehaviour when the scheduler is started and the safety is unsafe (ALERT, or missing treated as unsafe):\n- The scheduler enters an unsafe hold immediately, without debounce. The hold is persisted and survives a restart.\n- Every running task is aborted, including urgent (emergency) tasks and a sequence started by hand in the Scripting Agent. A new stop reason records the run as unsafe in the history; the task returns to RETRY without consuming a retry, and @preempted fail does not apply.\n- A running SHUTDOWN or NIGHT_END hook finishes. Every other running hook (startup, night start, idle, resume, safe) is aborted.\n- The UNSAFE hook runs once per hold.\n- During the hold no task, night start, resume or idle hook starts. Duration estimates may continue since they do not use the equipment. The scheduler reason shows the hold and the remaining delay.\n- Every unsafe report restarts the delay. The hold may end only after the safety has been OK continuously for SAFE_DELAY minutes.\n- When the hold ends during the night with work to do, the SAFE hook runs and normal selection resumes after it succeeds. When it ends outside the night or with nothing to do, the SAFE hook is skipped and the hold is lifted into standby, so the night start or resume hook prepares the equipment when it is needed.\n- A failed UNSAFE hook stops the scheduler with ALERT, which runs the SHUTDOWN hook. A failed SAFE hook stops the scheduler with ALERT, like a failed resume hook.\n- STOP during the hold works as usual and runs the SHUTDOWN hook.\n\nSTART while unsafe: the start is postponed until the conditions are safe, with a clear message (for example 'Unsafe conditions, the start waits for safe conditions'); the startup hook and the first tasks wait. The design stage must settle whether SAFE_DELAY also applies to a postponed start and whether the UNSAFE hook runs for it.\n\nTests in indigo_test/integration/test_agent_scheduler.c with a stand-in Auxiliary Agent property: abort of a normal task, an urgent task and a manual sequence; which hooks finish and which are aborted; SAFE_DELAY reset by a short alert; SAFE hook only at night with work; failure of each hook; the missing-property switch in both positions; postponed start; hold persistence across restart. Documentation: PROPERTIES.md, SCHEDULER.md, indigo_docs/INDIGO_SCHEDULER_GUIDE.md; bump DRIVER_VERSION. Do not change README.md files without owner approval.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-21T21:52:33.875383Z",
+  "status": "closed",
+  "branch": "ticket/a4c962a2-adfd-4b6a-aa99-fe53ea870579",
+  "related_ticket_id": "edf38e12-685f-4848-be72-3489f0871c19",
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "86053240-7947-4953-b3e5-4b501fe307ac",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T21:55:01.727094Z",
+          "last_activity_at": "2026-11-21T23:20:52.335409Z",
+          "ended_at": "2026-11-21T23:20:52.335409Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 5150608.315,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T21:55:01.727094Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/a4c962a2-adfd-4b6a-aa99-fe53ea870579"
+        },
+        {
+          "at": "2026-11-21T23:20:52.335409Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 5150608.315,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "2c3b464f-81dd-45b7-9876-4ce4224c23d1",
+      "title": "Design",
+      "type": "planning",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "febcc88d-2ece-4911-a4d1-608980ccf6fb",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T21:55:01.885659Z",
+          "last_activity_at": "2026-11-21T22:41:51.433548Z",
+          "ended_at": "2026-11-21T22:41:51.433548Z",
+          "outcome": {
+            "summary": "Approved design.md",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2809547.889,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T21:55:01.885659Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design started"
+        },
+        {
+          "at": "2026-11-21T22:41:51.433548Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Approved design.md"
+        }
+      ],
+      "result": {
+        "summary": "Approved design.md",
+        "source": "owner",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "phase": "design",
+      "action": "implement",
+      "workflow_step": "design/implement",
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 2809547.889,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "fc0f63fc-373c-4029-bbaf-e512c75f91df",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "53d25166-f310-45fa-9dcb-f94c51a8f727",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T23:20:52.335451Z",
+          "last_activity_at": "2026-11-21T23:31:26.702971Z",
+          "ended_at": "2026-11-21T23:31:26.702971Z",
+          "outcome": {
+            "summary": "Independent review of e9d1d9f35 against the approved design (Q1-Q14) and the ticket. State machine checked in indigo_agent_scheduler.c: evaluate_safety (item light only, IDLE/BUSY/absent = missing, ALERT counter catches sub-tick blips, last_unsafe wall clock, save on change); enter_hold for STARTING/RUNNING (task, urgent, one-off, STARTUP/NIGHT_START/IDLE/RESUME/SAFE aborted with STOP_UNSAFE; SHUTDOWN/NIGHT_END/UNSAFE untouched), STOPPING PREEMPT->UNSAFE, ABORT/DELETE/FAILURE kept, delete during an unsafe stop still wins; finish_stop STOP_UNSAFE: RESULT_UNSAFE history, RETRY, delay 0, no retry used, @preempted ignored, one-off urgent kept; finish_hook RESULT_UNSAFE is not a failure (startup_pending rerun, standby unchanged, idle done); UNSAFE fail -> request_stop ALERT, SAFE fail like RESUME; process_hold placement after the stop path and Scripting checks, hand-started sequence abort only for HOLD_RUN at entry, UNSAFE once per hold with chain check, NIGHT_END decided only for a started night (decide cannot return START/SKIP there), end_hold with startup_pending / SAFE at night with work / standby; START while unsafe -> HOLD_START without UNSAFE; stop_scheduler clears the hold, keeps last_unsafe; plan clamp; #safety save/restore (unsafe -> restore time), restore loop over all result names; buffer margin 128 sufficient for #urgent+#safety; locking of observed fields correct (bus thread under observed.mutex, private data on the handler queue). Implementer deviations 1-7 are sound: (1) is required because start_night_hook skips a chained slot regardless of chain_ok, so chain_slot=slot would stop a following hook from rerunning; (2) needed for the UNSAFE role notice and to avoid start_night_hook's standby side effects; (3) the Scripting Agent runs one sequence, so no hand sequence can run while the scheduler's run is active, and setting hand_abort_done avoids aborting a stale occupied state after the scheduler's own stop; (4)-(7) consistent with design intent. Old config",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 634367.52,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T23:20:52.335451Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T23:31:26.702971Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of e9d1d9f35 against the approved design (Q1-Q14) and the ticket. State machine checked in indigo_agent_scheduler.c: evaluate_safety (item light only, IDLE/BUSY/absent = missing, ALERT counter catches sub-tick blips, last_unsafe wall clock, save on change); enter_hold for STARTING/RUNNING (task, urgent, one-off, STARTUP/NIGHT_START/IDLE/RESUME/SAFE aborted with STOP_UNSAFE; SHUTDOWN/NIGHT_END/UNSAFE untouched), STOPPING PREEMPT->UNSAFE, ABORT/DELETE/FAILURE kept, delete during an unsafe stop still wins; finish_stop STOP_UNSAFE: RESULT_UNSAFE history, RETRY, delay 0, no retry used, @preempted ignored, one-off urgent kept; finish_hook RESULT_UNSAFE is not a failure (startup_pending rerun, standby unchanged, idle done); UNSAFE fail -> request_stop ALERT, SAFE fail like RESUME; process_hold placement after the stop path and Scripting checks, hand-started sequence abort only for HOLD_RUN at entry, UNSAFE once per hold with chain check, NIGHT_END decided only for a started night (decide cannot return START/SKIP there), end_hold with startup_pending / SAFE at night with work / standby; START while unsafe -> HOLD_START without UNSAFE; stop_scheduler clears the hold, keeps last_unsafe; plan clamp; #safety save/restore (unsafe -> restore time), restore loop over all result names; buffer margin 128 sufficient for #urgent+#safety; locking of observed fields correct (bus thread under observed.mutex, private data on the handler queue). Implementer deviations 1-7 are sound: (1) is required because start_night_hook skips a chained slot regardless of chain_ok, so chain_slot=slot would stop a following hook from rerunning; (2) needed for the UNSAFE role notice and to avoid start_night_hook's standby side effects; (3) the Scripting Agent runs one sequence, so no hand sequence can run while the scheduler's run is active, and setting hand_abort_done avoids aborting a stale occupied state after the scheduler's own stop; (4)-(7) consistent with design intent. Old config"
+        }
+      ],
+      "result": {
+        "summary": "Independent review of e9d1d9f35 against the approved design (Q1-Q14) and the ticket. State machine checked in indigo_agent_scheduler.c: evaluate_safety (item light only, IDLE/BUSY/absent = missing, ALERT counter catches sub-tick blips, last_unsafe wall clock, save on change); enter_hold for STARTING/RUNNING (task, urgent, one-off, STARTUP/NIGHT_START/IDLE/RESUME/SAFE aborted with STOP_UNSAFE; SHUTDOWN/NIGHT_END/UNSAFE untouched), STOPPING PREEMPT->UNSAFE, ABORT/DELETE/FAILURE kept, delete during an unsafe stop still wins; finish_stop STOP_UNSAFE: RESULT_UNSAFE history, RETRY, delay 0, no retry used, @preempted ignored, one-off urgent kept; finish_hook RESULT_UNSAFE is not a failure (startup_pending rerun, standby unchanged, idle done); UNSAFE fail -> request_stop ALERT, SAFE fail like RESUME; process_hold placement after the stop path and Scripting checks, hand-started sequence abort only for HOLD_RUN at entry, UNSAFE once per hold with chain check, NIGHT_END decided only for a started night (decide cannot return START/SKIP there), end_hold with startup_pending / SAFE at night with work / standby; START while unsafe -> HOLD_START without UNSAFE; stop_scheduler clears the hold, keeps last_unsafe; plan clamp; #safety save/restore (unsafe -> restore time), restore loop over all result names; buffer margin 128 sufficient for #urgent+#safety; locking of observed fields correct (bus thread under observed.mutex, private data on the handler queue). Implementer deviations 1-7 are sound: (1) is required because start_night_hook skips a chained slot regardless of chain_ok, so chain_slot=slot would stop a following hook from rerunning; (2) needed for the UNSAFE role notice and to avoid start_night_hook's standby side effects; (3) the Scripting Agent runs one sequence, so no hand sequence can run while the scheduler's run is active, and setting hand_abort_done avoids aborting a stale occupied state after the scheduler's own stop; (4)-(7) consistent with design intent. Old config",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 634367.52,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "face8eaf-a782-4a95-8a37-adc2a749b7f3",
+      "event": "ticket/created",
+      "at": "2026-11-21T21:52:33.875973Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "unknown",
+      "profile": "full"
+    },
+    {
+      "event_id": "fa6d1c9c-5ce2-41bf-8aa0-d28f4316e440",
+      "event": "ticket/confirmed",
+      "at": "2026-11-21T21:54:21.508362Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "unknown",
+      "profile": "full",
+      "corrected": null
+    },
+    {
+      "event_id": "d9eb6c74-92c0-4e44-88da-18646883ffd6",
+      "event": "task/progress",
+      "at": "2026-11-21T21:55:01.727192Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Implementation started on branch ticket/a4c962a2-adfd-4b6a-aa99-fe53ea870579"
+    },
+    {
+      "event_id": "6786cf86-4c44-4d59-b829-597b28ecdbb9",
+      "event": "ticket/started",
+      "at": "2026-11-21T21:55:01.727770Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/a4c962a2-adfd-4b6a-aa99-fe53ea870579",
+      "base": "ticket/edf38e12-685f-4848-be72-3489f0871c19"
+    },
+    {
+      "event_id": "f15f1423-755e-4980-aa65-ef6dfcbc45f2",
+      "event": "task/progress",
+      "at": "2026-11-21T21:55:01.885788Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c3b464f-81dd-45b7-9876-4ce4224c23d1",
+      "text": "Design started"
+    },
+    {
+      "event_id": "e5970b5c-4287-4ae0-93df-ed463783ae9e",
+      "event": "stage/started",
+      "at": "2026-11-21T21:55:01.886496Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "2c3b464f-81dd-45b7-9876-4ce4224c23d1"
+    },
+    {
+      "event_id": "68de82b5-15f2-4005-9104-90a4a01b9a7e",
+      "event": "task/progress",
+      "at": "2026-11-21T21:55:26.908578Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c3b464f-81dd-45b7-9876-4ce4224c23d1",
+      "text": "Design worker launched",
+      "attempt_id": "febcc88d-2ece-4911-a4d1-608980ccf6fb",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6d2f05a0-5468-4c8e-97d8-9382a0ad0f95",
+      "event": "task/progress",
+      "at": "2026-11-21T22:01:31.420825Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c3b464f-81dd-45b7-9876-4ce4224c23d1",
+      "text": "Writing design.md for the unsafe hold"
+    },
+    {
+      "event_id": "98cc678f-3c3a-4d44-b78e-7f8504189d76",
+      "event": "task/progress",
+      "at": "2026-11-21T22:03:47.287073Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c3b464f-81dd-45b7-9876-4ce4224c23d1",
+      "text": "design.md written, ready for owner review"
+    },
+    {
+      "event_id": "734bb5bf-81bf-4e51-a8e1-748784f02254",
+      "event": "stage/presented",
+      "at": "2026-11-21T22:04:24.473714Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "70b4d358-2611-45b3-9d5f-adeb097b8d8e",
+      "event": "task/progress",
+      "at": "2026-11-21T22:41:51.433665Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c3b464f-81dd-45b7-9876-4ce4224c23d1",
+      "text": "Design approved: design.md"
+    },
+    {
+      "event_id": "fcd7d39e-e3fc-4cba-a84d-262eb7f4887d",
+      "event": "stage/approved",
+      "at": "2026-11-21T22:41:51.434568Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "2c3b464f-81dd-45b7-9876-4ce4224c23d1",
+      "file": "design.md"
+    },
+    {
+      "event_id": "6e6abb28-03ae-410a-aaf9-0d94ab76aba7",
+      "event": "task/progress",
+      "at": "2026-11-21T22:42:22.111303Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Implementer launched",
+      "attempt_id": "86053240-7947-4953-b3e5-4b501fe307ac",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "74066891-8163-4a4f-8851-de1b9555193a",
+      "event": "task/progress",
+      "at": "2026-11-21T22:42:36.168192Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Reading the scheduler agent source"
+    },
+    {
+      "event_id": "27e131d3-c696-4cc3-8461-8c7ee1a24206",
+      "event": "task/progress",
+      "at": "2026-11-21T22:43:44.515244Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Adding name macros and implementing the unsafe hold in the scheduler"
+    },
+    {
+      "event_id": "b004d602-7ba1-4a48-a542-3a3ffd1dc227",
+      "event": "task/progress",
+      "at": "2026-11-21T22:43:44.634423Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Adding name macros and implementing the unsafe hold in the scheduler"
+    },
+    {
+      "event_id": "2d039340-c0a5-45ad-869b-64eb872b316e",
+      "event": "task/progress",
+      "at": "2026-11-21T22:49:04.640304Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Building the library and the scheduler agent in the worktree"
+    },
+    {
+      "event_id": "c5e91f19-3ccf-4ac6-a23c-a280bd39ac9f",
+      "event": "task/progress",
+      "at": "2026-11-21T22:52:27.784383Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Writing the unsafe hold integration tests"
+    },
+    {
+      "event_id": "c9e545d3-4763-4952-8488-b2ce12edc7cb",
+      "event": "task/progress",
+      "at": "2026-11-21T22:55:53.653179Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Running scheduler integration tests: new unsafe/safe/safety cases"
+    },
+    {
+      "event_id": "508243b8-dd63-41dc-9335-587d5fbd3ad5",
+      "event": "task/progress",
+      "at": "2026-11-21T23:00:30.814349Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Running the whole scheduler integration suite, pass 1"
+    },
+    {
+      "event_id": "5979960f-1bee-471b-8a46-ab697d86a5c1",
+      "event": "task/progress",
+      "at": "2026-11-21T23:01:55.393749Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Updating SCHEDULER.md with the unsafe hold"
+    },
+    {
+      "event_id": "47c3463b-01b9-4b3b-a892-2111fc5c6d17",
+      "event": "task/progress",
+      "at": "2026-11-21T23:03:10.576320Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Updating INDIGO_SCHEDULER_GUIDE.md with unsafe conditions"
+    },
+    {
+      "event_id": "1dc0a2d1-a0a3-41a1-91be-20b27a59e10c",
+      "event": "task/progress",
+      "at": "2026-11-21T23:07:04.775284Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Running the whole scheduler integration suite, passes 2 and 3"
+    },
+    {
+      "event_id": "52963135-c4b2-4d44-83cf-6ada298189aa",
+      "event": "task/progress",
+      "at": "2026-11-21T23:17:27.779313Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "00579f92-92d4-4944-9b26-4f787866f0e3",
+      "event": "task/progress",
+      "at": "2026-11-21T23:17:27.818454Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a6571ca6-8121-4419-bb10-5dde6998af1a",
+      "event": "task/progress",
+      "at": "2026-11-21T23:17:27.823625Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "7598622e-59c0-4d67-ac79-c755902ca191",
+      "event": "task/progress",
+      "at": "2026-11-21T23:19:36.873436Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3a16a41b-4ae6-4310-8643-8a22efd06a25",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "d4eaccb1-98d5-4554-9aab-881c944af9f3",
+      "event": "check/passed",
+      "at": "2026-11-21T23:19:36.879071Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e9d1d9f355ebfb9c557d4e85720c8a7ce6f5a983",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "61ca00a3-7f7f-4e00-9eeb-015b45179721",
+      "event": "ticket/note",
+      "at": "2026-11-21T23:20:13.594171Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementation and tests (integration/test_agent_scheduler.c, stand-in Auxiliary Agent attached only by the new cases). Scenario -> case: normal task aborted -> unsafe_hold_aborts_a_running_task (RETRY, retry not used, @preempted fail ignored, history UNSAFE, UNSAFE hook once, reason, resume after hold); urgent task -> unsafe_hold_aborts_an_urgent_task (one-off kept in RETRY, runs and leaves after hold); manual sequence -> unsafe_hold_aborts_a_hand_started_sequence (aborted at entry, one started during hold left alone); hooks that finish -> unsafe_hold_lets_shutdown_finish, unsafe_hold_lets_night_end_finish; hooks aborted -> unsafe_hold_aborts_the_startup_hook (startup reruns), _idle_hook, _night_start_hook (not rerun), _resume_hook (resume reruns), _safe_hook (new hold, second UNSAFE); night end during hold and night start waiting -> night_end_runs_during_the_hold; SAFE_DELAY reset by short alert -> safe_delay_restarts_after_a_short_alert; SAFE only at night with work -> safe_hook_runs_at_night_with_work, safe_hook_is_skipped_by_day (NIGHT_START at dusk), safe_hook_is_skipped_without_work (RESUME before later task); hook failures -> failed_unsafe_hook_stops_the_scheduler, failed_safe_hook_stops_the_scheduler, missing_unsafe_hook_is_reported; missing switch -> missing_safety_counts_as_safe_by_default, missing_safety_counts_as_unsafe_when_selected; postponed start -> start_waits_for_safe_conditions; controls -> stop_during_the_hold_runs_the_shutdown_hook, abort_during_the_unsafe_hook; persistence -> unsafe_hold_survives_a_restart; labels -> safety_hooks_are_labelled. Updated obsolete expectation in strategy_defaults_to_compact (settings count 11 -> 12, SAFE_DELAY appended). Results: whole scheduler integration suite 163 cases: pass 1 161/163 (strategy_defaults_to_compact obsolete count, fixed; abort_and_delete_running_task failed once at its final task_label check, a pre-existing race between the 'aborted and deleted' message and the task list update, passed 5/5 reru",
+      "tokens": null
+    },
+    {
+      "event_id": "8c14ff01-df5e-4c77-8cf1-ec2f32e40c5d",
+      "event": "task/progress",
+      "at": "2026-11-21T23:20:52.335520Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fc0f63fc-373c-4029-bbaf-e512c75f91df",
+      "text": "Review started"
+    },
+    {
+      "event_id": "5b84e088-af8f-49fb-8559-d220b4ff7595",
+      "event": "review/started",
+      "at": "2026-11-21T23:20:52.336172Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "7b634254-0d1e-4300-bd55-09e3208e9aa2",
+      "event": "task/progress",
+      "at": "2026-11-21T23:21:13.919708Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fc0f63fc-373c-4029-bbaf-e512c75f91df",
+      "text": "Reviewer launched",
+      "attempt_id": "53d25166-f310-45fa-9dcb-f94c51a8f727",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f123f33b-d710-4e3f-b684-a55b33012f9d",
+      "event": "task/progress",
+      "at": "2026-11-21T23:25:02.727492Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fc0f63fc-373c-4029-bbaf-e512c75f91df",
+      "text": "Building and running scheduler integration suite in the worktree"
+    },
+    {
+      "event_id": "c1e7debd-2d99-4418-9d5a-772a459b755b",
+      "event": "task/progress",
+      "at": "2026-11-21T23:31:26.703053Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fc0f63fc-373c-4029-bbaf-e512c75f91df",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "43730d48-48fd-4121-9aa6-025956ccfe27",
+      "event": "review/passed",
+      "at": "2026-11-21T23:31:26.703743Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fc0f63fc-373c-4029-bbaf-e512c75f91df",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "e9d1d9f355ebfb9c557d4e85720c8a7ce6f5a983"
+    },
+    {
+      "event_id": "8718bce9-3252-4ceb-9317-b4a97640ecef",
+      "event": "ticket/title_changed",
+      "at": "2026-11-21T23:37:01.509063Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "Scheduler Agent: unsafe hold with UNSAFE and SAFE hooks driven by AGENT_AUX_SAFETY",
+      "title": "indigo_agent_scheduler: add the unsafe hold with UNSAFE and SAFE hooks driven by AGENT_AUX_SAFETY"
+    },
+    {
+      "event_id": "5b6bfb11-5ddb-400f-b010-d517a365119c",
+      "event": "ticket/closed",
+      "at": "2026-11-21T23:37:09.424360Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-21T23:37:09.424318Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "23e814c31dd2f90c0290ae408b886148c3800466"
+  },
+  "priority": "medium",
+  "severity": "unknown",
+  "difficulty": "high",
+  "flow": {
+    "profile": "full",
+    "base": "ticket/edf38e12-685f-4848-be72-3489f0871c19",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e9d1d9f355ebfb9c557d4e85720c8a7ce6f5a983",
+        "tree": "941f03358b21663647af3ba1a9214a0ee96116a7",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T23:17:27.817577Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/a4c962a2-adfd-4b6a-aa99-fe53ea870579/941f03358b21-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "e9d1d9f355ebfb9c557d4e85720c8a7ce6f5a983",
+        "tree": "941f03358b21663647af3ba1a9214a0ee96116a7",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T23:19:36.872579Z",
+        "duration_s": 129.0,
+        "log": "/tmp/factory-flow/a4c962a2-adfd-4b6a-aa99-fe53ea870579/941f03358b21-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of e9d1d9f35 against the approved design (Q1-Q14) and the ticket. State machine checked in indigo_agent_scheduler.c: evaluate_safety (item light only, IDLE/BUSY/absent = missing, ALERT counter catches sub-tick blips, last_unsafe wall clock, save on change); enter_hold for STARTING/RUNNING (task, urgent, one-off, STARTUP/NIGHT_START/IDLE/RESUME/SAFE aborted with STOP_UNSAFE; SHUTDOWN/NIGHT_END/UNSAFE untouched), STOPPING PREEMPT->UNSAFE, ABORT/DELETE/FAILURE kept, delete during an unsafe stop still wins; finish_stop STOP_UNSAFE: RESULT_UNSAFE history, RETRY, delay 0, no retry used, @preempted ignored, one-off urgent kept; finish_hook RESULT_UNSAFE is not a failure (startup_pending rerun, standby unchanged, idle done); UNSAFE fail -> request_stop ALERT, SAFE fail like RESUME; process_hold placement after the stop path and Scripting checks, hand-started sequence abort only for HOLD_RUN at entry, UNSAFE once per hold with chain check, NIGHT_END decided only for a started night (decide cannot return START/SKIP there), end_hold with startup_pending / SAFE at night with work / standby; START while unsafe -> HOLD_START without UNSAFE; stop_scheduler clears the hold, keeps last_unsafe; plan clamp; #safety save/restore (unsafe -> restore time), restore loop over all result names; buffer margin 128 sufficient for #urgent+#safety; locking of observed fields correct (bus thread under observed.mutex, private data on the handler queue). Implementer deviations 1-7 are sound: (1) is required because start_night_hook skips a chained slot regardless of chain_ok, so chain_slot=slot would stop a following hook from rerunning; (2) needed for the UNSAFE role notice and to avoid start_night_hook's standby side effects; (3) the Scripting Agent runs one sequence, so no hand sequence can run while the scheduler's run is active, and setting hand_abort_done avoids aborting a stale occupied state after the scheduler's own stop; (4)-(7) consistent with design intent. Old configs load (items appended, new switch defaults SAFE). PROPERTIES.md, SCHEDULER.md and the guide match the behaviour; guide example Sequencer.js methods exist. Tests: 25 new cases cover every ticket scenario, timing assertions have tolerant bounds; only existing change is the documented settings count 11->12. Ran the full scheduler integration suite in the worktree: 163 run, 163 passed, 0 failed (abort_and_delete_running_task passed; the change does not touch its path without the stand-in). Non-blocking observations: if the hold is entered at RUN_IDLE while the Scripting Agent or Sequencer.js is absent, hand_abort_done stays false and a hand sequence started later in that hold would be aborted (negligible); an urgent task re-queued after the hold gets a new urgent_order, as after ABORT/preemption.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "e9d1d9f355ebfb9c557d4e85720c8a7ce6f5a983",
+        "tree": "941f03358b21663647af3ba1a9214a0ee96116a7",
+        "at": "2026-11-21T23:31:26.702946Z"
+      }
+    ],
+    "approvals": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": true,
+        "text": "",
+        "sha256": "dafdb5feb7fbaa7ef9634e993ba240015d12685b6c9ee06e24670f1a159d656c",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-21T22:41:51.430813Z"
+      }
+    ],
+    "notes": [
+      {
+        "at": "2026-11-21T23:20:13.593570Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementation and tests (integration/test_agent_scheduler.c, stand-in Auxiliary Agent attached only by the new cases). Scenario -> case: normal task aborted -> unsafe_hold_aborts_a_running_task (RETRY, retry not used, @preempted fail ignored, history UNSAFE, UNSAFE hook once, reason, resume after hold); urgent task -> unsafe_hold_aborts_an_urgent_task (one-off kept in RETRY, runs and leaves after hold); manual sequence -> unsafe_hold_aborts_a_hand_started_sequence (aborted at entry, one started during hold left alone); hooks that finish -> unsafe_hold_lets_shutdown_finish, unsafe_hold_lets_night_end_finish; hooks aborted -> unsafe_hold_aborts_the_startup_hook (startup reruns), _idle_hook, _night_start_hook (not rerun), _resume_hook (resume reruns), _safe_hook (new hold, second UNSAFE); night end during hold and night start waiting -> night_end_runs_during_the_hold; SAFE_DELAY reset by short alert -> safe_delay_restarts_after_a_short_alert; SAFE only at night with work -> safe_hook_runs_at_night_with_work, safe_hook_is_skipped_by_day (NIGHT_START at dusk), safe_hook_is_skipped_without_work (RESUME before later task); hook failures -> failed_unsafe_hook_stops_the_scheduler, failed_safe_hook_stops_the_scheduler, missing_unsafe_hook_is_reported; missing switch -> missing_safety_counts_as_safe_by_default, missing_safety_counts_as_unsafe_when_selected; postponed start -> start_waits_for_safe_conditions; controls -> stop_during_the_hold_runs_the_shutdown_hook, abort_during_the_unsafe_hook; persistence -> unsafe_hold_survives_a_restart; labels -> safety_hooks_are_labelled. Updated obsolete expectation in strategy_defaults_to_compact (settings count 11 -> 12, SAFE_DELAY appended). Results: whole scheduler integration suite 163 cases: pass 1 161/163 (strategy_defaults_to_compact obsolete count, fixed; abort_and_delete_running_task failed once at its final task_label check, a pre-existing race between the 'aborted and deleted' message and the task list update, passed 5/5 reruns), passes 2 and 3 163/163. Scheduler unit tests (header, sky, plan, night) pass via flow check unit. Small adjustments vs design: an interrupted (RESULT_UNSAFE) hook clears chain_slot so a following hook naming the same task runs again (the existing start_night_hook skips a chained slot regardless of chain_ok); hand-started sequence abort only for HOLD_RUN; 'Safe conditions, the scheduler starts' also for a HOLD_START without startup hook; SAFE missing-task notice only when SAFE would run (night with work); next check scheduled at the end of the delay; UNSAFE chain check implemented inline (slot == chain_slot && chain_ok). No scheduler MCP page exists, nothing regenerated.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-21T22:04:24.472818Z"
+      }
+    ],
+    "landing": {
+      "commit": "23e814c31dd2f90c0290ae408b886148c3800466",
+      "tree": "941f03358b21663647af3ba1a9214a0ee96116a7",
+      "base": "ticket/edf38e12-685f-4848-be72-3489f0871c19",
+      "at": "2026-11-21T23:37:09.332666Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "unknown",
+    "profile": "full",
+    "at": "2026-11-21T21:52:33.875383Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-21T21:54:21.508336Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 8594523.724,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 43,
+    "sha256": "82cd19bf0555ab102ac295675d29b9d220b61e6e6670a7219c7bbc7e9296e23c"
+  }
+}
