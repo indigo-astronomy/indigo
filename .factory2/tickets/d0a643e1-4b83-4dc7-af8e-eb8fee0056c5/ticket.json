@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d0a643e1-4b83-4dc7-af8e-eb8fee0056c5",
+  "revision": 1,
+  "title": "Mount drivers: MOUNT_ON_COORDINATES_SET is read when the handler runs, so a GoTo admitted before a mode change becomes a sync",
+  "description": "Found on 2026-11-21 while investigating ticket c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf; reproduced in the mount_simulator and mount_synscan simulator suites with scratch cases. MOUNT_ON_COORDINATES_SET has no BUSY guard (indigo_mount_driver.c about lines 696-700) and the queued coordinates handler reads the mode when it runs, not at admission: if SYNC is selected after a GoTo is admitted but before its handler runs, the handler syncs to the GoTo target, publishes OK at once and the mount never moves. In mount_synscan the GoTo finalizer also reads MOUNT_ON_COORDINATES_SET_TRACK_ITEM at the end of the slew (indigo_mount_synscan.driver about line 1818), so a 'slew and track' GoTo can end with tracking off when the mode was changed meanwhile. Establish which drivers are affected, then decide with the owner where the mode is latched (at admission of the coordinates request, in the library or in each driver) or whether the mode change is refused while the coordinates are BUSY. Library or generator changes need the owner's approval of the concrete diff.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-21T12:32:13.683745Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "4a915681-7bcb-4f41-bc3b-bfd9f95dd83b",
+      "event": "ticket/created",
+      "at": "2026-11-21T12:32:13.684434Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-21T12:32:13.683745Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "2df4f6365c01399ac7fd0667f27174b92b04e936a85a71c6a738c91d90f1ab1f"
+  }
+}
