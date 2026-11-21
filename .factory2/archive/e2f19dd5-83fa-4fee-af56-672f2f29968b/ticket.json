@@ -1,0 +1,666 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e2f19dd5-83fa-4fee-af56-672f2f29968b",
+  "revision": 35,
+  "title": "indigo_mount_synscan: a failed auto home publishes OK before its ALERT, so the ALERT is not kept",
+  "description": "Found on 2026-11-21 while working on ticket 3beb3554-f847-4155-b5e7-5bed700096f0 (closed, commit 296992891). mount_autohome_finish() (indigo_mount_synscan.driver about lines 1531-1533) publishes the coordinates OK through synscan_update_mount_coordinates() and then the failure ALERT, so the ALERT does not follow a BUSY and indigo_update_coordinates() does not keep it; on success the coordinates are published twice. Reproduce in the simulator suite, publish one result, add a *_keeps_alert case for a failed auto home. Bump the driver version; recorded simulator run.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-21T12:32:13.383984Z",
+  "status": "closed",
+  "branch": "ticket/e2f19dd5-83fa-4fee-af56-672f2f29968b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "20e88c62-6486-427f-ad89-27d43cf6f547",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T12:34:06.098036Z",
+          "last_activity_at": "2026-11-21T13:43:37.679343Z",
+          "ended_at": "2026-11-21T13:43:37.679343Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 4171581.307,
+          "tokens": null
+        },
+        {
+          "attempt_id": "0c7474ae-728b-422d-a9b2-30186bcc5333",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T15:18:55.366451Z",
+          "last_activity_at": "2026-11-21T16:50:42.796330Z",
+          "ended_at": "2026-11-21T16:50:42.796330Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 5507429.879,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T12:34:06.098036Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/e2f19dd5-83fa-4fee-af56-672f2f29968b"
+        },
+        {
+          "at": "2026-11-21T13:43:37.679343Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T15:18:55.366451Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-21T16:50:42.796330Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 9679011.186,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "fc83be58-65de-438c-9ed2-bc66abca8662",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-21T13:43:37.679487Z",
+          "last_activity_at": "2026-11-21T15:18:55.366349Z",
+          "ended_at": "2026-11-21T15:18:55.366349Z",
+          "outcome": {
+            "summary": "Driver fix is correct; the new test synscan_mount_failed_autohome_keeps_alert is timing-dependent and fails about 1 run in 4.\n\nVerified: mount_autohome_finish() now publishes exactly one coordinates result. On success there is one OK from synscan_update_mount_coordinates() (global_mode is already IDLE). On failure there is one ALERT through synscan_set_coordinate_state(); the polls before it were BUSY (global_mode HOMING), so update_coordinates() in indigo_libs/indigo_mount_driver.c:1393-1401 sets keep_coordinates_alert, and MOUNT_HORIZONTAL_COORDINATES follows in the same state (line 1409). MOUNT_AUTOHOME agrees on both paths. The abort and disconnect paths are unchanged and never reach mount_autohome_finish(): abort cancels the finalizer, disconnect sets home_stage IDLE first. No client values are rewritten. A scratch run of the unchanged generator reproduces the checked-in .c/.h/_main.c byte for byte. Version 27 -> 29 (0x0300001D). 119 cases registered, MIGRATION_STATUS 117 -> 119 with the Comment column untouched, and the record time fits the journal. Formatting is fine.\n\nDefect: in a scratch copy, synscan_mount_failed_autohome_keeps_alert failed 4 of 16 runs at low load (load average 1.4-1.7), each time at test_mount_synscan_simulator.c:3992 'assertion failed: !synscan_fault_pending(&simulator)'. The simulator event log of a failing run shows why. motion_failure_keeps_alert() writes the ':f' fault about 2 s after the auto home starts. At that moment the auto home is often in HOME_PREP_REVERSE_INDEX: about 4 s of ':q1000000' index polling on RA, then the 3 s sensor-clearance dwell (delay = 3). Neither sends ':f'. The fixed 5 s wait (100 x 50 ms) ends before the next ':f' (HOME_PREP_DWELL -> HOME_WAIT), so the fault is still pending. The recorded 119/119 passed by chance.\n\nFix: make the failed-auto-home case independent of which stage is running when the fault is armed. For example, allow the auto home a fault-consumption wait longer than its longest phase withou",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 5717686.862,
+          "tokens": null
+        },
+        {
+          "attempt_id": "6949666a-f734-4a01-ac14-9180b53db285",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T16:50:42.796472Z",
+          "last_activity_at": "2026-11-21T16:54:56.855756Z",
+          "ended_at": "2026-11-21T16:54:56.855756Z",
+          "outcome": {
+            "summary": "Re-review of 7fce21d16..d9e2abef9. The delta changes only tests, the simulator and record lines; the driver is unchanged at v29.\n\n(1) Fix for the earlier finding: motion_failure_keeps_alert() now gives the auto home 600 x 50 ms = 30 s to consume the ':f' fault; the other motions keep 5 s. The fault is still armed while the auto home runs, so the case still proves the failure ALERT that follows BUSY and is kept by the polls. Scratch copy, 6 runs: 6/6 PASS, fault used after 5.1-5.7 s. That confirms the old 5 s bound sat at the edge and 30 s leaves ample margin.\n\n(2) poll_failure_during_motion(): it first does an idle GoTo to HA 2 h / Dec 40, then takes the mark, then starts the 20 degree motion. The fixed 3.5 s sleep is replaced by synscan_wait_for_arrival(), which is bounded at 30 s and needs both @arrived1 and @arrived2 after the mark. This is event-driven. Arrivals from the preparatory GoTo fall before the mark: synscan_goto waits for the finalizer to see both axes stopped, and the simulator logs @arrived in the same timer tick that clears RUNNING. synscan_mark() and count_synscan_commands() both count every log line, so the indexes agree. What the cases prove is unchanged: wait_for_gate() still makes sure the single failed ':j2' poll happens and holds the queue, the failed poll must still be BUSY, every later coordinates publication must be OK with at least 2 OK polls, and MOUNT_HOME must end OK. Starting off the pole makes both moves 20 degrees, so the failed poll lands inside the motion more reliably than before. Scratch copy: goto/home_survives_a_failed_poll 2/2 PASS each.\n\nSimulator: the @arrived<axis> line follows the existing @index pattern. The other readers of the event log are unaffected: they filter by ':' prefix or command, the handshake check reads lines before any GoTo, and the guider wire timing only sees tracking (no arrival).\n\nFormatting follows AGENTS.md, git diff --check is clean, and README/TEST_SUMMARY change only the record line (17:29, 119/11",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 254059.284,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T13:43:37.679487Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T15:18:55.366349Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "Driver fix is correct; the new test synscan_mount_failed_autohome_keeps_alert is timing-dependent and fails about 1 run in 4.\n\nVerified: mount_autohome_finish() now publishes exactly one coordinates result. On success there is one OK from synscan_update_mount_coordinates() (global_mode is already IDLE). On failure there is one ALERT through synscan_set_coordinate_state(); the polls before it were BUSY (global_mode HOMING), so update_coordinates() in indigo_libs/indigo_mount_driver.c:1393-1401 sets keep_coordinates_alert, and MOUNT_HORIZONTAL_COORDINATES follows in the same state (line 1409). MOUNT_AUTOHOME agrees on both paths. The abort and disconnect paths are unchanged and never reach mount_autohome_finish(): abort cancels the finalizer, disconnect sets home_stage IDLE first. No client values are rewritten. A scratch run of the unchanged generator reproduces the checked-in .c/.h/_main.c byte for byte. Version 27 -> 29 (0x0300001D). 119 cases registered, MIGRATION_STATUS 117 -> 119 with the Comment column untouched, and the record time fits the journal. Formatting is fine.\n\nDefect: in a scratch copy, synscan_mount_failed_autohome_keeps_alert failed 4 of 16 runs at low load (load average 1.4-1.7), each time at test_mount_synscan_simulator.c:3992 'assertion failed: !synscan_fault_pending(&simulator)'. The simulator event log of a failing run shows why. motion_failure_keeps_alert() writes the ':f' fault about 2 s after the auto home starts. At that moment the auto home is often in HOME_PREP_REVERSE_INDEX: about 4 s of ':q1000000' index polling on RA, then the 3 s sensor-clearance dwell (delay = 3). Neither sends ':f'. The fixed 5 s wait (100 x 50 ms) ends before the next ':f' (HOME_PREP_DWELL -> HOME_WAIT), so the fault is still pending. The recorded 119/119 passed by chance.\n\nFix: make the failed-auto-home case independent of which stage is running when the fault is armed. For example, allow the auto home a fault-consumption wait longer than its longest phase withou"
+        },
+        {
+          "at": "2026-11-21T16:50:42.796472Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T16:54:56.855756Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Re-review of 7fce21d16..d9e2abef9. The delta changes only tests, the simulator and record lines; the driver is unchanged at v29.\n\n(1) Fix for the earlier finding: motion_failure_keeps_alert() now gives the auto home 600 x 50 ms = 30 s to consume the ':f' fault; the other motions keep 5 s. The fault is still armed while the auto home runs, so the case still proves the failure ALERT that follows BUSY and is kept by the polls. Scratch copy, 6 runs: 6/6 PASS, fault used after 5.1-5.7 s. That confirms the old 5 s bound sat at the edge and 30 s leaves ample margin.\n\n(2) poll_failure_during_motion(): it first does an idle GoTo to HA 2 h / Dec 40, then takes the mark, then starts the 20 degree motion. The fixed 3.5 s sleep is replaced by synscan_wait_for_arrival(), which is bounded at 30 s and needs both @arrived1 and @arrived2 after the mark. This is event-driven. Arrivals from the preparatory GoTo fall before the mark: synscan_goto waits for the finalizer to see both axes stopped, and the simulator logs @arrived in the same timer tick that clears RUNNING. synscan_mark() and count_synscan_commands() both count every log line, so the indexes agree. What the cases prove is unchanged: wait_for_gate() still makes sure the single failed ':j2' poll happens and holds the queue, the failed poll must still be BUSY, every later coordinates publication must be OK with at least 2 OK polls, and MOUNT_HOME must end OK. Starting off the pole makes both moves 20 degrees, so the failed poll lands inside the motion more reliably than before. Scratch copy: goto/home_survives_a_failed_poll 2/2 PASS each.\n\nSimulator: the @arrived<axis> line follows the existing @index pattern. The other readers of the event log are unaffected: they filter by ':' prefix or command, the handshake check reads lines before any GoTo, and the guider wire timing only sees tracking (no arrival).\n\nFormatting follows AGENTS.md, git diff --check is clean, and README/TEST_SUMMARY change only the record line (17:29, 119/11"
+        }
+      ],
+      "result": {
+        "summary": "Re-review of 7fce21d16..d9e2abef9. The delta changes only tests, the simulator and record lines; the driver is unchanged at v29.\n\n(1) Fix for the earlier finding: motion_failure_keeps_alert() now gives the auto home 600 x 50 ms = 30 s to consume the ':f' fault; the other motions keep 5 s. The fault is still armed while the auto home runs, so the case still proves the failure ALERT that follows BUSY and is kept by the polls. Scratch copy, 6 runs: 6/6 PASS, fault used after 5.1-5.7 s. That confirms the old 5 s bound sat at the edge and 30 s leaves ample margin.\n\n(2) poll_failure_during_motion(): it first does an idle GoTo to HA 2 h / Dec 40, then takes the mark, then starts the 20 degree motion. The fixed 3.5 s sleep is replaced by synscan_wait_for_arrival(), which is bounded at 30 s and needs both @arrived1 and @arrived2 after the mark. This is event-driven. Arrivals from the preparatory GoTo fall before the mark: synscan_goto waits for the finalizer to see both axes stopped, and the simulator logs @arrived in the same timer tick that clears RUNNING. synscan_mark() and count_synscan_commands() both count every log line, so the indexes agree. What the cases prove is unchanged: wait_for_gate() still makes sure the single failed ':j2' poll happens and holds the queue, the failed poll must still be BUSY, every later coordinates publication must be OK with at least 2 OK polls, and MOUNT_HOME must end OK. Starting off the pole makes both moves 20 degrees, so the failed poll lands inside the motion more reliably than before. Scratch copy: goto/home_survives_a_failed_poll 2/2 PASS each.\n\nSimulator: the @arrived<axis> line follows the existing @index pattern. The other readers of the event log are unaffected: they filter by ':' prefix or command, the handshake check reads lines before any GoTo, and the guider wire timing only sees tracking (no arrival).\n\nFormatting follows AGENTS.md, git diff --check is clean, and README/TEST_SUMMARY change only the record line (17:29, 119/11",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 5971746.146,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "e678d15b-4398-4878-ae91-61e46b274a4e",
+      "event": "ticket/created",
+      "at": "2026-11-21T12:32:13.384667Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "c5702d35-2d73-4cdf-871f-004ad24f15f0",
+      "event": "ticket/confirmed",
+      "at": "2026-11-21T12:33:10.889941Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "e4f9a33e-e122-480b-8d87-ebde9e9074ed",
+      "event": "task/progress",
+      "at": "2026-11-21T12:34:06.098319Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Implementation started on branch ticket/e2f19dd5-83fa-4fee-af56-672f2f29968b"
+    },
+    {
+      "event_id": "399ae82e-3bfe-4e61-bb09-07a0eca8a5f4",
+      "event": "ticket/started",
+      "at": "2026-11-21T12:34:06.099782Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/e2f19dd5-83fa-4fee-af56-672f2f29968b",
+      "base": "master"
+    },
+    {
+      "event_id": "baaae136-56d8-45f8-89a9-91b876b15743",
+      "event": "task/progress",
+      "at": "2026-11-21T12:34:49.262646Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Implementer launched",
+      "attempt_id": "20e88c62-6486-427f-ad89-27d43cf6f547",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b4e99cdf-064f-4188-8e61-d24bb4b3f33d",
+      "event": "task/progress",
+      "at": "2026-11-21T12:36:51.764144Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Writing failed auto home keeps_alert reproducer and success single-publication check"
+    },
+    {
+      "event_id": "3f210796-c637-4637-8b5b-a6c092a0c30e",
+      "event": "task/progress",
+      "at": "2026-11-21T12:38:30.862102Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Running new synscan cases against unchanged driver v27 (reproduction)"
+    },
+    {
+      "event_id": "54fa4b6c-1709-466c-a714-d846fdadf0aa",
+      "event": "task/progress",
+      "at": "2026-11-21T12:39:41.900328Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Fix applied (v29); rerunning the new cases"
+    },
+    {
+      "event_id": "3b121382-c178-4c17-8348-c2638fb8f139",
+      "event": "task/progress",
+      "at": "2026-11-21T12:40:58.537287Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Recorded run: tools/run_driver_test.py mount_synscan (0b4af839 not on master yet)"
+    },
+    {
+      "event_id": "fe8ffd50-44a7-4b5f-9ca5-a0348d2fcf4d",
+      "event": "task/progress",
+      "at": "2026-11-21T12:59:51.524868Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Repeating synscan_mount_goto_admitted_during_homing_is_refused to check for flakiness"
+    },
+    {
+      "event_id": "e4293600-34f8-4d24-9bbb-9aa9f44b90b0",
+      "event": "task/progress",
+      "at": "2026-11-21T13:03:57.091712Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Rerunning full recorded run after intermittent homing-GoTo case failure (6/6 isolated passes)"
+    },
+    {
+      "event_id": "1d1dc4dc-8c04-4683-b45b-ce8564d0fed0",
+      "event": "ticket/note",
+      "at": "2026-11-21T13:42:35.761055Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction (driver v27, unchanged): new case synscan_mount_failed_autohome_keeps_alert (auto home started, simulator refuses the next ':f' axis status query) FAILED, log '... RO HB EB RO HO EO HA EA RO HO EO ...': mount_autohome_finish() published the coordinates OK through synscan_update_mount_coordinates(), then ALERT, which did not follow BUSY and was replaced by OK on the next poll. New case synscan_mount_autohome_publishes_one_result FAILED with 'results 2': a successful auto home published OK twice ('RO HO EO HO EO'). Fix (v29): mount_autohome_finish() reads/publishes the coordinates through synscan_update_mount_coordinates() only on success (one OK) and otherwise publishes a single ALERT through synscan_set_coordinate_state()/indigo_update_coordinates(), which follows the auto home BUSY and is kept; MOUNT_HORIZONTAL_COORDINATES follows in the same state. After the fix both cases pass, and synscan_mount_failed_home_keeps_alert still passes. Recorded run tools/run_driver_test.py mount_synscan: first attempt 119/118 Failed - synscan_mount_goto_admitted_during_homing_is_refused (MOUNT_HOME + GoTo admission, outside the auto-home path; timing-sensitive: the GoTo change handler must run within 0.2 s before the home finalizer, run concurrently with another worker's tests) failed once, then passed 6/6 in isolation; the full rerun was clean: 2026-11-21 14:23 3.0.0.29 mac arm64 simulator 119/119 OK. Ticket 0b4af839 had not landed on master, so master was not merged; the version is 29 as instructed. MIGRATION_STATUS.md count 117 -> 119 / 21. No hardware run.",
+      "tokens": null
+    },
+    {
+      "event_id": "acdee8e3-9ea3-4329-9f0d-6e6da851589c",
+      "event": "task/progress",
+      "at": "2026-11-21T13:42:39.835964Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "0732dfe9-111d-4a64-b975-93888b1395d4",
+      "event": "task/progress",
+      "at": "2026-11-21T13:42:39.862573Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b1a9dc2d-d840-44de-805c-686453fd9599",
+      "event": "check/passed",
+      "at": "2026-11-21T13:42:39.864160Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "7fce21d1630578159896a3ce6938d2b5276630be",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "cd3ef011-efa5-45de-bd71-68fab70a26eb",
+      "event": "task/progress",
+      "at": "2026-11-21T13:43:37.679548Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "text": "Review started"
+    },
+    {
+      "event_id": "1179fa14-6dad-4d96-b1f0-9fe863e8040d",
+      "event": "review/started",
+      "at": "2026-11-21T13:43:37.680642Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "32c75bd4-0edc-4267-9509-dd9d947a1c96",
+      "event": "task/progress",
+      "at": "2026-11-21T13:43:42.798351Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "text": "Reviewer launched",
+      "attempt_id": "fc83be58-65de-438c-9ed2-bc66abca8662",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f5acd2d4-f9aa-40ee-b140-439bb49829af",
+      "event": "task/progress",
+      "at": "2026-11-21T13:44:58.045428Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "text": "Checking regenerated output and running the auto-home cases in a scratch copy"
+    },
+    {
+      "event_id": "c7c97ff1-eac7-4f41-bf16-4699bf7ad706",
+      "event": "task/progress",
+      "at": "2026-11-21T14:49:02.080319Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "text": "Repeating synscan_mount_failed_autohome_keeps_alert: one scratch run failed (fault not consumed)"
+    },
+    {
+      "event_id": "7faa41b4-a486-4dbe-a989-1c93852c3c07",
+      "event": "task/progress",
+      "at": "2026-11-21T15:18:55.366445Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "486ae246-61b5-4963-a5ee-3c07ffd1d90b",
+      "event": "task/progress",
+      "at": "2026-11-21T15:18:55.366472Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "7af98653-bab7-4f36-bfbb-fbbb97aa4242",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T15:18:55.367798Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "7fce21d1630578159896a3ce6938d2b5276630be"
+    },
+    {
+      "event_id": "489482b8-bd0f-4a70-926e-9971567b00fb",
+      "event": "task/progress",
+      "at": "2026-11-21T15:19:59.620432Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Review changes: making failed auto home case independent of the stage when the fault is armed"
+    },
+    {
+      "event_id": "a80541cd-cac8-46be-89da-d2714c1040e6",
+      "event": "task/progress",
+      "at": "2026-11-21T15:20:30.799032Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Running synscan_mount_failed_autohome_keeps_alert 20 times (unrecorded)"
+    },
+    {
+      "event_id": "d5a5d39f-6e14-4d7d-a7fd-f30ca757fa8a",
+      "event": "task/progress",
+      "at": "2026-11-21T15:50:42.533543Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Reproducing goto/home_survives_a_failed_poll failures (time-of-day dependence)"
+    },
+    {
+      "event_id": "9cc87bf6-1fb4-4486-86b7-f1e18f6abbec",
+      "event": "task/progress",
+      "at": "2026-11-21T15:53:09.277371Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Poll-failure cases: off-pole start + wait on simulator @arrived events; running them"
+    },
+    {
+      "event_id": "5fb671e0-75c5-45c8-b06a-0a136c23357a",
+      "event": "task/progress",
+      "at": "2026-11-21T15:54:15.748498Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "One-off uncommitted LST sweep (8 longitudes, old vs new form) of the poll-failure cases"
+    },
+    {
+      "event_id": "ebdded98-b009-4805-8a4a-95d125e36e77",
+      "event": "task/progress",
+      "at": "2026-11-21T16:29:52.095182Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Recorded run (round 2): tools/run_driver_test.py mount_synscan with simulator trace capture"
+    },
+    {
+      "event_id": "27269011-b37f-4235-aff5-f3afecd56133",
+      "event": "ticket/note",
+      "at": "2026-11-21T16:50:02.794999Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review round 1 (changes) addressed, test/simulator only, driver stays v29. (1) synscan_mount_failed_autohome_keeps_alert: motion_failure_keeps_alert() now waits up to 30 s (auto home only; other motions keep 5 s) for the ':f' fault to be used, since the auto home sends no ':f' during home-index polling (~4 s) and the 3 s clearance dwell; measured consumption 5.0-5.9 s after arming in 20/20 consecutive passes (the old 5 s limit was marginal). (2) Coordinator addition: synscan_mount_goto_survives_a_failed_poll / synscan_mount_home_survives_a_failed_poll reproduced failing at 16:50 CET (extra BUSY poll). Cause: synscan_start_motion() starts from the pole of the date, where the J2000 raw coordinates are those of one fixed point whatever the RA axis position, so the hour angle it derives (LST - J2000 RA) follows the sidereal time; the RA move of the planned 20-degree motion varied with LST. One-off uncommitted sweep over 8 site longitudes (GEOGRAPHIC_COORDINATES, LST 2.4..23.4 h): old form RA move 27384..189157 steps (~11..79 deg, period 12 h), FAIL at 4 of 8 LSTs for both cases (moves >= 135k steps outlast the fixed 3.5 s sleep); new form RA move 47828..49125 steps (19.9..20.5 deg), PASS 16/16. Fix: poll_failure_during_motion() first slews to HA 2 h / Dec 40 (fixed axis move from the start position), then starts the 20-degree motion, and instead of the 3.5 s sleep waits until the simulator logs '@arrived1' and '@arrived2' (new physical-event lines in mount_synscan_simulator.c when a GoTo axis reaches its target). Recorded run: 2026-11-21 17:29 3.0.0.29 mac arm64 simulator 119/119 OK (with INDIGO_SIMULATOR_TRACE_DIR capture; no failures). Master gained b7083ad38 (ticket c3aeb19f, changes INDIGO_COPY_*_PROCESS_COORDINATES_CHANGE used by synscan) after this branch; not merged per instructions (merge only for 0b4af839), so the recorded run predates it.",
+      "tokens": null
+    },
+    {
+      "event_id": "7b36ceaa-3c95-4c41-8076-21f0dfe3e215",
+      "event": "task/progress",
+      "at": "2026-11-21T16:50:03.106968Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d710b5f9-7551-4537-aed2-48d79fdfc356",
+      "event": "task/progress",
+      "at": "2026-11-21T16:50:03.134738Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6dd885e5-51ab-4ea3-b528-a82dc28eb2a0",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4acc18d4-dc8e-402c-9147-286325a682f4",
+      "event": "check/passed",
+      "at": "2026-11-21T16:50:03.136594Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "d9e2abef90b905352a3f7a84367ad6cdaf34e944",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "8bd1221f-2810-4724-8bcb-28f2934d2a54",
+      "event": "task/progress",
+      "at": "2026-11-21T16:50:42.796550Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f65026c2-b53f-426c-ac6a-cfb53958af6f",
+      "event": "review/started",
+      "at": "2026-11-21T16:50:42.797817Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "21eceb52-b041-431c-8d3f-695ff8b41890",
+      "event": "task/progress",
+      "at": "2026-11-21T16:50:49.803063Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "text": "Re-review: checking delta 7fce21d16..d9e2abef9"
+    },
+    {
+      "event_id": "e95e4d7c-3c10-40fe-b75c-7a949c2ab94a",
+      "event": "task/progress",
+      "at": "2026-11-21T16:51:51.867347Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "text": "Re-review: running failed_autohome and survives_a_failed_poll cases in a scratch copy"
+    },
+    {
+      "event_id": "29a02596-12ea-47cf-ba49-92134df0a1f0",
+      "event": "task/progress",
+      "at": "2026-11-21T16:54:56.855851Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "97274051-f38f-4c34-ab18-a3c5e46535ab",
+      "event": "review/passed",
+      "at": "2026-11-21T16:54:56.857255Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "0684f009-fdde-46e5-ad6c-53dd81eeb198",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "d9e2abef90b905352a3f7a84367ad6cdaf34e944"
+    },
+    {
+      "event_id": "75b72e4c-ea9d-4c80-b8fc-37155ecad536",
+      "event": "ticket/closed",
+      "at": "2026-11-21T16:55:13.209389Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-21T16:55:13.209362Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "a9d80f0b276de8f4edbfe3199d92879c7ac121ad"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-21T12:32:13.383984Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-21T12:33:10.889758Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 15650757.332,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 48,
+    "sha256": "1cc9b0722af0fd351de86a0a2418e04b232a0d797190a60a248629f4ecacffe3"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7fce21d1630578159896a3ce6938d2b5276630be",
+        "tree": "5233864e72cd96ae9fb3bc4b773cc7aee06a419a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T13:42:39.861935Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/e2f19dd5-83fa-4fee-af56-672f2f29968b/5233864e72cd-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d9e2abef90b905352a3f7a84367ad6cdaf34e944",
+        "tree": "2b27077d5d0795ae5ad94fce9db2ed5ce9fda2c5",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T16:50:03.133883Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/e2f19dd5-83fa-4fee-af56-672f2f29968b/2b27077d5d07-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Driver fix is correct; the new test synscan_mount_failed_autohome_keeps_alert is timing-dependent and fails about 1 run in 4.\n\nVerified: mount_autohome_finish() now publishes exactly one coordinates result. On success there is one OK from synscan_update_mount_coordinates() (global_mode is already IDLE). On failure there is one ALERT through synscan_set_coordinate_state(); the polls before it were BUSY (global_mode HOMING), so update_coordinates() in indigo_libs/indigo_mount_driver.c:1393-1401 sets keep_coordinates_alert, and MOUNT_HORIZONTAL_COORDINATES follows in the same state (line 1409). MOUNT_AUTOHOME agrees on both paths. The abort and disconnect paths are unchanged and never reach mount_autohome_finish(): abort cancels the finalizer, disconnect sets home_stage IDLE first. No client values are rewritten. A scratch run of the unchanged generator reproduces the checked-in .c/.h/_main.c byte for byte. Version 27 -> 29 (0x0300001D). 119 cases registered, MIGRATION_STATUS 117 -> 119 with the Comment column untouched, and the record time fits the journal. Formatting is fine.\n\nDefect: in a scratch copy, synscan_mount_failed_autohome_keeps_alert failed 4 of 16 runs at low load (load average 1.4-1.7), each time at test_mount_synscan_simulator.c:3992 'assertion failed: !synscan_fault_pending(&simulator)'. The simulator event log of a failing run shows why. motion_failure_keeps_alert() writes the ':f' fault about 2 s after the auto home starts. At that moment the auto home is often in HOME_PREP_REVERSE_INDEX: about 4 s of ':q1000000' index polling on RA, then the 3 s sensor-clearance dwell (delay = 3). Neither sends ':f'. The fixed 5 s wait (100 x 50 ms) ends before the next ':f' (HOME_PREP_DWELL -> HOME_WAIT), so the fault is still pending. The recorded 119/119 passed by chance.\n\nFix: make the failed-auto-home case independent of which stage is running when the fault is armed. For example, allow the auto home a fault-consumption wait longer than its longest phase without ':f' (prep reverse search plus the 3 s dwell, e.g. 20-30 s), or arm the fault at a deterministic point. Then repeat the case and make a new recorded run.\n\nNote, not blocking: synscan_mount_autohome_publishes_one_result and synscan_mount_aborted_autohome_keeps_alert passed.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "7fce21d1630578159896a3ce6938d2b5276630be",
+        "tree": "5233864e72cd96ae9fb3bc4b773cc7aee06a419a",
+        "at": "2026-11-21T15:18:55.366197Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of 7fce21d16..d9e2abef9. The delta changes only tests, the simulator and record lines; the driver is unchanged at v29.\n\n(1) Fix for the earlier finding: motion_failure_keeps_alert() now gives the auto home 600 x 50 ms = 30 s to consume the ':f' fault; the other motions keep 5 s. The fault is still armed while the auto home runs, so the case still proves the failure ALERT that follows BUSY and is kept by the polls. Scratch copy, 6 runs: 6/6 PASS, fault used after 5.1-5.7 s. That confirms the old 5 s bound sat at the edge and 30 s leaves ample margin.\n\n(2) poll_failure_during_motion(): it first does an idle GoTo to HA 2 h / Dec 40, then takes the mark, then starts the 20 degree motion. The fixed 3.5 s sleep is replaced by synscan_wait_for_arrival(), which is bounded at 30 s and needs both @arrived1 and @arrived2 after the mark. This is event-driven. Arrivals from the preparatory GoTo fall before the mark: synscan_goto waits for the finalizer to see both axes stopped, and the simulator logs @arrived in the same timer tick that clears RUNNING. synscan_mark() and count_synscan_commands() both count every log line, so the indexes agree. What the cases prove is unchanged: wait_for_gate() still makes sure the single failed ':j2' poll happens and holds the queue, the failed poll must still be BUSY, every later coordinates publication must be OK with at least 2 OK polls, and MOUNT_HOME must end OK. Starting off the pole makes both moves 20 degrees, so the failed poll lands inside the motion more reliably than before. Scratch copy: goto/home_survives_a_failed_poll 2/2 PASS each.\n\nSimulator: the @arrived<axis> line follows the existing @index pattern. The other readers of the event log are unaffected: they filter by ':' prefix or command, the handshake check reads lines before any GoTo, and the guider wire timing only sees tracking (no arrival).\n\nFormatting follows AGENTS.md, git diff --check is clean, and README/TEST_SUMMARY change only the record line (17:29, 119/119).\n\nb7083ad38 (master, not merged): no case touched by this delta sends coordinates while the mount is BUSY (the preparatory GoTo is sent idle and waited to OK), so I see no concrete way it breaks these cases. Whether indigo_reject_change()'s BUSY message reaches the coordinates logs of other synscan cases is for 0b4af839's merged full run.\n\nMinor, not blocking: the arrival wait does not also check that the failed poll came before the arrival. This was the same before.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "d9e2abef90b905352a3f7a84367ad6cdaf34e944",
+        "tree": "2b27077d5d0795ae5ad94fce9db2ed5ce9fda2c5",
+        "at": "2026-11-21T16:54:56.855607Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-21T13:42:35.759442Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction (driver v27, unchanged): new case synscan_mount_failed_autohome_keeps_alert (auto home started, simulator refuses the next ':f' axis status query) FAILED, log '... RO HB EB RO HO EO HA EA RO HO EO ...': mount_autohome_finish() published the coordinates OK through synscan_update_mount_coordinates(), then ALERT, which did not follow BUSY and was replaced by OK on the next poll. New case synscan_mount_autohome_publishes_one_result FAILED with 'results 2': a successful auto home published OK twice ('RO HO EO HO EO'). Fix (v29): mount_autohome_finish() reads/publishes the coordinates through synscan_update_mount_coordinates() only on success (one OK) and otherwise publishes a single ALERT through synscan_set_coordinate_state()/indigo_update_coordinates(), which follows the auto home BUSY and is kept; MOUNT_HORIZONTAL_COORDINATES follows in the same state. After the fix both cases pass, and synscan_mount_failed_home_keeps_alert still passes. Recorded run tools/run_driver_test.py mount_synscan: first attempt 119/118 Failed - synscan_mount_goto_admitted_during_homing_is_refused (MOUNT_HOME + GoTo admission, outside the auto-home path; timing-sensitive: the GoTo change handler must run within 0.2 s before the home finalizer, run concurrently with another worker's tests) failed once, then passed 6/6 in isolation; the full rerun was clean: 2026-11-21 14:23 3.0.0.29 mac arm64 simulator 119/119 OK. Ticket 0b4af839 had not landed on master, so master was not merged; the version is 29 as instructed. MIGRATION_STATUS.md count 117 -> 119 / 21. No hardware run.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T16:50:02.793739Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review round 1 (changes) addressed, test/simulator only, driver stays v29. (1) synscan_mount_failed_autohome_keeps_alert: motion_failure_keeps_alert() now waits up to 30 s (auto home only; other motions keep 5 s) for the ':f' fault to be used, since the auto home sends no ':f' during home-index polling (~4 s) and the 3 s clearance dwell; measured consumption 5.0-5.9 s after arming in 20/20 consecutive passes (the old 5 s limit was marginal). (2) Coordinator addition: synscan_mount_goto_survives_a_failed_poll / synscan_mount_home_survives_a_failed_poll reproduced failing at 16:50 CET (extra BUSY poll). Cause: synscan_start_motion() starts from the pole of the date, where the J2000 raw coordinates are those of one fixed point whatever the RA axis position, so the hour angle it derives (LST - J2000 RA) follows the sidereal time; the RA move of the planned 20-degree motion varied with LST. One-off uncommitted sweep over 8 site longitudes (GEOGRAPHIC_COORDINATES, LST 2.4..23.4 h): old form RA move 27384..189157 steps (~11..79 deg, period 12 h), FAIL at 4 of 8 LSTs for both cases (moves >= 135k steps outlast the fixed 3.5 s sleep); new form RA move 47828..49125 steps (19.9..20.5 deg), PASS 16/16. Fix: poll_failure_during_motion() first slews to HA 2 h / Dec 40 (fixed axis move from the start position), then starts the 20-degree motion, and instead of the 3.5 s sleep waits until the simulator logs '@arrived1' and '@arrived2' (new physical-event lines in mount_synscan_simulator.c when a GoTo axis reaches its target). Recorded run: 2026-11-21 17:29 3.0.0.29 mac arm64 simulator 119/119 OK (with INDIGO_SIMULATOR_TRACE_DIR capture; no failures). Master gained b7083ad38 (ticket c3aeb19f, changes INDIGO_COPY_*_PROCESS_COORDINATES_CHANGE used by synscan) after this branch; not merged per instructions (merge only for 0b4af839), so the recorded run predates it.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "a9d80f0b276de8f4edbfe3199d92879c7ac121ad",
+      "tree": "2b27077d5d0795ae5ad94fce9db2ed5ce9fda2c5",
+      "base": "master",
+      "at": "2026-11-21T16:55:13.107062Z"
+    }
+  }
+}
