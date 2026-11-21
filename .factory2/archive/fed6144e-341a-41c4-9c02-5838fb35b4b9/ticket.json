@@ -1,0 +1,733 @@
+{
+  "schema_version": 1,
+  "ticket_id": "fed6144e-341a-41c4-9c02-5838fb35b4b9",
+  "revision": 31,
+  "title": "indigo_docs: describe the INDIGO client scheduler windows and how each strategy uses priority in the scheduler guide",
+  "description": "Owner request (2026-11-21), indigo_docs/INDIGO_SCHEDULER_GUIDE.md:\n1. Clients: there is no dedicated scheduler window in the INDIGO clients yet. State plainly that the scheduler can be used from the INDIGO GUI clients (any client that shows all properties: watch the task list, night plan, history and messages, press the control switches), and use indigo_prop_tool for the command examples (uploading tasks, setting items). Do not name particular GUI clients (remove the named web control panel ctrl.html as the client example, owner decision). Check the rest of the guide and indigo_drivers/agent_scheduler/doc/SCHEDULER.md for other client-specific claims and make them consistent.\n2. Priority: add a short, prominent statement at the start of the strategy comparison: COMPACT runs tasks in priority order through the night (whenever it can start something, the highest priority that can run goes first); VISIBILITY uses priority only to decide which tasks get into the night plan, and then places the runs by when their targets stand highest, not by priority, so a high task may run after a normal one (urgent tasks still keep their COMPACT start). Make the existing sentences (around the 'What the other settings do under VISIBILITY' paragraph and the 'It never plans fewer runs' bullet) consistent with it, without duplicating. Verify every statement against indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c / indigo_agent_scheduler.c.\nKeep the change small; the full readability rewrite is a separate ticket. No README.md changes.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T23:47:03.765183Z",
+  "status": "closed",
+  "branch": "ticket/fed6144e-341a-41c4-9c02-5838fb35b4b9",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "6d583343-2512-46ea-a63c-182c28db02d0",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T23:48:11.064522Z",
+          "last_activity_at": "2026-11-20T23:50:26.395670Z",
+          "ended_at": "2026-11-20T23:50:26.395670Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 135331.148,
+          "tokens": null
+        },
+        {
+          "attempt_id": "e1f3769d-528d-4d29-b2b2-feb4699e3eb7",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-20T23:52:00.236129Z",
+          "last_activity_at": "2026-11-20T23:52:57.579327Z",
+          "ended_at": "2026-11-20T23:52:57.579327Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 57343.198,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T23:48:11.064522Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/fed6144e-341a-41c4-9c02-5838fb35b4b9"
+        },
+        {
+          "at": "2026-11-20T23:50:26.395670Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-20T23:52:00.236129Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-20T23:52:57.579327Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 192674.346,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "23ca39ee-e0b6-4ab0-b3a6-1f523adb0e65",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-20T23:50:26.395761Z",
+          "last_activity_at": "2026-11-20T23:52:00.236031Z",
+          "ended_at": "2026-11-20T23:52:00.236031Z",
+          "outcome": {
+            "summary": "Client part OK: ctrl.html/web UI/AIN gone from both files, GUI clients stated plainly, examples use indigo_prop_tool, no heading changed (anchors intact). Changes needed in the new priority paragraph, INDIGO_SCHEDULER_GUIDE.md:245. (1) 'the plan keeps the runs that COMPACT would make' contradicts the bullet at :279 and the code: on replanning vis_previous_seed (indigo_agent_scheduler_plan.c:1018-1065) may leave out a COMPACT run whose class is not above the lowest class of the previous plan's runs; only the run count is guaranteed (NO_ARRANGEMENT when best->count < compact->count, :1205). Suggest: 'VISIBILITY uses priority only to decide which runs get into the night plan: it starts from the runs COMPACT would make and never plans fewer, see What VISIBILITY respects.' (2) 'COMPACT runs the tasks in priority order through the night' overstates it: simulate() (:239-330) is greedy, picks the best score among tasks whose constraints hold now and never waits, and the score within a class includes the setting/altitude bonuses, so a normal task starts before a high one that cannot run yet and a lower level can win within a class. Suggest: 'COMPACT decides by priority at every start: whenever it can start something, it starts the best task that can run then (class first, then level and sky bonuses, see Priorities), so a normal task runs before a high one whose constraints do not hold yet.' (3) Urgent sentence: 'keep their COMPACT start under both strategies' is circular for COMPACT; more exact: 'Urgent tasks are the exception: VISIBILITY never moves them, they keep their COMPACT times in the plan and still run at once when they can' (pin at vis_minute of the COMPACT start, :1159-1166; select_planned skipped for urgent, indigo_agent_scheduler.c:1678-1680). (4) :279 'When it plans again, it keeps the runs it planned before' is a preference, not a guarantee: the previous-plan seed only wins ties; the COMPACT seed replaces it when it has more runs or a higher value (vis_better,",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 93840.27,
+          "tokens": null
+        },
+        {
+          "attempt_id": "69b9e614-7ba6-466c-a6b6-75d5462bb204",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T23:52:57.579347Z",
+          "last_activity_at": "2026-11-20T23:54:37.560692Z",
+          "ended_at": "2026-11-20T23:54:37.560692Z",
+          "outcome": {
+            "summary": "Reviewed master...HEAD (dc3a43c2b). Clients: ctrl.html, web control panel, web UI and AIN are gone from INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md; the guide states plainly that INDIGO GUI clients can be used (:75, :84, :1057, :1134) and the examples use indigo_prop_tool. Sandbox paragraph (:1105) matches tools/scheduler_sandbox.py:575-576 (port line, then localhost and LAN addresses) without naming the page. Priority paragraph (:245) verified: COMPACT greedy best score among tasks whose constraints hold (simulate, plan.c:239-330; class_base 1000-point gaps in indigo_scheduler_score :67-81); VISIBILITY starts from the COMPACT runs and never plans fewer (vis_better :1008-1016, NO_ARRANGEMENT when best->count < compact->count :1205); runs left out by COMPACT are added by value, not priority, urgent excluded (vis_add_left_out :945-971); urgent runs pinned at their COMPACT minute (:1159-1166) and never wait for the plan (indigo_agent_scheduler.c:1678-1680). Bullet (:279) matches vis_previous_seed (:1018-1065): previous seed only wins ties (prefers), lowest = min class of kept runs, a missing COMPACT run of a higher class or a pinned urgent run makes the seed fail. Paragraph (:254) consistent, no duplicated 'high after normal' sentence remains. Italic reference matches the bold 'What VISIBILITY respects.' paragraph; no heading changed, so anchors are intact. git diff --check clean. Optional nits, not blocking: the urgent sentence at :245 repeats bullet :280 (the ticket asked for it); :75 mentions indigo_prop_tool in the intro and again in the first bullet.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 99981.345,
+          "tokens": null
+        },
+        {
+          "attempt_id": "dc50c6fd-77a7-4518-a948-cc8eab0dcb42",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T00:03:50.638722Z",
+          "last_activity_at": "2026-11-21T00:05:00.360909Z",
+          "ended_at": "2026-11-21T00:05:00.360909Z",
+          "outcome": {
+            "summary": "Reviewed master...HEAD (87f9910aa). (1) Clients: neither file says or implies that INDIGO clients lack a scheduler window; the old 'no dedicated scheduler window ... yet' sentence is gone and INDIGO_SCHEDULER_GUIDE.md:75 says you can use the dedicated scheduler windows of the INDIGO clients and that the examples use indigo_prop_tool. No client is named (grep for ctrl.html, web UI/control panel, AIN, GUI finds nothing in either file). :84 describes only what the agent's properties provide (task list, plan, history, messages, control switches); the single-line limit is hedged to 'a generic property editor may'. Removal of the SCHEDULER.md optional-extension item about task upload/download/editing in clients is appropriate: SCHEDULER.md:17, :349 and :487 already describe client create/download/edit as current behaviour, so listing it as future work implied a missing feature. SCHEDULER.md:80 and :826 neutral. Sandbox sentence :1105 matches tools/scheduler_sandbox.py:575-576 (port line, then localhost and LAN addresses). (2) Priority paragraph :245, the 'What the other settings do under VISIBILITY' paragraph :254 and the bullet :279 are byte-identical to the previously passed tree dc3a43c2b; spot-checked again against indigo_agent_scheduler_plan.c (simulate greedy order :278-288, vis_add_left_out excludes urgent and adds by value :945-951, vis_better :1008, vis_previous_seed :1018-1035, urgent pinned at COMPACT start :1159-1163, NO_ARRANGEMENT when best->count < compact->count :1206) and indigo_agent_scheduler.c:1678 (urgent never waits for select_planned). Still correct. (3) No heading changed; anchors #priorities, #choosing-a-strategy, #meridian-flips, #label-format, #implementation-phases intact. git diff --check clean. Optional nits, not blocking: :75 'Both' has a loose referent (windows and indigo_prop_tool); :1105 the printed addresses are web-page URLs, so 'where an INDIGO client can watch' is slightly loose but avoids naming a client as the owner asked.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 69722.187,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T23:50:26.395761Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T23:52:00.236031Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Client part OK: ctrl.html/web UI/AIN gone from both files, GUI clients stated plainly, examples use indigo_prop_tool, no heading changed (anchors intact). Changes needed in the new priority paragraph, INDIGO_SCHEDULER_GUIDE.md:245. (1) 'the plan keeps the runs that COMPACT would make' contradicts the bullet at :279 and the code: on replanning vis_previous_seed (indigo_agent_scheduler_plan.c:1018-1065) may leave out a COMPACT run whose class is not above the lowest class of the previous plan's runs; only the run count is guaranteed (NO_ARRANGEMENT when best->count < compact->count, :1205). Suggest: 'VISIBILITY uses priority only to decide which runs get into the night plan: it starts from the runs COMPACT would make and never plans fewer, see What VISIBILITY respects.' (2) 'COMPACT runs the tasks in priority order through the night' overstates it: simulate() (:239-330) is greedy, picks the best score among tasks whose constraints hold now and never waits, and the score within a class includes the setting/altitude bonuses, so a normal task starts before a high one that cannot run yet and a lower level can win within a class. Suggest: 'COMPACT decides by priority at every start: whenever it can start something, it starts the best task that can run then (class first, then level and sky bonuses, see Priorities), so a normal task runs before a high one whose constraints do not hold yet.' (3) Urgent sentence: 'keep their COMPACT start under both strategies' is circular for COMPACT; more exact: 'Urgent tasks are the exception: VISIBILITY never moves them, they keep their COMPACT times in the plan and still run at once when they can' (pin at vis_minute of the COMPACT start, :1159-1166; select_planned skipped for urgent, indigo_agent_scheduler.c:1678-1680). (4) :279 'When it plans again, it keeps the runs it planned before' is a preference, not a guarantee: the previous-plan seed only wins ties; the COMPACT seed replaces it when it has more runs or a higher value (vis_better,"
+        },
+        {
+          "at": "2026-11-20T23:52:57.579347Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T23:54:37.560692Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Reviewed master...HEAD (dc3a43c2b). Clients: ctrl.html, web control panel, web UI and AIN are gone from INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md; the guide states plainly that INDIGO GUI clients can be used (:75, :84, :1057, :1134) and the examples use indigo_prop_tool. Sandbox paragraph (:1105) matches tools/scheduler_sandbox.py:575-576 (port line, then localhost and LAN addresses) without naming the page. Priority paragraph (:245) verified: COMPACT greedy best score among tasks whose constraints hold (simulate, plan.c:239-330; class_base 1000-point gaps in indigo_scheduler_score :67-81); VISIBILITY starts from the COMPACT runs and never plans fewer (vis_better :1008-1016, NO_ARRANGEMENT when best->count < compact->count :1205); runs left out by COMPACT are added by value, not priority, urgent excluded (vis_add_left_out :945-971); urgent runs pinned at their COMPACT minute (:1159-1166) and never wait for the plan (indigo_agent_scheduler.c:1678-1680). Bullet (:279) matches vis_previous_seed (:1018-1065): previous seed only wins ties (prefers), lowest = min class of kept runs, a missing COMPACT run of a higher class or a pinned urgent run makes the seed fail. Paragraph (:254) consistent, no duplicated 'high after normal' sentence remains. Italic reference matches the bold 'What VISIBILITY respects.' paragraph; no heading changed, so anchors are intact. git diff --check clean. Optional nits, not blocking: the urgent sentence at :245 repeats bullet :280 (the ticket asked for it); :75 mentions indigo_prop_tool in the intro and again in the first bullet."
+        },
+        {
+          "at": "2026-11-21T00:03:50.638722Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T00:05:00.360909Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Reviewed master...HEAD (87f9910aa). (1) Clients: neither file says or implies that INDIGO clients lack a scheduler window; the old 'no dedicated scheduler window ... yet' sentence is gone and INDIGO_SCHEDULER_GUIDE.md:75 says you can use the dedicated scheduler windows of the INDIGO clients and that the examples use indigo_prop_tool. No client is named (grep for ctrl.html, web UI/control panel, AIN, GUI finds nothing in either file). :84 describes only what the agent's properties provide (task list, plan, history, messages, control switches); the single-line limit is hedged to 'a generic property editor may'. Removal of the SCHEDULER.md optional-extension item about task upload/download/editing in clients is appropriate: SCHEDULER.md:17, :349 and :487 already describe client create/download/edit as current behaviour, so listing it as future work implied a missing feature. SCHEDULER.md:80 and :826 neutral. Sandbox sentence :1105 matches tools/scheduler_sandbox.py:575-576 (port line, then localhost and LAN addresses). (2) Priority paragraph :245, the 'What the other settings do under VISIBILITY' paragraph :254 and the bullet :279 are byte-identical to the previously passed tree dc3a43c2b; spot-checked again against indigo_agent_scheduler_plan.c (simulate greedy order :278-288, vis_add_left_out excludes urgent and adds by value :945-951, vis_better :1008, vis_previous_seed :1018-1035, urgent pinned at COMPACT start :1159-1163, NO_ARRANGEMENT when best->count < compact->count :1206) and indigo_agent_scheduler.c:1678 (urgent never waits for select_planned). Still correct. (3) No heading changed; anchors #priorities, #choosing-a-strategy, #meridian-flips, #label-format, #implementation-phases intact. git diff --check clean. Optional nits, not blocking: :75 'Both' has a loose referent (windows and indigo_prop_tool); :1105 the printed addresses are web-page URLs, so 'where an INDIGO client can watch' is slightly loose but avoids naming a client as the owner asked."
+        }
+      ],
+      "result": {
+        "summary": "Reviewed master...HEAD (87f9910aa). (1) Clients: neither file says or implies that INDIGO clients lack a scheduler window; the old 'no dedicated scheduler window ... yet' sentence is gone and INDIGO_SCHEDULER_GUIDE.md:75 says you can use the dedicated scheduler windows of the INDIGO clients and that the examples use indigo_prop_tool. No client is named (grep for ctrl.html, web UI/control panel, AIN, GUI finds nothing in either file). :84 describes only what the agent's properties provide (task list, plan, history, messages, control switches); the single-line limit is hedged to 'a generic property editor may'. Removal of the SCHEDULER.md optional-extension item about task upload/download/editing in clients is appropriate: SCHEDULER.md:17, :349 and :487 already describe client create/download/edit as current behaviour, so listing it as future work implied a missing feature. SCHEDULER.md:80 and :826 neutral. Sandbox sentence :1105 matches tools/scheduler_sandbox.py:575-576 (port line, then localhost and LAN addresses). (2) Priority paragraph :245, the 'What the other settings do under VISIBILITY' paragraph :254 and the bullet :279 are byte-identical to the previously passed tree dc3a43c2b; spot-checked again against indigo_agent_scheduler_plan.c (simulate greedy order :278-288, vis_add_left_out excludes urgent and adds by value :945-951, vis_better :1008, vis_previous_seed :1018-1035, urgent pinned at COMPACT start :1159-1163, NO_ARRANGEMENT when best->count < compact->count :1206) and indigo_agent_scheduler.c:1678 (urgent never waits for select_planned). Still correct. (3) No heading changed; anchors #priorities, #choosing-a-strategy, #meridian-flips, #label-format, #implementation-phases intact. git diff --check clean. Optional nits, not blocking: :75 'Both' has a loose referent (windows and indigo_prop_tool); :1105 the printed addresses are web-page URLs, so 'where an INDIGO client can watch' is slightly loose but avoids naming a client as the owner asked.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 263543.802,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "13a73d95-120d-4a3f-9ec6-8ec0df5a6ae6",
+      "event": "ticket/created",
+      "at": "2026-11-20T23:47:03.765795Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "701d17f2-3f59-447a-85fa-0beb80255d9a",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T23:47:35.343320Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "9f880b62-1075-4f9e-8a97-013268b119d6",
+      "event": "task/progress",
+      "at": "2026-11-20T23:48:11.064651Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Implementation started on branch ticket/fed6144e-341a-41c4-9c02-5838fb35b4b9"
+    },
+    {
+      "event_id": "7f0a0a97-3146-4e94-b9ee-4c7b98b74295",
+      "event": "ticket/started",
+      "at": "2026-11-20T23:48:11.065486Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/fed6144e-341a-41c4-9c02-5838fb35b4b9",
+      "base": "master"
+    },
+    {
+      "event_id": "47d8e66d-4c20-4c02-bd50-acb44d3c2743",
+      "event": "task/progress",
+      "at": "2026-11-20T23:48:27.256970Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Implementer launched",
+      "attempt_id": "6d583343-2512-46ea-a63c-182c28db02d0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b255b1c0-40a9-419c-8069-863aeaf98040",
+      "event": "task/progress",
+      "at": "2026-11-20T23:49:45.086484Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d1dfc5ba-46de-4abb-86c5-768c50450db4",
+      "event": "task/progress",
+      "at": "2026-11-20T23:49:45.099474Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f90b258d-bbbf-47e0-9320-101437736eb5",
+      "event": "check/passed",
+      "at": "2026-11-20T23:49:45.104392Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "8eea20a66f7592afb0dc9b53b51177929fe42e97",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "d1885b72-4252-409b-976b-cfda98c9c9ba",
+      "event": "task/progress",
+      "at": "2026-11-20T23:49:56.614490Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "28cf13ec-b298-4408-bfeb-48e227c884b8",
+      "event": "task/progress",
+      "at": "2026-11-20T23:49:56.627639Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "fe2f729d-12f3-489d-ba16-9aeab65247be",
+      "event": "check/passed",
+      "at": "2026-11-20T23:49:56.632406Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "67491cd8d6a5f0202a1a19454be57b02a85061a4",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "bf06c60c-8343-4ef0-86cf-d06a9dbd9f10",
+      "event": "task/progress",
+      "at": "2026-11-20T23:50:26.395876Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "text": "Review started"
+    },
+    {
+      "event_id": "be9817e7-9ef1-40e4-b763-5809b73d6569",
+      "event": "review/started",
+      "at": "2026-11-20T23:50:26.396686Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "ebc09c1f-96cf-43d6-9aa6-e80e56351084",
+      "event": "task/progress",
+      "at": "2026-11-20T23:50:41.854919Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "text": "Reviewer launched",
+      "attempt_id": "23ca39ee-e0b6-4ab0-b3a6-1f523adb0e65",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "08a6644d-034e-43e7-8016-8c1dfdd43bb4",
+      "event": "task/progress",
+      "at": "2026-11-20T23:52:00.236120Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "396a9fae-ea43-4b6a-88e4-740bf2b208e5",
+      "event": "task/progress",
+      "at": "2026-11-20T23:52:00.236158Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "e38a716f-6443-44e1-91ae-78b35c52046b",
+      "event": "review/changes_requested",
+      "at": "2026-11-20T23:52:00.236745Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "67491cd8d6a5f0202a1a19454be57b02a85061a4"
+    },
+    {
+      "event_id": "c89eecce-e429-4b4b-88de-d40ae2bb716e",
+      "event": "task/progress",
+      "at": "2026-11-20T23:52:40.392270Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Applied review fixes: priority paragraph, replan bullet, sandbox sentence"
+    },
+    {
+      "event_id": "3a0e043c-a682-4688-9905-fa10da387ff2",
+      "event": "task/progress",
+      "at": "2026-11-20T23:52:40.615419Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "25e863ed-9f96-4141-a762-0512f8e52347",
+      "event": "task/progress",
+      "at": "2026-11-20T23:52:40.629109Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "30c97956-cd48-42de-aa4e-8dd1a8ffecbe",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "895f072a-9d12-4694-ab62-d95df1fb02ea",
+      "event": "check/passed",
+      "at": "2026-11-20T23:52:40.634520Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "dc3a43c2bfa0a862d99d3121cc0069fe10552229",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "e66bb943-5a3c-4081-a916-fcaaa267f0df",
+      "event": "task/progress",
+      "at": "2026-11-20T23:52:57.579420Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b73dfbef-12ed-4b4e-a3c0-a1e96a54db38",
+      "event": "review/started",
+      "at": "2026-11-20T23:52:57.580047Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "2e414452-742d-4bf4-b6ba-12a5f31d2507",
+      "event": "task/progress",
+      "at": "2026-11-20T23:53:14.387334Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "text": "Reviewer launched",
+      "attempt_id": "69b9e614-7ba6-466c-a6b6-75d5462bb204",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f3650fc2-63f9-4416-ad4a-8fe4e9de345e",
+      "event": "task/progress",
+      "at": "2026-11-20T23:54:37.560769Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "79eeca80-3c11-4b26-aad8-1608a69d3354",
+      "event": "review/passed",
+      "at": "2026-11-20T23:54:37.561444Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "dc3a43c2bfa0a862d99d3121cc0069fe10552229"
+    },
+    {
+      "event_id": "40ac945e-1f90-406e-8a5a-b2cec0e82e7e",
+      "event": "ticket/note",
+      "at": "2026-11-21T00:03:04.285390Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner correction (2026-11-21): the sentence 'There is no dedicated scheduler window in the INDIGO clients yet' is the incorrect claim. Remove it and say instead that you can use the dedicated scheduler windows of the INDIGO clients, without naming any client; the command examples use indigo_prop_tool. Make the client bullets and other client sentences consistent (do not claim a client has no scheduler window, and do not claim specific capabilities of client windows).",
+      "tokens": null
+    },
+    {
+      "event_id": "5985d037-b96c-4536-85e8-4034e817e376",
+      "event": "task/progress",
+      "at": "2026-11-21T00:03:35.203122Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Applied owner correction: clients have dedicated scheduler windows"
+    },
+    {
+      "event_id": "7ebd48ed-1e87-4e01-a67d-0e39aa744c86",
+      "event": "task/progress",
+      "at": "2026-11-21T00:03:35.429097Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "824b6e72-5880-4fa3-8dd7-8e04de2905f4",
+      "event": "task/progress",
+      "at": "2026-11-21T00:03:35.442907Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a6430283-67c2-4c34-ae9f-cc715eaba842",
+      "event": "check/passed",
+      "at": "2026-11-21T00:03:35.448173Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "87f9910aaaea34f56d610e487a031b7bb7f4e6ac",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "9c158caa-03e7-431d-86ca-629e07ec7f70",
+      "event": "task/progress",
+      "at": "2026-11-21T00:03:50.638899Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "text": "Review started"
+    },
+    {
+      "event_id": "50fa97b5-3002-421f-89fa-393310111bf4",
+      "event": "review/started",
+      "at": "2026-11-21T00:03:50.639917Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "7fa86d83-7c12-45dc-a562-f357b1407586",
+      "event": "task/progress",
+      "at": "2026-11-21T00:04:05.901373Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "text": "Reviewer launched",
+      "attempt_id": "dc50c6fd-77a7-4518-a948-cc8eab0dcb42",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a8ed082a-2403-4bf6-b5dd-c95d37a8ba7c",
+      "event": "task/progress",
+      "at": "2026-11-21T00:05:00.360985Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b2632c2d-8827-437a-b31e-1068e1934cf3",
+      "event": "review/passed",
+      "at": "2026-11-21T00:05:00.361735Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5f3fb62c-90bd-4bfe-804f-a18d90e05497",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "87f9910aaaea34f56d610e487a031b7bb7f4e6ac"
+    },
+    {
+      "event_id": "8554dd61-9edf-429c-b3d0-92ba7e3a384c",
+      "event": "ticket/title_changed",
+      "at": "2026-11-21T00:08:53.322924Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_docs: state that INDIGO GUI clients can control the scheduler and how VISIBILITY uses priority in the scheduler guide",
+      "title": "indigo_docs: describe the INDIGO client scheduler windows and how each strategy uses priority in the scheduler guide"
+    },
+    {
+      "event_id": "5a74c246-7129-4265-832a-da3d490843b9",
+      "event": "ticket/closed",
+      "at": "2026-11-21T00:08:53.614933Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-21T00:08:53.614887Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "bc19e33d6c15a333548d7ecdb8e0482965c9cfc7"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8eea20a66f7592afb0dc9b53b51177929fe42e97",
+        "tree": "d80159459690a920633b9f0f4dd5352f02f116c8",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T23:49:45.098814Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/fed6144e-341a-41c4-9c02-5838fb35b4b9/d80159459690-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "67491cd8d6a5f0202a1a19454be57b02a85061a4",
+        "tree": "ef01bc3ba9756f322a68ad87657393a0bba357e2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T23:49:56.626957Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/fed6144e-341a-41c4-9c02-5838fb35b4b9/ef01bc3ba975-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "dc3a43c2bfa0a862d99d3121cc0069fe10552229",
+        "tree": "3b44d8a7140da6a31ad1d1a18bd99cc8ea6862bf",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T23:52:40.628253Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/fed6144e-341a-41c4-9c02-5838fb35b4b9/3b44d8a7140d-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "87f9910aaaea34f56d610e487a031b7bb7f4e6ac",
+        "tree": "4a92ca5e1ef70fe1219af0482e71c83381f398b9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T00:03:35.441852Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/fed6144e-341a-41c4-9c02-5838fb35b4b9/4a92ca5e1ef7-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Client part OK: ctrl.html/web UI/AIN gone from both files, GUI clients stated plainly, examples use indigo_prop_tool, no heading changed (anchors intact). Changes needed in the new priority paragraph, INDIGO_SCHEDULER_GUIDE.md:245. (1) 'the plan keeps the runs that COMPACT would make' contradicts the bullet at :279 and the code: on replanning vis_previous_seed (indigo_agent_scheduler_plan.c:1018-1065) may leave out a COMPACT run whose class is not above the lowest class of the previous plan's runs; only the run count is guaranteed (NO_ARRANGEMENT when best->count < compact->count, :1205). Suggest: 'VISIBILITY uses priority only to decide which runs get into the night plan: it starts from the runs COMPACT would make and never plans fewer, see What VISIBILITY respects.' (2) 'COMPACT runs the tasks in priority order through the night' overstates it: simulate() (:239-330) is greedy, picks the best score among tasks whose constraints hold now and never waits, and the score within a class includes the setting/altitude bonuses, so a normal task starts before a high one that cannot run yet and a lower level can win within a class. Suggest: 'COMPACT decides by priority at every start: whenever it can start something, it starts the best task that can run then (class first, then level and sky bonuses, see Priorities), so a normal task runs before a high one whose constraints do not hold yet.' (3) Urgent sentence: 'keep their COMPACT start under both strategies' is circular for COMPACT; more exact: 'Urgent tasks are the exception: VISIBILITY never moves them, they keep their COMPACT times in the plan and still run at once when they can' (pin at vis_minute of the COMPACT start, :1159-1166; select_planned skipped for urgent, indigo_agent_scheduler.c:1678-1680). (4) :279 'When it plans again, it keeps the runs it planned before' is a preference, not a guarantee: the previous-plan seed only wins ties; the COMPACT seed replaces it when it has more runs or a higher value (vis_better, :1008-1016; :1176-1199). Suggest 'When it plans again, it prefers the runs it planned before; to keep them it may leave out a COMPACT run whose priority class is not above the lowest class among them, never a run of a higher class or an urgent one.' Minor, optional: :75 now says indigo_prop_tool/upload three times in four lines (intro sentence, first bullet, last sentence of GUI bullet); drop 'which is also how you upload tasks'. :1105 still names the web control panel, but it describes the actual output of tools/scheduler_sandbox.py:576, so acceptable unless the owner wants it generic.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "67491cd8d6a5f0202a1a19454be57b02a85061a4",
+        "tree": "ef01bc3ba9756f322a68ad87657393a0bba357e2",
+        "at": "2026-11-20T23:52:00.235981Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed master...HEAD (dc3a43c2b). Clients: ctrl.html, web control panel, web UI and AIN are gone from INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md; the guide states plainly that INDIGO GUI clients can be used (:75, :84, :1057, :1134) and the examples use indigo_prop_tool. Sandbox paragraph (:1105) matches tools/scheduler_sandbox.py:575-576 (port line, then localhost and LAN addresses) without naming the page. Priority paragraph (:245) verified: COMPACT greedy best score among tasks whose constraints hold (simulate, plan.c:239-330; class_base 1000-point gaps in indigo_scheduler_score :67-81); VISIBILITY starts from the COMPACT runs and never plans fewer (vis_better :1008-1016, NO_ARRANGEMENT when best->count < compact->count :1205); runs left out by COMPACT are added by value, not priority, urgent excluded (vis_add_left_out :945-971); urgent runs pinned at their COMPACT minute (:1159-1166) and never wait for the plan (indigo_agent_scheduler.c:1678-1680). Bullet (:279) matches vis_previous_seed (:1018-1065): previous seed only wins ties (prefers), lowest = min class of kept runs, a missing COMPACT run of a higher class or a pinned urgent run makes the seed fail. Paragraph (:254) consistent, no duplicated 'high after normal' sentence remains. Italic reference matches the bold 'What VISIBILITY respects.' paragraph; no heading changed, so anchors are intact. git diff --check clean. Optional nits, not blocking: the urgent sentence at :245 repeats bullet :280 (the ticket asked for it); :75 mentions indigo_prop_tool in the intro and again in the first bullet.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "dc3a43c2bfa0a862d99d3121cc0069fe10552229",
+        "tree": "3b44d8a7140da6a31ad1d1a18bd99cc8ea6862bf",
+        "at": "2026-11-20T23:54:37.560666Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed master...HEAD (87f9910aa). (1) Clients: neither file says or implies that INDIGO clients lack a scheduler window; the old 'no dedicated scheduler window ... yet' sentence is gone and INDIGO_SCHEDULER_GUIDE.md:75 says you can use the dedicated scheduler windows of the INDIGO clients and that the examples use indigo_prop_tool. No client is named (grep for ctrl.html, web UI/control panel, AIN, GUI finds nothing in either file). :84 describes only what the agent's properties provide (task list, plan, history, messages, control switches); the single-line limit is hedged to 'a generic property editor may'. Removal of the SCHEDULER.md optional-extension item about task upload/download/editing in clients is appropriate: SCHEDULER.md:17, :349 and :487 already describe client create/download/edit as current behaviour, so listing it as future work implied a missing feature. SCHEDULER.md:80 and :826 neutral. Sandbox sentence :1105 matches tools/scheduler_sandbox.py:575-576 (port line, then localhost and LAN addresses). (2) Priority paragraph :245, the 'What the other settings do under VISIBILITY' paragraph :254 and the bullet :279 are byte-identical to the previously passed tree dc3a43c2b; spot-checked again against indigo_agent_scheduler_plan.c (simulate greedy order :278-288, vis_add_left_out excludes urgent and adds by value :945-951, vis_better :1008, vis_previous_seed :1018-1035, urgent pinned at COMPACT start :1159-1163, NO_ARRANGEMENT when best->count < compact->count :1206) and indigo_agent_scheduler.c:1678 (urgent never waits for select_planned). Still correct. (3) No heading changed; anchors #priorities, #choosing-a-strategy, #meridian-flips, #label-format, #implementation-phases intact. git diff --check clean. Optional nits, not blocking: :75 'Both' has a loose referent (windows and indigo_prop_tool); :1105 the printed addresses are web-page URLs, so 'where an INDIGO client can watch' is slightly loose but avoids naming a client as the owner asked.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "87f9910aaaea34f56d610e487a031b7bb7f4e6ac",
+        "tree": "4a92ca5e1ef70fe1219af0482e71c83381f398b9",
+        "at": "2026-11-21T00:05:00.360880Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-21T00:03:04.284725Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner correction (2026-11-21): the sentence 'There is no dedicated scheduler window in the INDIGO clients yet' is the incorrect claim. Remove it and say instead that you can use the dedicated scheduler windows of the INDIGO clients, without naming any client; the command examples use indigo_prop_tool. Make the client bullets and other client sentences consistent (do not claim a client has no scheduler window, and do not claim specific capabilities of client windows).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "bc19e33d6c15a333548d7ecdb8e0482965c9cfc7",
+      "tree": "4a92ca5e1ef70fe1219af0482e71c83381f398b9",
+      "base": "master",
+      "at": "2026-11-21T00:08:53.517293Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-20T23:47:03.765183Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-20T23:47:35.343290Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 456218.148,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 48,
+    "sha256": "3a64bf36034c60a4101d2469597285322ef7151c411a36ca3fe1ca616fcde44c"
+  }
+}
