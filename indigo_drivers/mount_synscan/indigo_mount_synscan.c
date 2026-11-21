@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001D
+#define DRIVER_VERSION       0x0300001E
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -2756,10 +2756,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_REJECT_COORDINATES_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, "Mount is parked!");
+		INDIGO_REJECT_COORDINATES_CHANGE_IF(PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_HOMING, "Mount is homing");
 		//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change_request
 		// Claim the slew or the sync before the poll can republish OK over the accepted BUSY state. The controller
 		// has no sync of its own, a sync is an alignment point of the framework's model; the parked mount guard above
-		// already refused it on a parked mount.
+		// already refused it on a parked mount, and during a park, whose request sets the parked switch. A request while
+		// a home or an auto home runs is refused above, before its BUSY: it would claim nothing, and the end of the
+		// homing could publish OK over its BUSY before its handler refused it.
 		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
 			if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 				PRIVATE_DATA->sync_pending = !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;

@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 29;
+	version = 30;
 	serial {
 		configurable_speed = true;
 	}
@@ -2067,10 +2067,16 @@ driver synscan {
 		}
 		inherited MOUNT_EQUATORIAL_COORDINATES {
 			preserve_values = true;
+			reject_change {
+				condition = PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_HOMING;
+				message = "Mount is homing";
+			}
 			on_change_request {
 				// Claim the slew or the sync before the poll can republish OK over the accepted BUSY state. The controller
 				// has no sync of its own, a sync is an alignment point of the framework's model; the parked mount guard above
-				// already refused it on a parked mount.
+				// already refused it on a parked mount, and during a park, whose request sets the parked switch. A request while
+				// a home or an auto home runs is refused above, before its BUSY: it would claim nothing, and the end of the
+				// homing could publish OK over its BUSY before its handler refused it.
 				if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
 					if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 						PRIVATE_DATA->sync_pending = !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;

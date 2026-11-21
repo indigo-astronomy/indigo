@@ -1337,7 +1337,12 @@ cleanup:
 // A gate handler holds the mount's device queue, so a request is copied and queued while a finalizer or timer comes
 // due behind it. Those are INDIGO_TASK_PRIORITY_TIME tasks and run ahead of a queued change handler once the gate ends.
 static _Atomic(indigo_device *) gate_device;
-static atomic_bool gate_entered, gate_release, gate_on_home_busy, gate_release_on_coordinates_busy;
+static atomic_bool gate_entered, gate_release;
+// The MOUNT_STATE light whose BUSY queues an urgent gate, NULL for none
+static _Atomic(const char *) gate_on_busy_light;
+// While gate_record_alert_message is set, the message of the first ALERT of the equatorial coordinates
+static atomic_bool gate_record_alert_message, gate_alert_message_seen;
+static char gate_alert_message[INDIGO_VALUE_SIZE];
 
 static void gate_handler(indigo_device *device) {
 	atomic_store(&gate_entered, true);
@@ -1359,19 +1364,14 @@ static void queue_gate(indigo_device *device) {
 static indigo_result gate_device_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, synscan_mount.device_name)) {
 		atomic_store(&gate_device, device);
-		// The home handler publishes the busy home light before it schedules its finalizer. The gate queued from here is
-		// urgent, so it runs right after the home handler, ahead of the poll and the finalizer, which are time critical
+		// The park and home handlers publish the busy light before they schedule their finalizer. The gate queued from
+		// here is urgent, so it runs right after the handler, ahead of the poll and the finalizer, which are time critical
 		// tasks and would otherwise overtake a normal gate that is still waiting when they come due.
-		// Released from here when the coordinates request is published BUSY, not after the test thread noticed it: the
-		// change handler of the request has to run before the home finalizer comes due 0.2 s after the home handler.
-		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_BUSY_STATE && atomic_load(&gate_release_on_coordinates_busy)) {
-			atomic_store(&gate_release_on_coordinates_busy, false);
-			atomic_store(&gate_release, true);
-		}
-		if (!strcmp(property->name, MOUNT_STATE_PROPERTY_NAME) && atomic_load(&gate_on_home_busy)) {
+		const char *light = atomic_load(&gate_on_busy_light);
+		if (!strcmp(property->name, MOUNT_STATE_PROPERTY_NAME) && light != NULL) {
 			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(property->items[i].name, MOUNT_STATE_HOME_ITEM_NAME) && property->items[i].light.value == INDIGO_BUSY_STATE) {
-					atomic_store(&gate_on_home_busy, false);
+				if (!strcmp(property->items[i].name, light) && property->items[i].light.value == INDIGO_BUSY_STATE) {
+					atomic_store(&gate_on_busy_light, NULL);
 					queue_gate_with_priority(device, INDIGO_TASK_PRIORITY_URGENT);
 				}
 			}
@@ -1380,19 +1380,29 @@ static indigo_result gate_device_update(indigo_client *client, indigo_device *de
 	return simulator_client_update_property(client, device, property, message);
 }
 
+// The bus sends the message of an update separately, right after the update
+static indigo_result gate_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && message != NULL && !strcmp(property->device, synscan_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_ALERT_STATE && atomic_load(&gate_record_alert_message) && !atomic_load(&gate_alert_message_seen)) {
+		INDIGO_COPY_VALUE(gate_alert_message, message);
+		atomic_store(&gate_alert_message_seen, true);
+	}
+	return simulator_client_send_message(client, device, property, message);
+}
+
 static void install_gate(void) {
 	atomic_store(&gate_device, NULL);
 	atomic_store(&gate_release, true);
-	atomic_store(&gate_on_home_busy, false);
-	atomic_store(&gate_release_on_coordinates_busy, false);
+	atomic_store(&gate_on_busy_light, NULL);
 	simulator_test_client.update_property = gate_device_update;
+	simulator_test_client.send_message = gate_send_message;
 }
 
 static void remove_gate(void) {
 	atomic_store(&gate_release, true);
-	atomic_store(&gate_on_home_busy, false);
-	atomic_store(&gate_release_on_coordinates_busy, false);
+	atomic_store(&gate_on_busy_light, NULL);
+	atomic_store(&gate_record_alert_message, false);
 	simulator_test_client.update_property = simulator_client_update_property;
+	simulator_test_client.send_message = simulator_client_send_message;
 }
 
 static bool wait_for_gate(void) {
@@ -1425,7 +1435,7 @@ static void synscan_mount_tracking_request_survives_home_finalizer(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_SET_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
-	atomic_store(&gate_on_home_busy, true);
+	atomic_store(&gate_on_busy_light, MOUNT_STATE_HOME_ITEM_NAME);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_gate());
 	// The finalizer has not run yet
@@ -4685,9 +4695,52 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// A GOTO admitted while a homing starts claims no slew; its change handler refuses it after its BUSY, without a motion
-// command, and the refusal stays ALERT over the polls of the idle mount.
-static void synscan_mount_goto_admitted_during_homing_is_refused(void) {
+// The first publication of the equatorial coordinates after the request is its refusal: ALERT with `reason`, at the
+// position the mount reported before it, together with the horizontal coordinates in ALERT. No publication carries
+// another position and none is ALERT right after an OK: the poll may still publish the running motion BUSY after the
+// refusal and its end OK, but no refusal follows the end of the motion.
+static bool synscan_check_refused_during_motion(const char *label, const coordinates_publication *events, int count, const char *reason, double ra0, double dec0, double tolerance) {
+	int refusal = -1;
+	bool ok = true;
+	for (int i = 0; i < count && refusal < 0; i++) {
+		if (events[i].kind == 'E') {
+			refusal = i;
+		}
+	}
+	if (refusal < 0 || events[refusal].state != INDIGO_ALERT_STATE) {
+		fprintf(stderr, "    %s: the first publication of the coordinates after the request (%d) is not the refusal\n", label, refusal);
+		ok = false;
+	} else if (refusal == 0 || events[refusal - 1].kind != 'H' || events[refusal - 1].state != INDIGO_ALERT_STATE) {
+		fprintf(stderr, "    %s: the refusal %d is not published with the horizontal coordinates in ALERT\n", label, refusal);
+		ok = false;
+	} else if (!atomic_load(&gate_alert_message_seen) || strcmp(gate_alert_message, reason)) {
+		fprintf(stderr, "    %s: the refusal carries '%s', not '%s'\n", label, atomic_load(&gate_alert_message_seen) ? gate_alert_message : "", reason);
+		ok = false;
+	}
+	indigo_property_state previous = INDIGO_IDLE_STATE;
+	for (int i = refusal + 1; ok && i < count; i++) {
+		if (events[i].kind != 'E') {
+			continue;
+		}
+		if (events[i].state == INDIGO_ALERT_STATE && previous == INDIGO_OK_STATE) {
+			fprintf(stderr, "    %s: ALERT published at %d after the OK that ended the motion\n", label, i);
+			ok = false;
+		}
+		previous = events[i].state;
+	}
+	if (!ok) {
+		print_coordinates_publications(label, events, count);
+		return false;
+	}
+	return check_position_kept(label, events, count, 0, ra0, dec0, tolerance);
+}
+
+// A coordinates request sent while a park or a homing runs is refused before its BUSY with `reason`, without a command.
+// The motion goes to the current position and ends on the first run of its finalizer, which comes due while a gate holds
+// the queue right after the motion handler, so the finalizer, a time critical task, runs ahead of a change handler the
+// request queued. A request admitted there would get BUSY, then the OK of the motion's end over it, then the refusal of
+// its handler.
+static void synscan_check_request_refused_during_motion(const char *label, const char *set_property, const char *set_item, const char *motion_property, const char *motion_item, const char *light_item, const char *on_set, const char *reason) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
 	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
@@ -4695,47 +4748,46 @@ static void synscan_mount_goto_admitted_during_homing_is_refused(void) {
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
 	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
 	driver_started = true;
-	// Home at the current position, so the homing ends on the first run of its finalizer
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, set_property, set_item, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(set_property, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(set_property, set_item, false));
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, on_set, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	double ra0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	double dec0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
 	int mark = synscan_mark(&simulator);
-	atomic_store(&gate_on_home_busy, true);
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	atomic_store(&gate_on_busy_light, light_item);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, motion_property, motion_item, true));
 	SERIAL_CHECK_TRUE(wait_for_gate());
+	// The finalizer has not run yet
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(motion_property)->state);
 	start_coordinates_publications(synscan_mount.device_name);
+	atomic_store(&gate_alert_message_seen, false);
+	atomic_store(&gate_record_alert_message, true);
 	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	double values[] = { fmod(ra0 + 1, 24), 10 };
 	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-	atomic_store(&gate_release_on_coordinates_busy, true);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
-	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	// Answered on the bus, refused or admitted with BUSY, while the gate still holds the queue
+	for (int i = 0; i < 100 && property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == revision; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) != revision);
+	// The finalizer was scheduled 0.2 s after the motion handler, which returned before the gate entered
+	indigo_usleep(300000);
 	atomic_store(&gate_release, true);
-	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
-	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
-	// two polls of the idle mount after the refusal
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(motion_property, INDIGO_OK_STATE));
+	// two polls of the idle mount, the change handler of an admitted request publishes its result before them
 	unsigned int polled = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	for (int i = 0; i < 100 && property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) < polled + 2; i++) {
 		indigo_usleep(100000);
 	}
 	int count = stop_coordinates_publications(events);
-	int busy = find_coordinates_publication(events, count, 0, 'E', INDIGO_BUSY_STATE);
-	int next = -1;
-	for (int i = busy + 1; busy >= 0 && i < count && next < 0; i++) {
-		if (events[i].kind == 'E') {
-			next = i;
-		}
-	}
-	if (busy < 0 || next < 0 || events[next].state != INDIGO_ALERT_STATE) {
-		print_coordinates_publications("GOTO admitted during homing", events, count);
-	}
-	SERIAL_CHECK_TRUE(busy >= 0 && next > busy && events[next].state == INDIGO_ALERT_STATE);
-	SERIAL_CHECK_TRUE(check_refusal_kept("GOTO admitted during homing", events, count, busy + 1, 2, ra0, dec0, 0.1));
-	// the homing sent no slew of its own here, the refused GOTO none at all
+	atomic_store(&gate_record_alert_message, false);
+	SERIAL_CHECK_TRUE(synscan_check_refused_during_motion(label, events, count, reason, ra0, dec0, 0.1));
+	// the motion sent no slew of its own here, the refused request none at all
 	SERIAL_CHECK_EQ_INT(0, synscan_motion_commands(&simulator, mark));
-	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
 cleanup:
 	stop_coordinates_publications(NULL);
 	remove_gate();
@@ -4743,6 +4795,21 @@ cleanup:
 		stop_serial_driver(&synscan_mount);
 	}
 	stop_external_serial_simulator(&simulator);
+	// a park leaves its position file, which the next connection would restore
+	synscan_remove_park_file();
+}
+
+static void synscan_mount_goto_during_homing_is_refused(void) {
+	synscan_check_request_refused_during_motion("GOTO during homing", MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, MOUNT_STATE_HOME_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, "Mount is homing");
+}
+
+static void synscan_mount_sync_during_homing_is_refused(void) {
+	synscan_check_request_refused_during_motion("SYNC during homing", MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, MOUNT_STATE_HOME_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, "Mount is homing");
+}
+
+// The park request sets the parked switch, so the parked-mount guard of the change branch refuses the request
+static void synscan_mount_goto_during_parking_is_refused(void) {
+	synscan_check_request_refused_during_motion("GOTO during parking", MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, MOUNT_STATE_PARK_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, "Mount is parked!");
 }
 
 int main(void) {
@@ -4811,7 +4878,9 @@ int main(void) {
 		{ "synscan_mount_stops_tracking_after_home", synscan_mount_stops_tracking_after_home },
 		{ "synscan_mount_autohome_finds_home_index", synscan_mount_autohome_finds_home_index },
 		{ "synscan_mount_tracking_request_survives_home_finalizer", synscan_mount_tracking_request_survives_home_finalizer },
-		{ "synscan_mount_goto_admitted_during_homing_is_refused", synscan_mount_goto_admitted_during_homing_is_refused },
+		{ "synscan_mount_goto_during_homing_is_refused", synscan_mount_goto_during_homing_is_refused },
+		{ "synscan_mount_sync_during_homing_is_refused", synscan_mount_sync_during_homing_is_refused },
+		{ "synscan_mount_goto_during_parking_is_refused", synscan_mount_goto_during_parking_is_refused },
 		{ "synscan_mount_pec_training_request_survives_training_end", synscan_mount_pec_training_request_survives_training_end },
 		{ "synscan_mount_encoders_request_survives_autohome", synscan_mount_encoders_request_survives_autohome },
 		{ "synscan_mount_reports_new_model_codes", synscan_mount_reports_new_model_codes },
