@@ -1,0 +1,724 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3beb3554-f847-4155-b5e7-5bed700096f0",
+  "revision": 41,
+  "title": "indigo_mount_synscan: GoTo, finalizer and abort ALERT exits bypass indigo_update_coordinates()",
+  "description": "Some ALERT exits of the GoTo handler, its finalizer and MOUNT_ABORT_MOTION publish MOUNT_EQUATORIAL_COORDINATES directly instead of through indigo_update_coordinates(), so the kept-ALERT state of the mount base class does not see them. Also consider the hardening noted in review: the poll should keep BUSY for sync_pending only while the property is already BUSY, and the slew branch should clear sync_pending. Found while working on ticket 42b85be0-1f19-4607-b3c3-746e60317d17 (closed, commit a09e0f878), which introduced the kept coordinates ALERT in indigo_update_coordinates(): an ALERT published after a BUSY stays until the next BUSY. Reproduce in the driver's simulator suite before changing code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:04.045353Z",
+  "status": "closed",
+  "branch": "ticket/3beb3554-f847-4155-b5e7-5bed700096f0",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a4b37886-dc9e-4b94-8fb8-23209a316331",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T09:03:25.576165Z",
+          "last_activity_at": "2026-11-21T10:55:29.963567Z",
+          "ended_at": "2026-11-21T10:55:29.963567Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 6724387.402,
+          "tokens": null
+        },
+        {
+          "attempt_id": "3335e07f-5758-497f-978e-163196851dbb",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T11:15:17.279185Z",
+          "last_activity_at": "2026-11-21T12:08:59.699388Z",
+          "ended_at": "2026-11-21T12:08:59.699388Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 3222420.203,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T09:03:25.576165Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/3beb3554-f847-4155-b5e7-5bed700096f0"
+        },
+        {
+          "at": "2026-11-21T10:55:29.963567Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T11:15:17.279185Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-21T12:08:59.699388Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 9946807.605,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "290605bf-5814-478a-bae6-758f5dfe0fa9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-21T10:55:29.963716Z",
+          "last_activity_at": "2026-11-21T11:15:17.279082Z",
+          "ended_at": "2026-11-21T11:15:17.279082Z",
+          "outcome": {
+            "summary": "BLOCKING 1 (regression introduced by this diff): synscan_set_coordinate_state() (indigo_mount_synscan.driver:1023, .c:1092) now publishes through indigo_update_coordinates(), and the on_timer failed-poll path still uses it (.driver:1898, .c:2027). A failed position poll during a GoTo/park/home/auto home follows the BUSY last published by indigo_update_coordinates(), so it sets the keep-ALERT flag. If the next coordinates publication is the finalizer's success (no BUSY poll in between), the successful motion's OK becomes a kept ALERT that stays until the next request. This is the case indigo_mount_driver.h:619 says must not be kept (a failed readback). Reproduced in a scratch copy with a probe case: a 70 deg GoTo (9.2 s), one ':j2 !0' fault armed 0.3-1.1 s before the end. On the candidate, 8 of 16 and 3 of 8 GoTos that completed without any failure stop (no :L1/:L2) ended ALERT. Typical trace: |B|B..|BA|A|A|A (failed poll A, then the finalizer and every later poll A). The same probe on the master driver gave 8 of 8 OK (|BA|O|O|O). Fix: keep the failed poll out of the keep-ALERT machine while a motion is running. Either publish its ALERT as before (indigo_update_property() of the equatorial and horizontal coordinates, which the library documents as not seen by the machine), or keep BUSY while global_mode != IDLE and report the read failure as a message. Keep synscan_set_coordinate_state() for real motion ends. Add an event-driven case: a single failed position poll during a GoTo (and ideally a home) that then completes must end OK. BLOCKING 2 (requested hardening, should be dropped): the poll condition IDLE && !(sync_pending && state == BUSY) (.driver:959, .c:1028) makes the sync claim ineffective in exactly the window it exists for. change_property runs under bus_mutex and the poll under the device mutex, so they run concurrently. A poll that reads sync_pending=true before INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE assigns BUSY now computes OK and can write and p",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1187315.366,
+          "tokens": null
+        },
+        {
+          "attempt_id": "349cd5b2-9258-4b00-9b67-a043eb7756ce",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T12:08:59.699519Z",
+          "last_activity_at": "2026-11-21T12:16:11.829079Z",
+          "ended_at": "2026-11-21T12:16:11.829079Z",
+          "outcome": {
+            "summary": "Re-review of 0bd8bc5c7 (delta from cae4fd591). Finding 1 is fixed. In on_timer (.driver:1897-1910), a failed poll while global_mode != IDLE or the coordinates are BUSY now publishes BUSY through synscan_set_coordinate_state()/indigo_update_coordinates() for up to POSITION_READ_RETRIES=2 consecutive failures, and ALERT on the third or when idle. position_failures is reset on every successful synscan_read_mount_coordinates() and at configure. I re-ran my probe from the first review against this candidate in a scratch copy, with Makefile.inc retargeted and only the scratch dylibs loaded (verified with DYLD_PRINT_LIBRARIES): one ':j2 !0' fault in the last 1.1 s of a 9 s GoTo gave 0 of 16 GoTos that completed without a failure stop ending in ALERT. On cae4fd591 it was 8 of 16 and on master 8 of 8 OK. Traces now read |BB|O|O (failed poll kept BUSY, then OK); the 4 ALERTs had their fault consumed by the finalizer's readback, a real failure with :L1/:L2. Finding 2 is fixed: the poll condition is back to IDLE && !sync_pending, and the slew branch still clears sync_pending, which is harmless. The three new cases fail on the cae4fd591 driver and pass on 0bd8bc5c7 (I ran both in scratch). They are event-driven: the gate is queued from the failed poll's own publication, with bounded waits. The .c delta mirrors the .driver delta; version stays 27, MIGRATION_STATUS is 117 / 21 with the Comment column untouched, and the record line matches. Leaving out a park case is acceptable: the retry decision does not depend on the kind of motion (global_mode != IDLE covers PARKING), and GoTo plus home exercise it. Gated homing case (claim 4): the diagnosis is right. With the gate released from the test thread, the home finalizer (TIME, due 0.2 s after the home handler) can run ahead of the queued GoTo handler (NORMAL). It ends the homing (global_mode IDLE, no claim) and publishes OK over the admitted request's BUSY; the handler then refuses with 'Mount is moving' after the motion has ended: B",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 432129.56,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T10:55:29.963716Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T11:15:17.279082Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "BLOCKING 1 (regression introduced by this diff): synscan_set_coordinate_state() (indigo_mount_synscan.driver:1023, .c:1092) now publishes through indigo_update_coordinates(), and the on_timer failed-poll path still uses it (.driver:1898, .c:2027). A failed position poll during a GoTo/park/home/auto home follows the BUSY last published by indigo_update_coordinates(), so it sets the keep-ALERT flag. If the next coordinates publication is the finalizer's success (no BUSY poll in between), the successful motion's OK becomes a kept ALERT that stays until the next request. This is the case indigo_mount_driver.h:619 says must not be kept (a failed readback). Reproduced in a scratch copy with a probe case: a 70 deg GoTo (9.2 s), one ':j2 !0' fault armed 0.3-1.1 s before the end. On the candidate, 8 of 16 and 3 of 8 GoTos that completed without any failure stop (no :L1/:L2) ended ALERT. Typical trace: |B|B..|BA|A|A|A (failed poll A, then the finalizer and every later poll A). The same probe on the master driver gave 8 of 8 OK (|BA|O|O|O). Fix: keep the failed poll out of the keep-ALERT machine while a motion is running. Either publish its ALERT as before (indigo_update_property() of the equatorial and horizontal coordinates, which the library documents as not seen by the machine), or keep BUSY while global_mode != IDLE and report the read failure as a message. Keep synscan_set_coordinate_state() for real motion ends. Add an event-driven case: a single failed position poll during a GoTo (and ideally a home) that then completes must end OK. BLOCKING 2 (requested hardening, should be dropped): the poll condition IDLE && !(sync_pending && state == BUSY) (.driver:959, .c:1028) makes the sync claim ineffective in exactly the window it exists for. change_property runs under bus_mutex and the poll under the device mutex, so they run concurrently. A poll that reads sync_pending=true before INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE assigns BUSY now computes OK and can write and p"
+        },
+        {
+          "at": "2026-11-21T12:08:59.699519Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T12:16:11.829079Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Re-review of 0bd8bc5c7 (delta from cae4fd591). Finding 1 is fixed. In on_timer (.driver:1897-1910), a failed poll while global_mode != IDLE or the coordinates are BUSY now publishes BUSY through synscan_set_coordinate_state()/indigo_update_coordinates() for up to POSITION_READ_RETRIES=2 consecutive failures, and ALERT on the third or when idle. position_failures is reset on every successful synscan_read_mount_coordinates() and at configure. I re-ran my probe from the first review against this candidate in a scratch copy, with Makefile.inc retargeted and only the scratch dylibs loaded (verified with DYLD_PRINT_LIBRARIES): one ':j2 !0' fault in the last 1.1 s of a 9 s GoTo gave 0 of 16 GoTos that completed without a failure stop ending in ALERT. On cae4fd591 it was 8 of 16 and on master 8 of 8 OK. Traces now read |BB|O|O (failed poll kept BUSY, then OK); the 4 ALERTs had their fault consumed by the finalizer's readback, a real failure with :L1/:L2. Finding 2 is fixed: the poll condition is back to IDLE && !sync_pending, and the slew branch still clears sync_pending, which is harmless. The three new cases fail on the cae4fd591 driver and pass on 0bd8bc5c7 (I ran both in scratch). They are event-driven: the gate is queued from the failed poll's own publication, with bounded waits. The .c delta mirrors the .driver delta; version stays 27, MIGRATION_STATUS is 117 / 21 with the Comment column untouched, and the record line matches. Leaving out a park case is acceptable: the retry decision does not depend on the kind of motion (global_mode != IDLE covers PARKING), and GoTo plus home exercise it. Gated homing case (claim 4): the diagnosis is right. With the gate released from the test thread, the home finalizer (TIME, due 0.2 s after the home handler) can run ahead of the queued GoTo handler (NORMAL). It ends the homing (global_mode IDLE, no claim) and publishes OK over the admitted request's BUSY; the handler then refuses with 'Mount is moving' after the motion has ended: B"
+        }
+      ],
+      "result": {
+        "summary": "Re-review of 0bd8bc5c7 (delta from cae4fd591). Finding 1 is fixed. In on_timer (.driver:1897-1910), a failed poll while global_mode != IDLE or the coordinates are BUSY now publishes BUSY through synscan_set_coordinate_state()/indigo_update_coordinates() for up to POSITION_READ_RETRIES=2 consecutive failures, and ALERT on the third or when idle. position_failures is reset on every successful synscan_read_mount_coordinates() and at configure. I re-ran my probe from the first review against this candidate in a scratch copy, with Makefile.inc retargeted and only the scratch dylibs loaded (verified with DYLD_PRINT_LIBRARIES): one ':j2 !0' fault in the last 1.1 s of a 9 s GoTo gave 0 of 16 GoTos that completed without a failure stop ending in ALERT. On cae4fd591 it was 8 of 16 and on master 8 of 8 OK. Traces now read |BB|O|O (failed poll kept BUSY, then OK); the 4 ALERTs had their fault consumed by the finalizer's readback, a real failure with :L1/:L2. Finding 2 is fixed: the poll condition is back to IDLE && !sync_pending, and the slew branch still clears sync_pending, which is harmless. The three new cases fail on the cae4fd591 driver and pass on 0bd8bc5c7 (I ran both in scratch). They are event-driven: the gate is queued from the failed poll's own publication, with bounded waits. The .c delta mirrors the .driver delta; version stays 27, MIGRATION_STATUS is 117 / 21 with the Comment column untouched, and the record line matches. Leaving out a park case is acceptable: the retry decision does not depend on the kind of motion (global_mode != IDLE covers PARKING), and GoTo plus home exercise it. Gated homing case (claim 4): the diagnosis is right. With the gate released from the test thread, the home finalizer (TIME, due 0.2 s after the home handler) can run ahead of the queued GoTo handler (NORMAL). It ends the homing (global_mode IDLE, no claim) and publishes OK over the admitted request's BUSY; the handler then refuses with 'Mount is moving' after the motion has ended: B",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1619444.926,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "3907786e-c4d5-4108-bba2-fe0a1414f856",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:04.046099Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "303743e3-b6bd-4712-984a-f44ee690f719",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T17:02:38.118559Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "621725d9-a38a-45b2-84c1-10a1778605c9",
+      "event": "task/progress",
+      "at": "2026-11-21T09:03:25.576554Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Implementation started on branch ticket/3beb3554-f847-4155-b5e7-5bed700096f0"
+    },
+    {
+      "event_id": "0780219b-161d-4145-b5e8-e3ee7ba6ea39",
+      "event": "ticket/started",
+      "at": "2026-11-21T09:03:25.578290Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/3beb3554-f847-4155-b5e7-5bed700096f0",
+      "base": "master"
+    },
+    {
+      "event_id": "ae0aa49f-8303-4c03-b7a4-4b2dc9c6cb67",
+      "event": "task/progress",
+      "at": "2026-11-21T09:04:10.864242Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Implementer launched",
+      "attempt_id": "a4b37886-dc9e-4b94-8fb8-23209a316331",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6302255c-278a-48f4-8953-160b813e45e3",
+      "event": "task/progress",
+      "at": "2026-11-21T09:08:21.069608Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Writing simulator reproducers for the GoTo, finalizer and abort coordinates ALERT exits"
+    },
+    {
+      "event_id": "4b31c951-a828-4db9-9244-11b5245a067a",
+      "event": "task/progress",
+      "at": "2026-11-21T09:11:25.498896Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Running new keeps_alert cases against the unchanged driver (expected to fail)"
+    },
+    {
+      "event_id": "bf388294-5a72-44a6-a3ec-09acae70556b",
+      "event": "task/progress",
+      "at": "2026-11-21T09:15:24.944671Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Driver fixed (v27); rerunning the keeps_alert cases"
+    },
+    {
+      "event_id": "63249bbf-ffde-48f4-a85b-d6bbdba24378",
+      "event": "task/progress",
+      "at": "2026-11-21T09:17:54.056771Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Running recorded non-interactive simulator run: run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "1558b2a6-c0b5-4c4f-a6ed-7f87189d06b6",
+      "event": "task/progress",
+      "at": "2026-11-21T09:18:04.952880Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Waiting for the recorded simulator run to finish"
+    },
+    {
+      "event_id": "21c0444e-59e9-49c2-8aef-a8f0433aa70b",
+      "event": "task/progress",
+      "at": "2026-11-21T09:38:04.330966Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Investigating failure of synscan_mount_goto_admitted_during_homing_is_refused (repeat runs)"
+    },
+    {
+      "event_id": "cf47c4fa-1c00-4ffb-8824-c725ddbf2e00",
+      "event": "task/progress",
+      "at": "2026-11-21T09:43:42.195815Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Reproducing the gate/poll race of goto_admitted_during_homing with a temporary delay"
+    },
+    {
+      "event_id": "51884972-e992-4788-ad76-0fded75f4a62",
+      "event": "task/progress",
+      "at": "2026-11-21T10:09:58.437679Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Gate of the home-busy hook made urgent; repeating the two gated home cases"
+    },
+    {
+      "event_id": "87fde8c1-2397-4b7d-9465-6a933ff17c1d",
+      "event": "task/progress",
+      "at": "2026-11-21T10:10:30.548528Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Rerunning the full recorded simulator run: run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "e7d7fb7e-ed17-4481-a3a9-edd6fb26d459",
+      "event": "ticket/note",
+      "at": "2026-11-21T10:54:07.533768Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementer record (driver version 26 -> 27).\nDefects (all published MOUNT_EQUATORIAL_COORDINATES ALERT after a BUSY with indigo_update_property(), so indigo_update_coordinates() did not keep it and the next poll published OK; the horizontal coordinates were published after the equatorial ones or not at all):\n- GoTo handler, slew refused by the controller: INDIGO_UPDATE_PROPERTY_STATE(...ALERT, 'Slew failed, %s.') -> indigo_reject_coordinates_change(device, 'Slew failed, %s.', reason).\n- synscan_set_coordinate_state() (used by the GoTo, park and home finalizer failures, the abort of an auto home, auto home start/finish and the failed poll) published with indigo_update_property() -> now sets the state and calls indigo_update_coordinates(device, NULL).\n- MOUNT_ABORT_MOTION of a BUSY GoTo/park: INDIGO_UPDATE_PROPERTY_STATE(...ALERT) -> synscan_set_coordinate_state(ALERT).\nHardening from the ticket: the poll keeps BUSY for sync_pending only while the property is BUSY; the slew branch of on_change_request clears sync_pending. No reproducer exists for these: no current path leaves sync_pending stale (defensive only).\nReproduction before the fix (unchanged driver, new cases, INDIGO_TEST_FILTER=keeps_alert): 7/7 failed, e.g. 'RO HB EB EA HA RO HO EO ...' (ALERT published before its horizontal coordinates, next polls OK). After the fix 7/7 pass.\nNew cases: synscan_mount_refused_goto_keeps_alert, synscan_mount_failed_goto_keeps_alert, synscan_mount_failed_park_keeps_alert, synscan_mount_failed_home_keeps_alert, synscan_mount_aborted_goto_keeps_alert, synscan_mount_aborted_park_keeps_alert, synscan_mount_aborted_autohome_keeps_alert. MIGRATION_STATUS count 107 -> 114 / 21.\nHarness defect found by the first recorded run (114/113, synscan_mount_goto_admitted_during_homing_is_refused, intermittent: 4/4 passed alone): the gate queued from the home-busy hook was a NORMAL task, so a due poll or the home finalizer (TIME priority) could run before it and end or mark the homing before ",
+      "tokens": null
+    },
+    {
+      "event_id": "d4aeff89-5ada-44b3-a4f8-d82b8d92988e",
+      "event": "task/progress",
+      "at": "2026-11-21T10:54:14.397385Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d921ecc4-ca0a-4e4d-a52f-a3bd426b931b",
+      "event": "task/progress",
+      "at": "2026-11-21T10:54:14.424300Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "9a95ce79-097f-4952-a2c4-1624c36c77cc",
+      "event": "check/passed",
+      "at": "2026-11-21T10:54:14.425961Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "cae4fd591794b2ce8e54520ad5f4f0665a16bcaf",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a107ff7b-b5f3-4fd1-aa80-95e30b9e5d22",
+      "event": "task/progress",
+      "at": "2026-11-21T10:54:29.284342Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Implementation done: recorded run 114/114 OK, flow check passed; ready for review"
+    },
+    {
+      "event_id": "104d25fd-bd80-455a-81af-2033713414b9",
+      "event": "task/progress",
+      "at": "2026-11-21T10:55:29.963777Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Review started"
+    },
+    {
+      "event_id": "3966a56f-3c39-4e40-a93d-66420e53e4a7",
+      "event": "review/started",
+      "at": "2026-11-21T10:55:29.964903Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "ce68779a-a05d-4e3b-b33a-0aad57ad1026",
+      "event": "task/progress",
+      "at": "2026-11-21T10:55:35.645293Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Reviewer launched",
+      "attempt_id": "290605bf-5814-478a-bae6-758f5dfe0fa9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "02e7880b-d9aa-47be-b02a-2949b7f46c7c",
+      "event": "task/progress",
+      "at": "2026-11-21T10:57:32.859337Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Building scratch copy to probe failed poll at GoTo end"
+    },
+    {
+      "event_id": "80119c74-57a0-4eb3-b1c8-211c53497725",
+      "event": "task/progress",
+      "at": "2026-11-21T10:58:40.476990Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Running scratch probe: failed poll right before GoTo completion"
+    },
+    {
+      "event_id": "2da2cb0f-8ce2-484e-8207-508fa7172530",
+      "event": "task/progress",
+      "at": "2026-11-21T11:11:57.311110Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Running probe and keeps_alert cases against the master driver in scratch"
+    },
+    {
+      "event_id": "57a32b12-d0be-4770-aa9c-7eb83dff9c22",
+      "event": "task/progress",
+      "at": "2026-11-21T11:15:17.279181Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "21145d6a-95bf-4ca0-ab25-02bb5a680f48",
+      "event": "task/progress",
+      "at": "2026-11-21T11:15:17.279204Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "f3151f6e-c5ad-453f-b18d-283e388b9b56",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T11:15:17.280456Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "cae4fd591794b2ce8e54520ad5f4f0665a16bcaf"
+    },
+    {
+      "event_id": "168f29c5-e7a2-4391-8d4a-7736a8d2b924",
+      "event": "task/progress",
+      "at": "2026-11-21T11:16:15.562069Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Addressing review: poll read-failure retries and revert of poll sync_pending condition"
+    },
+    {
+      "event_id": "9a6c9525-61ad-4983-ac9f-0e3d2222396d",
+      "event": "task/progress",
+      "at": "2026-11-21T11:21:36.873252Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Running new failed-poll cases against the reviewed candidate driver (expected to fail)"
+    },
+    {
+      "event_id": "59cb9d43-b267-40bd-a805-ef34232db671",
+      "event": "task/progress",
+      "at": "2026-11-21T11:24:12.751045Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Driver regenerated with poll read retries; running failed-poll and keeps_alert cases"
+    },
+    {
+      "event_id": "06e3c224-1bfc-4275-a232-45ad2146ca0b",
+      "event": "task/progress",
+      "at": "2026-11-21T11:26:52.705806Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Recorded simulator run after review fixes: run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "baa03f7f-d682-455a-83d4-a8b54cc705cd",
+      "event": "task/progress",
+      "at": "2026-11-21T11:46:59.199702Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "goto_admitted_during_homing: reproducing release latency race with a temporary 300 ms delay"
+    },
+    {
+      "event_id": "ada8f91a-bb8f-41a5-8078-8548ed3de62e",
+      "event": "task/progress",
+      "at": "2026-11-21T11:47:36.418552Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Homing gate released from the BUSY publication; rerunning the full recorded simulator run"
+    },
+    {
+      "event_id": "7834f9a3-590a-4f77-bc57-25efccd39cd4",
+      "event": "ticket/note",
+      "at": "2026-11-21T12:08:19.689235Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review round 1 fixes (version stays 27).\n1. Failed position poll during a motion: added POSITION_READ_RETRIES 2 and PRIVATE_DATA->position_failures (reset on every successful synscan_read_mount_coordinates() and in synscan_configure()). on_timer: on a failed read the counter is incremented; while global_mode != IDLE or the coordinates are BUSY and failures <= 2 the poll publishes BUSY through synscan_set_coordinate_state()/indigo_update_coordinates(), otherwise ALERT (third consecutive failure, or nothing running). No indigo_update_property() for coordinates.\n2. Reverted the poll condition to 'global_mode == IDLE && !sync_pending'; clearing sync_pending in the slew branch of on_change_request stays.\nNew cases (event-driven: the fault ':j2 !0' is consumed by a poll during the motion, since the finalizer reads positions only after the stop; the publication of that failed poll queues an urgent gate that holds the queue while the axes reach the target, so the finalizer, due before the next poll, ends the motion next): synscan_mount_goto_survives_a_failed_poll, synscan_mount_home_survives_a_failed_poll, synscan_mount_failed_polls_end_goto_alert (':j2 !0 1000' during a 60 deg GoTo: two failed polls BUSY, ALERT from the third on). Park left out: a successful park writes the park file that later cases restore at connect.\nBefore (reviewed candidate cae4fd591 driver): all 3 failed - GoTo/home 'RO HB EB HA EA RO HA EA RO HA EA' (failed poll ALERT, successful arrival kept ALERT); persistent 'RO HB EB HA EA HA EA ...' (ALERT on the first failure). After: all 3 pass; keeps_alert cases, publishes_failed_poll_and_recovers and sync_publishes_busy_and_keeps_a_refusal pass.\nHarness: recorded run 3 failed synscan_mount_goto_admitted_during_homing_is_refused as 'B, O, A...' : the test released its gate only after its own thread saw the request BUSY; when that took more than 0.2 s the home finalizer (time priority) ran before the request's change handler and published OK over the admitte",
+      "tokens": null
+    },
+    {
+      "event_id": "0dacb866-7a74-4dba-ac8f-15506f4a1851",
+      "event": "task/progress",
+      "at": "2026-11-21T12:08:20.020486Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5c58f012-e377-4ea2-b59a-14a8d8f26898",
+      "event": "task/progress",
+      "at": "2026-11-21T12:08:20.047600Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f0593fff-bb97-432b-9771-c09bdf59d653",
+      "event": "check/passed",
+      "at": "2026-11-21T12:08:20.050053Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "0bd8bc5c7ea61679974eb355406fbb534004f804",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "ecd215f6-6c59-41b7-804c-123170f9b092",
+      "event": "task/progress",
+      "at": "2026-11-21T12:08:26.384919Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d827da51-a5ab-4462-8b41-d5ffe07bd696",
+      "text": "Review fixes done: recorded run 117/117 OK, flow check passed; ready for re-review"
+    },
+    {
+      "event_id": "d6b60cb3-fa30-493f-8623-3ea3a7cdbcd3",
+      "event": "task/progress",
+      "at": "2026-11-21T12:08:59.699593Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a44c72a5-bb2c-412d-918d-1a144cec69ee",
+      "event": "review/started",
+      "at": "2026-11-21T12:08:59.700875Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "8a8e278f-9ae6-4da4-a415-2504336cf311",
+      "event": "task/progress",
+      "at": "2026-11-21T12:09:09.635109Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Re-review of 0bd8bc5c7 started",
+      "attempt_id": "349cd5b2-9258-4b00-9b67-a043eb7756ce",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0a4cf899-c122-4c66-9913-8ee6a05e4ba1",
+      "event": "task/progress",
+      "at": "2026-11-21T12:10:52.295369Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Re-running failed-poll probe on 0bd8bc5c7 in scratch"
+    },
+    {
+      "event_id": "533e7eaf-08d0-4b2a-9866-f6c13cd47833",
+      "event": "task/progress",
+      "at": "2026-11-21T12:16:11.829169Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "679f118d-f8ff-4d45-81b0-f4d7a68b3c9b",
+      "event": "review/passed",
+      "at": "2026-11-21T12:16:11.830636Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ab2d553a-4a99-47f6-9b5c-30496979c8e0",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0bd8bc5c7ea61679974eb355406fbb534004f804"
+    },
+    {
+      "event_id": "25cc1f54-9a13-4098-b2d8-6ca1a65afbdb",
+      "event": "ticket/closed",
+      "at": "2026-11-21T12:16:32.934605Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-21T12:16:32.934581Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "29699289175dbe3d2b1da39884e166f606b9b923"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "cae4fd591794b2ce8e54520ad5f4f0665a16bcaf",
+        "tree": "25432407671e1d66632ddb6b39e2dfd7a1a5db6d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T10:54:14.423595Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/3beb3554-f847-4155-b5e7-5bed700096f0/25432407671e-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0bd8bc5c7ea61679974eb355406fbb534004f804",
+        "tree": "1316647cc594e79b1dff5c157ad3e3d46b263247",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T12:08:20.046754Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/3beb3554-f847-4155-b5e7-5bed700096f0/1316647cc594-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "BLOCKING 1 (regression introduced by this diff): synscan_set_coordinate_state() (indigo_mount_synscan.driver:1023, .c:1092) now publishes through indigo_update_coordinates(), and the on_timer failed-poll path still uses it (.driver:1898, .c:2027). A failed position poll during a GoTo/park/home/auto home follows the BUSY last published by indigo_update_coordinates(), so it sets the keep-ALERT flag. If the next coordinates publication is the finalizer's success (no BUSY poll in between), the successful motion's OK becomes a kept ALERT that stays until the next request. This is the case indigo_mount_driver.h:619 says must not be kept (a failed readback). Reproduced in a scratch copy with a probe case: a 70 deg GoTo (9.2 s), one ':j2 !0' fault armed 0.3-1.1 s before the end. On the candidate, 8 of 16 and 3 of 8 GoTos that completed without any failure stop (no :L1/:L2) ended ALERT. Typical trace: |B|B..|BA|A|A|A (failed poll A, then the finalizer and every later poll A). The same probe on the master driver gave 8 of 8 OK (|BA|O|O|O). Fix: keep the failed poll out of the keep-ALERT machine while a motion is running. Either publish its ALERT as before (indigo_update_property() of the equatorial and horizontal coordinates, which the library documents as not seen by the machine), or keep BUSY while global_mode != IDLE and report the read failure as a message. Keep synscan_set_coordinate_state() for real motion ends. Add an event-driven case: a single failed position poll during a GoTo (and ideally a home) that then completes must end OK. BLOCKING 2 (requested hardening, should be dropped): the poll condition IDLE && !(sync_pending && state == BUSY) (.driver:959, .c:1028) makes the sync claim ineffective in exactly the window it exists for. change_property runs under bus_mutex and the poll under the device mutex, so they run concurrently. A poll that reads sync_pending=true before INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE assigns BUSY now computes OK and can write and publish OK over the accepted BUSY: the race the on_change_request comment at .driver:2054 describes. The implementer found no path that leaves sync_pending stale, so the change adds risk with no benefit; revert it. Clearing sync_pending in the slew branch (.driver:2060) is harmless (it only runs when the property is not BUSY) and may stay. VERIFIED OK: refused slew -> indigo_reject_coordinates_change() is right: the request's BUSY was already published through indigo_update_coordinates() by the copy macro, and the library contract (indigo_mount_driver.h:626-631) prescribes reject for every refusal after BUSY, consistent with the 'Mount is moving' path; the values stay the polled position and the targets the client's. The GoTo/park/home finalizer failures, the abort of a BUSY GoTo/park and the abort of an auto home are now kept with the horizontal coordinates published first in the same state. All 7 new *_keeps_alert cases fail on the master driver (HB EB EA ... RO HO EO) and pass with the fix; they are event-driven (property revisions, bounded fault-file waits). Version 26->27 in both .driver and .c; the .c hunks mirror the .driver hunks. The README/TEST_SUMMARY record is consistent, the MIGRATION_STATUS count is 107->114 with the Comment column untouched, and there are no library, generator or README prose edits. Formatting matches AGENTS.md. Harness fix: the diagnosis is sound. A NORMAL gate queued from the home-busy hook can be overtaken by due TIME tasks, the poll or the home finalizer 0.2 s later, ending the homing before the GoTo request. URGENT puts the gate right after the home handler, which is what both users of the hook (goto_admitted_during_homing and tracking_request_survives_home_finalizer) need. It hides no driver race: a GoTo processed after the homing ended is legitimately admitted. NON-BLOCKING, separate tickets: (a) mount_autohome_finish() publishes OK through synscan_update_mount_coordinates() before the failure ALERT (.driver:1531-1533, .c:1599), so a failed auto home is not kept. This is the same defect class but in the auto-home finalizer, which the ticket does not name; it also publishes the coordinates twice on success. (b) MOUNT_STATE slew light is computed in synscan_update_mount_coordinates() before indigo_update_coordinates() upgrades OK to the kept ALERT, so it shows IDLE while the coordinates show ALERT. This was already true for the sync and 'Mount is moving' refusals, and the fix becomes more visible with more kept ALERTs. (c) Library level: the keep-ALERT machine cannot tell a failed readback during a motion from an ALERT that ends the motion. Every driver that publishes failed polls through indigo_update_coordinates() during a slew has defect 1, so consider an owner ticket for the base class.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "cae4fd591794b2ce8e54520ad5f4f0665a16bcaf",
+        "tree": "25432407671e1d66632ddb6b39e2dfd7a1a5db6d",
+        "at": "2026-11-21T11:15:17.278912Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of 0bd8bc5c7 (delta from cae4fd591). Finding 1 is fixed. In on_timer (.driver:1897-1910), a failed poll while global_mode != IDLE or the coordinates are BUSY now publishes BUSY through synscan_set_coordinate_state()/indigo_update_coordinates() for up to POSITION_READ_RETRIES=2 consecutive failures, and ALERT on the third or when idle. position_failures is reset on every successful synscan_read_mount_coordinates() and at configure. I re-ran my probe from the first review against this candidate in a scratch copy, with Makefile.inc retargeted and only the scratch dylibs loaded (verified with DYLD_PRINT_LIBRARIES): one ':j2 !0' fault in the last 1.1 s of a 9 s GoTo gave 0 of 16 GoTos that completed without a failure stop ending in ALERT. On cae4fd591 it was 8 of 16 and on master 8 of 8 OK. Traces now read |BB|O|O (failed poll kept BUSY, then OK); the 4 ALERTs had their fault consumed by the finalizer's readback, a real failure with :L1/:L2. Finding 2 is fixed: the poll condition is back to IDLE && !sync_pending, and the slew branch still clears sync_pending, which is harmless. The three new cases fail on the cae4fd591 driver and pass on 0bd8bc5c7 (I ran both in scratch). They are event-driven: the gate is queued from the failed poll's own publication, with bounded waits. The .c delta mirrors the .driver delta; version stays 27, MIGRATION_STATUS is 117 / 21 with the Comment column untouched, and the record line matches. Leaving out a park case is acceptable: the retry decision does not depend on the kind of motion (global_mode != IDLE covers PARKING), and GoTo plus home exercise it. Gated homing case (claim 4): the diagnosis is right. With the gate released from the test thread, the home finalizer (TIME, due 0.2 s after the home handler) can run ahead of the queued GoTo handler (NORMAL). It ends the homing (global_mode IDLE, no claim) and publishes OK over the admitted request's BUSY; the handler then refuses with 'Mount is moving' after the motion has ended: B, O, A. This is a real driver defect, but it is pre-existing: master has the identical on_change_request (claims only a sync or a slew from IDLE) and the identical poll condition, and the case already raced on master (it came in with 24e4f7a93). This ticket did not introduce it. The test change does not weaken what the case was written for: it was meant to have the handler run during the homing, and releasing the gate from the BUSY publication restores that. However, it removes the case's accidental intermittent exposure of the defect, so the defect must be registered as a separate ticket. Suggested scope: a coordinates request admitted while park/home/auto home runs is claimed by nothing, so the motion's finalizer or the next poll publishes OK over its BUSY before the handler refuses it, with a misleading reason after the motion ended. Possible fixes: refuse it before BUSY in on_change_request, or claim every admitted request until its handler runs. NON-BLOCKING: (i) position_failures is not reset when a motion starts, so failed idle polls carry over into the next motion's retry budget; this matters only if reads were already failing, so it is minor. (ii) poll_failure_during_motion holds the queue with a fixed 3.5 s sleep while the simulator finishes the motion; the gate releases itself after about 5 s, so there is margin, but it is a timed wait. (iii) Still open from the first review, as separate tickets: the failed auto home publishes OK before its ALERT; the MOUNT_STATE slew light shows IDLE while the coordinates show a kept ALERT; and the keep-ALERT logic in the base class cannot tell a failed readback during a motion from an ALERT that ends the motion.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "0bd8bc5c7ea61679974eb355406fbb534004f804",
+        "tree": "1316647cc594e79b1dff5c157ad3e3d46b263247",
+        "at": "2026-11-21T12:16:11.828924Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-21T10:54:07.532318Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementer record (driver version 26 -> 27).\nDefects (all published MOUNT_EQUATORIAL_COORDINATES ALERT after a BUSY with indigo_update_property(), so indigo_update_coordinates() did not keep it and the next poll published OK; the horizontal coordinates were published after the equatorial ones or not at all):\n- GoTo handler, slew refused by the controller: INDIGO_UPDATE_PROPERTY_STATE(...ALERT, 'Slew failed, %s.') -> indigo_reject_coordinates_change(device, 'Slew failed, %s.', reason).\n- synscan_set_coordinate_state() (used by the GoTo, park and home finalizer failures, the abort of an auto home, auto home start/finish and the failed poll) published with indigo_update_property() -> now sets the state and calls indigo_update_coordinates(device, NULL).\n- MOUNT_ABORT_MOTION of a BUSY GoTo/park: INDIGO_UPDATE_PROPERTY_STATE(...ALERT) -> synscan_set_coordinate_state(ALERT).\nHardening from the ticket: the poll keeps BUSY for sync_pending only while the property is BUSY; the slew branch of on_change_request clears sync_pending. No reproducer exists for these: no current path leaves sync_pending stale (defensive only).\nReproduction before the fix (unchanged driver, new cases, INDIGO_TEST_FILTER=keeps_alert): 7/7 failed, e.g. 'RO HB EB EA HA RO HO EO ...' (ALERT published before its horizontal coordinates, next polls OK). After the fix 7/7 pass.\nNew cases: synscan_mount_refused_goto_keeps_alert, synscan_mount_failed_goto_keeps_alert, synscan_mount_failed_park_keeps_alert, synscan_mount_failed_home_keeps_alert, synscan_mount_aborted_goto_keeps_alert, synscan_mount_aborted_park_keeps_alert, synscan_mount_aborted_autohome_keeps_alert. MIGRATION_STATUS count 107 -> 114 / 21.\nHarness defect found by the first recorded run (114/113, synscan_mount_goto_admitted_during_homing_is_refused, intermittent: 4/4 passed alone): the gate queued from the home-busy hook was a NORMAL task, so a due poll or the home finalizer (TIME priority) could run before it and end or mark the homing before the GoTo was requested. The gate of that hook is now URGENT. Shown with a temporary 1.1 s delay in the hook: NORMAL gate failed at the BUSY wait, URGENT gate got past it (the delay itself then put a poll between BUSY and the refusal, an artifact of the delay); without the delay 3/3 + 3/3 of both gated home cases passed.\nFinal recorded run (non-interactive simulator, python3 tools/run_driver_test.py mount_synscan): 2026-11-21 11:35 3.0.0.27 mac arm64 simulator 114/114 OK. Generated outputs reproducible with a generator built from the worktree. No hardware run.\nLeft as found (out of scope): mount_autohome_finish() publishes OK through synscan_update_mount_coordinates() before its failure ALERT, so a failed auto home ALERT is not kept; MOUNT_STATE slew light is computed before indigo_update_coordinates() applies a kept ALERT, so polls show the light IDLE while the coordinates stay ALERT (an existing case asserts IDLE).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T12:08:19.687950Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review round 1 fixes (version stays 27).\n1. Failed position poll during a motion: added POSITION_READ_RETRIES 2 and PRIVATE_DATA->position_failures (reset on every successful synscan_read_mount_coordinates() and in synscan_configure()). on_timer: on a failed read the counter is incremented; while global_mode != IDLE or the coordinates are BUSY and failures <= 2 the poll publishes BUSY through synscan_set_coordinate_state()/indigo_update_coordinates(), otherwise ALERT (third consecutive failure, or nothing running). No indigo_update_property() for coordinates.\n2. Reverted the poll condition to 'global_mode == IDLE && !sync_pending'; clearing sync_pending in the slew branch of on_change_request stays.\nNew cases (event-driven: the fault ':j2 !0' is consumed by a poll during the motion, since the finalizer reads positions only after the stop; the publication of that failed poll queues an urgent gate that holds the queue while the axes reach the target, so the finalizer, due before the next poll, ends the motion next): synscan_mount_goto_survives_a_failed_poll, synscan_mount_home_survives_a_failed_poll, synscan_mount_failed_polls_end_goto_alert (':j2 !0 1000' during a 60 deg GoTo: two failed polls BUSY, ALERT from the third on). Park left out: a successful park writes the park file that later cases restore at connect.\nBefore (reviewed candidate cae4fd591 driver): all 3 failed - GoTo/home 'RO HB EB HA EA RO HA EA RO HA EA' (failed poll ALERT, successful arrival kept ALERT); persistent 'RO HB EB HA EA HA EA ...' (ALERT on the first failure). After: all 3 pass; keeps_alert cases, publishes_failed_poll_and_recovers and sync_publishes_busy_and_keeps_a_refusal pass.\nHarness: recorded run 3 failed synscan_mount_goto_admitted_during_homing_is_refused as 'B, O, A...' : the test released its gate only after its own thread saw the request BUSY; when that took more than 0.2 s the home finalizer (time priority) ran before the request's change handler and published OK over the admitted BUSY. The gate is now released from the client callback of the request's BUSY publication. Shown with a temporary 300 ms delay before the old release: old release fails with the same B, O, A sequence, callback release passes. Underlying driver behaviour (poll or finalizer can publish OK over an admitted coordinates request that claimed neither a sync nor a slew) left as found - for the owner.\nMIGRATION_STATUS 117 / 21. Final recorded run: 2026-11-21 12:48 3.0.0.27 mac arm64 simulator 117/117 OK. Generated outputs reproducible.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "29699289175dbe3d2b1da39884e166f606b9b923",
+      "tree": "1316647cc594e79b1dff5c157ad3e3d46b263247",
+      "base": "master",
+      "at": "2026-11-21T12:16:32.843552Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:04.045353Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T17:02:38.118419Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 11566252.531,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 54,
+    "sha256": "c65755fc5535d206c20a344c88bc43812ff9a1dad04c3160d669c73825a6e430"
+  }
+}
