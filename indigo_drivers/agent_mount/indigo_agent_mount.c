@@ -25,7 +25,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0300001F
+#define DRIVER_VERSION 0x03000020
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -197,7 +197,7 @@ typedef struct {
 	bool mount_park_unparked_item;
 	unsigned mount_park_updates;
 	double mount_goto_ra, mount_goto_dec;
-	bool mount_goto_pending, mount_goto_accepted;
+	bool mount_goto_pending, mount_goto_accepted, mount_goto_sync;
 	bool mount_tracking, mount_stopped;
 	bool mount_homing, mount_homed;
 	double mount_target_ra, mount_target_dec;
@@ -411,6 +411,7 @@ static void mount_dome_control(indigo_device *device, bool control_dome, bool co
 		DEVICE_PRIVATE_DATA->mount_goto_ra = target_ra;
 		DEVICE_PRIVATE_DATA->mount_goto_dec = target_dec;
 		DEVICE_PRIVATE_DATA->mount_goto_accepted = false;
+		DEVICE_PRIVATE_DATA->mount_goto_sync = operation == MOUNT_DOME_CONTROL_SYNC;
 		DEVICE_PRIVATE_DATA->mount_goto_pending = true;
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	}
@@ -494,11 +495,14 @@ static void mount_dome_control(indigo_device *device, bool control_dome, bool co
 	DEVICE_PRIVATE_DATA->mount_goto_pending = false;
 	/* A mount that reports OK is believed only when it is where it was sent: a request that was dropped (e.g. while the mount was BUSY with
 	   an unpark) and a slew that stopped short end OK as well. A slew that was never accepted (no BUSY with its target) and did not move the
-	   mount failed even when the target is within the tolerance, unless the mount was at the target already. */
+	   mount failed even when the target is within the tolerance, unless the mount was at the target already. A sync that was never accepted
+	   (no publication with its coordinates as targets) failed: the OK is that of another operation, e.g. a slew that refused the sync. */
 	char failure[INDIGO_VALUE_SIZE] = { 0 };
 	if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_OK_STATE) {
 		double distance = angular_distance(DEVICE_PRIVATE_DATA->mount_ra, DEVICE_PRIVATE_DATA->mount_dec, target_ra, target_dec);
-		if (distance > TARGET_TOLERANCE) {
+		if (operation == MOUNT_DOME_CONTROL_SYNC && !DEVICE_PRIVATE_DATA->mount_goto_accepted) {
+			snprintf(failure, sizeof(failure), "Mount did not accept the sync");
+		} else if (distance > TARGET_TOLERANCE) {
 			snprintf(failure, sizeof(failure), "Mount did not reach the target, it is %.1f' away", distance * 60);
 		} else if (operation == MOUNT_DOME_CONTROL_SLEW && !DEVICE_PRIVATE_DATA->mount_goto_accepted && angular_distance(DEVICE_PRIVATE_DATA->mount_ra, DEVICE_PRIVATE_DATA->mount_dec, start_ra, start_dec) < POSITION_UNCHANGED && angular_distance(start_ra, start_dec, target_ra, target_dec) >= POSITION_UNCHANGED) {
 			snprintf(failure, sizeof(failure), "Mount did not start the slew");
@@ -1626,8 +1630,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				CLIENT_PRIVATE_DATA->mount_target_dec = item->number.target;
 			}
 		}
-		// the mount accepted the request of mount_dome_control(): BUSY with its target (a BUSY of an earlier operation has other targets)
-		if (CLIENT_PRIVATE_DATA->mount_goto_pending && property->state == INDIGO_BUSY_STATE && fabs(CLIENT_PRIVATE_DATA->mount_target_ra - CLIENT_PRIVATE_DATA->mount_goto_ra) < 1e-6 && fabs(CLIENT_PRIVATE_DATA->mount_target_dec - CLIENT_PRIVATE_DATA->mount_goto_dec) < 1e-6) {
+		// the mount accepted the request of mount_dome_control(): BUSY with its target (a BUSY of an earlier operation has other targets); a
+		// sync is also accepted by an OK with its target, from a driver that publishes its result without BUSY
+		if (CLIENT_PRIVATE_DATA->mount_goto_pending && (property->state == INDIGO_BUSY_STATE || (CLIENT_PRIVATE_DATA->mount_goto_sync && property->state == INDIGO_OK_STATE)) && fabs(CLIENT_PRIVATE_DATA->mount_target_ra - CLIENT_PRIVATE_DATA->mount_goto_ra) < 1e-6 && fabs(CLIENT_PRIVATE_DATA->mount_target_dec - CLIENT_PRIVATE_DATA->mount_goto_dec) < 1e-6) {
 			CLIENT_PRIVATE_DATA->mount_goto_accepted = true;
 		}
 		if (!CLIENT_PRIVATE_DATA->mount_state_defined) {
@@ -2343,7 +2348,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
-		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
+		INDIGO_REJECT_CHANGE_IF(AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE, AGENT_START_PROCESS_PROPERTY, "Mount is busy");
+		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			bool operation_selected = false;
 			for (int i = 0; i < AGENT_START_PROCESS_PROPERTY->count; i++) {

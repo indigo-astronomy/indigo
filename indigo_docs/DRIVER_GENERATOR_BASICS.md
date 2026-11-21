@@ -270,7 +270,7 @@ The dispatch macro is chosen as follows:
 | `GUIDER_GUIDE_RA`, `GUIDER_GUIDE_DEC` | `INDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE` (`..._ANYTIME` with `accept_while_busy`) | yes (no) | `TIME` |
 | anything else | `INDIGO_COPY_VALUES_PROCESS_CHANGE` | yes | `NORMAL` |
 
-The rows are tested top to bottom ([issue 13](#ki-13)). All asynchronous macros copy the request into the property, set it BUSY, publish it and queue the handler (see [Property Change Macros](TIMERS_AND_QUEUES.md#property-change-macros)). The busy guard silently ignores a request for a property that is already BUSY; do not duplicate it in `reject_change` or `on_change_request`.
+The rows are tested top to bottom ([issue 13](#ki-13)). All asynchronous macros copy the request into the property, set it BUSY, publish it and queue the handler (see [Property Change Macros](TIMERS_AND_QUEUES.md#property-change-macros)). The busy guard silently ignores a request for a property that is already BUSY, except for `MOUNT_EQUATORIAL_COORDINATES`: its macros answer such a request through `indigo_reject_change()` with a BUSY message ("Sync refused, the mount is busy" when `MOUNT_ON_COORDINATES_SET` is `SYNC`, "Mount is busy, the new coordinates are ignored" otherwise) and leave the running operation's state, values and targets alone. Do not duplicate the guard in `reject_change` or `on_change_request`.
 
 After all branches, if any property is `persistent`, a `CONFIG` branch saves those properties when `CONFIG.SAVE` is requested and then falls through; the function always ends with `indigo_<type>_change_property(device, client, property)`.
 

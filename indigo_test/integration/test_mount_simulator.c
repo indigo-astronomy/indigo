@@ -1703,6 +1703,44 @@ cleanup:
 	stop_serial_driver(&mount_simulator);
 }
 
+// A sync requested while a GoTo is BUSY is refused by the BUSY guard of the generated change branch with a BUSY message, and so is
+// another GoTo; neither touches the running slew: it stays BUSY with its own targets, ends OK at its own target, and the refused
+// sync adds no alignment point of the model (NEAREST_POINT, where an accepted sync would add one).
+static void mount_sync_during_goto_is_refused_with_busy_message(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	SERIAL_CHECK_TRUE(goto_hour_angle(2, 40));
+	SERIAL_CHECK_TRUE(set_mount_switch(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, alignment_point_count());
+	double slew_ra = fmod(current_lst() + 2 + 48, 24), slew_dec = 10;
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(slew_ra, slew_dec));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	// the slew has started: the handler of the GoTo has read the mode before it is switched to SYNC
+	SERIAL_CHECK_TRUE(wait_for_dec_to_leave(40));
+	int messages = context.busy_message_count;
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(fmod(slew_ra + 0.05, 24), slew_dec + 0.1));
+	SERIAL_CHECK_TRUE(wait_for_busy_message_after(messages));
+	SERIAL_CHECK_TRUE(!strcmp(context.busy_message, "Sync refused, the mount is busy"));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target - slew_ra) < 1e-6);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.target - slew_dec) < 1e-6);
+	messages = context.busy_message_count;
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(fmod(slew_ra + 1, 24), slew_dec + 20));
+	SERIAL_CHECK_TRUE(wait_for_busy_message_after(messages));
+	SERIAL_CHECK_TRUE(!strcmp(context.busy_message, "Mount is busy, the new coordinates are ignored"));
+	SERIAL_CHECK_TRUE(MOUNT_WAIT_UNTIL(cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) != INDIGO_BUSY_STATE, 30));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, slew_dec, 1e-6));
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target - slew_ra) < 1e-6);
+	SERIAL_CHECK_EQ_INT(0, alignment_point_count());
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
 // Disconnecting during a GOTO, park or homing stops it: nothing is published after the disconnect, and the next
 // session shows the mount not BUSY, not parked or at home, and the interrupted operation not as failed
 static void mount_disconnect_during_slew_park_and_home(void) {
@@ -2111,6 +2149,7 @@ int main(void) {
 		{ "mount_tracking_request_survives_home_end", mount_tracking_request_survives_home_end },
 		{ "mount_reconnect_publishes_device_state", mount_reconnect_publishes_device_state },
 		{ "mount_sync_publishes_busy_and_keeps_a_refusal", mount_sync_publishes_busy_and_keeps_a_refusal },
+		{ "mount_sync_during_goto_is_refused_with_busy_message", mount_sync_during_goto_is_refused_with_busy_message },
 		{ "mount_azimuth_at_the_pole_is_zero", mount_azimuth_at_the_pole_is_zero },
 		{ "mount_disconnect_during_slew_park_and_home", mount_disconnect_during_slew_park_and_home },
 		{ "mount_state_lights_follow_slew_completion", mount_state_lights_follow_slew_completion },

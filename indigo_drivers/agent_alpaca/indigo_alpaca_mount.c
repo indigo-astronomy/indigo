@@ -636,6 +636,11 @@ static indigo_alpaca_error alpaca_synctotarget(indigo_alpaca_device *device, int
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidWhileParked;
 	}
+	// a sync sent while the mount is slewing is refused by the driver and its wait would end with the slew, so it is refused here
+	if (device->mount.slewing) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidOperation;
+	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true);
 	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
@@ -715,6 +720,11 @@ static indigo_alpaca_error alpaca_synctocoordinates(indigo_alpaca_device *device
 	if (device->mount.atpark) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidWhileParked;
+	}
+	// a sync sent while the mount is slewing is refused by the driver and its wait would end with the slew, so it is refused here
+	if (device->mount.slewing) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidOperation;
 	}
 	if (rightascension < 0 || rightascension > 24) {
 		pthread_mutex_unlock(&device->mutex);

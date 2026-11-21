@@ -338,7 +338,11 @@ incoming values, set the property busy, update it, and dispatch the handler with
 `indigo_mount_driver.h` adds `INDIGO_COPY_VALUES_PROCESS_COORDINATES_CHANGE(handler)`
 and `INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(handler)` for
 `MOUNT_EQUATORIAL_COORDINATES`: the same busy guard, copy and dispatch, but the
-BUSY state is published through `indigo_update_coordinates()`. Its admission
+BUSY state is published through `indigo_update_coordinates()`, and a request
+arriving while the property is BUSY is answered through `indigo_reject_change()`
+with a BUSY message ("Sync refused, the mount is busy" for a sync, "Mount is
+busy, the new coordinates are ignored" otherwise) instead of being dropped
+silently; the running operation keeps its state, values and targets. Its admission
 refusal is `INDIGO_REJECT_COORDINATES_CHANGE_IF(condition, format, ...)`, the
 coordinates form of `INDIGO_REJECT_CHANGE_IF`: a property that is not BUSY is
 refused through `indigo_reject_coordinates_change()`, which keeps the ALERT

@@ -203,9 +203,13 @@ static indigo_result coordinates_update(indigo_client *client, indigo_device *de
 	return INDIGO_OK;
 }
 
+static char last_message[INDIGO_VALUE_SIZE], last_message_property[INDIGO_NAME_SIZE];
+
 static indigo_result coordinates_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (message != NULL && *message) {
 		all_messages++;
+		snprintf(last_message, sizeof(last_message), "%s", message);
+		snprintf(last_message_property, sizeof(last_message_property), "%s", property != NULL ? property->name : "");
 	}
 	if (property != NULL && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && message != NULL && *message) {
 		coordinates_messages++;
@@ -218,7 +222,7 @@ static indigo_client coordinates_client = { .name = "Coordinates state test clie
 
 static void reset_coordinates_log(void) {
 	equatorial_count = horizontal_count = coordinates_messages = all_messages = 0;
-	last_coordinates_message[0] = 0;
+	last_coordinates_message[0] = last_message[0] = last_message_property[0] = 0;
 }
 
 static indigo_device *attach_coordinates_device(indigo_device *device) {
@@ -481,6 +485,82 @@ static void reject_macro_on_busy_only_sends_message(void) {
 	ASSERT_STREQ("Refused by test", idle_message);
 }
 
+static int copy_handler_runs;
+
+static void copy_handler(indigo_device *device) {
+	copy_handler_runs++;
+}
+
+static void copy_coordinates_request(indigo_device *device, indigo_property *property, bool targets) {
+	if (targets) {
+		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(copy_handler);
+	} else {
+		INDIGO_COPY_VALUES_PROCESS_COORDINATES_CHANGE(copy_handler);
+	}
+}
+
+// A coordinates request arriving while the property is BUSY (a running GoTo, park or motion) is answered with a BUSY message
+// by both dispatch macros instead of being dropped silently: a sync gets "Sync refused, the mount is busy", any other request
+// "Mount is busy, the new coordinates are ignored". The running operation keeps its BUSY state, its values (the real position)
+// and its targets, nothing is published for the property, no handler is queued and the kept-ALERT flag is not touched.
+static void copy_macro_on_busy_refuses_with_message(void) {
+	indigo_device storage = { .name = "Audit Coordinates Copy Macro Test" };
+	indigo_device *device = attach_coordinates_device(&storage);
+	ASSERT_TRUE(device != NULL);
+	indigo_property *request = indigo_init_number_property(NULL, device->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	indigo_init_number_item(request->items + 0, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, NULL, 0, 24, 0, 10);
+	indigo_init_number_item(request->items + 1, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, NULL, -90, 90, 0, 20);
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = 1;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 2;
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = 3;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = 4;
+	// an earlier request failed (BUSY, ALERT), the flag is set; the running motion is BUSY but not published yet
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_coordinates(device, NULL);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_coordinates(device, NULL);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	copy_handler_runs = 0;
+	const struct { bool sync; bool targets; const char *message; } cases[] = { { true, true, "Sync refused, the mount is busy" }, { true, false, "Sync refused, the mount is busy" }, { false, true, "Mount is busy, the new coordinates are ignored" }, { false, false, "Mount is busy, the new coordinates are ignored" } };
+	int count = (int)(sizeof(cases) / sizeof(*cases));
+	int publications[sizeof(cases) / sizeof(*cases)], messages[sizeof(cases) / sizeof(*cases)];
+	char message[sizeof(cases) / sizeof(*cases)][INDIGO_VALUE_SIZE], message_property[sizeof(cases) / sizeof(*cases)][INDIGO_NAME_SIZE];
+	indigo_property_state states[sizeof(cases) / sizeof(*cases)];
+	bool flags[sizeof(cases) / sizeof(*cases)];
+	double values[sizeof(cases) / sizeof(*cases)][4];
+	for (int i = 0; i < count; i++) {
+		indigo_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY, cases[i].sync ? MOUNT_ON_COORDINATES_SET_SYNC_ITEM : MOUNT_ON_COORDINATES_SET_TRACK_ITEM, true);
+		reset_coordinates_log();
+		copy_coordinates_request(device, request, cases[i].targets);
+		publications[i] = equatorial_count;
+		messages[i] = all_messages;
+		snprintf(message[i], sizeof(message[i]), "%s", last_message);
+		snprintf(message_property[i], sizeof(message_property[i]), "%s", last_message_property);
+		states[i] = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+		flags[i] = MOUNT_CONTEXT->keep_coordinates_alert;
+		values[i][0] = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+		values[i][1] = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+		values[i][2] = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+		values[i][3] = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+	}
+	int handler_runs = copy_handler_runs;
+	indigo_release_property(request);
+	detach_coordinates_device(device);
+	for (int i = 0; i < count; i++) {
+		ASSERT_EQ_INT(0, publications[i]);
+		ASSERT_EQ_INT(1, messages[i]);
+		ASSERT_STREQ(cases[i].message, message[i]);
+		ASSERT_STREQ("BUSY", message_property[i]);
+		ASSERT_EQ_INT(INDIGO_BUSY_STATE, states[i]);
+		ASSERT_TRUE(flags[i]);
+		ASSERT_NEAR(1, values[i][0], 1e-12);
+		ASSERT_NEAR(2, values[i][1], 1e-12);
+		ASSERT_NEAR(3, values[i][2], 1e-12);
+		ASSERT_NEAR(4, values[i][3], 1e-12);
+	}
+	ASSERT_EQ_INT(0, handler_runs);
+}
+
 // The reason of a refusal and the message of a coordinates publication are text: a percent sign in them reaches the
 // client verbatim, it is not taken as a conversion of a format.
 static void coordinates_message_is_published_as_text(void) {
@@ -518,6 +598,7 @@ int main(void) {
 		{ "mount_sync_decides_without_publishing", mount_sync_decides_without_publishing },
 		{ "coordinates_refusal_is_kept_until_busy", coordinates_refusal_is_kept_until_busy },
 		{ "reject_macro_on_busy_only_sends_message", reject_macro_on_busy_only_sends_message },
+		{ "copy_macro_on_busy_refuses_with_message", copy_macro_on_busy_refuses_with_message },
 		{ "coordinates_message_is_published_as_text", coordinates_message_is_published_as_text }
 	};
 	int result = indigo_run_tests("Alignment file load", tests, sizeof(tests) / sizeof(*tests));

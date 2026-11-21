@@ -221,11 +221,93 @@ static void paired_guider_follows_alpaca_client_only(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
 }
 
+#define SYNC_MOUNT_NAME "Sync mount"
+
+static int sync_mount_requests;
+
+static void publish_mount_coordinates(const char *name, indigo_property_state state, double ra, double dec) {
+	indigo_property *coordinates = indigo_init_number_property(NULL, name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, "Test", "Coordinates", state, INDIGO_RW_PERM, 2);
+	indigo_init_number_item(coordinates->items, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, "RA", 0, 24, 0, ra);
+	indigo_init_number_item(coordinates->items + 1, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, "Dec", -90, 90, 0, dec);
+	indigo_alpaca_update_property(get_alpaca_device(name, false), coordinates);
+	indigo_release_property(coordinates);
+}
+
+// Stands for a mount driver that syncs at once: the requested coordinates become the position, published OK.
+static indigo_result sync_mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (!strcmp(property->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) || !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+		sync_mount_requests++;
+	}
+	if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->count == 2) {
+		publish_mount_coordinates(device->name, INDIGO_OK_STATE, property->items[0].number.value, property->items[1].number.value);
+	}
+	return INDIGO_OK;
+}
+
+// SyncToCoordinates and SyncToTarget while the mount is slewing (MOUNT_EQUATORIAL_COORDINATES BUSY, e.g. a GoTo of another client)
+// are refused with InvalidOperation and send nothing to the mount: the driver would refuse the sync and the wait for its result
+// would end with the slew. Once the slew is over the same sync goes to the mount and succeeds.
+static void mount_sync_while_slewing_is_refused(void) {
+	indigo_device agent = { 0 };
+	indigo_device mount_device = { 0 };
+	indigo_client client = { 0 };
+	alpaca_agent_private_data data = { 0 };
+	INDIGO_COPY_NAME(agent.name, "Alpaca sync test");
+	INDIGO_COPY_NAME(mount_device.name, SYNC_MOUNT_NAME);
+	INDIGO_COPY_NAME(client.name, "Alpaca sync client");
+	mount_device.change_property = sync_mount_change_property;
+	private_data = &data;
+	indigo_agent_alpaca_device = &agent;
+	indigo_agent_alpaca_client = &client;
+	sync_mount_requests = 0;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_device_attach(&agent, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AGENT));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(&mount_device));
+	indigo_alpaca_device *mount = get_alpaca_device(SYNC_MOUNT_NAME, true);
+	mount->indigo_interface = INDIGO_INTERFACE_MOUNT;
+	publish_connection(SYNC_MOUNT_NAME, INDIGO_OK_STATE, true);
+	publish_mount_coordinates(SYNC_MOUNT_NAME, INDIGO_BUSY_STATE, 5, 20);
+	char coordinates_result[256], target_result[256], idle_result[256];
+	indigo_alpaca_mount_set_command(mount, 1, "synctocoordinates", coordinates_result, sizeof(coordinates_result), "Declination=21", "RightAscension=5.1");
+	pthread_mutex_lock(&mount->mutex);
+	mount->mount.targetrightascension = 5.1;
+	mount->mount.targetdeclination = 21;
+	mount->mount.targetrightascensionset = mount->mount.targetdeclinationset = true;
+	pthread_mutex_unlock(&mount->mutex);
+	indigo_alpaca_mount_set_command(mount, 1, "synctotarget", target_result, sizeof(target_result), NULL, NULL);
+	int busy_requests = sync_mount_requests;
+	publish_mount_coordinates(SYNC_MOUNT_NAME, INDIGO_OK_STATE, 5, 20);
+	indigo_alpaca_mount_set_command(mount, 1, "synctocoordinates", idle_result, sizeof(idle_result), "Declination=21", "RightAscension=5.1");
+	int idle_requests = sync_mount_requests;
+	while (alpaca_devices) {
+		indigo_alpaca_device *next = alpaca_devices->next;
+		pthread_mutex_destroy(&alpaca_devices->mutex);
+		indigo_safe_free(alpaca_devices);
+		alpaca_devices = next;
+	}
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(&mount_device));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_device_detach(&agent));
+	indigo_agent_alpaca_client = NULL;
+	indigo_agent_alpaca_device = NULL;
+	private_data = NULL;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+	char expected[64];
+	snprintf(expected, sizeof(expected), "\"ErrorNumber\": %d,", indigo_alpaca_error_InvalidOperation);
+	ASSERT_TRUE(strstr(coordinates_result, expected) != NULL);
+	ASSERT_TRUE(strstr(target_result, expected) != NULL);
+	ASSERT_EQ_INT(0, busy_requests);
+	ASSERT_TRUE(strstr(idle_result, "\"ErrorNumber\": 0,") != NULL);
+	ASSERT_EQ_INT(2, idle_requests);
+}
+
 int main(void) {
 	indigo_test_use_private_home();
 	indigo_test_case tests[] = {
 		{ "camera_bayer_capacity_and_rediscovery", camera_bayer_capacity_and_rediscovery },
-		{ "paired_guider_follows_alpaca_client_only", paired_guider_follows_alpaca_client_only }
+		{ "paired_guider_follows_alpaca_client_only", paired_guider_follows_alpaca_client_only },
+		{ "mount_sync_while_slewing_is_refused", mount_sync_while_slewing_is_refused }
 	};
 	int result = indigo_run_tests("agent_alpaca mapping tests", tests, sizeof(tests) / sizeof(tests[0]));
 	indigo_test_remove_private_home();

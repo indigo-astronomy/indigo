@@ -30,6 +30,7 @@
 // the behaviour that the fix must keep.
 
 #include <math.h>
+#include <stdatomic.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <sys/wait.h>
@@ -414,10 +415,90 @@ static void accepted_sync_after_refused_sync_is_reported_synced(void) {
 	ASSERT_TRUE(fabs(mount_dec() - (dec + 0.05)) < 0.001);
 }
 
+// Another client's GoTo reaches the mount between the agent's admission of a sync and its coordinates request: it is sent from the
+// observer's callback on the agent's MOUNT_ON_COORDINATES_SET change, i.e. in the agent's thread right before the coordinates. The
+// mount refuses the coordinates of the sync with a BUSY message and the foreign slew ends OK within the agent's tolerance of the sync
+// coordinates. The agent must not take that OK for the result of the sync: the mount never published the sync coordinates as its
+// targets, so the sync failed, and no alignment point was added.
+static atomic_bool foreign_goto_armed;
+static double foreign_goto_ra, foreign_goto_dec;
+
+static indigo_result foreign_goto_updated(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = updated(client, device, property, message);
+	if (!strcmp(property->device, MOUNT_DEVICE) && !strcmp(property->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME) && property->items[i].sw.value && atomic_exchange(&foreign_goto_armed, false)) {
+				indigo_change_switch_property_1(&observer, MOUNT_DEVICE, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
+				indigo_change_number_property(&observer, MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, (const char *[]){ MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME }, (double []){ foreign_goto_ra, foreign_goto_dec });
+			}
+		}
+	}
+	return result;
+}
+
+static void sync_refused_by_a_foreign_slew_is_reported_failed(void) {
+	ASSERT_TRUE(slew_to(fmod(mount_ra() + 2, 24), 40));
+	ASSERT_EQ_INT(0, alignment_points());
+	foreign_goto_ra = fmod(mount_ra() + 1, 24);
+	foreign_goto_dec = 30;
+	clear_messages();
+	observer.update_property = foreign_goto_updated;
+	atomic_store(&foreign_goto_armed, true);
+	int result = agent_process(AGENT_MOUNT_START_SYNC_ITEM_NAME, fmod(foreign_goto_ra + 0.002, 24), foreign_goto_dec + 0.05);
+	observer.update_property = updated;
+	if (result != INDIGO_ALERT_STATE) {
+		dump_messages();
+	}
+	ASSERT_FALSE(atomic_load(&foreign_goto_armed));
+	// the foreign client switched the mode to TRACK for its GoTo, so the mount refuses the coordinates as such
+	ASSERT_TRUE(has_message("Mount is busy, the new coordinates are ignored"));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, result);
+	ASSERT_TRUE(has_message("Mount did not accept the sync"));
+	ASSERT_TRUE(has_message("Sync failed"));
+	ASSERT_FALSE(has_message("Synced"));
+	ASSERT_EQ_INT(0, alignment_points());
+	// the mount reports where the foreign GoTo took it, not the refused coordinates
+	ASSERT_TRUE(fabs(mount_dec() - foreign_goto_dec) < 0.001);
+}
+
+// A process requested while the mount is BUSY (here a GoTo of another client) is refused in ALERT with a message instead of being
+// dropped without an answer; the agent never starts it.
+static void process_requested_while_the_mount_is_busy_is_refused(void) {
+	ASSERT_TRUE(slew_to(fmod(mount_ra() + 2, 24), 40));
+	ASSERT_TRUE(change_switch(MOUNT_DEVICE, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property(&observer, MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, (const char *[]){ MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME }, (double []){ fmod(mount_ra() + 3, 24), 10 }));
+	ASSERT_TRUE(WAIT_UNTIL(state(MOUNT, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE, 10));
+	indigo_usleep(100000);
+	clear_messages();
+	unsigned before = revision(MOUNT, AGENT_START_PROCESS_PROPERTY_NAME);
+	unsigned busy = 0;
+	pthread_mutex_lock(&cache_mutex);
+	observation *entry = find_observation(MOUNT, AGENT_START_PROCESS_PROPERTY_NAME);
+	busy = entry ? entry->states[INDIGO_BUSY_STATE] : 0;
+	pthread_mutex_unlock(&cache_mutex);
+	ASSERT_TRUE(change_switch(MOUNT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_MOUNT_START_SYNC_ITEM_NAME, true));
+	bool answered = WAIT_UNTIL(revision(MOUNT, AGENT_START_PROCESS_PROPERTY_NAME) > before, 5);
+	if (!answered) {
+		dump_messages();
+	}
+	ASSERT_TRUE(answered);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(MOUNT, AGENT_START_PROCESS_PROPERTY_NAME));
+	ASSERT_TRUE(has_message("Mount is busy"));
+	ASSERT_FALSE(switch_value(MOUNT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_MOUNT_START_SYNC_ITEM_NAME));
+	pthread_mutex_lock(&cache_mutex);
+	entry = find_observation(MOUNT, AGENT_START_PROCESS_PROPERTY_NAME);
+	unsigned busy_after = entry ? entry->states[INDIGO_BUSY_STATE] : 0;
+	pthread_mutex_unlock(&cache_mutex);
+	ASSERT_EQ_INT(busy, busy_after);
+	ASSERT_TRUE(WAIT_UNTIL(state(MOUNT_DEVICE, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) != INDIGO_BUSY_STATE, 60));
+}
+
 static const indigo_test_case tests[] = {
 	{ "mount simulator: sync refused near pole is reported failed", sync_refused_near_pole_is_reported_failed },
 	{ "mount simulator: accepted sync is reported synced", accepted_sync_is_reported_synced },
 	{ "mount simulator: accepted sync after a refused sync is reported synced", accepted_sync_after_refused_sync_is_reported_synced },
+	{ "mount simulator: sync refused by a foreign slew is reported failed", sync_refused_by_a_foreign_slew_is_reported_failed },
+	{ "mount simulator: process requested while the mount is busy is refused", process_requested_while_the_mount_is_busy_is_refused },
 	{ "synscan: sync refused near pole is reported failed", sync_refused_near_pole_is_reported_failed },
 	{ "synscan: accepted sync is reported synced", accepted_sync_is_reported_synced }
 };

@@ -649,12 +649,14 @@ INDIGO_EXTERN void indigo_reject_coordinates_change(indigo_device *device, const
 INDIGO_EXTERN bool indigo_mount_sync(indigo_device *device, double ra, double dec);
 
 /** Change branch of MOUNT_EQUATORIAL_COORDINATES, used by generated drivers: like INDIGO_COPY_VALUES_PROCESS_CHANGE and
-    INDIGO_COPY_TARGETS_PROCESS_CHANGE (a request arriving while the property is BUSY is ignored), but the BUSY state of
-    the admitted request is published through indigo_update_coordinates(), so the keep-ALERT flag is cleared and
-    MOUNT_HORIZONTAL_COORDINATES follows the equatorial state.
+    INDIGO_COPY_TARGETS_PROCESS_CHANGE, but the BUSY state of the admitted request is published through
+    indigo_update_coordinates(), so the keep-ALERT flag is cleared and MOUNT_HORIZONTAL_COORDINATES follows the equatorial
+    state. A request arriving while the property is BUSY is refused through indigo_reject_change(), which only sends a BUSY
+    message ("Sync refused, the mount is busy" for a sync, "Mount is busy, the new coordinates are ignored" otherwise): the
+    running operation keeps its state, values and targets and the keep-ALERT flag is not touched.
  */
-#define INDIGO_COPY_VALUES_PROCESS_COORDINATES_CHANGE(h) if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false); MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE; indigo_update_coordinates(device, NULL); indigo_execute_handler(device, h); }
-#define INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(h) if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) { indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false); MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE; indigo_update_coordinates(device, NULL); indigo_execute_handler(device, h); }
+#define INDIGO_COPY_VALUES_PROCESS_COORDINATES_CHANGE(h) if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false); MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE; indigo_update_coordinates(device, NULL); indigo_execute_handler(device, h); } else { indigo_reject_change(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? "Sync refused, the mount is busy" : "Mount is busy, the new coordinates are ignored"); }
+#define INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(h) if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) { indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false); MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE; indigo_update_coordinates(device, NULL); indigo_execute_handler(device, h); } else { indigo_reject_change(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? "Sync refused, the mount is busy" : "Mount is busy, the new coordinates are ignored"); }
 
 /** Load alignment points.
  */

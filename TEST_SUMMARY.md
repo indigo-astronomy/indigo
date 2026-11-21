@@ -23,7 +23,7 @@
 |  | 2026-10-04 10:39 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Rotator, ALPACA Rotator Simulator - 0 (OmniSim 0.5.0 via system_alpaca) | 73 / 73 | ✅ OK |
 |  | 2026-10-04 10:43 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Switch, ALPACA Switch Simulator (OmniSim 0.5.0 via system_alpaca) | 331 / 331 | ✅ OK |
 |  | 2026-10-04 10:52 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Telescope, ALPACA Telescope Simulator (OmniSim 0.5.0 via system_alpaca) | 234 / 234 | ✅ OK |
-|  | 2026-10-24 20:43 | 3.0.0.17 | mac arm64 | simulator | 4 / 4 | ✅ OK |
+|  | 2026-11-21 16:44 | 3.0.0.20 | mac arm64 | simulator | 6 / 6 | ✅ OK |
 | agent_astrometry | 2026-10-01 15:27 | 2.0.0.27 | mac arm64 | simulator | 68 / 68 | ✅ OK |
 |  | 2026-10-26 20:55 | 2.0.0.34 | linux x64 | simulator | 87 / 87 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
@@ -36,7 +36,7 @@
 |  | 2026-11-04 20:27 | 3.0.0.0 | mac arm64 | Claude Desktop Code 4.16336.0 (simulators) | 9 / 9 | ✅ OK |
 |  | 2026-11-05 12:24 | 3.0.0.3 | mac arm64 | simulator | 34 / 34 | ✅ OK |
 | agent_mount | 2026-09-24 12:56 | 3.0.0.23 | linux x64 | simulator | 69 / 69 | ✅ OK |
-|  | 2026-11-21 09:51 | 3.0.0.31 | mac arm64 | simulator | 84 / 84 | ✅ OK |
+|  | 2026-11-21 16:42 | 3.0.0.32 | mac arm64 | simulator | 86 / 86 | ✅ OK |
 | agent_platesolver | 2026-10-30 13:43 | 3.0.0.25 | linux x64 | simulator | 154 / 154 | ✅ OK |
 |  | 2026-11-01 21:08 | 3.0.0.27 | mac arm64 | simulator | 159 / 159 | ✅ OK |
 | agent_scheduler | 2026-11-13 02:27 | 3.0.0.5 | linux arm64 | simulator | 43 / 43 | ✅ OK |
@@ -390,7 +390,7 @@
 |  | 2026-11-21 08:41 | 3.0.0.28 | mac arm64 | simulator | 42 / 42 | ✅ OK |
 | mount_simulator | 2026-09-26 22:40 | 3.0.0.23 | linux x64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-10-04 11:19 | 3.0.0.24 | linux arm64 | simulator | 20 / 20 | ✅ OK |
-|  | 2026-11-21 08:20 | 3.0.0.28 | mac arm64 | simulator | 30 / 30 | ✅ OK |
+|  | 2026-11-21 16:19 | 3.0.0.28 | mac arm64 | simulator | 31 / 31 | ✅ OK |
 | mount_starbook | 2026-09-27 12:08 | 3.0.0.11 | linux x64 | simulator | 13 / 13 | ✅ OK |
 |  | 2026-11-21 08:44 | 3.0.0.15 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | mount_synscan | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | MountSim 2.3 (EQMOD) | 15 / 15 | ✅ OK |
