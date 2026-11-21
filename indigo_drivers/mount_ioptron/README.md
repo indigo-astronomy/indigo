@@ -49,4 +49,4 @@ Driver is tested and verified with:
 - 2026-09-23 15:04 3.0.0.53 mac arm64 MountSim 2.3 (iOptron CEM70) 8/8 OK
 - 2026-09-23 18:32 3.0.0.53 mac arm64 MountSim 2.3 (iOptron CEM120) 8/8 OK
 - 2026-09-27 02:42 3.0.0.61 linux x64 simulator 106/106 OK
-- 2026-11-20 22:05 3.0.0.70 mac arm64 simulator 141/141 OK
+- 2026-11-21 08:45 3.0.0.71 mac arm64 simulator 141/141 OK

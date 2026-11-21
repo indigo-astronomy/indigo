@@ -2080,6 +2080,12 @@ static void lx200_park_rejects_motion_and_unpark_recovers(void) {
 	SERIAL_CHECK_EQ_INT(before, event_count(&simulator, "MS", NULL));
 	// Each refusal leaves the property on the state of the mount, not on the rejected request.
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - parked_ra) < 0.001);
+	// the refused GOTO and sync stay ALERT over the following polls, until the accepted GOTO below
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", lx200_mount.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, 7, 15, 2, 0.1));
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", lx200_mount.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, 7, 15, 2, 0.1));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(before, event_count(&simulator, "MS", NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "CM", NULL));
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	assert_switch_item_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false);
 	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "Me", NULL));
@@ -2175,6 +2181,103 @@ static void lx200_classic_timed_guiding(void) {
 	reset_simulator_context(&lx200_guider);
 	enumerate_simulator_device();
 cleanup:
+	if (mount_connected) { disconnect_serial_device(&lx200_mount); }
+	reset_simulator_context(&lx200_guider);
+	enumerate_simulator_device();
+	if (online) { stop_serial_driver(&lx200_guider); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Starts a classic pulse and sends the request while it runs. The request is admitted only if no poll published the
+// motion of the pulse (BUSY) before it came; an attempt the poll overtook is repeated. The change handler refuses the
+// admitted request without a command, and its refusal is the next publication after the request's BUSY, published
+// through the coordinates path with the horizontal coordinates in ALERT as well. The simulator reports the pulse as
+// motion, so the following poll publishes BUSY, which ends the refusal like any motion.
+static bool classic_pulse_refuses(external_serial_simulator *simulator, const char *label, const char *on_set) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	if (!lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, on_set, true, INDIGO_OK_STATE)) {
+		return false;
+	}
+	int slews = event_count(simulator, "MS", NULL), syncs = event_count(simulator, "CM", NULL);
+	for (int attempt = 0; attempt < 3; attempt++) {
+		for (int i = 0; i < 3 && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+			wait_for_property_not_busy(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		}
+		int pulses = event_count(simulator, "Mn", NULL), stops = event_count(simulator, "Qn", NULL);
+		start_coordinates_publications(lx200_mount.device_name);
+		const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+		double values[] = { 7, 15 };
+		bool sent = indigo_change_number_property_1(&simulator_test_client, lx200_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 1500) == INDIGO_OK && wait_event(simulator, "Mn", pulses);
+		sent = sent && indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK;
+		indigo_usleep(1000000);
+		int count = stop_coordinates_publications(events);
+		bool ended = wait_event(simulator, "Qn", stops);
+		if (!sent || !ended) {
+			fprintf(stderr, "    %s: the pulse or the request failed\n", label);
+			return false;
+		}
+		int busy = -1;
+		for (int i = 0; i < count && busy < 0; i++) {
+			if (events[i].kind == 'E' && events[i].state == INDIGO_BUSY_STATE && fabs(events[i].target[0] - 7) < 1e-6 && fabs(events[i].target[1] - 15) < 1e-6) {
+				busy = i;
+			}
+		}
+		if (busy < 0) {
+			fprintf(stderr, "    %s: attempt %d, a poll published the pulse before the request came\n", label, attempt);
+			continue;
+		}
+		int next = -1;
+		for (int i = busy + 1; i < count && next < 0; i++) {
+			if (events[i].kind == 'E') {
+				next = i;
+			}
+		}
+		bool refused = next > busy + 1 && events[next].state == INDIGO_ALERT_STATE && events[next - 1].kind == 'H' && events[next - 1].state == INDIGO_ALERT_STATE;
+		if (!refused) {
+			fprintf(stderr, "    %s: expected the BUSY of the request followed by its refusal with the horizontal coordinates in ALERT\n", label);
+			print_coordinates_publications(label, events, count);
+		}
+		return refused && slews == event_count(simulator, "MS", NULL) && syncs == event_count(simulator, "CM", NULL);
+	}
+	return false;
+}
+
+// During a classic (host-timed) guiding pulse the change handler refuses a GOTO and a sync after their BUSY, through the
+// coordinates path and without a command; an accepted GOTO follows.
+static void lx200_classic_guiding_refusal_is_published(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false, mount_connected = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "classic", "CLASSIC"));
+	online = true;
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	mount_connected = true;
+	// a first pulse ends with the mount idle and its coordinates OK
+	reset_simulator_context(&lx200_guider);
+	enumerate_simulator_device();
+	int stopped = event_count(&simulator, "Qn", NULL);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Qn", stopped));
+	reset_simulator_context(&lx200_mount);
+	enumerate_simulator_device();
+	for (int i = 0; i < 3 && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_OK_STATE; i++) {
+		wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(classic_pulse_refuses(&simulator, "GOTO during classic guiding", MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	SERIAL_CHECK_TRUE(classic_pulse_refuses(&simulator, "sync during classic guiding", MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	// an accepted GOTO
+	for (int i = 0; i < 3 && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+		wait_for_property_not_busy(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	}
+	int slews = event_count(&simulator, "MS", NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(18, 70, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", slews));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	disconnect_serial_device(&lx200_mount);
+	mount_connected = false;
+cleanup:
+	stop_coordinates_publications(NULL);
 	if (mount_connected) { disconnect_serial_device(&lx200_mount); }
 	reset_simulator_context(&lx200_guider);
 	enumerate_simulator_device();
@@ -5327,6 +5430,7 @@ int main(int argc, char **argv) {
 		{ "lx200_guider_transport_failure_and_recovery", lx200_guider_transport_failure_and_recovery },
 		{ "lx200_classic_profile_rates_and_recovery", lx200_classic_profile_rates_and_recovery },
 		{ "lx200_classic_timed_guiding", lx200_classic_timed_guiding },
+		{ "lx200_classic_guiding_refusal_is_published", lx200_classic_guiding_refusal_is_published },
 		{ "lx200_generic_goto_polling_progress", lx200_generic_goto_polling_progress },
 		{ "lx200_teenastro_set_positions", lx200_teenastro_set_positions },
 		{ "lx200_teenastro_reads_the_rate_with_tracking_off", lx200_teenastro_reads_the_rate_with_tracking_off },

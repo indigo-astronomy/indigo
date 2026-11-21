@@ -619,9 +619,23 @@ INDIGO_EXTERN time_t indigo_get_mount_utc(indigo_device *device);
     e.g. a failed position readback, does not set it, so the next good poll publishes OK. "Right after BUSY" means that the
     previous call of this function published BUSY: an ALERT published with indigo_update_property() in between is not seen,
     it is kept only if the next call of this function still has ALERT, otherwise a call with OK publishes OK. The base class
-    clears the flag on disconnect. Drivers never set, clear or read the flag.
+    clears the flag on disconnect. Drivers never set, clear or read the flag. A refusal published through
+    indigo_reject_coordinates_change() is kept the same way.
  */
 INDIGO_EXTERN void indigo_update_coordinates(indigo_device *device, const char *message);
+
+/** Refuse a MOUNT_EQUATORIAL_COORDINATES request: set the state to ALERT and publish it through the state machine of
+    indigo_update_coordinates() with the reason, keeping the ALERT until the next BUSY like the ALERT that ends a BUSY
+    request. Every item is marked for update, so the client sees the values (the reported position) and targets again.
+    Use it for every refusal of a coordinates request, before the copy (through INDIGO_REJECT_COORDINATES_CHANGE_IF) and
+    in the change handler after the request's BUSY.
+ */
+INDIGO_EXTERN void indigo_reject_coordinates_change(indigo_device *device, const char *format, ...);
+
+/** INDIGO_REJECT_CHANGE_IF for MOUNT_EQUATORIAL_COORDINATES: a refused request is kept in ALERT through
+    indigo_reject_coordinates_change(); a BUSY property belongs to a running operation and only gets the message.
+ */
+#define INDIGO_REJECT_COORDINATES_CHANGE_IF(c, f, ...) if (c) { if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) { indigo_reject_change(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, f, ##__VA_ARGS__); } else { indigo_reject_coordinates_change(device, f, ##__VA_ARGS__); } return INDIGO_OK; }
 
 /** Add an alignment point for a sync of the INDIGO alignment model to ra (hours) and dec (degrees), the requested
     coordinates of MOUNT_EQUATORIAL_COORDINATES in its epoch, at the current raw coordinates. On success the requested

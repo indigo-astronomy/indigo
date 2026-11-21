@@ -2047,6 +2047,61 @@ cleanup:
 	}
 }
 
+// The Temma park never latches parked, the parked-mount guard holds only while a park request waits in the queue. A
+// GOTO and a sync sent then are refused before BUSY, without a command; the park the mount refuses (P answered R2) moves
+// nothing, and the refusal stays ALERT over the polls of the idle mount, until an accepted GOTO.
+static void temma_request_behind_park_is_refused_and_kept(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = "";
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	double ra0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(simulator_control(&simulator, "fault P* R2"));
+	start_coordinates_publications(temma_mount.device_name);
+	SERIAL_CHECK_TRUE(hold_coordinates_queue());
+	int mark = trace_count(trace_path);
+	unsigned int park_revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, temma_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, park_revision));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(fmod(ra0 + 1, 24), 20, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(fmod(ra0 + 1, 24), 20, INDIGO_ALERT_STATE));
+	release_coordinates_queue();
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, park_revision));
+	// two polls of the idle mount
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	for (int i = 0; i < 100 && property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) < revision + 2; i++) {
+		indigo_usleep(100000);
+	}
+	int count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(check_refusal_kept("GOTO and sync behind a park", events, count, 0, 3, ra0, dec0, 0.1));
+	SERIAL_CHECK_EQ_INT(0, trace_count_matching(trace_path, "D*", mark));
+	SERIAL_CHECK_EQ_INT(1, trace_count_matching(trace_path, "P*", mark));
+	// an accepted GOTO ends the kept refusal
+	SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_coordinates_and_wait(ra0, dec0 > 0 ? dec0 - 1 : dec0 + 1, INDIGO_BUSY_STATE));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+cleanup:
+	release_coordinates_queue();
+	stop_coordinates_publications(NULL);
+	if (driver_started) {
+		stop_serial_driver(&temma_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
 // Park slews to MOUNT_PARK_POSITION: P carries RA = LST - HA, here an east hour angle, and the
 // declination with its sign, and ends with tracking OFF. A tracking request cannot be pending while the
 // park runs (it is refused while PARKED is on), but one can wait in the queue behind a GOTO, whose
@@ -2441,6 +2496,7 @@ int main(void) {
 		{ "temma_coordinates_publish_the_mount_position", temma_coordinates_publish_the_mount_position },
 		{ "temma_sync_result_and_refusals", temma_sync_result_and_refusals },
 		{ "temma_park_position_and_pending_tracking_request", temma_park_position_and_pending_tracking_request },
+		{ "temma_request_behind_park_is_refused_and_kept", temma_request_behind_park_is_refused_and_kept },
 		{ "temma_refused_switch_requests_show_device_state", temma_refused_switch_requests_show_device_state },
 		{ "temma_site_changes_resend_latitude_and_sidereal_time", temma_site_changes_resend_latitude_and_sidereal_time },
 		{ "temma_goto_during_guide_pulse", temma_goto_during_guide_pulse },

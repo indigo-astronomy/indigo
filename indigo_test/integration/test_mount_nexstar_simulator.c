@@ -2127,8 +2127,15 @@ static void nexstar_park_guards_and_unpark(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
 	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME)->sw.value);
+	// A refused GOTO and sync stay ALERT over the following polls and through the unpark, until an accepted GOTO.
+	double parked_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double parked_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", nexstar_mount.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, fmod(parked_ra + 1, 24), 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", nexstar_mount.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, fmod(parked_ra + 1, 24), 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
 	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
 	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
 	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "54") + count_simulator_events(&simulator, "62") + count_simulator_events(&simulator, "72") + count_simulator_events(&simulator, "4D") + count_simulator_events(&simulator, "50 02 10 2") + count_simulator_events(&simulator, "50 02 11 2"));
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME)->sw.value);
@@ -2141,6 +2148,7 @@ static void nexstar_park_guards_and_unpark(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_OK_STATE, revision));
 	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(goto_and_arrive(fmod(parked_ra + 0.1, 24), parked_dec > 80 ? 80 : parked_dec + 1));
 	// A park the controller never acknowledges ends ALERT, unparked and not BUSY, also after later polls.
 	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "drop", "b"));
 	revision = property_revision(MOUNT_PARK_PROPERTY_NAME);

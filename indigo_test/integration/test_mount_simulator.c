@@ -23,6 +23,7 @@
 #include <indigo/indigo_align.h>
 
 #include "serial_simulator_test_common.h"
+#include "mount_coordinates_test_common.h"
 
 static const char *hidden_mount_base_properties[] = {
 	DEVICE_PORT_PROPERTY_NAME,
@@ -693,12 +694,23 @@ static void mount_park_home_and_parked_guards(void) {
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_PARK_ITEM_NAME)->light.value == INDIGO_OK_STATE);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	// A parked mount refuses a GOTO and a sync; the refusal stays ALERT over the following polls.
+	double parked_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double parked_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", mount_simulator.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, fmod(parked_ra + 1, 24), 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", mount_simulator.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, fmod(parked_ra + 1, 24), 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
 	// A parked mount refuses the abort through a reject_change guard, which also restores the switch.
 	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
 	SERIAL_CHECK_TRUE(unpark_mount());
 	// A guard must not be sticky once the mount is unparked.
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	// The kept refusal lasts through the unpark, an accepted GOTO ends it.
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), fmax(-80, fmin(80, parked_dec - 2))));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 cleanup:
 	stop_serial_driver(&mount_simulator);
 }

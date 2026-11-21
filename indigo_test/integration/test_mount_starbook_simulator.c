@@ -1968,6 +1968,63 @@ cleanup:
 	}
 }
 
+// The StarBook park is a stop that never latches parked, so the parked-mount guard holds only while a park request
+// waits in the queue. A GOTO and a sync sent then are refused before BUSY, without a command, and the refusal stays
+// ALERT after the stop and over the polls of the idle mount, until an accepted GOTO.
+static void starbook_request_behind_park_is_refused_and_kept(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = { 0 };
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	SERIAL_CHECK_TRUE(start_traced_simulator(&simulator, trace_path, sizeof(trace_path), NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	double ra0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	int stops = trace_count(trace_path, "/STOP"), gotos = trace_count(trace_path, "/GOTORADEC*"), syncs = trace_count(trace_path, "/ALIGN*");
+	start_coordinates_publications(starbook_mount.device_name);
+	SERIAL_CHECK_TRUE(hold_coordinates_queue());
+	unsigned int park_revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, starbook_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, park_revision));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	sync_to(fmod(ra0 + 1, 24), 10);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	sync_to(fmod(ra0 + 1, 24), 10);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	release_coordinates_queue();
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, park_revision));
+	// two polls of the idle mount
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	for (int i = 0; i < 100 && property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) < revision + 2; i++) {
+		indigo_usleep(100000);
+	}
+	int count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(check_refusal_kept("GOTO and sync behind a park", events, count, 0, 3, ra0, dec0, 0.1));
+	SERIAL_CHECK_EQ_INT(stops + 1, trace_count(trace_path, "/STOP"));
+	SERIAL_CHECK_EQ_INT(gotos, trace_count(trace_path, "/GOTORADEC*"));
+	SERIAL_CHECK_EQ_INT(syncs, trace_count(trace_path, "/ALIGN*"));
+	// an accepted GOTO ends the kept refusal
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	sync_to(ra0, fmin(80, dec0 + 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(change_switch_after(&starbook_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+cleanup:
+	release_coordinates_queue();
+	stop_coordinates_publications(NULL);
+	if (driver_started) {
+		stop_serial_driver(&starbook_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "starbook_mount_passes_http_compliance_checks", starbook_mount_passes_http_compliance_checks },
@@ -1997,7 +2054,8 @@ int main(void) {
 		{ "starbook_manual_motion_released_when_owner_detaches", starbook_manual_motion_released_when_owner_detaches },
 		{ "starbook_momentary_switches_and_host_time", starbook_momentary_switches_and_host_time },
 		{ "starbook_coordinate_encoding_rounds_and_carries", starbook_coordinate_encoding_rounds_and_carries },
-		{ "starbook_site_write_keeps_combined_values", starbook_site_write_keeps_combined_values }
+		{ "starbook_site_write_keeps_combined_values", starbook_site_write_keeps_combined_values },
+		{ "starbook_request_behind_park_is_refused_and_kept", starbook_request_behind_park_is_refused_and_kept }
 	};
 	return indigo_run_tests("Vixen StarBook mount HTTP simulator integration tests", tests, ARRAY_SIZE(tests));
 }

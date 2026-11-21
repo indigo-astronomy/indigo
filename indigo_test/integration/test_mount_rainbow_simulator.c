@@ -508,7 +508,12 @@ static void rainbow_park_slews_to_park_position(void) {
 	SERIAL_CHECK_EQ_INT(north_count, count_events(&simulator, "CMD", "Ms"));
 	assert_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false);
 	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_ALERT_STATE));
+	// the refused GOTO and sync stay ALERT over the following polls
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", rainbow_mount.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, 7, 30, 2, 0.1));
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", rainbow_mount.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, 7, 30, 2, 0.1));
+	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "MS"));
+	SERIAL_CHECK_EQ_INT(0, count_event_prefixes(&simulator, "CMD", "Ck"));
 	int unpark_count = count_events(&simulator, "CMD", "CtA");
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(unpark_count, count_events(&simulator, "CMD", "CtA"));
@@ -523,6 +528,13 @@ static void rainbow_park_slews_to_park_position(void) {
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "Ms", north_count + 1));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false, INDIGO_OK_STATE));
+	// an accepted GOTO ends the kept refusal
+	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "CMD", "MS", 1));
+	for (int i = 0; i < 3 && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_OK_STATE; i++) {
+		wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	// a position below the altitude limit is refused with :MML# and the mount stays unparked
 	SERIAL_CHECK_TRUE(install_injection(&simulator, "MA", ":MML#", 1));
 	revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
@@ -1761,9 +1773,9 @@ static void rainbow_refuses_motion_while_searching_for_home(void) {
 	SERIAL_CHECK_TRUE(install_injection(&simulator, "Ch", "DROP", 1));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_event_count(&simulator, "DROP", "Ch", 1));
-	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(change_coordinates(7, 30, INDIGO_ALERT_STATE));
+	// the refused GOTO and sync stay ALERT over the following polls of the idle mount
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("GOTO while searching for home", rainbow_mount.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, 7, 30, 2, 0.1));
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("sync while searching for home", rainbow_mount.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, 7, 30, 2, 0.1));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(change_switch_and_wait(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	assert_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false);
@@ -1969,6 +1981,50 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A GOTO admitted just before a park was accepted reaches its handler on a parked mount: the handler refuses it without a
+// command and publishes the refusal through the coordinates path, with the horizontal coordinates in ALERT as well.
+static void rainbow_goto_admitted_before_a_park_is_refused(void) {
+	external_serial_simulator simulator = { 0 };
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	int count = 0;
+	SERIAL_CHECK_TRUE(start_rainbow(&simulator, "200625"));
+	SERIAL_CHECK_TRUE(hold_queue());
+	start_coordinates_publications(rainbow_mount.device_name);
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { 7, 30 };
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, rainbow_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	unsigned int park_revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rainbow_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, park_revision));
+	release_queue();
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	count = stop_coordinates_publications(events);
+	int busy = find_coordinates_publication(events, count, 0, 'E', INDIGO_BUSY_STATE);
+	int refusal = find_coordinates_publication(events, count, 0, 'E', INDIGO_ALERT_STATE);
+	if (!(busy >= 0 && refusal > busy + 1 && events[refusal - 1].kind == 'H' && events[refusal - 1].state == INDIGO_ALERT_STATE)) {
+		print_coordinates_publications("GOTO refused by the handler", events, count);
+	}
+	SERIAL_CHECK_TRUE(busy >= 0 && refusal > busy + 1);
+	// the first publication after the request's BUSY is its refusal, published with the horizontal coordinates
+	SERIAL_CHECK_EQ_INT(refusal, find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE) < 0 || find_coordinates_publication(events, count, busy + 1, 'E', INDIGO_OK_STATE) > refusal);
+	SERIAL_CHECK_EQ_INT('H', events[refusal - 1].kind);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, events[refusal - 1].state);
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "MS"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, park_revision));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(0, count_events(&simulator, "CMD", "MS"));
+cleanup:
+	release_queue();
+	stop_coordinates_publications(NULL);
+	if (context.connected) {
+		stop_serial_driver(&rainbow_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	if (!indigo_test_use_private_home()) {
 		return 2;
@@ -2018,7 +2074,8 @@ int main(void) {
 		{ "rainbow_reports_side_of_pier_and_status", rainbow_reports_side_of_pier_and_status },
 		{ "rainbow_hides_unanswered_status_queries", rainbow_hides_unanswered_status_queries },
 		{ "rainbow_refuses_motion_while_searching_for_home", rainbow_refuses_motion_while_searching_for_home },
-		{ "rainbow_refuses_collisions_with_manual_motion_and_pulses", rainbow_refuses_collisions_with_manual_motion_and_pulses }
+		{ "rainbow_refuses_collisions_with_manual_motion_and_pulses", rainbow_refuses_collisions_with_manual_motion_and_pulses },
+		{ "rainbow_goto_admitted_before_a_park_is_refused", rainbow_goto_admitted_before_a_park_is_refused }
 	};
 	int result = indigo_run_tests("RainbowAstro mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 	indigo_test_remove_private_home();

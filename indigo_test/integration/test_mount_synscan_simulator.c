@@ -24,6 +24,7 @@
 
 #include "serial_simulator_test_common.h"
 #include "abort_queue_test_common.h"
+#include "mount_coordinates_test_common.h"
 #include <dirent.h>
 #include <ifaddrs.h>
 #include <netinet/in.h>
@@ -419,6 +420,21 @@ static void synscan_mount_keeps_state_when_parked_request_is_refused(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_MOTION_DEC_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, false));
 
+	// a refused GOTO and sync stay ALERT over the following polls, through the unpark, until an accepted GOTO
+	double parked_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", synscan_mount.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, fmod(parked_ra + 1, 24), 10, 2, 0.1));
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", synscan_mount.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, fmod(parked_ra + 1, 24), 10, 2, 0.1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	const char *goto_items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double goto_values[] = { cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), 5 };
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(goto_items), goto_items, goto_values));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 cleanup:
 	if (context.connected) {
 		stop_serial_driver(&synscan_mount);
@@ -4219,6 +4235,65 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A GOTO admitted while a homing starts claims no slew; its change handler refuses it after its BUSY, without a motion
+// command, and the refusal stays ALERT over the polls of the idle mount.
+static void synscan_mount_goto_admitted_during_homing_is_refused(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	install_gate();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	// Home at the current position, so the homing ends on the first run of its finalizer
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	double ra0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	int mark = synscan_mark(&simulator);
+	atomic_store(&gate_on_home_busy, true);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_gate());
+	start_coordinates_publications(synscan_mount.device_name);
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { fmod(ra0 + 1, 24), 10 };
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	// two polls of the idle mount after the refusal
+	unsigned int polled = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	for (int i = 0; i < 100 && property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) < polled + 2; i++) {
+		indigo_usleep(100000);
+	}
+	int count = stop_coordinates_publications(events);
+	int busy = find_coordinates_publication(events, count, 0, 'E', INDIGO_BUSY_STATE);
+	int next = -1;
+	for (int i = busy + 1; busy >= 0 && i < count && next < 0; i++) {
+		if (events[i].kind == 'E') {
+			next = i;
+		}
+	}
+	if (busy < 0 || next < 0 || events[next].state != INDIGO_ALERT_STATE) {
+		print_coordinates_publications("GOTO admitted during homing", events, count);
+	}
+	SERIAL_CHECK_TRUE(busy >= 0 && next > busy && events[next].state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(check_refusal_kept("GOTO admitted during homing", events, count, busy + 1, 2, ra0, dec0, 0.1));
+	// the homing sent no slew of its own here, the refused GOTO none at all
+	SERIAL_CHECK_EQ_INT(0, synscan_motion_commands(&simulator, mark));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+cleanup:
+	stop_coordinates_publications(NULL);
+	remove_gate();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (indigo_test_mkdtemp_home(park_folder) == NULL) {
@@ -4285,6 +4360,7 @@ int main(void) {
 		{ "synscan_mount_stops_tracking_after_home", synscan_mount_stops_tracking_after_home },
 		{ "synscan_mount_autohome_finds_home_index", synscan_mount_autohome_finds_home_index },
 		{ "synscan_mount_tracking_request_survives_home_finalizer", synscan_mount_tracking_request_survives_home_finalizer },
+		{ "synscan_mount_goto_admitted_during_homing_is_refused", synscan_mount_goto_admitted_during_homing_is_refused },
 		{ "synscan_mount_pec_training_request_survives_training_end", synscan_mount_pec_training_request_survives_training_end },
 		{ "synscan_mount_encoders_request_survives_autohome", synscan_mount_encoders_request_survives_autohome },
 		{ "synscan_mount_reports_new_model_codes", synscan_mount_reports_new_model_codes },

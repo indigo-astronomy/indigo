@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 85;
+	version = 86;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -4656,8 +4656,7 @@ driver lx200 {
 			preserve_values = true;
 			on_change {
 				if (meade_host_timed_guiding(device) && (PRIVATE_DATA->classicGuideNS || PRIVATE_DATA->classicGuideWE)) {
-					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Classic guiding is active");
+					indigo_reject_coordinates_change(device, "Classic guiding is active");
 					return;
 				}
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;

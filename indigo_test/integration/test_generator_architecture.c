@@ -502,10 +502,12 @@ static void abort_dispatch_uses_urgent_priority(void) {
 
 // The change branch of MOUNT_EQUATORIAL_COORDINATES publishes the BUSY of the request through indigo_update_coordinates(),
 // with the copy of the values or of the targets kept as preserve_values selects; other mount properties keep the plain macro.
+// Its refusals (the parked-mount admission check, every reject_change block and the parked check in the handler) are published
+// through indigo_reject_coordinates_change(), so they are kept; motion and tracking keep the plain refusal.
 static void mount_coordinates_busy_goes_through_update_coordinates(void) {
 	for (int preserve = 0; preserve < 2; preserve++) {
 		char definition[4096], generated[131072];
-		snprintf(definition, sizeof(definition), "driver architecture_test {\nlabel = \"Coordinates test\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\nmount { name = \"Mount\";\ninherited MOUNT_EQUATORIAL_COORDINATES { preserve_values = %s; on_change { indigo_send_message(device, \"goto\"); } }\ninherited MOUNT_HOME { on_change { indigo_send_message(device, \"home\"); } }\n}\n}\n", preserve ? "true" : "false");
+		snprintf(definition, sizeof(definition), "driver architecture_test {\nlabel = \"Coordinates test\";\nauthor = \"INDIGO tests\";\ncopyright = \"INDIGO tests\";\nversion = 1;\nmount { name = \"Mount\";\ninherited MOUNT_EQUATORIAL_COORDINATES { reject_change {\ncondition = COORDINATES_REJECT_MARKER;\nmessage = \"Coordinates rejected\";\n}\npreserve_values = %s; on_change { indigo_send_message(device, \"goto\"); } }\ninherited MOUNT_HOME { on_change { indigo_send_message(device, \"home\"); } }\ninherited MOUNT_MOTION_DEC { reject_change {\ncondition = MOTION_REJECT_MARKER;\nmessage = \"Motion rejected\";\n}\non_change { indigo_send_message(device, \"dec\"); } }\ninherited MOUNT_MOTION_RA { on_change { indigo_send_message(device, \"ra\"); } }\ninherited MOUNT_TRACKING { on_change { indigo_send_message(device, \"tracking\"); } }\n}\n}\n", preserve ? "true" : "false");
 		ASSERT_TRUE(write_text(DEFINITION, definition));
 		char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
 		ASSERT_TRUE(run(arguments));
@@ -513,16 +515,41 @@ static void mount_coordinates_busy_goes_through_update_coordinates(void) {
 		ASSERT_TRUE(strstr(generated, preserve ? "INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);" : "INDIGO_COPY_VALUES_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);") != NULL);
 		ASSERT_TRUE(strstr(generated, "PROCESS_CHANGE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY") == NULL);
 		ASSERT_TRUE(strstr(generated, "INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_PROPERTY, mount_home_handler);") != NULL);
-		// the parked-mount admission check still precedes the copy
-		char *parked = strstr(generated, "INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY");
+		// the parked-mount admission check and the reject_change block precede the copy and keep their refusal
+		ASSERT_TRUE(strstr(generated, "INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY") == NULL);
+		ASSERT_TRUE(strstr(generated, "INDIGO_REJECT_CHANGE_IF(COORDINATES_REJECT_MARKER") == NULL);
+		char *parked = strstr(generated, "INDIGO_REJECT_COORDINATES_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, \"Mount is parked!\");");
+		char *rejected = strstr(generated, "INDIGO_REJECT_COORDINATES_CHANGE_IF(COORDINATES_REJECT_MARKER, \"Coordinates rejected\");");
 		char *copy = strstr(generated, "_PROCESS_COORDINATES_CHANGE(");
-		ASSERT_TRUE(parked && copy && parked < copy);
-		// the handler still ends with the coordinates publication
+		ASSERT_TRUE(parked && rejected && copy && parked < rejected && rejected < copy);
+		// the handler refuses a request admitted just before a park through indigo_reject_coordinates_change() and still ends
+		// with the coordinates publication
 		char *handler = strstr(generated, "static void mount_equatorial_coordinates_handler(indigo_device *device) {");
 		ASSERT_TRUE(handler != NULL);
 		char *end = strstr(handler, "\n}\n");
+		char *guard = strstr(handler, "if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {\n\t\tindigo_reject_coordinates_change(device, \"Mount is parked!\");\n\t\treturn;\n\t}");
 		char *publication = strstr(handler, "indigo_update_coordinates(device, NULL);");
-		ASSERT_TRUE(end && publication && publication < end);
+		ASSERT_TRUE(end && guard && publication && guard < publication && publication < end);
+		// motion and tracking keep the plain refusal at admission and in the handler
+		const char *others[] = { "MOUNT_MOTION_DEC", "MOUNT_MOTION_RA", "MOUNT_TRACKING" };
+		const char *handlers[] = { "mount_motion_dec_handler", "mount_motion_ra_handler", "mount_tracking_handler" };
+		for (int i = 0; i < 3; i++) {
+			char expected[512];
+			snprintf(expected, sizeof(expected), "INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, %s_PROPERTY, \"Mount is parked!\");", others[i]);
+			ASSERT_TRUE(strstr(generated, expected) != NULL);
+			snprintf(expected, sizeof(expected), "static void %s(indigo_device *device) {", handlers[i]);
+			char *other_handler = strstr(generated, expected);
+			ASSERT_TRUE(other_handler != NULL);
+			char *other_end = strstr(other_handler, "\n}\n");
+			snprintf(expected, sizeof(expected), "\t\tindigo_send_message(device, %s_PROPERTY, \"Mount is parked!\");\n\t\tINDIGO_UPDATE_PROPERTY_STATE(%s_PROPERTY, INDIGO_ALERT_STATE, NULL);", others[i], others[i]);
+			char *other_guard = strstr(other_handler, expected);
+			ASSERT_TRUE(other_end && other_guard && other_guard < other_end);
+		}
+		ASSERT_TRUE(strstr(generated, "INDIGO_REJECT_CHANGE_IF(MOTION_REJECT_MARKER, MOUNT_MOTION_DEC_PROPERTY, \"Motion rejected\");") != NULL);
+		// indigo_reject_coordinates_change() is used for MOUNT_EQUATORIAL_COORDINATES only
+		char *first = strstr(generated, "indigo_reject_coordinates_change(");
+		ASSERT_TRUE(first == guard + strlen("if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {\n\t\t"));
+		ASSERT_TRUE(strstr(first + 1, "indigo_reject_coordinates_change(") == NULL);
 	}
 }
 

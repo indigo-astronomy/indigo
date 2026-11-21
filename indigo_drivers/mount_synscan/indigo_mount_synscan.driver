@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 25;
+	version = 26;
 	serial {
 		configurable_speed = true;
 	}
@@ -2071,7 +2071,7 @@ driver synscan {
 					indigo_mount_sync(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
 				} else {
 					if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
-						INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
+						indigo_reject_coordinates_change(device, "Mount is moving");
 					} else {
 						long ra_target = 0;
 						long dec_target = 0;

@@ -25,6 +25,7 @@
  */
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -1383,7 +1384,8 @@ bool indigo_mount_sync(indigo_device *device, double ra, double dec) {
 	return true;
 }
 
-void indigo_update_coordinates(indigo_device *device, const char *message) {
+// The only place of the keep-ALERT state machine; a refusal is kept whatever was published before it.
+static void update_coordinates(indigo_device *device, bool refusal, const char *message) {
 	// The keep-ALERT flag: an ALERT published right after BUSY ended a request or a motion in failure and stays until the
 	// next BUSY, a later OK (typically the position poll reporting the unchanged pointing) is published as ALERT. The
 	// state compared is the one this function last published: an ALERT that a driver published by other means sets the
@@ -1391,7 +1393,7 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 	indigo_property_state state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
 	if (state == INDIGO_BUSY_STATE) {
 		MOUNT_CONTEXT->keep_coordinates_alert = false;
-	} else if (state == INDIGO_ALERT_STATE && MOUNT_CONTEXT->coordinates_state == INDIGO_BUSY_STATE) {
+	} else if (state == INDIGO_ALERT_STATE && (refusal || MOUNT_CONTEXT->coordinates_state == INDIGO_BUSY_STATE)) {
 		MOUNT_CONTEXT->keep_coordinates_alert = true;
 	} else if (state == INDIGO_OK_STATE && MOUNT_CONTEXT->keep_coordinates_alert) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1408,7 +1410,31 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 		indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	}
 	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
+	// The message is text, never a format: a reason may contain '%'
+	if (message != NULL) {
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "%s", message);
+	} else {
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+	}
+}
+
+void indigo_update_coordinates(indigo_device *device, const char *message) {
+	update_coordinates(device, false, message);
+}
+
+void indigo_reject_coordinates_change(indigo_device *device, const char *format, ...) {
+	char message[INDIGO_VALUE_SIZE] = { 0 };
+	if (format != NULL) {
+		va_list args;
+		va_start(args, format);
+		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+		va_end(args);
+	}
+	for (int i = 0; i < MOUNT_EQUATORIAL_COORDINATES_PROPERTY->count; i++) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->items[i].do_update = true;
+	}
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	update_coordinates(device, true, *message ? message : NULL);
 }
 
 // Drivers are separate modules (static archives or dlopen()ed libraries loaded without RTLD_GLOBAL), so the only

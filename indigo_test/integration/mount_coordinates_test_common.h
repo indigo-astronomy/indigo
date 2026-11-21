@@ -30,6 +30,7 @@
 
 #include <math.h>
 #include <pthread.h>
+#include <stdatomic.h>
 
 #define COORDINATES_PUBLICATIONS_SIZE 4096
 
@@ -45,6 +46,8 @@ static int coordinates_publications_count;
 static pthread_mutex_t coordinates_publications_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char coordinates_publications_device[INDIGO_NAME_SIZE];
 static indigo_result (*coordinates_publications_next)(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+static _Atomic(indigo_device *) coordinates_queue_device;
+static atomic_bool coordinates_gate_entered, coordinates_gate_release;
 
 static void record_coordinates_publication(indigo_property *property, char kind, const char *first, const char *second) {
 	coordinates_publication publication = { kind, property->state, { NAN, NAN }, { NAN, NAN } };
@@ -64,6 +67,7 @@ static void record_coordinates_publication(indigo_property *property, char kind,
 
 static indigo_result coordinates_publications_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, coordinates_publications_device)) {
+		atomic_store(&coordinates_queue_device, device);
 		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 			record_coordinates_publication(property, 'E', MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
 		} else if (!strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
@@ -74,9 +78,12 @@ static indigo_result coordinates_publications_update(indigo_client *client, indi
 }
 
 // Starts a fresh record; every publication reaches the client, also one that repeats the previous values and state.
+// The device whose queue hold_coordinates_queue() holds is taken anew from the publications of this record, never from
+// an earlier one: a driver instance of an earlier case may have the same name and is gone.
 static void start_coordinates_publications(const char *device_name) {
 	pthread_mutex_lock(&coordinates_publications_mutex);
 	coordinates_publications_count = 0;
+	atomic_store(&coordinates_queue_device, NULL);
 	INDIGO_COPY_NAME(coordinates_publications_device, device_name);
 	pthread_mutex_unlock(&coordinates_publications_mutex);
 	if (simulator_test_client.update_property != coordinates_publications_update) {
@@ -97,11 +104,44 @@ static int copy_coordinates_publications(coordinates_publication *events) {
 
 // Ends the recording (also safe when none runs) and returns the record.
 static int stop_coordinates_publications(coordinates_publication *events) {
+	atomic_store(&coordinates_queue_device, NULL);
 	if (simulator_test_client.update_property == coordinates_publications_update) {
 		simulator_test_client.update_property = coordinates_publications_next;
 		simulator_test_client.force_property_updates = false;
 	}
 	return events != NULL ? copy_coordinates_publications(events) : 0;
+}
+
+static void coordinates_gate_handler(indigo_device *device) {
+	atomic_store(&coordinates_gate_entered, true);
+	for (int i = 0; i < 10000 && !atomic_load(&coordinates_gate_release); i++) {
+		indigo_usleep(1000);
+	}
+}
+
+// While the publications of a device are recorded, holds its device queue with a gate handler (for at most 10 s), so
+// requests sent meanwhile are admitted and their handlers wait behind it, and so does the poll. The device is the one
+// the recorded publications came from; its next poll is awaited if none came yet.
+static bool hold_coordinates_queue(void) {
+	for (int i = 0; i < 50 && atomic_load(&coordinates_queue_device) == NULL; i++) {
+		indigo_usleep(100000);
+	}
+	indigo_device *device = atomic_load(&coordinates_queue_device);
+	if (device == NULL) {
+		fprintf(stderr, "    no publication of '%s' was seen, its queue cannot be held\n", coordinates_publications_device);
+		return false;
+	}
+	atomic_store(&coordinates_gate_entered, false);
+	atomic_store(&coordinates_gate_release, false);
+	indigo_execute_handler(device, coordinates_gate_handler);
+	for (int i = 0; i < 2000 && !atomic_load(&coordinates_gate_entered); i++) {
+		indigo_usleep(1000);
+	}
+	return atomic_load(&coordinates_gate_entered);
+}
+
+static void release_coordinates_queue(void) {
+	atomic_store(&coordinates_gate_release, true);
 }
 
 static void print_coordinates_publications(const char *label, const coordinates_publication *events, int count) {
@@ -244,6 +284,126 @@ static bool check_position_kept(const char *label, const coordinates_publication
 		}
 	}
 	return true;
+}
+
+// From `from` on: the refusal is one ALERT publication of the equatorial coordinates with no BUSY before it, the
+// horizontal coordinates published with it are ALERT as well, every later equatorial publication is ALERT, and at
+// least `polls` of them were published (the poll ran); the values stay the position (ra0, dec0). Polls that published
+// the idle mount before the request reached it may precede the refusal.
+static bool check_refusal_kept(const char *label, const coordinates_publication *events, int count, int from, int polls, double ra0, double dec0, double tolerance) {
+	int refusal = -1, later = 0, horizontal = 0;
+	bool ok = true;
+	for (int i = from; i < count && refusal < 0; i++) {
+		if (events[i].kind == 'E' && events[i].state == INDIGO_BUSY_STATE) {
+			fprintf(stderr, "    %s: BUSY published at %d, the request was not refused before BUSY\n", label, i);
+			ok = false;
+			break;
+		}
+		if (events[i].kind == 'E' && events[i].state == INDIGO_ALERT_STATE) {
+			refusal = i;
+		}
+	}
+	if (ok && refusal < 0) {
+		fprintf(stderr, "    %s: no refusal published\n", label);
+		ok = false;
+	}
+	int start = refusal > from && events[refusal - 1].kind == 'H' ? refusal - 1 : refusal;
+	for (int i = start; ok && i < count; i++) {
+		if (events[i].kind == 'H') {
+			horizontal++;
+			if (events[i].state != INDIGO_ALERT_STATE) {
+				fprintf(stderr, "    %s: the horizontal coordinates %d are not ALERT\n", label, i);
+				ok = false;
+			}
+		} else if (events[i].state != INDIGO_ALERT_STATE) {
+			fprintf(stderr, "    %s: the equatorial coordinates %d are not ALERT\n", label, i);
+			ok = false;
+		} else if (!coordinates_near(events[i].value[0], events[i].value[1], ra0, dec0, tolerance)) {
+			fprintf(stderr, "    %s: publication %d carries %.5f h %.5f deg, not the position %.5f h %.5f deg\n", label, i, events[i].value[0], events[i].value[1], ra0, dec0);
+			ok = false;
+		} else if (i > refusal) {
+			later++;
+		}
+	}
+	if (ok && horizontal > 0 && start == refusal) {
+		fprintf(stderr, "    %s: the refusal %d is not published with the horizontal coordinates\n", label, refusal);
+		ok = false;
+	}
+	if (ok && later < polls) {
+		fprintf(stderr, "    %s: %d publication(s) after the refusal, expected at least %d\n", label, later, polls);
+		ok = false;
+	}
+	if (!ok) {
+		print_coordinates_publications(label, events, count);
+	}
+	return ok;
+}
+
+// Sends the coordinates request (ra, dec) with MOUNT_ON_COORDINATES_SET set to `on_set` to `device_name`, a mount that
+// refuses it, then waits until `polls` more publications of the equatorial coordinates came (the poll) and checks with
+// check_refusal_kept() that the refusal stays ALERT at the position the mount reported before the request. A request the
+// change handler refuses after its BUSY is `admitted`: then the BUSY of the request comes first, and the refusal is the
+// next publication of the equatorial coordinates.
+static bool check_refusal_of_request(const char *label, const char *device_name, const char *on_set, double ra, double dec, int polls, double tolerance, bool admitted) {
+	unsigned int revision = property_revision(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME);
+	if (indigo_change_switch_property_1(&simulator_test_client, device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, on_set, true) != INDIGO_OK || !wait_for_property_state_seen_after(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, INDIGO_OK_STATE, revision)) {
+		fprintf(stderr, "    %s: %s was not set\n", label, on_set);
+		return false;
+	}
+	double ra0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	start_coordinates_publications(device_name);
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { ra, dec };
+	bool sent = indigo_change_number_property(&simulator_test_client, device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK;
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	int count = 0;
+	// the refusal and then `polls` polls, within 30 s
+	for (int i = 0; sent && i < 300; i++) {
+		count = copy_coordinates_publications(events);
+		int refusal = -1, later = 0;
+		for (int j = 0; j < count; j++) {
+			if (events[j].kind != 'E') {
+				continue;
+			}
+			if (refusal >= 0) {
+				later++;
+			} else if (events[j].state == INDIGO_ALERT_STATE || (!admitted && events[j].state == INDIGO_BUSY_STATE)) {
+				refusal = j;
+			}
+		}
+		if (refusal >= 0 && later >= polls) {
+			break;
+		}
+		indigo_usleep(100000);
+	}
+	count = stop_coordinates_publications(events);
+	if (!sent) {
+		fprintf(stderr, "    %s: the request was not sent\n", label);
+		return false;
+	}
+	int from = 0;
+	if (admitted) {
+		int busy = find_coordinates_publication(events, count, 0, 'E', INDIGO_BUSY_STATE);
+		int next = -1;
+		for (int i = busy + 1; busy >= 0 && i < count && next < 0; i++) {
+			if (events[i].kind == 'E') {
+				next = i;
+			}
+		}
+		if (busy < 0 || next < 0 || events[next].state != INDIGO_ALERT_STATE) {
+			fprintf(stderr, "    %s: expected the BUSY of the request followed by its refusal\n", label);
+			print_coordinates_publications(label, events, count);
+			return false;
+		}
+		from = busy + 1;
+	}
+	return check_refusal_kept(label, events, count, from, polls, ra0, dec0, tolerance);
+}
+
+// A request refused before BUSY, see check_refusal_of_request().
+static bool check_coordinates_refusal(const char *label, const char *device_name, const char *on_set, double ra, double dec, int polls, double tolerance) {
+	return check_refusal_of_request(label, device_name, on_set, ra, dec, polls, tolerance, false);
 }
 
 #endif

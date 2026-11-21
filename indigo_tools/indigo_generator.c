@@ -1887,8 +1887,13 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 	// flips when the park request is copied, so re-reading it here keeps the axes still.
 	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
 		write_line("\tif (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {");
-		write_line("\t\tindigo_send_message(device, %s, \"Mount is parked!\");", property->handle);
-		write_line("\t\tINDIGO_UPDATE_PROPERTY_STATE(%s, INDIGO_ALERT_STATE, NULL);", property->handle);
+		if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES")) {
+			// the refusal of the admitted request is kept, the next poll must not publish it as success
+			write_line("\t\tindigo_reject_coordinates_change(device, \"Mount is parked!\");");
+		} else {
+			write_line("\t\tindigo_send_message(device, %s, \"Mount is parked!\");", property->handle);
+			write_line("\t\tINDIGO_UPDATE_PROPERTY_STATE(%s, INDIGO_ALERT_STATE, NULL);", property->handle);
+		}
 		if (commits_motion) {
 			write_line("\t\tindigo_mount_commit_motion_client(device, %s);", property->handle);
 		}
@@ -2094,11 +2099,20 @@ void write_c_change_property(device_type *device) {
 				// property; a refused request must leave the driver's own state untouched. The
 				// handler keeps its own copy of the check for a request admitted just before a
 				// park request was accepted.
+				bool coordinates = !strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES");
 				if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
-					write_line("\t\tINDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, %s, \"Mount is parked!\");", property->handle);
+					if (coordinates) {
+						write_line("\t\tINDIGO_REJECT_COORDINATES_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, \"Mount is parked!\");");
+					} else {
+						write_line("\t\tINDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, %s, \"Mount is parked!\");", property->handle);
+					}
 				}
 				for (reject_type *reject = property->rejects; reject; reject = reject->next) {
-					write_line("\t\tINDIGO_REJECT_CHANGE_IF(%s, %s, \"%s\");", reject->condition, property->handle, reject->message);
+					if (coordinates) {
+						write_line("\t\tINDIGO_REJECT_COORDINATES_CHANGE_IF(%s, \"%s\");", reject->condition, reject->message);
+					} else {
+						write_line("\t\tINDIGO_REJECT_CHANGE_IF(%s, %s, \"%s\");", reject->condition, property->handle, reject->message);
+					}
 				}
 				write_c_code_blocks(property->on_change_request, 2, "%s.%s.on_change_request", device->id, property->id);
 				// Manual motion runs until the client releases it. The client of an admitted request is

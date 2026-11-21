@@ -191,7 +191,8 @@ static void sync_near_the_pole_is_refused(void) {
 #define COORDINATES_LOG_SIZE 64
 
 static indigo_property_state equatorial_log[COORDINATES_LOG_SIZE], horizontal_log[COORDINATES_LOG_SIZE];
-static int equatorial_count, horizontal_count, coordinates_messages;
+static char last_coordinates_message[INDIGO_VALUE_SIZE];
+static int equatorial_count, horizontal_count, coordinates_messages, all_messages;
 
 static indigo_result coordinates_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && equatorial_count < COORDINATES_LOG_SIZE) {
@@ -203,8 +204,12 @@ static indigo_result coordinates_update(indigo_client *client, indigo_device *de
 }
 
 static indigo_result coordinates_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (message != NULL && *message) {
+		all_messages++;
+	}
 	if (property != NULL && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && message != NULL && *message) {
 		coordinates_messages++;
+		snprintf(last_coordinates_message, sizeof(last_coordinates_message), "%s", message);
 	}
 	return INDIGO_OK;
 }
@@ -212,7 +217,8 @@ static indigo_result coordinates_message(indigo_client *client, indigo_device *d
 static indigo_client coordinates_client = { .name = "Coordinates state test client", .version = INDIGO_VERSION_CURRENT, .update_property = coordinates_update, .send_message = coordinates_message, .force_property_updates = true };
 
 static void reset_coordinates_log(void) {
-	equatorial_count = horizontal_count = coordinates_messages = 0;
+	equatorial_count = horizontal_count = coordinates_messages = all_messages = 0;
+	last_coordinates_message[0] = 0;
 }
 
 static indigo_device *attach_coordinates_device(indigo_device *device) {
@@ -335,6 +341,171 @@ static void mount_sync_decides_without_publishing(void) {
 	ASSERT_EQ_INT(1, controller_points);
 }
 
+// indigo_reject_coordinates_change() refuses a coordinates request: whatever was published before, it publishes one ALERT with
+// the reason, the values (the reported position) and targets unchanged, and keeps it like the ALERT that ends a BUSY request,
+// also in MOUNT_HORIZONTAL_COORDINATES, until the next BUSY. Disconnect clears the kept refusal.
+static void coordinates_refusal_is_kept_until_busy(void) {
+	indigo_device storage = { .name = "Audit Coordinates Refusal Test" };
+	indigo_device *device = attach_coordinates_device(&storage);
+	ASSERT_TRUE(device != NULL);
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = 1;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 2;
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = 3;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = 4;
+	// an idle mount reports OK, then refuses a request: no BUSY precedes the refusal
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_coordinates(device, NULL);
+	indigo_reject_coordinates_change(device, "Refused %d", 7);
+	int refusal_messages = coordinates_messages;
+	char refusal_message[INDIGO_VALUE_SIZE];
+	snprintf(refusal_message, sizeof(refusal_message), "%s", last_coordinates_message);
+	indigo_property_state refused_state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+	double ra_target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, dec_target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+	// two polls, a new request (BUSY) and its success
+	const indigo_property_state requested[] = { INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_OK_STATE };
+	for (int i = 0; i < (int)(sizeof(requested) / sizeof(*requested)); i++) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = requested[i];
+		indigo_update_coordinates(device, NULL);
+	}
+	// a refusal without a reason after the OK is kept as well
+	indigo_reject_coordinates_change(device, NULL);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_coordinates(device, NULL);
+	const indigo_property_state published[] = { INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_BUSY_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE };
+	int count = (int)(sizeof(published) / sizeof(*published));
+	int sequence_equatorial = equatorial_count, sequence_horizontal = horizontal_count, sequence_messages = all_messages, sequence_coordinates_messages = coordinates_messages;
+	indigo_property_state equatorial[COORDINATES_LOG_SIZE], horizontal[COORDINATES_LOG_SIZE];
+	memcpy(equatorial, equatorial_log, sizeof(equatorial));
+	memcpy(horizontal, horizontal_log, sizeof(horizontal));
+	// disconnect clears the kept refusal, the first poll of the next session publishes OK
+	bool kept_before_disconnect = MOUNT_CONTEXT->keep_coordinates_alert;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	CONNECTION_PROPERTY->defined = true;
+	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+	bool kept_after_disconnect = MOUNT_CONTEXT->keep_coordinates_alert;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->hidden = false;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_coordinates(device, NULL);
+	indigo_property_state after_disconnect = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	detach_coordinates_device(device);
+	ASSERT_EQ_INT(count, sequence_equatorial);
+	ASSERT_EQ_INT(count, sequence_horizontal);
+	for (int i = 0; i < count; i++) {
+		if (equatorial[i] != published[i] || horizontal[i] != published[i]) {
+			printf("    step %d: published %d, horizontal %d, expected %d\n", i, equatorial[i], horizontal[i], published[i]);
+		}
+		ASSERT_EQ_INT(published[i], equatorial[i]);
+		ASSERT_EQ_INT(published[i], horizontal[i]);
+	}
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, refused_state);
+	// the reason comes with the refusal publication only, neither the polls nor the refusal without a reason carry one
+	ASSERT_EQ_INT(1, refusal_messages);
+	ASSERT_STREQ("Refused 7", refusal_message);
+	ASSERT_EQ_INT(1, sequence_coordinates_messages);
+	ASSERT_EQ_INT(1, sequence_messages);
+	// the refusal leaves the reported position and the targets alone
+	ASSERT_NEAR(1, ra, 1e-12);
+	ASSERT_NEAR(2, dec, 1e-12);
+	ASSERT_NEAR(3, ra_target, 1e-12);
+	ASSERT_NEAR(4, dec_target, 1e-12);
+	ASSERT_TRUE(kept_before_disconnect);
+	ASSERT_TRUE(!kept_after_disconnect);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, after_disconnect);
+}
+
+static bool reject_condition;
+
+static indigo_result reject_coordinates_request(indigo_device *device) {
+	INDIGO_REJECT_COORDINATES_CHANGE_IF(reject_condition, "Refused by %s", "test");
+	return INDIGO_FAILED;
+}
+
+// INDIGO_REJECT_COORDINATES_CHANGE_IF on a BUSY property, i.e. a running request or motion, only sends the reason: the state,
+// the values and the kept ALERT of an earlier request are left to the running operation. On a property that is not BUSY the
+// refusal is kept; a false condition falls through.
+static void reject_macro_on_busy_only_sends_message(void) {
+	indigo_device storage = { .name = "Audit Coordinates Reject Macro Test" };
+	indigo_device *device = attach_coordinates_device(&storage);
+	ASSERT_TRUE(device != NULL);
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = 1;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 2;
+	// a request failed (BUSY, ALERT), the flag is set; the next motion is BUSY but the poll has not published it yet
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_coordinates(device, NULL);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_coordinates(device, NULL);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	reset_coordinates_log();
+	reject_condition = false;
+	indigo_result passed = reject_coordinates_request(device);
+	int passed_publications = equatorial_count, passed_messages = all_messages;
+	reject_condition = true;
+	indigo_result busy_result = reject_coordinates_request(device);
+	indigo_property_state busy_state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	bool busy_flag = MOUNT_CONTEXT->keep_coordinates_alert;
+	double busy_ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, busy_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+	int busy_publications = equatorial_count, busy_messages = all_messages;
+	// the poll publishes the running operation (BUSY releases the kept ALERT) and its success; a later refusal from OK is
+	// kept over the next poll
+	indigo_update_coordinates(device, NULL);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_coordinates(device, NULL);
+	bool released = !MOUNT_CONTEXT->keep_coordinates_alert;
+	reset_coordinates_log();
+	indigo_result idle_result = reject_coordinates_request(device);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_coordinates(device, NULL);
+	int idle_publications = equatorial_count, idle_messages = coordinates_messages;
+	indigo_property_state idle_refusal = equatorial_log[0], idle_poll = equatorial_log[1];
+	char idle_message[INDIGO_VALUE_SIZE];
+	snprintf(idle_message, sizeof(idle_message), "%s", last_coordinates_message);
+	detach_coordinates_device(device);
+	ASSERT_EQ_INT(INDIGO_FAILED, passed);
+	ASSERT_EQ_INT(0, passed_publications);
+	ASSERT_EQ_INT(0, passed_messages);
+	ASSERT_EQ_INT(INDIGO_OK, busy_result);
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, busy_state);
+	ASSERT_TRUE(busy_flag);
+	ASSERT_NEAR(1, busy_ra, 1e-12);
+	ASSERT_NEAR(2, busy_dec, 1e-12);
+	ASSERT_EQ_INT(0, busy_publications);
+	ASSERT_EQ_INT(1, busy_messages);
+	ASSERT_TRUE(released);
+	ASSERT_EQ_INT(INDIGO_OK, idle_result);
+	ASSERT_EQ_INT(2, idle_publications);
+	ASSERT_EQ_INT(1, idle_messages);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, idle_refusal);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, idle_poll);
+	ASSERT_STREQ("Refused by test", idle_message);
+}
+
+// The reason of a refusal and the message of a coordinates publication are text: a percent sign in them reaches the
+// client verbatim, it is not taken as a conversion of a format.
+static void coordinates_message_is_published_as_text(void) {
+	indigo_device storage = { .name = "Audit Coordinates Message Test" };
+	indigo_device *device = attach_coordinates_device(&storage);
+	ASSERT_TRUE(device != NULL);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_coordinates(device, NULL);
+	reset_coordinates_log();
+	indigo_reject_coordinates_change(device, "%s", "refused at 100%% load");
+	char refusal[INDIGO_VALUE_SIZE];
+	snprintf(refusal, sizeof(refusal), "%s", last_coordinates_message);
+	int refusal_messages = coordinates_messages;
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_coordinates(device, "progress 100%% complete");
+	char update[INDIGO_VALUE_SIZE];
+	snprintf(update, sizeof(update), "%s", last_coordinates_message);
+	int messages = coordinates_messages;
+	detach_coordinates_device(device);
+	ASSERT_EQ_INT(1, refusal_messages);
+	ASSERT_STREQ("refused at 100%% load", refusal);
+	ASSERT_EQ_INT(2, messages);
+	ASSERT_STREQ("progress 100%% complete", update);
+}
+
 int main(void) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
@@ -344,7 +515,10 @@ int main(void) {
 		{ "multi_point_translations_pass_coordinates_through", multi_point_translations_pass_coordinates_through },
 		{ "sync_near_the_pole_is_refused", sync_near_the_pole_is_refused },
 		{ "coordinates_alert_after_busy_is_kept_until_busy", coordinates_alert_after_busy_is_kept_until_busy },
-		{ "mount_sync_decides_without_publishing", mount_sync_decides_without_publishing }
+		{ "mount_sync_decides_without_publishing", mount_sync_decides_without_publishing },
+		{ "coordinates_refusal_is_kept_until_busy", coordinates_refusal_is_kept_until_busy },
+		{ "reject_macro_on_busy_only_sends_message", reject_macro_on_busy_only_sends_message },
+		{ "coordinates_message_is_published_as_text", coordinates_message_is_published_as_text }
 	};
 	int result = indigo_run_tests("Alignment file load", tests, sizeof(tests) / sizeof(*tests));
 	indigo_test_remove_private_home();

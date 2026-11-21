@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001B
+#define DRIVER_VERSION       0x0300001C
 #define DRIVER_NAME          "indigo_mount_rainbow"
 #define DRIVER_LABEL         "RainbowAstro Mount"
 #define MOUNT_DEVICE_NAME    "RainbowAstro Mount"
@@ -912,8 +912,7 @@ static void mount_geographic_coordinates_handler(indigo_device *device) {
 
 static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
-		indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_UPDATE_PROPERTY_STATE(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		indigo_reject_coordinates_change(device, "Mount is parked!");
 		return;
 	}
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
@@ -1240,9 +1239,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, mount_geographic_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		INDIGO_REJECT_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is parked!");
-		INDIGO_REJECT_CHANGE_IF(PRIVATE_DATA->homing, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Mount is searching for home");
-		INDIGO_REJECT_CHANGE_IF((PRIVATE_DATA->pulse_ra || PRIVATE_DATA->pulse_dec) && !MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Guiding pulse in progress");
+		INDIGO_REJECT_COORDINATES_CHANGE_IF(!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value, "Mount is parked!");
+		INDIGO_REJECT_COORDINATES_CHANGE_IF(PRIVATE_DATA->homing, "Mount is searching for home");
+		INDIGO_REJECT_COORDINATES_CHANGE_IF((PRIVATE_DATA->pulse_ra || PRIVATE_DATA->pulse_dec) && !MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value, "Guiding pulse in progress");
 		INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(mount_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {

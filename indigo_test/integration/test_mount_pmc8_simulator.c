@@ -2043,6 +2043,9 @@ static void pmc8_mount_park_replaces_a_goto_and_guards_the_parked_mount(void) {
 	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-4), 70));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
 	SERIAL_CHECK_TRUE(drain_mount_queue());
+	// A refused GOTO and sync stay ALERT over the following polls and through the unpark, until an accepted GOTO.
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", pmc8_mount.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-4), 70, 2, 0.1));
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", pmc8_mount.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, ra_at_hour_angle(-4), 70, 2, 0.1));
 	SERIAL_CHECK_EQ_INT(writes, write_events(&simulator));
 	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true));
 	// Unparked, the guards are gone.
@@ -2050,6 +2053,10 @@ static void pmc8_mount_park_replaces_a_goto_and_guards_the_parked_mount(void) {
 	SERIAL_CHECK_TRUE(change_switch(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME));
 	SERIAL_CHECK_TRUE(last_event_is(&simulator, "ESTr", "ESTr04B0!"));
 	SERIAL_CHECK_TRUE(cached_switch_is(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-4), 70));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 30));
 
 cleanup:
 	remove_watch();

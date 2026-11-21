@@ -1864,6 +1864,10 @@ static void check_park(int index) {
 	int moves = event_count(simulator, d->move_north);
 	int enables = event_count(simulator, "ST1");
 	SERIAL_CHECK_TRUE(io_goto(8.5, 20, INDIGO_ALERT_STATE));
+	// The refused GOTO and sync stay ALERT over the following polls, through the unpark, until the accepted GOTO below.
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", ioptron_mount.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, 8.5, 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", ioptron_mount.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, 8.5, 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(!switch_value(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_ALERT_STATE));
@@ -1880,6 +1884,7 @@ static void check_park(int index) {
 	indigo_usleep(1500000);
 	SERIAL_CHECK_TRUE(switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME));
 	SERIAL_CHECK_EQ_INT(motions + 1, prefix_count(simulator, "M") + prefix_count(simulator, "m"));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(io_goto(8.5, 20, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 20, 0.002));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
