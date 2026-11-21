@@ -1,0 +1,535 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf",
+  "revision": 29,
+  "title": "Mount drivers: a sync requested during a slew is silently dropped",
+  "description": "A MOUNT_EQUATORIAL_COORDINATES request with MOUNT_ON_COORDINATES_SET = SYNC that arrives while a slew is BUSY is rejected by the framework BUSY guard without a publication of its own. The Mount Agent may take the OK that ends the slew as the result of the sync. Establish which drivers are affected and what the agent observes, then decide where the refusal is reported. Found while working on ticket 42b85be0-1f19-4607-b3c3-746e60317d17 (closed, commit a09e0f878), which introduced the kept coordinates ALERT in indigo_update_coordinates(): an ALERT published after a BUSY stays until the next BUSY. Reproduce in the driver's simulator suite before changing code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T16:55:03.902832Z",
+  "status": "closed",
+  "branch": "ticket/c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "5b251920-31c5-4bef-ae2a-9a6c22002719",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T11:18:46.015731Z",
+          "last_activity_at": "2026-11-21T15:49:16.518503Z",
+          "ended_at": "2026-11-21T15:49:16.518503Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 16230502.772,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T11:18:46.015731Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf"
+        },
+        {
+          "at": "2026-11-21T15:49:16.518503Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 16230502.772,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "04f3cb25-3ef2-4eec-bbdd-025bd7086bd5",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "ee54f761-ff4a-4ed4-93a4-31c9af6ed886",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T15:49:16.518672Z",
+          "last_activity_at": "2026-11-21T16:22:13.186665Z",
+          "ended_at": "2026-11-21T16:22:13.186665Z",
+          "outcome": {
+            "summary": "PASS. Diff matches the approved (b)+(c) scope exactly; no generator, .driver, off-limits or mount-driver version change.\nLibrary: both COPY_*_PROCESS_COORDINATES_CHANGE macros gained only an else branch calling indigo_reject_change(); on a BUSY property that function (indigo_bus.c:1353-1356) only sends a device-level message on the BUSY pseudo property: no state, item, do_update or keep_coordinates_alert change, no republication. Only the ten generated mount drivers use the macros (plus generator test and unit test); mount_asi, mount_mxhd, system_ascol, system_alpaca do not, and their files are untouched. MOUNT_ON_COORDINATES_SET_SYNC_ITEM is items+1 of a property always allocated with 3 items (indigo_mount_driver.c:256), so it is valid even where drivers set count = 2; every expansion is in a mount device change_property. reject_change/parked refusals run before the macro, so no double message. Comment and docs (DRIVER_GENERATOR_BASICS.md:273, TIMERS_AND_QUEUES.md:340-345) are accurate.\nagent_mount: START refusal via INDIGO_REJECT_CHANGE_IF on one line, otherwise unchanged logic; platesolver mount_control already treats ALERT as failure. Sync acceptance flag set before pending, checked only for SYNC; abort and 180 s timeout paths unchanged. Deviation (OK with sync targets also accepts a sync) is sound and necessary: mxhd publishes its sync OK without BUSY (mxhd .c:1093-1104), and the existing test_agent_mount immediate_completion case (fake peer publishing OK directly) would fail under a BUSY-only rule. A refused request never publishes its targets; a false acceptance needs stale targets equal to the sync coordinates plus a foreign motion in the admission window, the same exposure the BUSY rule already has with motion that keeps old targets.\nagent_alpaca: InvalidOperation while slewing, after parked check, under the mutex; consistent with rotator use. Versions 0x20 and 0x14 match records 3.0.0.32/3.0.0.20. agent_alpaca count: master had 3 (cache) + 2 (mapping) = 5,",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1976667.993,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T15:49:16.518672Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T16:22:13.186665Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "PASS. Diff matches the approved (b)+(c) scope exactly; no generator, .driver, off-limits or mount-driver version change.\nLibrary: both COPY_*_PROCESS_COORDINATES_CHANGE macros gained only an else branch calling indigo_reject_change(); on a BUSY property that function (indigo_bus.c:1353-1356) only sends a device-level message on the BUSY pseudo property: no state, item, do_update or keep_coordinates_alert change, no republication. Only the ten generated mount drivers use the macros (plus generator test and unit test); mount_asi, mount_mxhd, system_ascol, system_alpaca do not, and their files are untouched. MOUNT_ON_COORDINATES_SET_SYNC_ITEM is items+1 of a property always allocated with 3 items (indigo_mount_driver.c:256), so it is valid even where drivers set count = 2; every expansion is in a mount device change_property. reject_change/parked refusals run before the macro, so no double message. Comment and docs (DRIVER_GENERATOR_BASICS.md:273, TIMERS_AND_QUEUES.md:340-345) are accurate.\nagent_mount: START refusal via INDIGO_REJECT_CHANGE_IF on one line, otherwise unchanged logic; platesolver mount_control already treats ALERT as failure. Sync acceptance flag set before pending, checked only for SYNC; abort and 180 s timeout paths unchanged. Deviation (OK with sync targets also accepts a sync) is sound and necessary: mxhd publishes its sync OK without BUSY (mxhd .c:1093-1104), and the existing test_agent_mount immediate_completion case (fake peer publishing OK directly) would fail under a BUSY-only rule. A refused request never publishes its targets; a false acceptance needs stale targets equal to the sync coordinates plus a foreign motion in the admission window, the same exposure the BUSY rule already has with motion that keeps old targets.\nagent_alpaca: InvalidOperation while slewing, after parked check, under the mutex; consistent with rotator use. Versions 0x20 and 0x14 match records 3.0.0.32/3.0.0.20. agent_alpaca count: master had 3 (cache) + 2 (mapping) = 5,"
+        }
+      ],
+      "result": {
+        "summary": "PASS. Diff matches the approved (b)+(c) scope exactly; no generator, .driver, off-limits or mount-driver version change.\nLibrary: both COPY_*_PROCESS_COORDINATES_CHANGE macros gained only an else branch calling indigo_reject_change(); on a BUSY property that function (indigo_bus.c:1353-1356) only sends a device-level message on the BUSY pseudo property: no state, item, do_update or keep_coordinates_alert change, no republication. Only the ten generated mount drivers use the macros (plus generator test and unit test); mount_asi, mount_mxhd, system_ascol, system_alpaca do not, and their files are untouched. MOUNT_ON_COORDINATES_SET_SYNC_ITEM is items+1 of a property always allocated with 3 items (indigo_mount_driver.c:256), so it is valid even where drivers set count = 2; every expansion is in a mount device change_property. reject_change/parked refusals run before the macro, so no double message. Comment and docs (DRIVER_GENERATOR_BASICS.md:273, TIMERS_AND_QUEUES.md:340-345) are accurate.\nagent_mount: START refusal via INDIGO_REJECT_CHANGE_IF on one line, otherwise unchanged logic; platesolver mount_control already treats ALERT as failure. Sync acceptance flag set before pending, checked only for SYNC; abort and 180 s timeout paths unchanged. Deviation (OK with sync targets also accepts a sync) is sound and necessary: mxhd publishes its sync OK without BUSY (mxhd .c:1093-1104), and the existing test_agent_mount immediate_completion case (fake peer publishing OK directly) would fail under a BUSY-only rule. A refused request never publishes its targets; a false acceptance needs stale targets equal to the sync coordinates plus a foreign motion in the admission window, the same exposure the BUSY rule already has with motion that keeps old targets.\nagent_alpaca: InvalidOperation while slewing, after parked check, under the mutex; consistent with rotator use. Versions 0x20 and 0x14 match records 3.0.0.32/3.0.0.20. agent_alpaca count: master had 3 (cache) + 2 (mapping) = 5,",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1976667.993,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "7723d912-21bb-4f44-a59d-5e8f0cf68823",
+      "event": "ticket/created",
+      "at": "2026-11-20T16:55:03.903609Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "0ea410b6-8ea2-44a4-8b0b-c4cedf0351bb",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T17:02:38.033446Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "480a285c-847b-473c-9c23-30b88d0b74d0",
+      "event": "task/progress",
+      "at": "2026-11-21T11:18:46.015973Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Implementation started on branch ticket/c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf"
+    },
+    {
+      "event_id": "bb2ed025-33ae-4a66-bdce-822ba1aa0558",
+      "event": "ticket/started",
+      "at": "2026-11-21T11:18:46.017422Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf",
+      "base": "master"
+    },
+    {
+      "event_id": "7be80cbc-5156-496f-9eda-b7ea342879c4",
+      "event": "task/progress",
+      "at": "2026-11-21T11:19:14.909031Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Implementer launched",
+      "attempt_id": "5b251920-31c5-4bef-ae2a-9a6c22002719",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0a37fdaa-94d1-419a-b132-d77d4e97de4f",
+      "event": "task/progress",
+      "at": "2026-11-21T11:22:26.501511Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Mechanism traced in library, generator and drivers; reading test harness for reproduction"
+    },
+    {
+      "event_id": "2de193ac-660d-4732-8416-208e45a38f07",
+      "event": "task/progress",
+      "at": "2026-11-21T11:22:54.637450Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Building library, mount_simulator, mount_synscan, mount_temma, agent_mount in worktree"
+    },
+    {
+      "event_id": "ec040b18-1cba-4ab6-9f85-05f9f9d698e3",
+      "event": "task/progress",
+      "at": "2026-11-21T11:23:51.481093Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Running scratch case: mount_simulator sync during slew (reverted afterwards)"
+    },
+    {
+      "event_id": "8105b223-32b1-4f16-a7a8-bb979251c5af",
+      "event": "task/progress",
+      "at": "2026-11-21T11:45:58.578182Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Running scratch cases: synscan sync during slew, agent_mount sync dropped by foreign slew"
+    },
+    {
+      "event_id": "500022c8-3956-4818-a30c-8c00b2571942",
+      "event": "ticket/note",
+      "at": "2026-11-21T11:48:48.535689Z",
+      "actor": "human/Peter Polakovic",
+      "text": "PHASE 1 FINDINGS (investigation only; no library, generator, agent or driver change; nothing committed). Base: master d617ddc36.\n\n1. MECHANISM\n- Generated mount drivers dispatch MOUNT_EQUATORIAL_COORDINATES through INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE (indigo_libs/indigo/indigo_mount_driver.h:656-657, emitted by indigo_tools/indigo_generator.c:2134-2137). When the property is BUSY the macro does nothing: no copy, no state change, no publication, no message, no handler; the branch then returns INDIGO_OK. The silent drop is documented as intended in indigo_docs/DRIVER_GENERATOR_BASICS.md:273.\n- INDIGO_REJECT_COORDINATES_CHANGE_IF (indigo_mount_driver.h:638) is not involved: it only runs for the parked check and for reject_change blocks. With a BUSY property it calls indigo_reject_change() (indigo_libs/indigo_bus.c:1342-1357), which sends a BUSY message only (\"BUSY\" pseudo property, device-level, not tied to MOUNT_EQUATORIAL_COORDINATES) and leaves the property alone.\n- What the client gets for a sync sent while a slew is BUSY: nothing. The item targets keep the slew's target and the client's sync coordinates are dropped (not copied, so they do not overwrite the slew target). The slew carries on and ends OK at its own target. That OK is the only answer the sync client sees.\n- Side effect: MOUNT_ON_COORDINATES_SET has no BUSY guard (indigo_libs/indigo_mount_driver.c:696-700), so the client's switch to SYNC is accepted and stays in place after the coordinates request is dropped.\n- The base class sync branch (indigo_mount_driver.c:799-814) has no BUSY guard either, but no in-tree driver passes the coordinates through to it.\n\n2. DRIVERS (behaviour with SYNC while coordinates are BUSY)\n- mount_simulator, ioptron, lx200, nexstar, nexstaraux, pmc8, starbook, temma (generated): silent drop as above.\n- mount_synscan (generated): silent drop; its on_change_request only claims when not BUSY. Extra: mount_equatorial_coordinates_finalizer reads MOUNT_ON_COORDINATES_SET_TR",
+      "tokens": null
+    },
+    {
+      "event_id": "1724c0a4-1647-42d3-b79d-c8e59425c876",
+      "event": "task/progress",
+      "at": "2026-11-21T11:48:48.618579Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Phase 1 findings recorded as ticket note; scratch cases reverted, worktree clean"
+    },
+    {
+      "event_id": "d2aeda49-2b28-4cc1-a108-54b8d6eeeba4",
+      "event": "question/asked",
+      "at": "2026-11-21T11:49:32.308418Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Investigation done (see note). Where should a coordinates request arriving while the coordinates are BUSY be refused? Recommended: (b) library - else branch in INDIGO_COPY_VALUES/TARGETS_PROCESS_COORDINATES_CHANGE calling indigo_reject_change() with a message (slew state, targets and values untouched) plus (c) agent_mount requires a BUSY carrying the sync targets before reporting Synced and answers a START refused on a busy mount with ALERT; agent_alpaca refuses Sync while slewing. Approve the library diff and the agent changes?"
+    },
+    {
+      "event_id": "2702447b-a6b4-4983-964b-a4a0f2ddce68",
+      "event": "question/answered",
+      "at": "2026-11-21T12:40:29.426803Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner: approved both - (b) else branch in INDIGO_COPY_VALUES/TARGETS_PROCESS_COORDINATES_CHANGE calling indigo_reject_change() with a message, slew state/targets/values untouched; (c) agent_mount requires a BUSY carrying the sync targets before reporting Synced and answers START on a busy mount with ALERT; agent_alpaca refuses Sync while slewing."
+    },
+    {
+      "event_id": "ad00fe35-adcd-4838-888e-43adf32bfd93",
+      "event": "task/progress",
+      "at": "2026-11-21T12:40:49.754726Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Phase 2 started: implementing approved options (b) and (c)"
+    },
+    {
+      "event_id": "e9966e12-bee1-4d17-8273-723bd393bc57",
+      "event": "task/progress",
+      "at": "2026-11-21T12:51:22.367255Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Running new cases against before-change and after-change binaries (unrecorded)"
+    },
+    {
+      "event_id": "87c71d92-f018-481e-8984-f5a264d44a80",
+      "event": "task/progress",
+      "at": "2026-11-21T15:19:35.855685Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Recorded runs: tools/run_driver_test.py mount_simulator, agent_mount, agent_alpaca"
+    },
+    {
+      "event_id": "a9b2320e-fb53-4b9f-9f11-63b2642827dc",
+      "event": "task/progress",
+      "at": "2026-11-21T15:45:15.929551Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Unrecorded: mount_nexstar overlap case nexstar_mount_tracks_syncs_and_aborts_coordinate_changes"
+    },
+    {
+      "event_id": "337a7def-bf80-46e8-b4f5-d0583dd95892",
+      "event": "task/progress",
+      "at": "2026-11-21T15:46:04.830465Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "57bd4f11-150e-4ac8-82d4-05d3ccfba633",
+      "event": "task/progress",
+      "at": "2026-11-21T15:46:04.857155Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "aca645bc-50ef-44fa-a38d-bce94ac0ecf9",
+      "event": "task/progress",
+      "at": "2026-11-21T15:46:04.859112Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "7b5bc851-fa68-4e5f-882b-05df827a3f2e",
+      "event": "task/progress",
+      "at": "2026-11-21T15:47:36.736946Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "1d9f5785-5502-4408-8c82-746cbc439da7",
+      "event": "check/passed",
+      "at": "2026-11-21T15:47:36.741932Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "3ec5528d325c7aa1d14b4394ca27ecf10f981145",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "37ed8619-baed-4214-9629-9f84fa66f100",
+      "event": "ticket/note",
+      "at": "2026-11-21T15:48:47.505355Z",
+      "actor": "human/Peter Polakovic",
+      "text": "PHASE 2 (owner-approved options b and c). Branch fast-forwarded to master 9202eb54c (git merge master, fast-forward, no merge commit).\n\nCHANGES\n- Library: indigo_libs/indigo/indigo_mount_driver.h:651-659. INDIGO_COPY_VALUES/TARGETS_PROCESS_COORDINATES_CHANGE gained an else branch that calls indigo_reject_change(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, SYNC ? \"Sync refused, the mount is busy\" : \"Mount is busy, the new coordinates are ignored\"). On a BUSY property this sends a BUSY message only: the running operation keeps its state, values and targets, and the kept-ALERT flag is untouched. The macro comment is updated. No generator change, no .driver change, no driver version bump; generated drivers get the change on rebuild.\n- Docs: indigo_docs/DRIVER_GENERATOR_BASICS.md:273 and indigo_docs/TIMERS_AND_QUEUES.md:340-345.\n- agent_mount (DRIVER_VERSION 0x0300001F -> 0x03000020):\n  - mount_dome_control: a SYNC that the mount never accepted fails with \"Mount did not accept the sync\" (indigo_agent_mount.c:503-504). Acceptance means a publication with the sync coordinates as targets (new flag mount_goto_sync, lines 200, 414, 1633-1636).\n  - Deviation from the brief: for a SYNC an OK publication with those targets also counts, not only BUSY. mount_mxhd (off limits) publishes its sync result OK without a BUSY, and a strict BUSY rule would report every mxhd sync as failed. A dropped sync never publishes its targets in either case.\n  - AGENT_START_PROCESS while the mount is BUSY is answered by INDIGO_REJECT_CHANGE_IF with ALERT \"Mount is busy\" instead of being dropped silently (line 2351).\n- agent_alpaca (DRIVER_VERSION 0x03000013 -> 0x03000014): SyncToTarget and SyncToCoordinates return InvalidOperation while mount.slewing (indigo_alpaca_mount.c:639-643, 724-728). This is the same error the rotator methods use while moving.\n- Tests:\n  - Unit: copy_macro_on_busy_refuses_with_message (indigo_test/unit/test_mount_alignment_load.c:506).\n  - mount_simulator: mount_sync_durin",
+      "tokens": null
+    },
+    {
+      "event_id": "590bcaa7-8243-469f-b7b1-810b7c9c4d0a",
+      "event": "task/progress",
+      "at": "2026-11-21T15:48:47.589289Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "d9691634-0758-4e98-b472-3a79cc784243",
+      "text": "Phase 2 implemented; recorded runs OK, flow check passed; note recorded"
+    },
+    {
+      "event_id": "50f4f01c-9503-45b7-a595-59ae8e119334",
+      "event": "task/progress",
+      "at": "2026-11-21T15:49:16.518738Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "04f3cb25-3ef2-4eec-bbdd-025bd7086bd5",
+      "text": "Review started"
+    },
+    {
+      "event_id": "c34549d0-690c-4027-8909-a71626b36d18",
+      "event": "review/started",
+      "at": "2026-11-21T15:49:16.519984Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "ae988426-ad7d-45bd-a449-48e2908a74f1",
+      "event": "task/progress",
+      "at": "2026-11-21T15:50:01.809514Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "04f3cb25-3ef2-4eec-bbdd-025bd7086bd5",
+      "text": "Reviewer launched",
+      "attempt_id": "ee54f761-ff4a-4ed4-93a4-31c9af6ed886",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "878fe35d-d32e-4858-b92e-7ecc98e5805e",
+      "event": "task/progress",
+      "at": "2026-11-21T15:54:13.720623Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "04f3cb25-3ef2-4eec-bbdd-025bd7086bd5",
+      "text": "Building scratch copy to run test_agent_astrometry_solver and mount_lx200 suite unrecorded"
+    },
+    {
+      "event_id": "ce8acaf8-7eb1-402f-bb4d-aebc09232e33",
+      "event": "task/progress",
+      "at": "2026-11-21T16:22:13.186758Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "04f3cb25-3ef2-4eec-bbdd-025bd7086bd5",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "2c2a7770-e3fe-47bd-8f2f-5526dcb4f56f",
+      "event": "review/passed",
+      "at": "2026-11-21T16:22:13.188439Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "04f3cb25-3ef2-4eec-bbdd-025bd7086bd5",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "3ec5528d325c7aa1d14b4394ca27ecf10f981145"
+    },
+    {
+      "event_id": "44ea6d04-3c31-4c51-9c21-c19c4067e6ea",
+      "event": "ticket/closed",
+      "at": "2026-11-21T16:22:53.175158Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-21T16:22:53.175132Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "b7083ad38d40d9c3dfa4b4804cbbb4ffbf1dcb56"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "3ec5528d325c7aa1d14b4394ca27ecf10f981145",
+        "tree": "0c241d5639d90cebe305a7909a75f2b9f31e1bda",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T15:46:04.856461Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf/0c241d5639d9-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "3ec5528d325c7aa1d14b4394ca27ecf10f981145",
+        "tree": "0c241d5639d90cebe305a7909a75f2b9f31e1bda",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T15:47:36.734107Z",
+        "duration_s": 91.9,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf/0c241d5639d9-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "PASS. Diff matches the approved (b)+(c) scope exactly; no generator, .driver, off-limits or mount-driver version change.\nLibrary: both COPY_*_PROCESS_COORDINATES_CHANGE macros gained only an else branch calling indigo_reject_change(); on a BUSY property that function (indigo_bus.c:1353-1356) only sends a device-level message on the BUSY pseudo property: no state, item, do_update or keep_coordinates_alert change, no republication. Only the ten generated mount drivers use the macros (plus generator test and unit test); mount_asi, mount_mxhd, system_ascol, system_alpaca do not, and their files are untouched. MOUNT_ON_COORDINATES_SET_SYNC_ITEM is items+1 of a property always allocated with 3 items (indigo_mount_driver.c:256), so it is valid even where drivers set count = 2; every expansion is in a mount device change_property. reject_change/parked refusals run before the macro, so no double message. Comment and docs (DRIVER_GENERATOR_BASICS.md:273, TIMERS_AND_QUEUES.md:340-345) are accurate.\nagent_mount: START refusal via INDIGO_REJECT_CHANGE_IF on one line, otherwise unchanged logic; platesolver mount_control already treats ALERT as failure. Sync acceptance flag set before pending, checked only for SYNC; abort and 180 s timeout paths unchanged. Deviation (OK with sync targets also accepts a sync) is sound and necessary: mxhd publishes its sync OK without BUSY (mxhd .c:1093-1104), and the existing test_agent_mount immediate_completion case (fake peer publishing OK directly) would fail under a BUSY-only rule. A refused request never publishes its targets; a false acceptance needs stale targets equal to the sync coordinates plus a foreign motion in the admission window, the same exposure the BUSY rule already has with motion that keeps old targets.\nagent_alpaca: InvalidOperation while slewing, after parked check, under the mutex; consistent with rotator use. Versions 0x20 and 0x14 match records 3.0.0.32/3.0.0.20. agent_alpaca count: master had 3 (cache) + 2 (mapping) = 5, so the old 4 was stale; 6 now correct. agent_mount 86 = 79 + 7, mount_simulator 31. Comment column untouched; README changes are run records only.\nReviewer runs (scratch copy, lock, unrecorded): test_agent_mount 79/79, test_agent_mount_simulator 7/7 (incl. both new cases), test_mount_lx200_simulator all passed with the new header. Formatting OK (single-line macros/calls, braces, no blank lines in bodies).\nNon-blocking: (1) the foreign-slew agent case exercises the TRACK wording only (sync wording covered by mount_simulator and unit); (2) remaining narrow false-accept window with stale identical targets, as above; (3) DRIVER_GENERATOR_BASICS.md:557 (ki-3) still says the busy guard drops requests, true except for coordinates.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "3ec5528d325c7aa1d14b4394ca27ecf10f981145",
+        "tree": "0c241d5639d90cebe305a7909a75f2b9f31e1bda",
+        "at": "2026-11-21T16:22:13.185646Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-21T11:48:48.534498Z",
+        "actor": "human/Peter Polakovic",
+        "text": "PHASE 1 FINDINGS (investigation only; no library, generator, agent or driver change; nothing committed). Base: master d617ddc36.\n\n1. MECHANISM\n- Generated mount drivers dispatch MOUNT_EQUATORIAL_COORDINATES through INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE (indigo_libs/indigo/indigo_mount_driver.h:656-657, emitted by indigo_tools/indigo_generator.c:2134-2137). When the property is BUSY the macro does nothing: no copy, no state change, no publication, no message, no handler; the branch then returns INDIGO_OK. The silent drop is documented as intended in indigo_docs/DRIVER_GENERATOR_BASICS.md:273.\n- INDIGO_REJECT_COORDINATES_CHANGE_IF (indigo_mount_driver.h:638) is not involved: it only runs for the parked check and for reject_change blocks. With a BUSY property it calls indigo_reject_change() (indigo_libs/indigo_bus.c:1342-1357), which sends a BUSY message only (\"BUSY\" pseudo property, device-level, not tied to MOUNT_EQUATORIAL_COORDINATES) and leaves the property alone.\n- What the client gets for a sync sent while a slew is BUSY: nothing. The item targets keep the slew's target and the client's sync coordinates are dropped (not copied, so they do not overwrite the slew target). The slew carries on and ends OK at its own target. That OK is the only answer the sync client sees.\n- Side effect: MOUNT_ON_COORDINATES_SET has no BUSY guard (indigo_libs/indigo_mount_driver.c:696-700), so the client's switch to SYNC is accepted and stays in place after the coordinates request is dropped.\n- The base class sync branch (indigo_mount_driver.c:799-814) has no BUSY guard either, but no in-tree driver passes the coordinates through to it.\n\n2. DRIVERS (behaviour with SYNC while coordinates are BUSY)\n- mount_simulator, ioptron, lx200, nexstar, nexstaraux, pmc8, starbook, temma (generated): silent drop as above.\n- mount_synscan (generated): silent drop; its on_change_request only claims when not BUSY. Extra: mount_equatorial_coordinates_finalizer reads MOUNT_ON_COORDINATES_SET_TRACK_ITEM when the slew ends (indigo_mount_synscan.driver:1818), so the accepted switch to SYNC makes a \"slew and track\" GoTo end with tracking off (reproduced).\n- mount_rainbow (generated): silent drop. Its reject_change blocks (homing, guide pulse for non-sync) send a BUSY message when the property is BUSY, but neither covers a slew.\n- system_alpaca (mount device, hand-written): answered. system_alpaca_accept() with ALPACA_ACCEPT_ANYTIME plus mount_coordinates_refusal() (indigo_system_alpaca_mount.c:287-290, indigo_system_alpaca.c:529-583) sends a BUSY message \"Mount is slewing, the new coordinates are ignored!\". The property, its BUSY state and its targets are untouched. This is the pattern of option (b).\n- mount_asi, mount_mxhd (off limits, read only): no BUSY guard (asi .c:1506-1517, mxhd .c:1356-1366). Targets are overwritten with the sync coordinates and the callback (asi .c:1175, mxhd .c:1064) sends the controller sync during the slew. The result is OK or ALERT through indigo_update_coordinates(), which ends the slew's BUSY while the mount may still be moving.\n- system_ascol (off limits): MOUNT_ON_COORDINATES_SET has TRACK only (count 1, .c:1473-1474), so there is no sync. A coordinates request during a slew retargets it (no guard, .c:1846-1858).\n- No mount drivers in indigo_mac_drivers, indigo_linux_drivers or indigo_optional_drivers.\n\n3. REPRODUCTION (scratch cases, reverted; patch kept outside the repo; runs under lockf on the shared test lock)\n- mount_simulator suite, scratch_sync_during_slew. Setup: GoTo HA 2/Dec 40, then a TRACK GoTo to HA -2/Dec 10, waiting until the declination left 40, then SYNC selected and a sync 0.05 h/0.1 deg away sent. Observed: 0 BUSY messages; only the slew's BUSY polls; targets stayed at the slew target; the slew ended OK at the slew target about 4.3 s later; 0 alignment points; MOUNT_ON_COORDINATES_SET left at SYNC. The sync left no trace.\n- Same suite, first variant without waiting for motion. SYNC was selected right after the GoTo's BUSY, before its queued handler ran. The handler then read SYNC and executed the admitted GoTo as a controller sync to the GoTo target: it published OK at once with the values equal to the GoTo target, and the mount did not move. The real sync was accepted afterwards. This is a separate defect: the mode is read when the handler runs, not when the request is admitted.\n- mount_synscan suite, scratch_sync_during_slew. Tracking was off, then a TRACK GoTo to (1 h, 30 deg) was started; while it moved, SYNC was selected and a sync to (1.05, 30.2) sent. Observed: 0 BUSY messages; targets stayed (1, 30); the slew ended OK at (1, 30); 0 alignment points; MOUNT_ON_COORDINATES_SET left at SYNC; tracking OFF after a \"slew and track\" GoTo (RA drifting).\n- test_agent_mount_simulator, mount simulator, \"scratch sync dropped by foreign slew\". A foreign client's GoTo reaches the mount between the agent's admission of a SYNC process and its coordinates request; it is sent from the observer callback of the agent's MOUNT_ON_COORDINATES_SET change. The GoTo target is about 3.5' from the sync target. Observed: the Mount Agent ended AGENT_START_PROCESS OK and sent \"Synced\". In fact the sync was dropped: 0 alignment points, and the mount was at the foreign GoTo target, not the sync coordinates.\n\n4. CLIENTS AND AGENTS\n- agent_mount: AGENT_START_PROCESS is admitted only when its snooped mount coordinates are not BUSY (indigo_agent_mount.c:2345). Otherwise the request is dropped silently, with no publication: a second silent drop, one level up. sync_process -> mount_dome_control (374-536) sets SYNC, sends the coordinates, waits up to 3 s for BUSY, then waits until the coordinates are no longer BUSY. If they end OK it checks only the distance between the reported position and the sync target (TARGET_TOLERANCE 0.25 deg, line 53, check at 499-505). mount_goto_accepted (BUSY carrying the requested targets, line 1630) is evaluated for SLEW only. So a dropped sync looks like this to the agent:\n  - The stale BUSY of the foreign slew counts as \"BUSY seen\".\n  - The slew's final OK is taken as the sync's result.\n  - It reports \"Synced\" when the slew ends within 15' of the sync coordinates (reproduced).\n  - Otherwise it reports the misleading \"Mount did not reach the target\". The window opens whenever another client starts motion after the agent's admission, including during unpark_before_coordinates.\n- agent_platesolver (indigo_platesolver.c:228-276) syncs only through the Mount Agent and trusts its OK, so a false \"Synced\" goes into solve-and-sync and centering. When the agent drops START silently, the solver logs \"Mount Agent didn't become busy in 1s\".\n- agent_alpaca (indigo_alpaca_mount.c:606-622, 625-646, 709-736): SyncToCoordinates/SyncToTarget do not check slewing. mount.slewing follows the BUSY of the coordinates (835-836), so wait_for_sync() waits for the foreign slew to end and returns OK for a dropped sync. If that slew lasts more than 60 s it returns a timeout error instead.\n- agent_imager, agent_guider and indigo_tools do not sync mounts.\n\n5. OPTIONS\n(a) Status quo (generated drivers): silent drop. The client cannot tell a dropped sync from success. Agents are fooled, as in section 4.\n(b) Framework refusal without disturbing the slew. Add an else branch to both coordinates macros, so every generated driver answers by rebuild only: no generator or .driver change and no regeneration.\n   Sketch for indigo_libs/indigo/indigo_mount_driver.h:656-657, both VALUES and TARGETS:\n   #define INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE(h) if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) { <unchanged> } else { indigo_reject_change(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? \"Sync refused, the mount is busy\" : \"Mount is busy, the new coordinates are ignored\"); }\n   Effect: a BUSY message, as from system_alpaca and from INDIGO_REJECT_COORDINATES_CHANGE_IF on a BUSY property. The slew keeps its BUSY, targets and values; the kept-ALERT state machine is untouched; nothing is duplicated in drivers. Also update the comment at indigo_mount_driver.h:651-655 and indigo_docs/DRIVER_GENERATOR_BASICS.md:273 (\"answered with a BUSY message\" for coordinates).\n   Tests: the existing overlap tests (mount_simulator mount_goto_runs_on_queue_and_rejects_overlap, synscan_mount_ignores_goto_while_busy, ioptron_goto_request_while_busy_is_ignored, lx200_goto_busy_refuses_overlap, nexstaraux busy_goto_ignores_second_request, temma overlap) stay valid. A sync-during-slew case with assert_refusal_answered() would be added for mount_simulator and one serial driver, plus a unit test of the macro.\n   Limit: the BUSY message is device-level and not tied to the request or the client, so an agent cannot reliably match it to its own sync. (b) alone does not stop the agent's false \"Synced\". Wording note: say \"busy\", not \"slewing\", because park, home or a poll seeing motion also make the coordinates BUSY.\n(c) Clients check acceptance and refuse visibly.\n   - agent_mount mount_dome_control: also require mount_goto_accepted for SYNC. The sync's own BUSY carries the sync coordinates as targets in every driver: the generated macro, system_alpaca, asi and mxhd. Sketch at line 503: `} else if (!DEVICE_PRIVATE_DATA->mount_goto_accepted && (operation == MOUNT_DOME_CONTROL_SYNC || (<existing SLEW condition>))) { snprintf(failure, ..., operation == MOUNT_DOME_CONTROL_SYNC ? \"Mount did not accept the sync\" : \"Mount did not start the slew\"); }`.\n   - Answer the AGENT_START_PROCESS refusal at line 2345 instead of dropping it (ALERT with \"Mount is busy\").\n   - agent_alpaca: return InvalidOperation for Sync* while mount.slewing, and/or require BUSY with the sync targets.\n   No library change. This fixes the false success independently of (b).\n(d) Accept a sync during a slew: not recommended. indigo_mount_sync() would record the moving MOUNT_RAW_COORDINATES as the alignment point. Controller syncs (:CM#, Temma 'D', NexStar) during a GoTo are undefined. An OK that ends the slew's BUSY breaks the kept-state contract. asi and mxhd behave like this today (off limits, report only).\nRECOMMENDATION: (b) and (c) together. (b) gives every generated driver an answer without touching the running slew, at the systemic place. (c) makes agent_mount and agent_alpaca judge a sync by its own BUSY carrying its targets, which also covers asi/mxhd and the timing window (b) cannot close. (b) needs the owner's approval of the library diff. The asi/mxhd retargeting stays a reported finding unless the owner lifts the restriction.\n\n6. RELATED FINDINGS (outside this ticket; separate tickets proposed)\n- F1: MOUNT_ON_COORDINATES_SET is accepted at any time and read by generated handlers when they run, and by the synscan finalizer at slew end. A mode switch between admission and handler converts an admitted GoTo into a sync (reproduced, mount_simulator). A switch during a slew suppresses tracking after a synscan TRACK GoTo (reproduced). A possible remedy is to capture the mode at admission or handler start; that touches the generator or drivers.\n- F2: the generated handler prologue sets the coordinates state to OK on the queue thread before on_change (indigo_generator.c:1903-1905). A request arriving on the bus thread in that short window passes the BUSY guard. Found by source reading only, not reproduced.\n- F3: the Mount Agent drops AGENT_START_PROCESS silently while the mount is BUSY (indigo_agent_mount.c:2345). This is covered by option (c).\n\n7. NOT ESTABLISHED\n- No hardware run. Real controllers' answer to a sync during a GoTo is unknown, and so is asi/mxhd behaviour, which was read but not run.\n- Other generated serial drivers were not run; their identical generated branch was checked by reading.\n- The agent race was forced with a reentrant observer callback, not reproduced through natural timing. ASCOM's prescribed Alpaca error for Sync while slewing was not checked.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T15:48:47.504104Z",
+        "actor": "human/Peter Polakovic",
+        "text": "PHASE 2 (owner-approved options b and c). Branch fast-forwarded to master 9202eb54c (git merge master, fast-forward, no merge commit).\n\nCHANGES\n- Library: indigo_libs/indigo/indigo_mount_driver.h:651-659. INDIGO_COPY_VALUES/TARGETS_PROCESS_COORDINATES_CHANGE gained an else branch that calls indigo_reject_change(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, SYNC ? \"Sync refused, the mount is busy\" : \"Mount is busy, the new coordinates are ignored\"). On a BUSY property this sends a BUSY message only: the running operation keeps its state, values and targets, and the kept-ALERT flag is untouched. The macro comment is updated. No generator change, no .driver change, no driver version bump; generated drivers get the change on rebuild.\n- Docs: indigo_docs/DRIVER_GENERATOR_BASICS.md:273 and indigo_docs/TIMERS_AND_QUEUES.md:340-345.\n- agent_mount (DRIVER_VERSION 0x0300001F -> 0x03000020):\n  - mount_dome_control: a SYNC that the mount never accepted fails with \"Mount did not accept the sync\" (indigo_agent_mount.c:503-504). Acceptance means a publication with the sync coordinates as targets (new flag mount_goto_sync, lines 200, 414, 1633-1636).\n  - Deviation from the brief: for a SYNC an OK publication with those targets also counts, not only BUSY. mount_mxhd (off limits) publishes its sync result OK without a BUSY, and a strict BUSY rule would report every mxhd sync as failed. A dropped sync never publishes its targets in either case.\n  - AGENT_START_PROCESS while the mount is BUSY is answered by INDIGO_REJECT_CHANGE_IF with ALERT \"Mount is busy\" instead of being dropped silently (line 2351).\n- agent_alpaca (DRIVER_VERSION 0x03000013 -> 0x03000014): SyncToTarget and SyncToCoordinates return InvalidOperation while mount.slewing (indigo_alpaca_mount.c:639-643, 724-728). This is the same error the rotator methods use while moving.\n- Tests:\n  - Unit: copy_macro_on_busy_refuses_with_message (indigo_test/unit/test_mount_alignment_load.c:506).\n  - mount_simulator: mount_sync_during_goto_is_refused_with_busy_message (test_mount_simulator.c:1709). A sync, then a GoTo, during a GoTo each get their BUSY message; the slew keeps its targets and ends OK at its target; no alignment point is added in NEAREST_POINT mode.\n  - agent_mount: \"sync refused by a foreign slew is reported failed\" (test_agent_mount_simulator.c:439, the forced race; it now ends ALERT with \"Mount did not accept the sync\" and no \"Synced\") and \"process requested while the mount is busy is refused\" (:466).\n  - agent_alpaca: mount_sync_while_slewing_is_refused (test_agent_alpaca_mapping.c:250).\n- MIGRATION_STATUS.md counts: agent_alpaca 4 -> 6 (the old value was stale, 5 before this ticket), agent_mount 84 -> 86, mount_simulator 30 -> 31. The Comment column is untouched.\n\nBEFORE / AFTER (new cases; before = HEAD header and agent sources rebuilt, after = the change)\n- unit copy_macro_on_busy_refuses_with_message: FAIL before (expected 1 message, got 0), PASS after.\n- mount_simulator new case: FAIL before (no BUSY message, wait_for_busy_message_after), PASS after.\n- agent_mount foreign-slew case: FAIL before at the refusal message. Phase 1 had shown the same scenario reporting \"Synced\", OK. PASS after.\n- agent_mount busy START case: FAIL before (no answer), PASS after.\n- agent_alpaca case: FAIL before (sync returned OK), PASS after.\n\nRECORDED RUNS (lockf + tools/run_driver_test.py)\n- mount_simulator: 2026-11-21 16:19 3.0.0.28 mac arm64 simulator 31/31 OK\n- agent_mount: 2026-11-21 16:42 3.0.0.32 mac arm64 simulator 86/86 OK\n- agent_alpaca: 2026-11-21 16:44 3.0.0.20 mac arm64 simulator 6/6 OK\n\nUNRECORDED\n- mount_nexstar nexstar_mount_tracks_syncs_and_aborts_coordinate_changes (the existing GoTo-overlap case), built with the new header: PASS.\n- mount_synscan recorded run deliberately not made, as instructed.\n\nflow check: whitespace PASS; unit PASS (91.9 s, includes the new unit case).\n\nNOT VERIFIED\n- Hardware.\n- Other generated serial drivers' suites besides the nexstar case. Their change branch is the same library macro.\n- Real-client reaction to the new BUSY message.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Investigation done (see note). Where should a coordinates request arriving while the coordinates are BUSY be refused? Recommended: (b) library - else branch in INDIGO_COPY_VALUES/TARGETS_PROCESS_COORDINATES_CHANGE calling indigo_reject_change() with a message (slew state, targets and values untouched) plus (c) agent_mount requires a BUSY carrying the sync targets before reporting Synced and answers a START refused on a busy mount with ALERT; agent_alpaca refuses Sync while slewing. Approve the library diff and the agent changes?",
+        "at": "2026-11-21T11:49:32.307164Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner: approved both - (b) else branch in INDIGO_COPY_VALUES/TARGETS_PROCESS_COORDINATES_CHANGE calling indigo_reject_change() with a message, slew state/targets/values untouched; (c) agent_mount requires a BUSY carrying the sync targets before reporting Synced and answers START on a busy mount with ALERT; agent_alpaca refuses Sync while slewing.",
+        "answered_at": "2026-11-21T12:40:29.425376Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "b7083ad38d40d9c3dfa4b4804cbbb4ffbf1dcb56",
+      "tree": "0c241d5639d90cebe305a7909a75f2b9f31e1bda",
+      "base": "master",
+      "at": "2026-11-21T16:22:53.090315Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-20T16:55:03.902832Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T17:02:38.033293Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 18207170.765,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 35,
+    "sha256": "bc134faf00a08e2b40269d7216aef09e9f9d84f386c93b750440e84e3a77be84"
+  }
+}
