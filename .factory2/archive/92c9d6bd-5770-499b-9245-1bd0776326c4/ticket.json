@@ -1,0 +1,1954 @@
+{
+  "schema_version": 1,
+  "ticket_id": "92c9d6bd-5770-499b-9245-1bd0776326c4",
+  "revision": 88,
+  "title": "indigo_docs: rewrite the scheduler guide for readability",
+  "description": "Owner request (2026-11-21): indigo_docs/INDIGO_SCHEDULER_GUIDE.md (about 15,000 words) is hard to read: the language is heavy, sentences pack a rule, its exceptions and cross-references together, and some passages are ambiguous. Rewrite it for readability without losing correctness.\nProposed structure (to be settled in the design stage): a short quick start (load the agents, upload one task, start, watch the plan); concepts in plain words (tasks and headers, constraints, priority, COMPACT vs VISIBILITY, hooks, meridian flips, where the data goes); a reference part with the exact rules, edge cases and property/setting tables. Style: short sentences, one idea per sentence, examples before rules, no mid-sentence cross-references, consistent terms, no ambiguity. Keep the existing worked examples and the 'Two nights compared' charts (indigo_docs/INDIGO_SCHEDULER_GUIDE/*.png). Owner decisions that apply: no particular INDIGO GUI clients are named, indigo_prop_tool is used for examples; VISIBILITY uses priority only to choose which tasks get into the plan, COMPACT runs tasks in priority order (separate ticket fixes these first).\nDesign stage: propose the new outline and rewrite one section as a style sample for the owner's approval before the whole guide is rewritten. Every rule kept must be checked against the scheduler code (indigo_drivers/agent_scheduler/). Review: correctness against the code and a separate fresh-eyes readability review. Keep links into the guide working (anchors used by SCHEDULER.md, PROPERTIES.md or other docs). No README.md changes.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T23:47:03.917909Z",
+  "status": "closed",
+  "branch": "ticket/92c9d6bd-5770-499b-9245-1bd0776326c4",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "187ba7aa-99cc-43f4-ac5f-be6964acdcfa",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T00:10:01.387314Z",
+          "last_activity_at": "2026-11-21T00:43:39.249639Z",
+          "ended_at": "2026-11-21T00:43:39.249639Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2017862.325,
+          "tokens": null
+        },
+        {
+          "attempt_id": "30285e00-03c0-47ae-9ca4-0f8bfb266864",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T00:45:55.540293Z",
+          "last_activity_at": "2026-11-21T00:49:54.304522Z",
+          "ended_at": "2026-11-21T00:49:54.304522Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 238764.229,
+          "tokens": null
+        },
+        {
+          "attempt_id": "0beb2bf5-692b-4629-a50c-70b7afbeec59",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T00:49:54.304641Z",
+          "last_activity_at": "2026-11-21T00:54:15.410698Z",
+          "ended_at": "2026-11-21T00:54:15.410698Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 261106.057,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ef31e436-7032-42a1-8495-0d7b6b5b576f",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T01:00:36.326286Z",
+          "last_activity_at": "2026-11-21T01:05:56.088358Z",
+          "ended_at": "2026-11-21T01:05:56.088358Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 319762.072,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ba0bfacd-4c5d-4277-869c-62a8ce5df1b8",
+          "number": 5,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T01:09:44.513598Z",
+          "last_activity_at": "2026-11-21T01:15:47.987707Z",
+          "ended_at": "2026-11-21T01:15:47.987707Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 363474.109,
+          "tokens": null
+        },
+        {
+          "attempt_id": "dc18c372-7dc2-4409-a2d8-2b1d5028f04d",
+          "number": 6,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T01:20:29.101629Z",
+          "last_activity_at": "2026-11-21T02:02:49.548479Z",
+          "ended_at": "2026-11-21T02:02:49.548479Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2540446.85,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T00:10:01.387314Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/92c9d6bd-5770-499b-9245-1bd0776326c4"
+        },
+        {
+          "at": "2026-11-21T00:43:39.249639Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T00:45:55.540293Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-21T00:49:54.304522Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T00:49:54.304641Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-21T00:54:15.410698Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T01:00:36.326286Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-21T01:05:56.088358Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T01:09:44.513598Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-21T01:15:47.987707Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T01:20:29.101629Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-21T02:02:49.548479Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 5741415.642,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 6
+        }
+      }
+    },
+    {
+      "task_id": "8a3cef40-10ef-4bd9-9cc6-591106676070",
+      "title": "Design",
+      "type": "planning",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c9887e81-10d5-4af2-b4ab-5cf5361153e9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T00:10:01.577124Z",
+          "last_activity_at": "2026-11-21T00:21:28.088480Z",
+          "ended_at": "2026-11-21T00:21:28.088480Z",
+          "outcome": {
+            "summary": "Approved design.md",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 686511.356,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T00:10:01.577124Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design started"
+        },
+        {
+          "at": "2026-11-21T00:21:28.088480Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Approved design.md"
+        }
+      ],
+      "result": {
+        "summary": "Approved design.md",
+        "source": "owner",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "phase": "design",
+      "action": "implement",
+      "workflow_step": "design/implement",
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 686511.356,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "03c775e0-a0fa-4225-84a1-163119efd186",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-21T00:43:39.249680Z",
+          "last_activity_at": "2026-11-21T00:49:54.304538Z",
+          "ended_at": "2026-11-21T00:49:54.304538Z",
+          "outcome": {
+            "summary": "Correctness review of INDIGO_SCHEDULER_GUIDE.md (worktree 5cba41e6f) against master 252c1118b and agent_scheduler code, Sequencer.js, scheduler_sandbox.py. Verified about 120 statements (selection/score, urgent/preemption, estimates, VISIBILITY fallbacks/replan/IDLE, flip rules and penalty, hooks/standby/night, header keys/ranges/limits, data folders/FITS, commands/edit/delete, settings defaults/ranges, labels, messages, reasons, restart, sandbox); all true except as noted. Factual fixes 1-5 confirmed (fix 1 see F7). Examples parse with indigo_scheduler_parse_header and use valid indigo_prop_tool syntax; split Startup/Unpark and Setup examples are consistent. All internal anchors resolve; #label-format, #choosing-a-strategy, Two nights compared exist; both PNGs exist. Required changes (content lost without reason): F1 new 747 ABORT: old 644 said a stored task becomes RETRY without using a retry (one-off discarded); stored-task part is gone from the whole guide (code indigo_agent_scheduler.c:1435-1439). Add it. F2 new 755: old 652 'A task that you add or reset before the shutdown hook starts cancels this automatic stop' is missing (code :1983-1987). Add it. F3 new 537: old 726 'It runs only after a NIGHT_START of the same night' became 'NIGHT_END runs, after a NIGHT_START of the same night', which reads as ordering, and Night rules lack the condition (night.c:202-208). Write 'but only if NIGHT_START ran that night' and add it to Night rules. F4: old 53 link to the native Platesolver reference (agent_platesolver/doc/PLATESOLVER.md) dropped; design said merged. Re-add in What you need or the agents table. Minor: F5 new 622/1000 'hour angle reaches OFFSET hours before the run ends' is ambiguous; use 'reaches OFFSET (hours past the meridian) before the run ends' (plan.c:133-137). F6 new 626 1000-night statistic lost 'with OFFSET 0' (and COMPACT 645 flips/69.7 %, same number of runs). F7 new 280/929/1399 'estimates the duration of any task': only pending estimates of sele",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 375054.858,
+          "tokens": null
+        },
+        {
+          "attempt_id": "9a0509f3-e578-4854-a4ee-91103a93516e",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-21T00:54:15.410722Z",
+          "last_activity_at": "2026-11-21T01:00:36.326198Z",
+          "ended_at": "2026-11-21T01:00:36.326198Z",
+          "outcome": {
+            "summary": "Correctness review (claude-opus-5-5) of indigo_docs/INDIGO_SCHEDULER_GUIDE.md at 445c56ceb against master's guide and the scheduler code. Coverage: walked all old sections; every rule/key/setting/message/example is present or removed for an approved reason (duplicates, @timeout, Scripting Agent selection). Confirmed present: ABORT -> RETRY without using a retry (749), add/reset before shutdown cancels automatic stop (757), NIGHT_END only after NIGHT_START (537, 1057), PLATESOLVER.md link exactly once (45, file exists), 1000-night statistic with OFFSET 0 and COMPACT 645/69.7 % (628, matches SCHEDULER.md:696), dome slaving, large Moon width, leave dome steps out, causes of late work. ~70 statements checked against agent_scheduler *.c/*.h, Sequencer.js, indigo_agent_imager.c, scheduler_sandbox.py, indigo_prop_tool.c: flip condition/OFFSET/negative pause (plan.c:133-153, Sequencer.js:322-326,1786-1789, imager.c:1347-1360, flipper FLIP_REQUIRED), pending-estimate rule (select_task 1641-1677, is_selectable_state), standby (1316-1324,1499-1512,2871), @folder none/BASE (data_directory 1141-1160), break_at UTC, Moon width formula (sky.c:157-163, ~7.3 deg at new moon), score/classes (plan.c:67-81), header rules and all ranges/messages (header.c), settings table (3117-3127), labels, history, delete -> ABORTED/deleted. All 16 example tasks parse with the real header parser; rejection messages reproduced verbatim; prop_tool commands valid; all internal anchors resolve, #label-format and #choosing-a-strategy (SCHEDULER.md:354,684) resolve, PNGs exist. FINDINGS: (1) IDLE trigger wording is not exact (350, 482, 521, 606, 1019, 1217: 'when no task has run for IDLE_HOOK_DELAY minutes'). In process_idle (indigo_agent_scheduler.c:2069-2085) idle_since is set at the first decision without a start and reset at every task start, at START (2866) and at the start of NIGHT_START/NIGHT_END (1509-1514); a pending estimate also restarts it (2069-2072), and nothing is counted while a hand-starte",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 380915.476,
+          "tokens": null
+        },
+        {
+          "attempt_id": "99d1c1e4-e3da-449b-942f-b15c580e6f10",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-21T01:05:56.088380Z",
+          "last_activity_at": "2026-11-21T01:09:44.513514Z",
+          "ended_at": "2026-11-21T01:09:44.513514Z",
+          "outcome": {
+            "summary": "Correctness review round 3 (claude-opus-5-5, fresh) of indigo_docs/INDIGO_SCHEDULER_GUIDE.md at d38757199 against master's guide and the scheduler code (unchanged vs master). Coverage: round-3 word diff 445c56ceb..HEAD read in full. Every IDLE/REASON/restore/session/plan-span/N8/N11 statement was checked against indigo_agent_scheduler.c (process_idle 1972-2089, start_task 1490-1520, finish_hook 1300-1330, start_night_hook 1905-1925, control 2856-2902, select_task/select_urgent/estimate_pending 1585-1690, apply_context/restore_context/data_directory 1140-1280, update_plan 2386-2393) and indigo_agent_scheduler_sky.c night_end 478-493. More than 70 other statements were sampled: all 11 Settings rows (3117-3127), the header key ranges and messages (header.c 319-491, 548, 580, 608, 621), all Messages and Reasons strings by grep, MAX_TASKS 128, MAX_HISTORY 200, the 16 KiB limit, the name size, the 64-run VISIBILITY limit, the 240-minute night offset, the 5-minute grid and 48-hour sky, the preemption/ABORT results (1420-1440), urgent tasks not preempting after STOP (1778), history_label, the Scheduler state table (stop_scheduler/request_stop call sites), the sandbox options (scheduler_sandbox.py 514-572) and the prop_tool options (indigo_prop_tool.c 41, 972-1055). All of them are true. Links: every internal anchor resolves; #label-format and #choosing-a-strategy, used by SCHEDULER.md, exist; PLATESOLVER.md, Sequencer.md, SCHEDULER.md, PROPERTIES.md and both PNGs exist. No master content is lost except approved removals; the only removed rule, that a task's own folder or object-name change lasts until the end of the run, was a deliberate correction. Confirmed correct: the REASON note at line 280 (\"If another task could start\"); Restoring and Data rules at lines 669 and 1121-1131; the session sentence (523); the plan span (1344); N8 Alert states (1253); N11 (Bode at 450 ends at 03:45, before its 04:28 culmination, so it does not flip); standby (544, 1066); the VISIBILITY wit",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 228425.134,
+          "tokens": null
+        },
+        {
+          "attempt_id": "46db4e6c-f01c-4415-bd11-9b7df22e870b",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-21T01:15:47.987729Z",
+          "last_activity_at": "2026-11-21T01:20:29.101545Z",
+          "ended_at": "2026-11-21T01:20:29.101545Z",
+          "outcome": {
+            "summary": "Correctness review (fresh reviewer, claude-opus-5-5) of ticket/92c9d6bd at 8f4fba881 against master 252c1118b.\n\nVERDICT: changes. There is one blocking defect, and it is in the branch content, not in the guide text.\n\nREQUIRED\n1. An out-of-scope binary is on the branch. `git diff --stat master...HEAD` shows two files, not one: indigo_docs/INDIGO_SCHEDULER_GUIDE.md and a new indigo_docs/INDIGO_SCHEDULER_GUIDE.pdf (Bin 0 -> 2032671 bytes). The PDF was committed by the wip progress commit f98c9f97b. In the worktree its mtime is 2026-11-21 03:09. No journal entry or note mentions it. Owner answer 8 says \"INDIGO_SCHEDULER_GUIDE.pdf is out of scope\". flow close would land the PDF on master. The primary checkout also holds a different, untracked INDIGO_SCHEDULER_GUIDE.pdf (756022 bytes, 14 Nov) at the same path, which the merge would overwrite or collide with. Fix: remove the PDF from the branch with a new commit (`git rm --cached indigo_docs/INDIGO_SCHEDULER_GUIDE.pdf`, keeping the local file if the owner wants it, or delete it), so that only the guide differs from master. Alternatively, ask the owner explicitly whether a regenerated PDF should ship.\n\nGUIDE TEXT: no errors found.\n\nRound-4 changes, each verified against indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:\n- IDLE wait (guide 1030): \"whichever came last: the end of the last task, the end of the last night hook, or START ... after START from the end of the STARTUP hook\". This matches the code. idle_since is set only in process_idle (2074-2075). process_idle runs only in RUN_IDLE (process 2585-2587), so the first idle decision comes after a task or hook ends. start_task clears idle_since for tasks (1499) and for NIGHT_START/NIGHT_END (1509-1514). control clears it on START (2866). The STARTUP branch returns before process_idle is reached (2024-2031). A pending estimate restarts the wait (2068-2072). run_soon, idle_hook_done and standby gate the hook (2078-2080).\n- Reasons row (1410) matches select_task (164",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 281113.816,
+          "tokens": null
+        },
+        {
+          "attempt_id": "a42076fe-b492-4572-9d83-ae2a57f4bd02",
+          "number": 5,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T02:02:49.548508Z",
+          "last_activity_at": "2026-11-21T02:04:26.971975Z",
+          "ended_at": "2026-11-21T02:04:26.971975Z",
+          "outcome": {
+            "summary": "Pass. (1) git diff --stat master...ticket/92c9d6bd-5770-499b-9245-1bd0776326c4 lists only indigo_docs/INDIGO_SCHEDULER_GUIDE.md (1 file, +985/-628); the PDF is gone. (2) git diff 8f4fba881 against the branch for the guide is empty, so the text the previous correctness review accepted is unchanged. (3) Spot-checked more than 40 statements against the code, all correct. Checked: the Header syntax rules (255-byte line limit via LINE_SIZE 256, repeated key error, plain comment ends the header, empty body error, @task required); every Header keys range and default (indigo_agent_scheduler_header.c parse_value/set_defaults: name 1-40 without |, priority classes and level 0-100, hook without a level, RA/Dec, altitude 0-90, airmass 1-100, HA -12..12, moon 0-180 with width 0.5-30, illumination, twilight, duration 1-1440, repeat 1-10000 every 0-100000, retry 0-100 after 0-100000, preempted, enabled, folder 1-40/none, observer/pi/project 1-56 with a quote counting as two); the rule that sky keys need @target; the HOOK_REJECTED_KEYS list; the score formula, 1000 per class, the 12 h setting horizon, altitude capped at 100 and 0 without a target, ties going to the earlier task (indigo_agent_scheduler_plan.c 67-81, select_task); estimate pending blocking non-urgent tasks and the definition of a waiting task (1640-1677); ESTIMATE_TIMEOUT 10 s, default 60 min, the three unknown-duration waits in Sequencer.js; the 5-min grid and 48 h forecast (300 s x 577 points); the 64-run VISIBILITY limit and its message text; the meridian flip condition and the negative-offset pause cost (plan.c 133-153); the hook failure table (startup stop_scheduler Alert, night start/resume request_stop through SHUTDOWN, night end/idle only reported, first hook by item order in hook_kind); the names-no-task and disabled-hook messages; every row of the Settings table (ranges and defaults, 3117-3127); the DATA and NIGHT defaults; the polar-night messages; the urgent-queued message; and the 511-byte label limit (I",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 97423.467,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T00:43:39.249680Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T00:49:54.304538Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Correctness review of INDIGO_SCHEDULER_GUIDE.md (worktree 5cba41e6f) against master 252c1118b and agent_scheduler code, Sequencer.js, scheduler_sandbox.py. Verified about 120 statements (selection/score, urgent/preemption, estimates, VISIBILITY fallbacks/replan/IDLE, flip rules and penalty, hooks/standby/night, header keys/ranges/limits, data folders/FITS, commands/edit/delete, settings defaults/ranges, labels, messages, reasons, restart, sandbox); all true except as noted. Factual fixes 1-5 confirmed (fix 1 see F7). Examples parse with indigo_scheduler_parse_header and use valid indigo_prop_tool syntax; split Startup/Unpark and Setup examples are consistent. All internal anchors resolve; #label-format, #choosing-a-strategy, Two nights compared exist; both PNGs exist. Required changes (content lost without reason): F1 new 747 ABORT: old 644 said a stored task becomes RETRY without using a retry (one-off discarded); stored-task part is gone from the whole guide (code indigo_agent_scheduler.c:1435-1439). Add it. F2 new 755: old 652 'A task that you add or reset before the shutdown hook starts cancels this automatic stop' is missing (code :1983-1987). Add it. F3 new 537: old 726 'It runs only after a NIGHT_START of the same night' became 'NIGHT_END runs, after a NIGHT_START of the same night', which reads as ordering, and Night rules lack the condition (night.c:202-208). Write 'but only if NIGHT_START ran that night' and add it to Night rules. F4: old 53 link to the native Platesolver reference (agent_platesolver/doc/PLATESOLVER.md) dropped; design said merged. Re-add in What you need or the agents table. Minor: F5 new 622/1000 'hour angle reaches OFFSET hours before the run ends' is ambiguous; use 'reaches OFFSET (hours past the meridian) before the run ends' (plan.c:133-137). F6 new 626 1000-night statistic lost 'with OFFSET 0' (and COMPACT 645 flips/69.7 %, same number of runs). F7 new 280/929/1399 'estimates the duration of any task': only pending estimates of sele"
+        },
+        {
+          "at": "2026-11-21T00:54:15.410722Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T01:00:36.326198Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Correctness review (claude-opus-5-5) of indigo_docs/INDIGO_SCHEDULER_GUIDE.md at 445c56ceb against master's guide and the scheduler code. Coverage: walked all old sections; every rule/key/setting/message/example is present or removed for an approved reason (duplicates, @timeout, Scripting Agent selection). Confirmed present: ABORT -> RETRY without using a retry (749), add/reset before shutdown cancels automatic stop (757), NIGHT_END only after NIGHT_START (537, 1057), PLATESOLVER.md link exactly once (45, file exists), 1000-night statistic with OFFSET 0 and COMPACT 645/69.7 % (628, matches SCHEDULER.md:696), dome slaving, large Moon width, leave dome steps out, causes of late work. ~70 statements checked against agent_scheduler *.c/*.h, Sequencer.js, indigo_agent_imager.c, scheduler_sandbox.py, indigo_prop_tool.c: flip condition/OFFSET/negative pause (plan.c:133-153, Sequencer.js:322-326,1786-1789, imager.c:1347-1360, flipper FLIP_REQUIRED), pending-estimate rule (select_task 1641-1677, is_selectable_state), standby (1316-1324,1499-1512,2871), @folder none/BASE (data_directory 1141-1160), break_at UTC, Moon width formula (sky.c:157-163, ~7.3 deg at new moon), score/classes (plan.c:67-81), header rules and all ranges/messages (header.c), settings table (3117-3127), labels, history, delete -> ABORTED/deleted. All 16 example tasks parse with the real header parser; rejection messages reproduced verbatim; prop_tool commands valid; all internal anchors resolve, #label-format and #choosing-a-strategy (SCHEDULER.md:354,684) resolve, PNGs exist. FINDINGS: (1) IDLE trigger wording is not exact (350, 482, 521, 606, 1019, 1217: 'when no task has run for IDLE_HOOK_DELAY minutes'). In process_idle (indigo_agent_scheduler.c:2069-2085) idle_since is set at the first decision without a start and reset at every task start, at START (2866) and at the start of NIGHT_START/NIGHT_END (1509-1514); a pending estimate also restarts it (2069-2072), and nothing is counted while a hand-starte"
+        },
+        {
+          "at": "2026-11-21T01:05:56.088380Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T01:09:44.513514Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Correctness review round 3 (claude-opus-5-5, fresh) of indigo_docs/INDIGO_SCHEDULER_GUIDE.md at d38757199 against master's guide and the scheduler code (unchanged vs master). Coverage: round-3 word diff 445c56ceb..HEAD read in full. Every IDLE/REASON/restore/session/plan-span/N8/N11 statement was checked against indigo_agent_scheduler.c (process_idle 1972-2089, start_task 1490-1520, finish_hook 1300-1330, start_night_hook 1905-1925, control 2856-2902, select_task/select_urgent/estimate_pending 1585-1690, apply_context/restore_context/data_directory 1140-1280, update_plan 2386-2393) and indigo_agent_scheduler_sky.c night_end 478-493. More than 70 other statements were sampled: all 11 Settings rows (3117-3127), the header key ranges and messages (header.c 319-491, 548, 580, 608, 621), all Messages and Reasons strings by grep, MAX_TASKS 128, MAX_HISTORY 200, the 16 KiB limit, the name size, the 64-run VISIBILITY limit, the 240-minute night offset, the 5-minute grid and 48-hour sky, the preemption/ABORT results (1420-1440), urgent tasks not preempting after STOP (1778), history_label, the Scheduler state table (stop_scheduler/request_stop call sites), the sandbox options (scheduler_sandbox.py 514-572) and the prop_tool options (indigo_prop_tool.c 41, 972-1055). All of them are true. Links: every internal anchor resolves; #label-format and #choosing-a-strategy, used by SCHEDULER.md, exist; PLATESOLVER.md, Sequencer.md, SCHEDULER.md, PROPERTIES.md and both PNGs exist. No master content is lost except approved removals; the only removed rule, that a task's own folder or object-name change lasts until the end of the run, was a deliberate correction. Confirmed correct: the REASON note at line 280 (\"If another task could start\"); Restoring and Data rules at lines 669 and 1121-1131; the session sentence (523); the plan span (1344); N8 Alert states (1253); N11 (Bode at 450 ends at 03:45, before its 04:28 culmination, so it does not flip); standby (544, 1066); the VISIBILITY wit"
+        },
+        {
+          "at": "2026-11-21T01:15:47.987729Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T01:20:29.101545Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Correctness review (fresh reviewer, claude-opus-5-5) of ticket/92c9d6bd at 8f4fba881 against master 252c1118b.\n\nVERDICT: changes. There is one blocking defect, and it is in the branch content, not in the guide text.\n\nREQUIRED\n1. An out-of-scope binary is on the branch. `git diff --stat master...HEAD` shows two files, not one: indigo_docs/INDIGO_SCHEDULER_GUIDE.md and a new indigo_docs/INDIGO_SCHEDULER_GUIDE.pdf (Bin 0 -> 2032671 bytes). The PDF was committed by the wip progress commit f98c9f97b. In the worktree its mtime is 2026-11-21 03:09. No journal entry or note mentions it. Owner answer 8 says \"INDIGO_SCHEDULER_GUIDE.pdf is out of scope\". flow close would land the PDF on master. The primary checkout also holds a different, untracked INDIGO_SCHEDULER_GUIDE.pdf (756022 bytes, 14 Nov) at the same path, which the merge would overwrite or collide with. Fix: remove the PDF from the branch with a new commit (`git rm --cached indigo_docs/INDIGO_SCHEDULER_GUIDE.pdf`, keeping the local file if the owner wants it, or delete it), so that only the guide differs from master. Alternatively, ask the owner explicitly whether a regenerated PDF should ship.\n\nGUIDE TEXT: no errors found.\n\nRound-4 changes, each verified against indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:\n- IDLE wait (guide 1030): \"whichever came last: the end of the last task, the end of the last night hook, or START ... after START from the end of the STARTUP hook\". This matches the code. idle_since is set only in process_idle (2074-2075). process_idle runs only in RUN_IDLE (process 2585-2587), so the first idle decision comes after a task or hook ends. start_task clears idle_since for tasks (1499) and for NIGHT_START/NIGHT_END (1509-1514). control clears it on START (2866). The STARTUP branch returns before process_idle is reached (2024-2031). A pending estimate restarts the wait (2068-2072). run_soon, idle_hook_done and standby gate the hook (2078-2080).\n- Reasons row (1410) matches select_task (164"
+        },
+        {
+          "at": "2026-11-21T02:02:49.548508Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T02:04:26.971975Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. (1) git diff --stat master...ticket/92c9d6bd-5770-499b-9245-1bd0776326c4 lists only indigo_docs/INDIGO_SCHEDULER_GUIDE.md (1 file, +985/-628); the PDF is gone. (2) git diff 8f4fba881 against the branch for the guide is empty, so the text the previous correctness review accepted is unchanged. (3) Spot-checked more than 40 statements against the code, all correct. Checked: the Header syntax rules (255-byte line limit via LINE_SIZE 256, repeated key error, plain comment ends the header, empty body error, @task required); every Header keys range and default (indigo_agent_scheduler_header.c parse_value/set_defaults: name 1-40 without |, priority classes and level 0-100, hook without a level, RA/Dec, altitude 0-90, airmass 1-100, HA -12..12, moon 0-180 with width 0.5-30, illumination, twilight, duration 1-1440, repeat 1-10000 every 0-100000, retry 0-100 after 0-100000, preempted, enabled, folder 1-40/none, observer/pi/project 1-56 with a quote counting as two); the rule that sky keys need @target; the HOOK_REJECTED_KEYS list; the score formula, 1000 per class, the 12 h setting horizon, altitude capped at 100 and 0 without a target, ties going to the earlier task (indigo_agent_scheduler_plan.c 67-81, select_task); estimate pending blocking non-urgent tasks and the definition of a waiting task (1640-1677); ESTIMATE_TIMEOUT 10 s, default 60 min, the three unknown-duration waits in Sequencer.js; the 5-min grid and 48 h forecast (300 s x 577 points); the 64-run VISIBILITY limit and its message text; the meridian flip condition and the negative-offset pause cost (plan.c 133-153); the hook failure table (startup stop_scheduler Alert, night start/resume request_stop through SHUTDOWN, night end/idle only reported, first hook by item order in hook_kind); the names-no-task and disabled-hook messages; every row of the Settings table (ranges and defaults, 3117-3127); the DATA and NIGHT defaults; the polar-night messages; the urgent-queued message; and the 511-byte label limit (I"
+        }
+      ],
+      "result": {
+        "summary": "Pass. (1) git diff --stat master...ticket/92c9d6bd-5770-499b-9245-1bd0776326c4 lists only indigo_docs/INDIGO_SCHEDULER_GUIDE.md (1 file, +985/-628); the PDF is gone. (2) git diff 8f4fba881 against the branch for the guide is empty, so the text the previous correctness review accepted is unchanged. (3) Spot-checked more than 40 statements against the code, all correct. Checked: the Header syntax rules (255-byte line limit via LINE_SIZE 256, repeated key error, plain comment ends the header, empty body error, @task required); every Header keys range and default (indigo_agent_scheduler_header.c parse_value/set_defaults: name 1-40 without |, priority classes and level 0-100, hook without a level, RA/Dec, altitude 0-90, airmass 1-100, HA -12..12, moon 0-180 with width 0.5-30, illumination, twilight, duration 1-1440, repeat 1-10000 every 0-100000, retry 0-100 after 0-100000, preempted, enabled, folder 1-40/none, observer/pi/project 1-56 with a quote counting as two); the rule that sky keys need @target; the HOOK_REJECTED_KEYS list; the score formula, 1000 per class, the 12 h setting horizon, altitude capped at 100 and 0 without a target, ties going to the earlier task (indigo_agent_scheduler_plan.c 67-81, select_task); estimate pending blocking non-urgent tasks and the definition of a waiting task (1640-1677); ESTIMATE_TIMEOUT 10 s, default 60 min, the three unknown-duration waits in Sequencer.js; the 5-min grid and 48 h forecast (300 s x 577 points); the 64-run VISIBILITY limit and its message text; the meridian flip condition and the negative-offset pause cost (plan.c 133-153); the hook failure table (startup stop_scheduler Alert, night start/resume request_stop through SHUTDOWN, night end/idle only reported, first hook by item order in hook_kind); the names-no-task and disabled-hook messages; every row of the Settings table (ranges and defaults, 3117-3127); the DATA and NIGHT defaults; the polar-night messages; the urgent-queued message; and the 511-byte label limit (I",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 1362932.751,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 5
+        }
+      }
+    },
+    {
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "title": "Review (readability)",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "e1af3d00-d4ff-4ec8-acdf-7027191aea22",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-21T00:43:43.530405Z",
+          "last_activity_at": "2026-11-21T00:45:55.540196Z",
+          "ended_at": "2026-11-21T00:45:55.540196Z",
+          "outcome": {
+            "summary": "Readability review (fresh eyes, amateur user who has never used the scheduler). Overall the guide reads well: short sentences, examples first, consistent structure, and the quick start leads to a running scheduler. Design 5.2 fixed questions all answered from the concepts part: high after normal (L370-371, L1424); when RESUME runs (L483, L540); where hook frames go (L665); urgent arrival (L699-706); stop a run at 02:00 (L235-259). COMPACT vs VISIBILITY and priority under each (L360-372) are clear. One blocking finding, the rest minor.\n\nBLOCKING\nB1. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are used before they are explained, and OFFSET is never explained in the concepts part. L392 \"With the flip enabled at `OFFSET` 0 and the default penalty, Soul, Pleiades and Jellyfish start just after the meridian, and no run flips\", L407 and the whole Two nights section (flip columns, L428-448) come before Meridian flips (L616-628). L620 shows `enable_meridian_flip(true, 0)` but never says what the second argument (OFFSET) means. L622 \"flips when the hour angle of its target reaches `OFFSET` hours before the run ends\" parses two ways (\"OFFSET hours before the end\"?); L1000 has the same wording. Fix: (a) at the start of Two nights (or end of Choosing a strategy) add: \"A German equatorial mount must flip when a run crosses the meridian. Under `VISIBILITY`, `VISIBILITY_FLIP_PENALTY` makes the planner count each flip as lost imaging time, so it moves short runs to one side of the meridian. `COMPACT` ignores the penalty. `OFFSET` 0 means the mount flips at the meridian. See also: [Meridian flips](#meridian-flips).\" (b) At L620 add: \"The second argument of `enable_meridian_flip()` is `OFFSET`, in hours of hour angle. With 0 the mount flips at the meridian. A positive value flips that many hours later.\" (c) L622/L1000: \"A run that starts east of the meridian (negative hour angle) flips if the hour angle of its target reaches `OFFSET` before the run ends.\" (d) L392 \"The plan ",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 132009.791,
+          "tokens": null
+        },
+        {
+          "attempt_id": "61be10b9-69a0-4929-9401-44baadafca0d",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T00:54:15.598020Z",
+          "last_activity_at": "2026-11-21T00:56:05.652211Z",
+          "ended_at": "2026-11-21T00:56:05.652211Z",
+          "outcome": {
+            "summary": "Readability round 2: pass. The quick start leads to a running scheduler. All five design 5.2 questions are answered from the concepts part. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at their first use (L392), before Two nights compared. COMPACT vs VISIBILITY and the role of priority are clear (L360-372). The banned terms are gone. Round 1 B1 and M1-M20 are all resolved. Twelve minor, non-blocking suggestions (N1-N12): L310 'adds up to' -> 'adds at most'; L374/L409 'counted by' -> 'weighted by'; L407 unclear 'run by run' sentence; L392 dense, and OFFSET not tied to enable_meridian_flip there; 'session' is used but not defined; L525 wall of text; L1220-1221 'starting plan' jargon; L1243 sentence fragment; L1334 gives only the exception for the plan's time span; L872 'importance'; L448 'Bode stays'; L350 IDLE named before hooks are introduced. Full text: scratchpad read_review_round2.txt.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 110054.191,
+          "tokens": null
+        },
+        {
+          "attempt_id": "fff8fc06-9584-4817-85fe-1e6dc25867a9",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T01:05:56.282741Z",
+          "last_activity_at": "2026-11-21T01:07:49.604206Z",
+          "ended_at": "2026-11-21T01:07:49.604206Z",
+          "outcome": {
+            "summary": "Readability review, round 3 (fresh eyes, amateur INDIGO user new to the scheduler). File: indigo_docs/INDIGO_SCHEDULER_GUIDE.md in the ticket worktree (1536 lines, about 15,200 words outside code blocks; length accepted by the owner). Rough metrics: about 855 prose sentences, average 12.4 words. The few \"long\" sentences the counter found are lead-ins joined to the lists or code blocks that follow them, not real long sentences.\n\nVERDICT: pass. Nothing blocks. The minor items below are optional polish.\n\nOVERALL\nThe quick start works on its own. It goes from loading the agents (L47-63) to an upload with -s and [OK]/[ALERT] (L99-105), then the task list line and the meaning of \"set\" (L107), START (L112), polling REASON (L115-121), the automatic stop and DELETE (L121-127). Concepts come before they are used. Meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at L392 before the two-nights charts. Hooks are introduced at L329 before IDLE is named at L350. Session is defined at L523 at its first use. Terms follow design table 3.5. A grep finds none of: eligible, labell*, hook-only, greedy, \"task run\" in running text, sky bonus, importance, \"no longer\", \"counted by\", \"adds up to\". \"Best visibility\" appears once, as the client label (L358). The only \"task runs\" left is inside a verbatim message (L991).\n\nDESIGN 5.2 FIXED QUESTIONS (all answered from the concepts part)\n- Why did my high task run after a normal one? L370-371, the busy-night note at L431, and Troubleshooting L1437.\n- When does RESUME run? L485 and L544. Reference at L1024 and L1066.\n- Where do the frames of a hook go? L671. Reference at L1127-1131.\n- What happens to the running task when an urgent task arrives? L705-712.\n- How do I stop a run at 02:00? L235-259: break_at(), with the UTC note at L241.\n\nROUND 1 AND ROUND 2 STATUS\n- B1 is resolved: L392 and L394 (flip, OFFSET, penalty before use, \"the same as in the table\"), L626 (OFFSET argument), L628 and L1006 (which runs flip, unambiguous).\n- M1-M20",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 113321.465,
+          "tokens": null
+        },
+        {
+          "attempt_id": "abcc1016-96bd-407d-b7e1-9174e9d8cde6",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T01:15:48.156391Z",
+          "last_activity_at": "2026-11-21T01:17:32.943339Z",
+          "ended_at": "2026-11-21T01:17:32.943339Z",
+          "outcome": {
+            "summary": "Readability review, round 4 (fresh eyes, an amateur INDIGO user who has never used the scheduler). File: indigo_docs/INDIGO_SCHEDULER_GUIDE.md in the ticket worktree, 1523 lines. The owner accepted the length.\n\nVERDICT: pass. Nothing blocks. The minor items below are optional polish.\n\nOVERALL\nThe quick start (L9-127) works on its own. It loads the agents, uploads with -s and explains [OK]/[ALERT], explains the task list line and \"set\", then START, polling REASON, the automatic stop and DELETE. Each concept is explained before it is used. Hooks are introduced at L329, before IDLE is named at L350. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at L392-394, before the two-nights charts. A session is defined at L521, where it is first used. COMPACT vs VISIBILITY and how each uses priority (L360-372) are clear. The terms follow design table 3.5. A grep for eligible, labell*, hook-only, greedy, \"task run\", sky bonus, importance and \"no longer\" finds nothing. \"Best visibility\" appears once, as the client label (L358). I found no walls of text and no sentences that needed rereading, apart from the minor items below. The repetition between the concepts and the reference is deliberate.\n\nDESIGN 5.2 FIXED QUESTIONS (all answered from the concepts part)\n- Why did my high task run after a normal one? L370-371, the busy-night note at L431 and Troubleshooting L1435.\n- When does RESUME run? L483 and L542. Reference at L1022 and L1064.\n- Where do the frames of a hook go? L669. Reference at L1125-1129.\n- What happens to the running task when an urgent task arrives? L703-710.\n- How do I stop a run at 02:00? L235-259, with break_at() and the UTC note at L241.\n\nEARLIER ROUNDS\n- Round 1: B1 is resolved (L392-394, L624, L626, L1004). M1-M20 are still in place.\n- Round 2: N1-N12 are still in place.\n- Round 3: all five minor items are resolved.\n  - m1, L280: \"REASON may then show `estimating the task duration`\". The exact cases are in the Reasons table (L1410).\n  - m2, ",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 104786.948,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T00:43:43.530405Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T00:45:55.540196Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Readability review (fresh eyes, amateur user who has never used the scheduler). Overall the guide reads well: short sentences, examples first, consistent structure, and the quick start leads to a running scheduler. Design 5.2 fixed questions all answered from the concepts part: high after normal (L370-371, L1424); when RESUME runs (L483, L540); where hook frames go (L665); urgent arrival (L699-706); stop a run at 02:00 (L235-259). COMPACT vs VISIBILITY and priority under each (L360-372) are clear. One blocking finding, the rest minor.\n\nBLOCKING\nB1. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are used before they are explained, and OFFSET is never explained in the concepts part. L392 \"With the flip enabled at `OFFSET` 0 and the default penalty, Soul, Pleiades and Jellyfish start just after the meridian, and no run flips\", L407 and the whole Two nights section (flip columns, L428-448) come before Meridian flips (L616-628). L620 shows `enable_meridian_flip(true, 0)` but never says what the second argument (OFFSET) means. L622 \"flips when the hour angle of its target reaches `OFFSET` hours before the run ends\" parses two ways (\"OFFSET hours before the end\"?); L1000 has the same wording. Fix: (a) at the start of Two nights (or end of Choosing a strategy) add: \"A German equatorial mount must flip when a run crosses the meridian. Under `VISIBILITY`, `VISIBILITY_FLIP_PENALTY` makes the planner count each flip as lost imaging time, so it moves short runs to one side of the meridian. `COMPACT` ignores the penalty. `OFFSET` 0 means the mount flips at the meridian. See also: [Meridian flips](#meridian-flips).\" (b) At L620 add: \"The second argument of `enable_meridian_flip()` is `OFFSET`, in hours of hour angle. With 0 the mount flips at the meridian. A positive value flips that many hours later.\" (c) L622/L1000: \"A run that starts east of the meridian (negative hour angle) flips if the hour angle of its target reaches `OFFSET` before the run ends.\" (d) L392 \"The plan "
+        },
+        {
+          "at": "2026-11-21T00:54:15.598020Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T00:56:05.652211Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Readability round 2: pass. The quick start leads to a running scheduler. All five design 5.2 questions are answered from the concepts part. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at their first use (L392), before Two nights compared. COMPACT vs VISIBILITY and the role of priority are clear (L360-372). The banned terms are gone. Round 1 B1 and M1-M20 are all resolved. Twelve minor, non-blocking suggestions (N1-N12): L310 'adds up to' -> 'adds at most'; L374/L409 'counted by' -> 'weighted by'; L407 unclear 'run by run' sentence; L392 dense, and OFFSET not tied to enable_meridian_flip there; 'session' is used but not defined; L525 wall of text; L1220-1221 'starting plan' jargon; L1243 sentence fragment; L1334 gives only the exception for the plan's time span; L872 'importance'; L448 'Bode stays'; L350 IDLE named before hooks are introduced. Full text: scratchpad read_review_round2.txt."
+        },
+        {
+          "at": "2026-11-21T01:05:56.282741Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T01:07:49.604206Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Readability review, round 3 (fresh eyes, amateur INDIGO user new to the scheduler). File: indigo_docs/INDIGO_SCHEDULER_GUIDE.md in the ticket worktree (1536 lines, about 15,200 words outside code blocks; length accepted by the owner). Rough metrics: about 855 prose sentences, average 12.4 words. The few \"long\" sentences the counter found are lead-ins joined to the lists or code blocks that follow them, not real long sentences.\n\nVERDICT: pass. Nothing blocks. The minor items below are optional polish.\n\nOVERALL\nThe quick start works on its own. It goes from loading the agents (L47-63) to an upload with -s and [OK]/[ALERT] (L99-105), then the task list line and the meaning of \"set\" (L107), START (L112), polling REASON (L115-121), the automatic stop and DELETE (L121-127). Concepts come before they are used. Meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at L392 before the two-nights charts. Hooks are introduced at L329 before IDLE is named at L350. Session is defined at L523 at its first use. Terms follow design table 3.5. A grep finds none of: eligible, labell*, hook-only, greedy, \"task run\" in running text, sky bonus, importance, \"no longer\", \"counted by\", \"adds up to\". \"Best visibility\" appears once, as the client label (L358). The only \"task runs\" left is inside a verbatim message (L991).\n\nDESIGN 5.2 FIXED QUESTIONS (all answered from the concepts part)\n- Why did my high task run after a normal one? L370-371, the busy-night note at L431, and Troubleshooting L1437.\n- When does RESUME run? L485 and L544. Reference at L1024 and L1066.\n- Where do the frames of a hook go? L671. Reference at L1127-1131.\n- What happens to the running task when an urgent task arrives? L705-712.\n- How do I stop a run at 02:00? L235-259: break_at(), with the UTC note at L241.\n\nROUND 1 AND ROUND 2 STATUS\n- B1 is resolved: L392 and L394 (flip, OFFSET, penalty before use, \"the same as in the table\"), L626 (OFFSET argument), L628 and L1006 (which runs flip, unambiguous).\n- M1-M20"
+        },
+        {
+          "at": "2026-11-21T01:15:48.156391Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T01:17:32.943339Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Readability review, round 4 (fresh eyes, an amateur INDIGO user who has never used the scheduler). File: indigo_docs/INDIGO_SCHEDULER_GUIDE.md in the ticket worktree, 1523 lines. The owner accepted the length.\n\nVERDICT: pass. Nothing blocks. The minor items below are optional polish.\n\nOVERALL\nThe quick start (L9-127) works on its own. It loads the agents, uploads with -s and explains [OK]/[ALERT], explains the task list line and \"set\", then START, polling REASON, the automatic stop and DELETE. Each concept is explained before it is used. Hooks are introduced at L329, before IDLE is named at L350. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at L392-394, before the two-nights charts. A session is defined at L521, where it is first used. COMPACT vs VISIBILITY and how each uses priority (L360-372) are clear. The terms follow design table 3.5. A grep for eligible, labell*, hook-only, greedy, \"task run\", sky bonus, importance and \"no longer\" finds nothing. \"Best visibility\" appears once, as the client label (L358). I found no walls of text and no sentences that needed rereading, apart from the minor items below. The repetition between the concepts and the reference is deliberate.\n\nDESIGN 5.2 FIXED QUESTIONS (all answered from the concepts part)\n- Why did my high task run after a normal one? L370-371, the busy-night note at L431 and Troubleshooting L1435.\n- When does RESUME run? L483 and L542. Reference at L1022 and L1064.\n- Where do the frames of a hook go? L669. Reference at L1125-1129.\n- What happens to the running task when an urgent task arrives? L703-710.\n- How do I stop a run at 02:00? L235-259, with break_at() and the UTC note at L241.\n\nEARLIER ROUNDS\n- Round 1: B1 is resolved (L392-394, L624, L626, L1004). M1-M20 are still in place.\n- Round 2: N1-N12 are still in place.\n- Round 3: all five minor items are resolved.\n  - m1, L280: \"REASON may then show `estimating the task duration`\". The exact cases are in the Reasons table (L1410).\n  - m2, "
+        }
+      ],
+      "result": {
+        "summary": "Readability review, round 4 (fresh eyes, an amateur INDIGO user who has never used the scheduler). File: indigo_docs/INDIGO_SCHEDULER_GUIDE.md in the ticket worktree, 1523 lines. The owner accepted the length.\n\nVERDICT: pass. Nothing blocks. The minor items below are optional polish.\n\nOVERALL\nThe quick start (L9-127) works on its own. It loads the agents, uploads with -s and explains [OK]/[ALERT], explains the task list line and \"set\", then START, polling REASON, the automatic stop and DELETE. Each concept is explained before it is used. Hooks are introduced at L329, before IDLE is named at L350. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at L392-394, before the two-nights charts. A session is defined at L521, where it is first used. COMPACT vs VISIBILITY and how each uses priority (L360-372) are clear. The terms follow design table 3.5. A grep for eligible, labell*, hook-only, greedy, \"task run\", sky bonus, importance and \"no longer\" finds nothing. \"Best visibility\" appears once, as the client label (L358). I found no walls of text and no sentences that needed rereading, apart from the minor items below. The repetition between the concepts and the reference is deliberate.\n\nDESIGN 5.2 FIXED QUESTIONS (all answered from the concepts part)\n- Why did my high task run after a normal one? L370-371, the busy-night note at L431 and Troubleshooting L1435.\n- When does RESUME run? L483 and L542. Reference at L1022 and L1064.\n- Where do the frames of a hook go? L669. Reference at L1125-1129.\n- What happens to the running task when an urgent task arrives? L703-710.\n- How do I stop a run at 02:00? L235-259, with break_at() and the UTC note at L241.\n\nEARLIER ROUNDS\n- Round 1: B1 is resolved (L392-394, L624, L626, L1004). M1-M20 are still in place.\n- Round 2: N1-N12 are still in place.\n- Round 3: all five minor items are resolved.\n  - m1, L280: \"REASON may then show `estimating the task duration`\". The exact cases are in the Reasons table (L1410).\n  - m2, ",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 460172.395,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 4
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "38cdf13a-37e7-4a69-baff-2894365968c1",
+      "event": "ticket/created",
+      "at": "2026-11-20T23:47:03.918573Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "full"
+    },
+    {
+      "event_id": "7f6cb37f-481b-484a-b4ce-0205c291cf69",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T23:47:35.466034Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "full",
+      "corrected": null
+    },
+    {
+      "event_id": "d73e464f-b482-4828-baa9-36e85f504d66",
+      "event": "ticket/note",
+      "at": "2026-11-20T23:47:35.650477Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (2026-11-21): start this ticket only after ticket fed6144e (GUI clients and VISIBILITY priority fixes) is closed, so the rewrite builds on the corrected text.",
+      "tokens": null
+    },
+    {
+      "event_id": "39e1b7c4-1d35-487f-8ba0-96986a71300e",
+      "event": "task/progress",
+      "at": "2026-11-21T00:10:01.387472Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Implementation started on branch ticket/92c9d6bd-5770-499b-9245-1bd0776326c4"
+    },
+    {
+      "event_id": "a9cf5ef1-03a5-4c92-91f5-e6c879306be7",
+      "event": "ticket/started",
+      "at": "2026-11-21T00:10:01.388262Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/92c9d6bd-5770-499b-9245-1bd0776326c4",
+      "base": "master"
+    },
+    {
+      "event_id": "8ff4a94c-acaa-4217-80e6-10c019444522",
+      "event": "task/progress",
+      "at": "2026-11-21T00:10:01.577203Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8a3cef40-10ef-4bd9-9cc6-591106676070",
+      "text": "Design started"
+    },
+    {
+      "event_id": "c98e4f53-a0cf-4bb3-ad04-6760f81e6aaa",
+      "event": "stage/started",
+      "at": "2026-11-21T00:10:01.577754Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "8a3cef40-10ef-4bd9-9cc6-591106676070"
+    },
+    {
+      "event_id": "d9d69e0b-7d06-4470-8182-b766dd5379a1",
+      "event": "task/progress",
+      "at": "2026-11-21T00:10:20.322060Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8a3cef40-10ef-4bd9-9cc6-591106676070",
+      "text": "Design worker launched",
+      "attempt_id": "c9887e81-10d5-4af2-b4ab-5cf5361153e9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7880f1d6-b6cb-4acd-a549-80b861e408b4",
+      "event": "task/progress",
+      "at": "2026-11-21T00:10:40.507647Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8a3cef40-10ef-4bd9-9cc6-591106676070",
+      "text": "Read guide; verifying priority and selection rules in scheduler code"
+    },
+    {
+      "event_id": "b78f6d7f-4fcb-4549-9168-9930a377dda4",
+      "event": "task/progress",
+      "at": "2026-11-21T00:12:54.210085Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8a3cef40-10ef-4bd9-9cc6-591106676070",
+      "text": "Writing design.md: diagnosis, outline, style guide, sample section"
+    },
+    {
+      "event_id": "edf2b5f2-2490-4648-9ad2-6ab7cd17038b",
+      "event": "task/progress",
+      "at": "2026-11-21T00:15:52.055743Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8a3cef40-10ef-4bd9-9cc6-591106676070",
+      "text": "Design written to ticket directory design.md; ready for owner review"
+    },
+    {
+      "event_id": "431918b4-6299-4009-a7ff-13c8425f43c2",
+      "event": "stage/presented",
+      "at": "2026-11-21T00:16:13.890121Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "76dc642d-6544-42a7-b8ed-21ea3d14f1fc",
+      "event": "ticket/note",
+      "at": "2026-11-21T00:21:27.963894Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner answers to design.md open questions (2026-11-21): 1. show the score formula in the reference part only; the concepts part explains it in words. 2. wrong statements found during the rewrite are fixed in this ticket and each fix is listed in a ticket note; only a finding that means the code is wrong gets a separate ticket. 3. split the Unpark example so only the STARTUP hook sets the meridian flip; give the several-nights example a STARTUP hook. 4. remove the two planned features (Scripting Agent selection, @timeout) from the user guide; SCHEDULER.md keeps them. 5. appendix for the sandbox and chart regeneration: yes. 6. keep the header block and update the revision date. 7. 12,000-13,000 words is fine. 8. INDIGO_SCHEDULER_GUIDE.pdf is out of scope.",
+      "tokens": null
+    },
+    {
+      "event_id": "896f9f3a-eeff-4a18-9687-1e747d6ee41b",
+      "event": "task/progress",
+      "at": "2026-11-21T00:21:28.088557Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8a3cef40-10ef-4bd9-9cc6-591106676070",
+      "text": "Design approved: design.md"
+    },
+    {
+      "event_id": "94862200-cdc4-4fda-ba16-efaab6f079f8",
+      "event": "stage/approved",
+      "at": "2026-11-21T00:21:28.089138Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "8a3cef40-10ef-4bd9-9cc6-591106676070",
+      "file": "design.md"
+    },
+    {
+      "event_id": "35f78a2c-368e-4814-8f1f-dbd205d52133",
+      "event": "task/progress",
+      "at": "2026-11-21T00:21:44.193848Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Implementer launched",
+      "attempt_id": "187ba7aa-99cc-43f4-ac5f-be6964acdcfa",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "774785ee-34cb-4d6e-af91-82318471dea9",
+      "event": "task/progress",
+      "at": "2026-11-21T00:22:27.105392Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Building the rule inventory and checking rules against the scheduler code"
+    },
+    {
+      "event_id": "d3ee72d6-9840-4172-aa66-d72dea1b8a53",
+      "event": "task/progress",
+      "at": "2026-11-21T00:24:50.155027Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Code check done; writing Part 1 (quick start) and Part 2 (concepts)"
+    },
+    {
+      "event_id": "dfac0216-2796-4435-b032-09ff6a9b46db",
+      "event": "task/progress",
+      "at": "2026-11-21T00:27:54.775439Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Writing Part 3 (reference) and the appendix"
+    },
+    {
+      "event_id": "278cd3b9-e967-4357-a7c2-0a122e55f0f0",
+      "event": "ticket/note",
+      "at": "2026-11-21T00:39:07.637097Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Rule checklist for the scheduler guide rewrite (design 5.1). Old lines refer to INDIGO_SCHEDULER_GUIDE.md at 1b3e9749b; code references to indigo_drivers/agent_scheduler/ at the same commit (S = indigo_agent_scheduler.c, H = _header.c, P = _plan.c, K = _sky.c, N = _night.c, Q = Sequencer.js). Status: kept (K), merged with duplicate (M), removed (R), fixed (F).\n\nQuick start (old 9-131 -> Introduction, What you need, Loading the agents, How to talk, A first task)\n- Agents by exact name on same server, remote agent \"X @ host\" not used: K, S:54-57 -> Agents the scheduler depends on\n- Scripting Agent required, REASON 'waiting for the Scripting Agent': K, S:2014\n- Mount Agent site, 'site coordinates unknown' for @target/@twilight and night hooks: K, K:277-281, S:1857-1862\n- Guider stopped on abort/preempt; imager/solvers waited for: K, S:1457, S:3384-3388\n- Site source HOST/MOUNT/DOME/GPS, lat/long 0 accepted: K (Mount Agent behaviour, unchanged text)\n- Selecting the Scripting Agent is planned: R (owner answer 4)\n- Times are UTC: K -> Note in What you need\n- indigo_prop_tool set_script/set/get/-r/-s, empty value clears: K\n- First task walkthrough, task list label 'Test | QUEUED | normal 50 | run 0/1 | retries left 0 | 0h01 set': K, S:891\n- History line '... Test #1  succeeded': F -> history label format, S:688-693\n\nHeader (old 135-201 -> Tasks, Header syntax, Header keys, Constraints)\n- Header ends at first non-header line incl. plain comment; empty // allowed; later // @ lines ignored: K, H:537-546\n- Header line <= 255 bytes: K, H:36,548\n- Keys case-insensitive, once each (repeated key error), only @task required, body not empty: K, H:571-581,602-605,612-623\n- Comparison sign required, >= <= accepted: K, H parse_operator\n- All key ranges/defaults in the key table (task 1-40 no |, priority classes/level 0-100, airmass 1-100, ha -12..12 wrap, moon 0-180 width 0.5-30, illumination 0-100, twilight -6/-12/-18, duration 1-1440, repeat 1-10000 every 0-100000, retry 0-100 after ",
+      "tokens": null
+    },
+    {
+      "event_id": "e0df304f-b0a9-45dc-9baf-d1a9687dfca0",
+      "event": "ticket/note",
+      "at": "2026-11-21T00:39:19.619798Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Factual fixes made in the guide rewrite (owner answer 2). Reproduction: each old statement compared with the code at 1b3e9749b; after the fix the new text matches the cited code. (1) Old line 397 'A task is not started while its estimate is pending' read as 'that task waits'; the code blocks every non-urgent start while any estimate is pending (indigo_agent_scheduler.c select_task 1647-1677). New text in Task duration (Note), Duration rules and Reasons. (2) Old line 585 quoted the rejection as 'Task rejected: line 4: @altitude: expected '> degrees''; the real message continues ' with degrees 0-90' (indigo_agent_scheduler_header.c 361, 594). Now quoted in full. (3) Old line 125 said the history shows '... Test #1  succeeded'; the history label is 'when | name | run 1 | task | SUCCEEDED | -' (indigo_agent_scheduler.c history_label 688-693). Fixed in the quick start. (4) Old hook table said SHUTDOWN is skipped only when another sequence occupies the Scripting Agent; it is also skipped with a message when the Scripting Agent or Sequencer.js is missing (indigo_agent_scheduler.c 1996-2004). Added to Hook rules, together with the existing rule that a failed SHUTDOWN stops with Alert (1307-1311). (5) Old Unpark example (line 684, 693) set the meridian flip in a task used for both STARTUP and RESUME; split per owner answer 3: Startup (STARTUP) unparks and sets the flip, Unpark (RESUME) only unparks; the observatory example gained a STARTUP hook 'Setup' that sets the flip. (6) Removed per owner answer 4: 'Selecting the Scripting Agent is planned' (old 37) and the planned @timeout (old 428). No finding indicated a code defect, so no separate ticket was opened.",
+      "tokens": null
+    },
+    {
+      "event_id": "feb63b87-6110-4ec4-96c7-6518d9cb5b7d",
+      "event": "task/progress",
+      "at": "2026-11-21T00:39:26.037795Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Guide written, checklist and fixes noted; running flow check"
+    },
+    {
+      "event_id": "e4eea9e3-eee6-412b-86f4-6d7908f525aa",
+      "event": "task/progress",
+      "at": "2026-11-21T00:39:31.882838Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "95c59d0e-a165-4c16-a3e4-520618ddc265",
+      "event": "task/progress",
+      "at": "2026-11-21T00:39:31.896366Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a484f444-a055-49b5-8fd2-c643a6d21072",
+      "event": "check/passed",
+      "at": "2026-11-21T00:39:31.901587Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5cba41e6f61cd74bc5523d8019a3fbc62dc5412b",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "86203578-6653-47cc-becc-9b86b11c1d36",
+      "event": "question/asked",
+      "at": "2026-11-21T00:39:59.955502Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "The rewrite is 15,488 words (was 15,183), above the approved 12,000-13,000. Prose is 10,130 words; tables 4,403 and code 849 are unchanged in size. Average sentence 10.6 words (was 16.8), longest 37 (was 73), 3 over 25 (was 105). Accept about 15,500 words, or move more reference detail to SCHEDULER.md, or trim harder?"
+    },
+    {
+      "event_id": "9f91e683-ba43-4daa-bc81-d7c5c96801b2",
+      "event": "question/answered",
+      "at": "2026-11-21T00:43:39.109694Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (2026-11-21): accept about 15,500 words; no further trimming and no move of detail to SCHEDULER.md."
+    },
+    {
+      "event_id": "4e643579-100f-466a-85a3-86df6a349986",
+      "event": "task/progress",
+      "at": "2026-11-21T00:43:39.249749Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review started"
+    },
+    {
+      "event_id": "54901c2f-9caa-47bb-a650-e4539eb07367",
+      "event": "review/started",
+      "at": "2026-11-21T00:43:39.250445Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "ca24196f-dcb4-4780-9127-c71be0de6cdf",
+      "event": "task/progress",
+      "at": "2026-11-21T00:43:43.530497Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Review started"
+    },
+    {
+      "event_id": "ad603612-f2dd-4137-b329-ad1055a1d8f3",
+      "event": "review/started",
+      "at": "2026-11-21T00:43:43.531225Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "readability"
+    },
+    {
+      "event_id": "fc0b0495-7a93-4f2e-b32b-195a78afa9cf",
+      "event": "task/progress",
+      "at": "2026-11-21T00:44:08.890111Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Correctness reviewer launched",
+      "attempt_id": "e1af3d00-d4ff-4ec8-acdf-7027191aea22",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "da152ea6-c0d0-43b8-b118-bbcd19d02569",
+      "event": "task/progress",
+      "at": "2026-11-21T00:44:09.046935Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Readability reviewer launched",
+      "attempt_id": "e1af3d00-d4ff-4ec8-acdf-7027191aea22",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "9ef4211b-09e7-49a7-99a3-0cf81d7abe96",
+      "event": "task/progress",
+      "at": "2026-11-21T00:45:18.954109Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Verifying guide statements against agent_scheduler code"
+    },
+    {
+      "event_id": "d8fb2afe-6c85-474a-ab3e-0a42bb038c35",
+      "event": "task/progress",
+      "at": "2026-11-21T00:45:55.540283Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "30758b5d-e282-41c8-a7a1-c2dc711ecbb8",
+      "event": "task/progress",
+      "at": "2026-11-21T00:45:55.540322Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "9c2073bf-10c4-4bbb-83cd-17cafa7c0401",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T00:45:55.541087Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "kind": "readability",
+      "verdict": "changes",
+      "commit": "5cba41e6f61cd74bc5523d8019a3fbc62dc5412b"
+    },
+    {
+      "event_id": "dc1e0b9b-74bd-4c5c-ab48-eb53e4ce9b1c",
+      "event": "task/progress",
+      "at": "2026-11-21T00:49:54.304631Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "4db3d401-86dd-4806-83fc-e6589a5c40d3",
+      "event": "task/progress",
+      "at": "2026-11-21T00:49:54.304791Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "f67f2279-f965-4157-86c6-b1e702e7903b",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T00:49:54.306144Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "5cba41e6f61cd74bc5523d8019a3fbc62dc5412b"
+    },
+    {
+      "event_id": "7227e07e-c41f-4f4f-bb0f-5783aeb3e6c5",
+      "event": "task/progress",
+      "at": "2026-11-21T00:50:40.692362Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Applying review round 1 fixes (correctness F1-F7, readability B1, M1-M20)"
+    },
+    {
+      "event_id": "dff0d815-39c1-4c2c-8019-bba1e78ec431",
+      "event": "ticket/note",
+      "at": "2026-11-21T00:52:46.648191Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Checklist addendum after review round 1 (restored or changed rules, each checked against the code at 1b3e9749b): ABORT makes a stored task RETRY without using a retry and discards a one-off urgent task (indigo_agent_scheduler.c 1435-1439) - restored in Starting, stopping and restarting. Adding or resetting a task before the shutdown hook starts cancels the automatic stop (1980-1987) - restored. NIGHT_END runs only if NIGHT_START ran that scheduler night (indigo_agent_scheduler_night.c 202-208) - now a condition in Hooks and the night and a Night rules bullet. Flip condition: starts east of the meridian (negative hour angle) and the hour angle reaches OFFSET before the run ends (indigo_agent_scheduler_plan.c 133-137); OFFSET is hours of hour angle, -2..2 (Sequencer.js MERIDIAN_FLIP 934, imager clamp indigo_agent_imager.c 2664), negative pauses before the meridian and flips there - explained in Meridian flips and before first use in Choosing a strategy. 1000-night statistic restored with OFFSET 0, same number of runs, COMPACT 645 flips at 69.7 %. Pending estimate blocks starts only when it belongs to a task waiting to run: QUEUED or WAITING, enabled, not a hook, no script error (select_task 1641-1677) - corrected in Task duration, Duration rules and Reasons (refines factual fix 1). IDLE trigger worded as 'no task has run for IDLE_HOOK_DELAY minutes' everywhere: idle_since is reset at every task start and set at the first decision without a start, also while VISIBILITY waits (2069-2085, 1499). break_at() time string is UTC (Sequencer.js 147-148, Sequencer.md 145). Restored details: dome unparked with dome slaving (Mount Agent, old 730), large Moon width keeps the limit high (old 382), leave dome steps out without a dome (old 792), causes of late work: upload/reset, urgent task, constraint clears (old 725). Plate solver link restored (../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md); the file exists on master (merge 0d794b9e6) but not at the ticket base 1b3e9749b",
+      "tokens": null
+    },
+    {
+      "event_id": "67910cb1-c61d-4aaf-b7c8-ffebd6591c99",
+      "event": "task/progress",
+      "at": "2026-11-21T00:52:46.772309Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Review fixes applied; rerunning flow check"
+    },
+    {
+      "event_id": "ca29772e-8374-470d-862f-11b219e099d7",
+      "event": "task/progress",
+      "at": "2026-11-21T00:52:46.999269Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3ee82c4c-5005-413a-84f2-9c16a6da90ad",
+      "event": "task/progress",
+      "at": "2026-11-21T00:52:47.013725Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "45df5882-cee1-423b-a612-92c238a787a3",
+      "event": "check/passed",
+      "at": "2026-11-21T00:52:47.020045Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "461ba1c17bce62c8c238f0ab02f6ca809f40b085",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "b407afa5-1df0-4e86-999c-79215ffb7e8c",
+      "event": "task/progress",
+      "at": "2026-11-21T00:53:38.542965Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Merging master into the ticket branch"
+    },
+    {
+      "event_id": "746780e1-a670-42c1-9de5-84e19511609d",
+      "event": "task/progress",
+      "at": "2026-11-21T00:54:00.706005Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Merged master (f95e979f8), removed duplicated plate solver sentence; running flow check"
+    },
+    {
+      "event_id": "a5ecca5b-47a4-4432-9cb0-e8ddc8c4f2fe",
+      "event": "task/progress",
+      "at": "2026-11-21T00:54:00.964723Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1b44c32a-a384-4973-a802-9bb11da6790a",
+      "event": "task/progress",
+      "at": "2026-11-21T00:54:00.981606Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b4bd0be6-9694-4881-a25f-e80ad048bbe7",
+      "event": "check/passed",
+      "at": "2026-11-21T00:54:00.988266Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "445c56ceb48f46ed25d83d03076698687e8f3af7",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "8f6caa40-743d-4103-b7ed-aba5f0d3ebad",
+      "event": "task/progress",
+      "at": "2026-11-21T00:54:15.410807Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review started"
+    },
+    {
+      "event_id": "d520f62b-384f-467a-a4b5-cd3313e3f786",
+      "event": "review/started",
+      "at": "2026-11-21T00:54:15.411707Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "07c9d9ff-fb15-4da5-bc54-b092854a9780",
+      "event": "task/progress",
+      "at": "2026-11-21T00:54:15.598163Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Review started"
+    },
+    {
+      "event_id": "43ae73c6-cb24-46c2-b4ec-c13a36aab049",
+      "event": "review/started",
+      "at": "2026-11-21T00:54:15.599111Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "readability"
+    },
+    {
+      "event_id": "17445cbd-c02d-45c3-8a9d-e98f5eb8df55",
+      "event": "task/progress",
+      "at": "2026-11-21T00:54:43.905449Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Readability reviewer launched",
+      "attempt_id": "61be10b9-69a0-4929-9401-44baadafca0d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3951ab5a-4da7-4b8a-af18-d55d75d9eea5",
+      "event": "task/progress",
+      "at": "2026-11-21T00:54:43.941356Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Correctness reviewer launched",
+      "attempt_id": "61be10b9-69a0-4929-9401-44baadafca0d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "487f9095-1208-4158-855e-6e24414ab003",
+      "event": "task/progress",
+      "at": "2026-11-21T00:56:05.652287Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "38483c82-bd2f-4589-aa30-146fe7c51ebe",
+      "event": "review/passed",
+      "at": "2026-11-21T00:56:05.653154Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "kind": "readability",
+      "verdict": "pass",
+      "commit": "445c56ceb48f46ed25d83d03076698687e8f3af7"
+    },
+    {
+      "event_id": "6ce31db0-8810-4284-8b52-9ff007d87a5d",
+      "event": "task/progress",
+      "at": "2026-11-21T01:00:36.326277Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "77dbb502-4139-4ce7-adb6-93c3e5da5233",
+      "event": "task/progress",
+      "at": "2026-11-21T01:00:36.326315Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "f0fed8e2-37ad-4b09-a977-96169979737a",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T01:00:36.327186Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "445c56ceb48f46ed25d83d03076698687e8f3af7"
+    },
+    {
+      "event_id": "f2fda14d-cda7-43f3-afb4-1839e6983776",
+      "event": "ticket/note",
+      "at": "2026-11-21T01:01:10.258907Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Correctness review round 2 (corrected text; the recorded verdict text lost backtick-quoted names):\n1. IDLE trigger wording \"when no task has run for `IDLE_HOOK_DELAY` minutes\" (lines 350, 482, 521, 606, 1019, 1217) is not exact. process_idle (indigo_agent_scheduler.c:2069-2085): the wait starts at the first decision that starts nothing and restarts at every task start, at `START` (2866) and when a `NIGHT_START` or `NIGHT_END` hook starts (1509-1514); a pending duration estimate also restarts it (2069-2072); nothing counts while a hand-started sequence runs. Suggested: define once (Hook rules or Settings): \"IDLE runs once the scheduler has waited `IDLE_HOOK_DELAY` minutes without starting a task. The wait counts from the end of the last task, from `START` or from the last night hook. Waiting for a duration estimate does not count.\" Short places: \"after `IDLE_HOOK_DELAY` minutes without a task start\".\n2. Line 280: \"`REASON` is `estimating the task duration`\" is not always true; select_task (1653-1677) shows it only when another task could start or the estimating task is the first waiting task; otherwise REASON shows the first waiting task's constraint reason. Suggested: \"If another task could start, `REASON` is `estimating the task duration`.\"\n3. Optional (already in master): lines 665 and 1115 say a task's own set_directory()/set_object_name() lasts only until the end of the run, but restore_context (1247-1250) restores only what the scheduler set itself; with OBJECT, FITS and FOLDER off and no @folder, the task's change stays.",
+      "tokens": null
+    },
+    {
+      "event_id": "e1d7c9d2-e1a0-4dc1-bc8b-76a989c296a1",
+      "event": "question/asked",
+      "at": "2026-11-21T01:01:10.395179Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Two correctness review rounds asked for changes. Round 2 found 2 wording inaccuracies (IDLE trigger, REASON during estimates) and 1 optional pre-existing one (task's own set_directory/set_object_name); the readability review passed with 12 minor nits. Continue with a third fix round covering all of them, then fresh reviews?"
+    },
+    {
+      "event_id": "0e71f5f4-c3fd-447c-8588-c15ab7ad1d5c",
+      "event": "question/answered",
+      "at": "2026-11-21T01:03:50.520404Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (2026-11-21): continue with a third fix round covering the 2 correctness inaccuracies (IDLE trigger, REASON during estimates), the optional set_directory/set_object_name point and the 12 readability nits, then fresh correctness and readability reviews."
+    },
+    {
+      "event_id": "6359b49c-fb08-4f96-9e20-99f057e20384",
+      "event": "task/progress",
+      "at": "2026-11-21T01:04:16.035103Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Applying review round 3 fixes (IDLE wait, estimate reason, restore rule, N1-N12)"
+    },
+    {
+      "event_id": "7c3e192d-8a9d-4049-bad0-65de501263a8",
+      "event": "ticket/note",
+      "at": "2026-11-21T01:05:33.649419Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Checklist addendum after review round 2/3 (checked against the code at the merged tree; scheduler code unchanged since 1b3e9749b): (1) IDLE wait defined once in Hook rules: IDLE runs once the scheduler has waited IDLE_HOOK_DELAY minutes without starting a task; the wait counts from the end of the last task, from START or from the start of the last night hook; a pending duration estimate restarts it; under VISIBILITY it also waits while the next planned run is within the delay; once per wait, not in standby (indigo_agent_scheduler.c 1497-1514, 2066-2085, 2866-2867). Short form everywhere else: 'after IDLE_HOOK_DELAY minutes without a task start'; Settings row 'Wait without a task start before the IDLE hook runs'. (2) REASON 'estimating the task duration' only when another task could start or the estimating task is the first non-running task in list order; otherwise the first waiting task's reason (select_task 1645-1677) - Task duration note and Reasons table. (3) Restoring: restore_context (1247-1279) runs only when the scheduler applied something (context_applied set by OBJECT, folder from FOLDER/@folder, or FITS in apply_context 1197-1244); it then restores folder and object name to the originals, undoing the task's own change; with OBJECT, FITS, FOLDER off and no @folder nothing is restored and the task's changes stay; only SCHTASK/SCHRUN/SCHNIGHT and the used @observer/@pi/@project keywords are removed, other task keywords stay - fixed in Where the data goes and Data rules (this corrects the old guide's 'win only until the end of that run'). (4) Plan span: until the next sunrise, or 24 hours when the Sun does not set and rise within the 48-hour grid; longer when the scheduler night ends after sunrise (indigo_agent_scheduler_sky.c 478-493, indigo_agent_scheduler.c 2386-2393). (5) Session = START until the scheduler stops (PRIVATE_DATA->started, control 2856-2878, stop_scheduler). Readability N1-N11 applied; N12 covered by the new IDLE wording.",
+      "tokens": null
+    },
+    {
+      "event_id": "2431b354-0557-4d6b-ba2e-df37cb50c204",
+      "event": "task/progress",
+      "at": "2026-11-21T01:05:33.798691Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Round 3 fixes applied; running flow check"
+    },
+    {
+      "event_id": "6e19b1ae-5d5f-4b6a-8f20-2d91111a0d04",
+      "event": "task/progress",
+      "at": "2026-11-21T01:05:34.035929Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f63ebaff-14d5-44ca-958a-1fbb89f15175",
+      "event": "task/progress",
+      "at": "2026-11-21T01:05:34.052003Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "50b00a21-bfcb-43f7-b719-1ca4835126e6",
+      "event": "check/passed",
+      "at": "2026-11-21T01:05:34.059110Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "d387571998e37df492c0e72db5a1082632620260",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "6a478ac6-24c8-4df0-9502-a06b0c6a47c5",
+      "event": "task/progress",
+      "at": "2026-11-21T01:05:56.088458Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a10dca93-69f3-42ec-a90f-77e37e5784d4",
+      "event": "review/started",
+      "at": "2026-11-21T01:05:56.089387Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "1eab9e91-8a77-4fe8-8026-2922ed0b01eb",
+      "event": "task/progress",
+      "at": "2026-11-21T01:05:56.282824Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Review started"
+    },
+    {
+      "event_id": "8e1903e3-5c85-49f9-b03d-c051b649e46a",
+      "event": "review/started",
+      "at": "2026-11-21T01:05:56.283720Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "readability"
+    },
+    {
+      "event_id": "b3816ffe-7cbd-4b0f-99b0-9146a925368e",
+      "event": "task/progress",
+      "at": "2026-11-21T01:06:23.680416Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Correctness reviewer launched",
+      "attempt_id": "fff8fc06-9584-4817-85fe-1e6dc25867a9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5575d0a1-b180-409e-84e2-f7acdeab2d4b",
+      "event": "task/progress",
+      "at": "2026-11-21T01:06:24.025203Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Readability reviewer launched",
+      "attempt_id": "fff8fc06-9584-4817-85fe-1e6dc25867a9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "cdf72431-6aae-4fb7-af28-b3feed1a099a",
+      "event": "task/progress",
+      "at": "2026-11-21T01:06:41.289974Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Reading the guide as a new scheduler user"
+    },
+    {
+      "event_id": "4e4b6972-6af9-426e-8a96-c40f1addb481",
+      "event": "task/progress",
+      "at": "2026-11-21T01:07:49.604336Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d9cc3ae6-8e01-4600-8124-51c3bf6893d6",
+      "event": "review/passed",
+      "at": "2026-11-21T01:07:49.605519Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "kind": "readability",
+      "verdict": "pass",
+      "commit": "d387571998e37df492c0e72db5a1082632620260"
+    },
+    {
+      "event_id": "15d1c220-d99f-4a30-b5f5-1322d5b31167",
+      "event": "task/progress",
+      "at": "2026-11-21T01:09:44.513589Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "cd8b7ba8-7fdf-4cdd-8f33-5be372e7a2b6",
+      "event": "task/progress",
+      "at": "2026-11-21T01:09:44.513627Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "e707f6d2-e483-40a8-b2f2-0509e4b7a622",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T01:09:44.514607Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "f98c9f97b7437f6540ce0a7ece6e30603b8fa884"
+    },
+    {
+      "event_id": "4fa1d562-f9a9-476d-b9e6-70b05cc629e5",
+      "event": "question/asked",
+      "at": "2026-11-21T01:10:05.144121Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Correctness round 3 asked for changes again: 2 required (IDLE wait counts from the end of STARTUP / end of the night hook, not their start; Reasons table 'tasks waiting to run'), 2 optional; readability passed with 5 optional polish points. Do a fourth, final fix round for all of these, then fresh reviews?"
+    },
+    {
+      "event_id": "5e65fd3b-1408-440b-bfdf-96aacbc50587",
+      "event": "question/answered",
+      "at": "2026-11-21T01:14:10.135751Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (2026-11-21): do a fourth, final fix round covering the 2 required and 2 optional correctness points and the 5 readability polish points; also remove the chart-regeneration appendix from the user guide (not needed there; the commands stay in tools/scheduler_plan_charts.py and bench_scheduler_plan.c). Then fresh reviews."
+    },
+    {
+      "event_id": "901fef51-230c-4636-b3ce-073c4e44dc07",
+      "event": "task/progress",
+      "at": "2026-11-21T01:14:35.285088Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Applying review round 4 fixes and removing the chart regeneration appendix"
+    },
+    {
+      "event_id": "63d50ef7-6289-40ba-b296-88ec6cc0c18c",
+      "event": "ticket/note",
+      "at": "2026-11-21T01:15:29.428445Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Checklist addendum after review round 4: (1) IDLE wait now counts from whichever came last: the end of the last task, the end of the last night hook, or START (after the STARTUP hook if there is one). START (indigo_agent_scheduler.c 2866) and night hook starts (1509-1514) only clear idle_since; it is set only in process_idle (2075), which runs only in RUN_IDLE (2586), and the STARTUP branch returns before it (2024-2031). (2) Reasons row: 'comes first in the list among the tasks waiting to run' (select_task 1651-1662 skips non-QUEUED/WAITING, disabled, script-error and hook tasks). (3) Data rules: the scheduler sets nothing when OBJECT and FITS are off and the task gets no folder (FOLDER off without @folder <name>, or @folder none; data_directory 1140-1150), or when the Imager Agent is not loaded or has no CCD_LOCAL_MODE (apply_context 1203-1208); concept text says 'no @folder <name>'. (4) Plan time span: recomputed on every change and checked every IDLE_CHECK_INTERVAL seconds; a COMPACT plan is recomputed then, a valid VISIBILITY plan keeps its times (process 2589-2597, visibility_plan_valid 2539-2550). (5) Standby begins when the IDLE or NIGHT_END hook starts (start_task 1507-1509); concept text aligned. (6) Task duration note: 'REASON may then show estimating the task duration' (exact cases stay in the Reasons table). (7) Data lead renamed 'What is put back.'. (8) Owner request: the 'Regenerating the charts' appendix section and its See also link from Two nights compared were removed; the commands remain in tools/scheduler_plan_charts.py and indigo_test/benchmark/bench_scheduler_plan.c (unchanged; bench_scheduler_plan.c:189 names 'Two nights compared', which stays).",
+      "tokens": null
+    },
+    {
+      "event_id": "52175f4f-3d76-4a4c-a2bd-663099c6d28e",
+      "event": "task/progress",
+      "at": "2026-11-21T01:15:29.556533Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Round 4 fixes applied; running flow check"
+    },
+    {
+      "event_id": "b95f10d0-3d2a-4533-8307-1a6fc4c1a058",
+      "event": "task/progress",
+      "at": "2026-11-21T01:15:29.786768Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b8ae8358-b017-49ad-bcc2-e76ef3a90989",
+      "event": "task/progress",
+      "at": "2026-11-21T01:15:29.811265Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4a00ee56-1114-4f83-88ec-a828503d65dd",
+      "event": "check/passed",
+      "at": "2026-11-21T01:15:29.819013Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "8f4fba881a99afe9089c848483af7cccf686bbf7",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "54ea9d03-2f01-41d6-b3db-5742f326a1da",
+      "event": "task/progress",
+      "at": "2026-11-21T01:15:47.987807Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review started"
+    },
+    {
+      "event_id": "9a25be65-37bd-4b12-a3a2-ded5fc6c111d",
+      "event": "review/started",
+      "at": "2026-11-21T01:15:47.988831Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "87f52f0b-9ac3-48bf-9943-455dd909e981",
+      "event": "task/progress",
+      "at": "2026-11-21T01:15:48.156490Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a149fcaf-8940-49c2-8cee-4fa983756299",
+      "event": "review/started",
+      "at": "2026-11-21T01:15:48.157570Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "readability"
+    },
+    {
+      "event_id": "76796e71-c846-4dbd-9376-4c68cea8aaad",
+      "event": "task/progress",
+      "at": "2026-11-21T01:16:15.223737Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Correctness reviewer launched",
+      "attempt_id": "abcc1016-96bd-407d-b7e1-9174e9d8cde6",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e25384a0-39d0-4044-ae3f-e15f5aeeb3f5",
+      "event": "task/progress",
+      "at": "2026-11-21T01:16:15.501583Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Readability reviewer launched",
+      "attempt_id": "abcc1016-96bd-407d-b7e1-9174e9d8cde6",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "70653db8-ff5d-4eb6-b1fe-e0fec2847638",
+      "event": "task/progress",
+      "at": "2026-11-21T01:17:32.943413Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "7ee28a25-b474-405e-b0b5-390fe383f041",
+      "event": "review/passed",
+      "at": "2026-11-21T01:17:32.944453Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "da2d7e69-523b-430e-84df-0ba9ec72069f",
+      "kind": "readability",
+      "verdict": "pass",
+      "commit": "8f4fba881a99afe9089c848483af7cccf686bbf7"
+    },
+    {
+      "event_id": "887d8139-b281-4363-b690-46eae77f9a1b",
+      "event": "task/progress",
+      "at": "2026-11-21T01:20:29.101621Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "32df82a2-ebb6-43f8-bdd6-b20b7a6a281a",
+      "event": "task/progress",
+      "at": "2026-11-21T01:20:29.101657Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "a7b7628b-f656-4c3a-96e5-e9d28d372f2f",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T01:20:29.102749Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "8f4fba881a99afe9089c848483af7cccf686bbf7"
+    },
+    {
+      "event_id": "d9df3896-4abd-4d10-8b78-96d687ee7850",
+      "event": "question/asked",
+      "at": "2026-11-21T01:20:55.739693Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Correctness round 4: guide text correct; changes only because the branch adds indigo_docs/INDIGO_SCHEDULER_GUIDE.pdf (2 MB, created 2026-11-21 03:09 in the worktree, picked up by a flow check progress commit). Was it the owner's? Remove it from the branch (keeping a copy) and apply the last optional polish (readability n1-n4, correctness a-d), then a final review?"
+    },
+    {
+      "event_id": "3669e321-3955-400b-b5bd-0ca41e752add",
+      "event": "question/answered",
+      "at": "2026-11-21T02:02:43.755490Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (2026-11-21): commit and merge now without the optional polish. The stray INDIGO_SCHEDULER_GUIDE.pdf was deleted from the worktree; the deletion is recorded so the PDF does not land on master."
+    },
+    {
+      "event_id": "713a95ba-334d-4288-b6c6-4573dac1a26a",
+      "event": "task/progress",
+      "at": "2026-11-21T02:02:44.033691Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "a7b1f8ea-cda9-4c09-872e-69ec549825e2",
+      "event": "task/progress",
+      "at": "2026-11-21T02:02:44.053823Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1c9efe03-73ca-4fbf-948c-6fb45f404b6b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "625cb3f6-ec77-4691-af5e-73e9b0ad8b22",
+      "event": "check/passed",
+      "at": "2026-11-21T02:02:44.062567Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e4663c8d3d485ef6b6606f00bd4e3191f0bd668a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "e1890389-3e14-4d4c-a68e-8fc43c59a487",
+      "event": "task/progress",
+      "at": "2026-11-21T02:02:49.548601Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review started"
+    },
+    {
+      "event_id": "5e9dd945-51c4-49e3-89d7-30c836669099",
+      "event": "review/started",
+      "at": "2026-11-21T02:02:49.549852Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "f6c43009-fc39-48f5-8391-d634581ded0c",
+      "event": "task/progress",
+      "at": "2026-11-21T02:03:06.913409Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Reviewer launched",
+      "attempt_id": "a42076fe-b492-4572-9d83-ae2a57f4bd02",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "d54ebbc9-3fdf-4359-93bc-6af73c1343cf",
+      "event": "task/progress",
+      "at": "2026-11-21T02:04:26.972091Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "82959f44-748a-4ef1-ae95-3dc923c30f3e",
+      "event": "review/passed",
+      "at": "2026-11-21T02:04:26.973259Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19809f9-22ff-40d7-9555-f45a4cd549db",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "e4663c8d3d485ef6b6606f00bd4e3191f0bd668a"
+    },
+    {
+      "event_id": "143131e5-3bf4-492e-9cc9-77e64150a64e",
+      "event": "ticket/closed",
+      "at": "2026-11-21T02:04:47.567470Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-21T02:04:47.567367Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "5f94670534c9c63cfc6bf29591aa85ff81b6302f"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "high",
+  "flow": {
+    "profile": "full",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5cba41e6f61cd74bc5523d8019a3fbc62dc5412b",
+        "tree": "51853bdc40dd65c5eea175d16b578cc68027ca41",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T00:39:31.895502Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/92c9d6bd-5770-499b-9245-1bd0776326c4/51853bdc40dd-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "461ba1c17bce62c8c238f0ab02f6ca809f40b085",
+        "tree": "a531335361230410ab624db8ee9fc515771d3c7c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T00:52:47.012521Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/92c9d6bd-5770-499b-9245-1bd0776326c4/a53133536123-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "445c56ceb48f46ed25d83d03076698687e8f3af7",
+        "tree": "416da25244223f985f6d0877ca3e7c6e9eef693b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T00:54:00.980060Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/92c9d6bd-5770-499b-9245-1bd0776326c4/416da2524422-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d387571998e37df492c0e72db5a1082632620260",
+        "tree": "92a9004a5baf2e0c098db24013eb7aa82daad4c6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T01:05:34.050321Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/92c9d6bd-5770-499b-9245-1bd0776326c4/92a9004a5baf-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8f4fba881a99afe9089c848483af7cccf686bbf7",
+        "tree": "8b5107872da9f0907a86a26670e2c9cb12d4a58d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T01:15:29.809528Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/92c9d6bd-5770-499b-9245-1bd0776326c4/8b5107872da9-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e4663c8d3d485ef6b6606f00bd4e3191f0bd668a",
+        "tree": "6713b61990799987a6f2bc896199eb9d0f9a6958",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T02:02:44.051303Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/92c9d6bd-5770-499b-9245-1bd0776326c4/6713b6199079-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "readability",
+        "verdict": "changes",
+        "notes": "Readability review (fresh eyes, amateur user who has never used the scheduler). Overall the guide reads well: short sentences, examples first, consistent structure, and the quick start leads to a running scheduler. Design 5.2 fixed questions all answered from the concepts part: high after normal (L370-371, L1424); when RESUME runs (L483, L540); where hook frames go (L665); urgent arrival (L699-706); stop a run at 02:00 (L235-259). COMPACT vs VISIBILITY and priority under each (L360-372) are clear. One blocking finding, the rest minor.\n\nBLOCKING\nB1. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are used before they are explained, and OFFSET is never explained in the concepts part. L392 \"With the flip enabled at `OFFSET` 0 and the default penalty, Soul, Pleiades and Jellyfish start just after the meridian, and no run flips\", L407 and the whole Two nights section (flip columns, L428-448) come before Meridian flips (L616-628). L620 shows `enable_meridian_flip(true, 0)` but never says what the second argument (OFFSET) means. L622 \"flips when the hour angle of its target reaches `OFFSET` hours before the run ends\" parses two ways (\"OFFSET hours before the end\"?); L1000 has the same wording. Fix: (a) at the start of Two nights (or end of Choosing a strategy) add: \"A German equatorial mount must flip when a run crosses the meridian. Under `VISIBILITY`, `VISIBILITY_FLIP_PENALTY` makes the planner count each flip as lost imaging time, so it moves short runs to one side of the meridian. `COMPACT` ignores the penalty. `OFFSET` 0 means the mount flips at the meridian. See also: [Meridian flips](#meridian-flips).\" (b) At L620 add: \"The second argument of `enable_meridian_flip()` is `OFFSET`, in hours of hour angle. With 0 the mount flips at the meridian. A positive value flips that many hours later.\" (c) L622/L1000: \"A run that starts east of the meridian (negative hour angle) flips if the hour angle of its target reaches `OFFSET` before the run ends.\" (d) L392 \"The plan is the same with ...\" - same as what? Rewrite: \"With the flip enabled and `VISIBILITY_FLIP_PENALTY` 0, the plan is the same as in the table.\"\n\nMINOR\nM1. L43 \"Every time the scheduler accepts or shows is in UTC.\" reads as \"whenever\". -> \"All times that the scheduler accepts or shows are in UTC.\"\nM2. L107 \"0h01 set\": the duration source is not explained until L267. -> add \"The last column is the duration and where it comes from; `set` means `@duration`.\"\nM3. L115-119: one `get` prints one snapshot. -> \"Repeat this command to follow it.\"\nM4. L159 \"Keys and keywords are not case-sensitive\": \"keywords\" is undefined and collides with FITS keywords (L635). -> \"Keys and their words, such as `high` or `astronomical`, are not case-sensitive.\" Same at L856.\nM5. L228-231: \"width\" is never said in words. -> add \"`width 7` halves the limit seven days from full moon.\"\nM6. L252 `break_at(\"02:00\")`: time zone not said; the reader just learned that scheduler times are UTC, but this is a sequencer step. Sequencer.md L145 says a string is UTC. -> add \"A time string in `break_at()` is UTC.\"\nM7. L329 \"The class `hook` marks a task that only a hook runs.\" Hooks are first explained at L474. -> \"...that only a hook runs. Hooks are tasks run at fixed moments, such as start-up; see Hooks and the night.\"\nM8. L361 \"It starts from the runs `COMPACT` would make and adds the ones that still fit.\" \"the ones\" has no clear referent. -> \"It starts from the runs that `COMPACT` would make. Then it adds runs that `COMPACT` leaves out, where they still fit.\"\nM9. L376 \"The altitude limit only rules out times. The quality is still measured against the culmination.\" Had to read twice. -> \"`@altitude` only rules out times. It does not change the quality, which is always measured against the culmination.\"\nM10. L401 \"A short delay makes a short wait park and unpark.\" -> \"With a short delay, even a short wait parks and unparks the mount.\"\nM11. L429 \"Half an hour at dusk centres Bubble on its culmination\" -> \"Waiting half an hour after dusk centres Bubble on its culmination\".\nM12. IDLE trigger worded three ways: L350 \"without a run\", L482 \"nothing has run\", L521 \"nothing can run\", L1017 \"nothing could run\", L1214 \"Time without a task that can run\". Under VISIBILITY a task can run but the plan waits, and IDLE still runs (L989), so \"can run\" is wrong there. -> use one phrase everywhere: \"when no task has run for `IDLE_HOOK_DELAY` minutes\".\nM13. L540 / L1057 \"The `IDLE` and `NIGHT_END` hooks put the equipment in standby\" suggests the hook does something special. -> \"After the `IDLE` or `NIGHT_END` hook, the scheduler is in standby. It assumes that the equipment is put away.\"\nM14. L650 \"`@folder none` keeps a task out of a folder of its own.\" -> \"`@folder none` saves the frames in the Imager Agent's current folder, even with `FOLDER` on.\"\nM15. L722 \"All runs of a task share its retries, also the repeats.\" The \"also X\" construction (= including/even X) recurs (L724, L726, L928, L1054, L970) and reads foreign. -> \"All runs of a task, including the repeats, share its retries.\"\nM16. L967 \"it may leave out a `COMPACT` run whose class is not above the lowest class among them\" - dense. -> \"To keep them, it may drop a run that `COMPACT` would make, but only when that run's class is not higher than the lowest class of the kept runs.\"\nM17. L977 \"They also decide whenever the scheduler falls back to the `COMPACT` choice.\" -> \"They also rank the tasks whenever the scheduler falls back to `COMPACT`.\"\nM18. Terminology (design 3.5): \"sky bonuses\" (banned \"sky bonus\") at L1167 and L1440 -> \"the setting and altitude bonuses\"; \"session night\" at L1103 is a new term -> \"the night\".\nM19. L1331 \"When the scheduler night ends after sunrise, the plan lasts until it ends.\" \"it\" is ambiguous. -> \"...the plan lasts until the scheduler night ends.\"\nM20. L624 penalty meaning could use one plain sentence: \"The plan accepts a flip only when avoiding it would lose more than this much full-quality imaging.\"\n\nVerdict: changes, for B1 only; the minor items are recommended.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "5cba41e6f61cd74bc5523d8019a3fbc62dc5412b",
+        "tree": "51853bdc40dd65c5eea175d16b578cc68027ca41",
+        "at": "2026-11-21T00:45:55.540164Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Correctness review of INDIGO_SCHEDULER_GUIDE.md (worktree 5cba41e6f) against master 252c1118b and agent_scheduler code, Sequencer.js, scheduler_sandbox.py. Verified about 120 statements (selection/score, urgent/preemption, estimates, VISIBILITY fallbacks/replan/IDLE, flip rules and penalty, hooks/standby/night, header keys/ranges/limits, data folders/FITS, commands/edit/delete, settings defaults/ranges, labels, messages, reasons, restart, sandbox); all true except as noted. Factual fixes 1-5 confirmed (fix 1 see F7). Examples parse with indigo_scheduler_parse_header and use valid indigo_prop_tool syntax; split Startup/Unpark and Setup examples are consistent. All internal anchors resolve; #label-format, #choosing-a-strategy, Two nights compared exist; both PNGs exist. Required changes (content lost without reason): F1 new 747 ABORT: old 644 said a stored task becomes RETRY without using a retry (one-off discarded); stored-task part is gone from the whole guide (code indigo_agent_scheduler.c:1435-1439). Add it. F2 new 755: old 652 'A task that you add or reset before the shutdown hook starts cancels this automatic stop' is missing (code :1983-1987). Add it. F3 new 537: old 726 'It runs only after a NIGHT_START of the same night' became 'NIGHT_END runs, after a NIGHT_START of the same night', which reads as ordering, and Night rules lack the condition (night.c:202-208). Write 'but only if NIGHT_START ran that night' and add it to Night rules. F4: old 53 link to the native Platesolver reference (agent_platesolver/doc/PLATESOLVER.md) dropped; design said merged. Re-add in What you need or the agents table. Minor: F5 new 622/1000 'hour angle reaches OFFSET hours before the run ends' is ambiguous; use 'reaches OFFSET (hours past the meridian) before the run ends' (plan.c:133-137). F6 new 626 1000-night statistic lost 'with OFFSET 0' (and COMPACT 645 flips/69.7 %, same number of runs). F7 new 280/929/1399 'estimates the duration of any task': only pending estimates of selectable, enabled, non-hook tasks block (select_task :1641-1677); say 'any task waiting to run'. Optional: dome unpark with slaving (old 730), large moon width (old 382), 'leave them out without a dome' (old 792).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "5cba41e6f61cd74bc5523d8019a3fbc62dc5412b",
+        "tree": "51853bdc40dd65c5eea175d16b578cc68027ca41",
+        "at": "2026-11-21T00:49:54.304486Z"
+      },
+      {
+        "kind": "readability",
+        "verdict": "pass",
+        "notes": "Readability round 2: pass. The quick start leads to a running scheduler. All five design 5.2 questions are answered from the concepts part. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at their first use (L392), before Two nights compared. COMPACT vs VISIBILITY and the role of priority are clear (L360-372). The banned terms are gone. Round 1 B1 and M1-M20 are all resolved. Twelve minor, non-blocking suggestions (N1-N12): L310 'adds up to' -> 'adds at most'; L374/L409 'counted by' -> 'weighted by'; L407 unclear 'run by run' sentence; L392 dense, and OFFSET not tied to enable_meridian_flip there; 'session' is used but not defined; L525 wall of text; L1220-1221 'starting plan' jargon; L1243 sentence fragment; L1334 gives only the exception for the plan's time span; L872 'importance'; L448 'Bode stays'; L350 IDLE named before hooks are introduced. Full text: scratchpad read_review_round2.txt.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "445c56ceb48f46ed25d83d03076698687e8f3af7",
+        "tree": "416da25244223f985f6d0877ca3e7c6e9eef693b",
+        "at": "2026-11-21T00:56:05.652185Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Correctness review (claude-opus-5-5) of indigo_docs/INDIGO_SCHEDULER_GUIDE.md at 445c56ceb against master's guide and the scheduler code. Coverage: walked all old sections; every rule/key/setting/message/example is present or removed for an approved reason (duplicates, @timeout, Scripting Agent selection). Confirmed present: ABORT -> RETRY without using a retry (749), add/reset before shutdown cancels automatic stop (757), NIGHT_END only after NIGHT_START (537, 1057), PLATESOLVER.md link exactly once (45, file exists), 1000-night statistic with OFFSET 0 and COMPACT 645/69.7 % (628, matches SCHEDULER.md:696), dome slaving, large Moon width, leave dome steps out, causes of late work. ~70 statements checked against agent_scheduler *.c/*.h, Sequencer.js, indigo_agent_imager.c, scheduler_sandbox.py, indigo_prop_tool.c: flip condition/OFFSET/negative pause (plan.c:133-153, Sequencer.js:322-326,1786-1789, imager.c:1347-1360, flipper FLIP_REQUIRED), pending-estimate rule (select_task 1641-1677, is_selectable_state), standby (1316-1324,1499-1512,2871), @folder none/BASE (data_directory 1141-1160), break_at UTC, Moon width formula (sky.c:157-163, ~7.3 deg at new moon), score/classes (plan.c:67-81), header rules and all ranges/messages (header.c), settings table (3117-3127), labels, history, delete -> ABORTED/deleted. All 16 example tasks parse with the real header parser; rejection messages reproduced verbatim; prop_tool commands valid; all internal anchors resolve, #label-format and #choosing-a-strategy (SCHEDULER.md:354,684) resolve, PNGs exist. FINDINGS: (1) IDLE trigger wording is not exact (350, 482, 521, 606, 1019, 1217: 'when no task has run for IDLE_HOOK_DELAY minutes'). In process_idle (indigo_agent_scheduler.c:2069-2085) idle_since is set at the first decision without a start and reset at every task start, at START (2866) and at the start of NIGHT_START/NIGHT_END (1509-1514); a pending estimate also restarts it (2069-2072), and nothing is counted while a hand-started sequence occupies the Scripting Agent. So after START or after a NIGHT_START hook with nothing able to run, IDLE runs IDLE_HOOK_DELAY minutes after that point, although 'no task has run' for much longer. Suggested: define once (Hook rules / Settings): 'IDLE runs once the scheduler has waited IDLE_HOOK_DELAY minutes without starting a task. The wait counts from the end of the last task, from START or from the last night hook; waiting for a duration estimate does not count.' and use 'after IDLE_HOOK_DELAY minutes without a task start' in the short places. (2) 280 Note: ' is ' is unconditional, but select_task (1653-1677) shows it only when another task could start or the estimating task is the first waiting task; otherwise REASON is the first waiting task's constraint reason. Suggested: ' then shows ' -> 'If another task could start,  is .' Optional, pre-existing (also in master): 665 and 1115 say the task's own set_directory()/set_object_name() last only until the end of the run, but restore_context (1247-1250) restores only when the scheduler applied something; with OBJECT, FITS and FOLDER off and no @folder, a task's change stays. No other defects found.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "445c56ceb48f46ed25d83d03076698687e8f3af7",
+        "tree": "416da25244223f985f6d0877ca3e7c6e9eef693b",
+        "at": "2026-11-21T01:00:36.326172Z"
+      },
+      {
+        "kind": "readability",
+        "verdict": "pass",
+        "notes": "Readability review, round 3 (fresh eyes, amateur INDIGO user new to the scheduler). File: indigo_docs/INDIGO_SCHEDULER_GUIDE.md in the ticket worktree (1536 lines, about 15,200 words outside code blocks; length accepted by the owner). Rough metrics: about 855 prose sentences, average 12.4 words. The few \"long\" sentences the counter found are lead-ins joined to the lists or code blocks that follow them, not real long sentences.\n\nVERDICT: pass. Nothing blocks. The minor items below are optional polish.\n\nOVERALL\nThe quick start works on its own. It goes from loading the agents (L47-63) to an upload with -s and [OK]/[ALERT] (L99-105), then the task list line and the meaning of \"set\" (L107), START (L112), polling REASON (L115-121), the automatic stop and DELETE (L121-127). Concepts come before they are used. Meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at L392 before the two-nights charts. Hooks are introduced at L329 before IDLE is named at L350. Session is defined at L523 at its first use. Terms follow design table 3.5. A grep finds none of: eligible, labell*, hook-only, greedy, \"task run\" in running text, sky bonus, importance, \"no longer\", \"counted by\", \"adds up to\". \"Best visibility\" appears once, as the client label (L358). The only \"task runs\" left is inside a verbatim message (L991).\n\nDESIGN 5.2 FIXED QUESTIONS (all answered from the concepts part)\n- Why did my high task run after a normal one? L370-371, the busy-night note at L431, and Troubleshooting L1437.\n- When does RESUME run? L485 and L544. Reference at L1024 and L1066.\n- Where do the frames of a hook go? L671. Reference at L1127-1131.\n- What happens to the running task when an urgent task arrives? L705-712.\n- How do I stop a run at 02:00? L235-259: break_at(), with the UTC note at L241.\n\nROUND 1 AND ROUND 2 STATUS\n- B1 is resolved: L392 and L394 (flip, OFFSET, penalty before use, \"the same as in the table\"), L626 (OFFSET argument), L628 and L1006 (which runs flip, unambiguous).\n- M1-M20 are resolved and still in place: M1 L43, M2 L107, M3 L115, M4 L159/L862, M5 L231, M6 L241, M7 L329, M8 L361, M9 L376, M10 L403, M11 L431, M12 one IDLE phrase everywhere (see below), M13 L544/L1066, M14 L656, M15 L728, M16 L973, M17 L983, M18 (grep clean), M19 L1344, M20 L630.\n- N1-N12 are resolved: N1 L310 \"at most 100 points\", N2 L374/L411 \"weighted\", N3 L409, N4 L392 (OFFSET defined), N5 L523, N6 L527/L529 split, N7 L1230-1231, N8 L1253, N9 L1344 (normal case first), N10 L876, N11 L450, N12 (hooks introduced at L329, before L350).\n\nROUND-3 EDITS\n- \"The IDLE wait.\" (L1032) is clear. It reads as one rule followed by its qualifications, each in its own sentence. The short phrase \"after IDLE_HOOK_DELAY minutes without a task start\" is used the same way at L350, L484, L523, L610, L1023 and in the Settings row L1227. It reads naturally and no longer suggests \"a task could run\".\n- Estimate REASON note (L280, Reasons table L1412): readable. The table gives both conditions. See minor m1.\n- Restoring rules: \"Where the data goes\" (L669) and Data rules (L1121-1125) are clear. The bullets in the reference are especially easy to follow. See minor m2.\n- Plan span (L1344): clear. The normal case comes first, then the two exceptions.\n- Session definition (L523): clear, and in the right place.\n\nMINOR FINDINGS (none blocking)\nm1. L280: \"If another task could start, REASON is `estimating the task duration`.\" The concept note gives only one of the two cases that L1412 lists, so a reader may wonder what REASON shows otherwise. Optional: \"REASON may then show `estimating the task duration`.\" The exact cases can stay in the Reasons table.\nm2. L669: the bold lead \"Everything is put back.\" is contradicted three sentences later (\"the task's changes stay\"). Optional: lead with \"What is put back.\" or \"Putting things back.\"\nm3. L1032: \"The wait counts from the end of the last task, from START, or from the start of the last night hook.\" The reader has to infer \"whichever came last\". Optional: add \"whichever came last\".\nm4. L544 says the scheduler is in standby \"After the IDLE or NIGHT_END hook\". L1066 says it \"enters standby when the IDLE or NIGHT_END hook starts\". A careful reader notices the difference (\"after it finished\" versus \"when it starts\"). Optional: align L544, for example \"Once the IDLE or NIGHT_END hook starts, the scheduler is in standby.\"\nm5. L1344: \"at least every `IDLE_CHECK_INTERVAL`\" is missing its unit. Add \"seconds\", as at L339 and L848. Next to L993 (\"While nothing changes, the plan and its times stay\"), a reader may also wonder whether the periodic recomputation moves runs. Optional: \"...and checks it at least every IDLE_CHECK_INTERVAL seconds; while nothing changes, the times stay.\"\n\nNOT RAISED\nLength (accepted by the owner). The intended repetition between the concepts and the reference parts, for example L995 and L1032 on IDLE under VISIBILITY.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "d387571998e37df492c0e72db5a1082632620260",
+        "tree": "92a9004a5baf2e0c098db24013eb7aa82daad4c6",
+        "at": "2026-11-21T01:07:49.604147Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Correctness review round 3 (claude-opus-5-5, fresh) of indigo_docs/INDIGO_SCHEDULER_GUIDE.md at d38757199 against master's guide and the scheduler code (unchanged vs master). Coverage: round-3 word diff 445c56ceb..HEAD read in full. Every IDLE/REASON/restore/session/plan-span/N8/N11 statement was checked against indigo_agent_scheduler.c (process_idle 1972-2089, start_task 1490-1520, finish_hook 1300-1330, start_night_hook 1905-1925, control 2856-2902, select_task/select_urgent/estimate_pending 1585-1690, apply_context/restore_context/data_directory 1140-1280, update_plan 2386-2393) and indigo_agent_scheduler_sky.c night_end 478-493. More than 70 other statements were sampled: all 11 Settings rows (3117-3127), the header key ranges and messages (header.c 319-491, 548, 580, 608, 621), all Messages and Reasons strings by grep, MAX_TASKS 128, MAX_HISTORY 200, the 16 KiB limit, the name size, the 64-run VISIBILITY limit, the 240-minute night offset, the 5-minute grid and 48-hour sky, the preemption/ABORT results (1420-1440), urgent tasks not preempting after STOP (1778), history_label, the Scheduler state table (stop_scheduler/request_stop call sites), the sandbox options (scheduler_sandbox.py 514-572) and the prop_tool options (indigo_prop_tool.c 41, 972-1055). All of them are true. Links: every internal anchor resolves; #label-format and #choosing-a-strategy, used by SCHEDULER.md, exist; PLATESOLVER.md, Sequencer.md, SCHEDULER.md, PROPERTIES.md and both PNGs exist. No master content is lost except approved removals; the only removed rule, that a task's own folder or object-name change lasts until the end of the run, was a deliberate correction. Confirmed correct: the REASON note at line 280 (\"If another task could start\"); Restoring and Data rules at lines 669 and 1121-1131; the session sentence (523); the plan span (1344); N8 Alert states (1253); N11 (Bode at 450 ends at 03:45, before its 04:28 culmination, so it does not flip); standby (544, 1066); the VISIBILITY within-delay rule (995, 1032; run_soon at 2079).\n\nREQUIRED\n1. Line 1032 says: \"The wait counts from the end of the last task, from `START`, or from the start of the last night hook.\" This does not match the code. START (2866) and the start of a night hook (1509-1514) only clear idle_since to 0. idle_since gets a value in one place, at line 2075 in process_idle. process_idle runs only in RUN_IDLE (2586), and the STARTUP branch returns before the idle code (2024-2031). So the wait really counts from the end of the night hook, or from the end of STARTUP when there is one. Example: a 20-minute NIGHT_START cooling hook with IDLE_HOOK_DELAY 30 runs IDLE 50 minutes after the hook started, not 30. Fix: \"The wait counts from the end of the last task, from `START` (after the `STARTUP` hook), or from the end of the last night hook.\"\n2. Line 1412 (Reasons) says: \"...or when the estimating task comes first in the list among the tasks that do not run\". select_task (1651-1662) skips tasks that are not QUEUED or WAITING, disabled tasks, tasks with a script error and hook tasks. A DONE or disabled task in front of it does not count, but \"tasks that do not run\" includes such tasks. Fix: \"...comes first in the list among the tasks waiting to run\" (the term defined at line 935).\n\nOPTIONAL (pre-existing or edge cases, not blocking)\n3. Line 1124: \"nothing is set\" also happens with `@folder none` and `OBJECT` and `FITS` off (data_directory 1143), and when the Imager Agent is unknown (1203-1208). Possible wording: \"...and the task gets no folder (no `@folder <name>`, or `@folder none`)\".\n4. Line 1344, \"at least every `IDLE_CHECK_INTERVAL`\" (carried over from master, old line 926): under VISIBILITY a still-valid plan is not computed again at every check (2591-2592). Line 993 already says \"While nothing changes, the plan and its times stay\". Consider \"...and otherwise at least every IDLE_CHECK_INTERVAL; a valid VISIBILITY plan keeps its times\".",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "f98c9f97b7437f6540ce0a7ece6e30603b8fa884",
+        "tree": "c5fd5d3a38003d0c9522b9792a2a40093271dbdc",
+        "at": "2026-11-21T01:09:44.513487Z"
+      },
+      {
+        "kind": "readability",
+        "verdict": "pass",
+        "notes": "Readability review, round 4 (fresh eyes, an amateur INDIGO user who has never used the scheduler). File: indigo_docs/INDIGO_SCHEDULER_GUIDE.md in the ticket worktree, 1523 lines. The owner accepted the length.\n\nVERDICT: pass. Nothing blocks. The minor items below are optional polish.\n\nOVERALL\nThe quick start (L9-127) works on its own. It loads the agents, uploads with -s and explains [OK]/[ALERT], explains the task list line and \"set\", then START, polling REASON, the automatic stop and DELETE. Each concept is explained before it is used. Hooks are introduced at L329, before IDLE is named at L350. The meridian flip, OFFSET and VISIBILITY_FLIP_PENALTY are explained at L392-394, before the two-nights charts. A session is defined at L521, where it is first used. COMPACT vs VISIBILITY and how each uses priority (L360-372) are clear. The terms follow design table 3.5. A grep for eligible, labell*, hook-only, greedy, \"task run\", sky bonus, importance and \"no longer\" finds nothing. \"Best visibility\" appears once, as the client label (L358). I found no walls of text and no sentences that needed rereading, apart from the minor items below. The repetition between the concepts and the reference is deliberate.\n\nDESIGN 5.2 FIXED QUESTIONS (all answered from the concepts part)\n- Why did my high task run after a normal one? L370-371, the busy-night note at L431 and Troubleshooting L1435.\n- When does RESUME run? L483 and L542. Reference at L1022 and L1064.\n- Where do the frames of a hook go? L669. Reference at L1125-1129.\n- What happens to the running task when an urgent task arrives? L703-710.\n- How do I stop a run at 02:00? L235-259, with break_at() and the UTC note at L241.\n\nEARLIER ROUNDS\n- Round 1: B1 is resolved (L392-394, L624, L626, L1004). M1-M20 are still in place.\n- Round 2: N1-N12 are still in place.\n- Round 3: all five minor items are resolved.\n  - m1, L280: \"REASON may then show `estimating the task duration`\". The exact cases are in the Reasons table (L1410).\n  - m2, L667: the section now leads with \"What is put back.\".\n  - m3, L1030: now says \"whichever came last\".\n  - m4, L542: now says \"Once the IDLE or NIGHT_END hook starts\", which matches L1064.\n  - m5, L1342: now says \"every IDLE_CHECK_INTERVAL seconds\".\n\nROUND-4 EDITS\n- IDLE wait sentences: clear. L1030 gives the rule, where the wait starts counting, the estimate restart, the VISIBILITY qualification and \"once per wait, not in standby\", each in its own sentence. The short form \"after IDLE_HOOK_DELAY minutes without a task start\" is used the same way at L350, L482, L521, L608, L1021 and the Settings row L1225. L993 (the IDLE hook during a VISIBILITY wait) agrees with it. I also checked the code: the wait clock is set at the first idle decision, which comes after a run ends (indigo_agent_scheduler.c 1499, 1512, 2074-2075). \"End of the last night hook\" is therefore right.\n- \"What is put back.\" (L667) and the Data rules \"Restoring\" (L1119-1123): readable. The reference bullets are very easy to follow. See n1.\n- Plan recompute sentences (L991, L1342): each reads well on its own. See n2.\n- Standby (L542, L1064): consistent and clear. L542 is short and the reference adds the details.\n- End of \"Two nights compared\" (L448-450): it ends cleanly on the sparse-night bullets and leads straight into \"The night plan\". Nothing points to the removed chart-regeneration appendix. A grep for chart, regenerat and bench_scheduler finds only the \"How to read the charts\" paragraph.\n- Appendix (L1483-1523): it now holds only \"Trying the scheduler by hand\", and it reads well. The tool and script paths exist (tools/scheduler_sandbox.py, tools/scheduler_sandbox_night.txt). A one-subsection Appendix heading is fine.\n- External anchors used by other docs (#choosing-a-strategy, #label-format) still exist.\n\nMINOR FINDINGS (none blocking)\nn1. L667: the first sentence, \"After every run, whatever its outcome, the scheduler puts the folder and the object name back.\", is unconditional. Three sentences later it is narrowed (\"the scheduler sets nothing, so the task's changes stay\"). Optional: use the wording of L1119, \"After every run, whatever its outcome, the scheduler puts back what it set.\", and keep the rest.\nn2. L991 says \"While nothing changes, the plan and its times stay.\" L1342 says the plan is checked every IDLE_CHECK_INTERVAL seconds and \"A COMPACT plan is then computed again.\" A careful reader may see a contradiction for COMPACT. Optional: at L991, write \"While nothing changes, a VISIBILITY plan keeps its times.\"\nn3. L991: in \"after every change: an upload, an edit, ..., the night hooks\", the last entry is not a change the reader makes. It is unclear whether this means the start or the end of a night hook. Optional: \"when a night hook runs\".\nn4. L1030 lists START as a starting point and then corrects it in the next sentence (\"After START, it counts from the end of the STARTUP hook, if there is one\"). Optional: put it in the list directly: \"... the end of the last night hook, or the end of the STARTUP hook (START when there is none)\".\n\nNOT RAISED\nThe length (accepted by the owner). The deliberate repetition between the concepts and the reference.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "8f4fba881a99afe9089c848483af7cccf686bbf7",
+        "tree": "8b5107872da9f0907a86a26670e2c9cb12d4a58d",
+        "at": "2026-11-21T01:17:32.943310Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Correctness review (fresh reviewer, claude-opus-5-5) of ticket/92c9d6bd at 8f4fba881 against master 252c1118b.\n\nVERDICT: changes. There is one blocking defect, and it is in the branch content, not in the guide text.\n\nREQUIRED\n1. An out-of-scope binary is on the branch. `git diff --stat master...HEAD` shows two files, not one: indigo_docs/INDIGO_SCHEDULER_GUIDE.md and a new indigo_docs/INDIGO_SCHEDULER_GUIDE.pdf (Bin 0 -> 2032671 bytes). The PDF was committed by the wip progress commit f98c9f97b. In the worktree its mtime is 2026-11-21 03:09. No journal entry or note mentions it. Owner answer 8 says \"INDIGO_SCHEDULER_GUIDE.pdf is out of scope\". flow close would land the PDF on master. The primary checkout also holds a different, untracked INDIGO_SCHEDULER_GUIDE.pdf (756022 bytes, 14 Nov) at the same path, which the merge would overwrite or collide with. Fix: remove the PDF from the branch with a new commit (`git rm --cached indigo_docs/INDIGO_SCHEDULER_GUIDE.pdf`, keeping the local file if the owner wants it, or delete it), so that only the guide differs from master. Alternatively, ask the owner explicitly whether a regenerated PDF should ship.\n\nGUIDE TEXT: no errors found.\n\nRound-4 changes, each verified against indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:\n- IDLE wait (guide 1030): \"whichever came last: the end of the last task, the end of the last night hook, or START ... after START from the end of the STARTUP hook\". This matches the code. idle_since is set only in process_idle (2074-2075). process_idle runs only in RUN_IDLE (process 2585-2587), so the first idle decision comes after a task or hook ends. start_task clears idle_since for tasks (1499) and for NIGHT_START/NIGHT_END (1509-1514). control clears it on START (2866). The STARTUP branch returns before process_idle is reached (2024-2031). A pending estimate restarts the wait (2068-2072). run_soon, idle_hook_done and standby gate the hook (2078-2080).\n- Reasons row (1410) matches select_task (1641-1677). That loop skips non-QUEUED/WAITING (is_selectable_state 406-408), disabled, script-error and hook tasks. first_reason takes the first such task. A pending estimate overrides only when a non-urgent best exists.\n- The \"sets nothing\" data rule (1122, 667) matches the code. In data_directory (1141-1150), folder_none or (no @folder and (hook or FOLDER off)) gives no folder. apply_context (1196-1244) sets context_applied only for OBJECT, a folder or FITS, and returns early without original_valid. restore_context (1248-1251) returns when nothing was applied. Otherwise it restores both DIR and OBJECT.\n- Plan recompute (1342) matches process() 2588-2597 and visibility_plan_valid 2538-2550.\n- Standby wording at 542, 1022, 1064 and 1424 matches start_task 1506-1509, the hook end handling 1320-1324, start_night_hook 1915-1920, a task start at 1503 and START at 2871.\n- The REASON note (280) is correct as hedged (\"may\").\n\nSample of other statements checked (about 60), all consistent:\n- Settings table: every default and range, from init at 3117-3128.\n- DATA defaults (3134-3136); warn_on_set hints (3085-3086).\n- MAX_TASKS 128, MAX_HISTORY 200, ESTIMATE_TIMEOUT 10 (51-62).\n- DELETE_ALL accepted only while stopped (2780-2783).\n- Score: class_base 0/1000/2000, linear setting term over SCHEDULER_SETTING_HORIZON 12 h, altitude clamped to 100 and 0 below the horizon (plan.c 67-81). Ties go to list order (strict > in select_task). Urgent tasks are ordered by urgent_order, renewed on REPEAT/RETRY -> QUEUED (1596-1599).\n- Flip condition ha < 0 and ha + duration >= offset; the negative-offset wait is added to the loss (plan.c 133-153). MERIDIAN_FLIP OFFSET is -2..2 (Sequencer.js 934).\n- Hook forbidden keys (header.c 59) and the \"not allowed with @priority hook\" error (608).\n- \"@altitude ... require @target\" (603). Empty body rejected (612-623). Header ends at a plain comment, empty // allowed (header.c 535-546). 255-byte line limit (548).\n- Rejection text \"line N: @key: expected '> degrees' with degrees 0-90\" (361, 594, S:2639).\n- 41 reason and message strings found verbatim by grep in the scheduler sources, including the \"too many task runs\" message (2337), \"<task> starts at HH:MM UTC, planned for better visibility\" (2521), the shutdown-skipped message with both causes (2003) and the disabled-hook notice (1830).\n- STARTUP failure stops with Alert without SHUTDOWN (1302-1305). SHUTDOWN failure gives Alert (1307-1309). NIGHT_START/RESUME failure gives request_stop Alert (1320-1326). A stop timeout skips SHUTDOWN (1808-1814).\n- Task-list and history label formats (build_task_state_label 885-898, history_label 688-693), including the quick-start example lines.\n- break_at() takes UTC strings (Sequencer.js 148). break_if_solar_altitude_above, wait_until_* and resume_point exist (147-180). estimate() returns unknown_duration (626-628).\n- Sandbox: --port, --simulators, --dir, --script, --name default \"Scheduler Sandbox\", --no-bonjour, fast defaults 1 s / 0 min (scheduler_sandbox.py 513-572). tools/scheduler_sandbox_night.txt exists.\n\nContent compared section by section with master's guide. Nothing normative is lost beyond the approved removals: \"Selecting the Scripting Agent is planned\", @timeout, the duplicate M31 upload example, the duplicate VISIBILITY command in Settings, and \"Regenerating the charts\".\n\nLinks: every internal #anchor resolves. The external anchors #label-format (SCHEDULER.md:354), #choosing-a-strategy (SCHEDULER.md:684) and the \"Two nights compared\" heading (bench_scheduler_plan.c:189) exist. Sequencer.md, SCHEDULER.md, PROPERTIES.md, PLATESOLVER.md, busy_night.png and sparse_night.png all resolve from indigo_docs/. Nothing refers to the removed appendix section. \"## Appendix\" now holds only \"Trying the scheduler by hand\".\n\nOPTIONAL POLISH (not blocking)\na. Line 991, \"While nothing changes, the plan and its times stay.\" (inherited from master): a COMPACT plan is recomputed at every check (process 2594-2597). Line 1342 states this precisely. Suggest: \"While nothing changes, a VISIBILITY plan keeps its times.\"\nb. Line 628 and the Settings row at 1230 dropped master's \"higher values avoid flips more strongly\". Suggest appending it to line 628.\nc. Line 626, \"A run that starts west of the meridian does not flip.\" Master added \"it is slewed to the west side\" (plan.c 140 comment). Consider keeping that reason.\nd. Line 233 dropped master's \"the night plan then moves the later runs back\" after the 25-minute example, and line 390 dropped \"the scheduler waits between Elephant and Soul\". Both are descriptive only.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "8f4fba881a99afe9089c848483af7cccf686bbf7",
+        "tree": "8b5107872da9f0907a86a26670e2c9cb12d4a58d",
+        "at": "2026-11-21T01:20:29.101519Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. (1) git diff --stat master...ticket/92c9d6bd-5770-499b-9245-1bd0776326c4 lists only indigo_docs/INDIGO_SCHEDULER_GUIDE.md (1 file, +985/-628); the PDF is gone. (2) git diff 8f4fba881 against the branch for the guide is empty, so the text the previous correctness review accepted is unchanged. (3) Spot-checked more than 40 statements against the code, all correct. Checked: the Header syntax rules (255-byte line limit via LINE_SIZE 256, repeated key error, plain comment ends the header, empty body error, @task required); every Header keys range and default (indigo_agent_scheduler_header.c parse_value/set_defaults: name 1-40 without |, priority classes and level 0-100, hook without a level, RA/Dec, altitude 0-90, airmass 1-100, HA -12..12, moon 0-180 with width 0.5-30, illumination, twilight, duration 1-1440, repeat 1-10000 every 0-100000, retry 0-100 after 0-100000, preempted, enabled, folder 1-40/none, observer/pi/project 1-56 with a quote counting as two); the rule that sky keys need @target; the HOOK_REJECTED_KEYS list; the score formula, 1000 per class, the 12 h setting horizon, altitude capped at 100 and 0 without a target, ties going to the earlier task (indigo_agent_scheduler_plan.c 67-81, select_task); estimate pending blocking non-urgent tasks and the definition of a waiting task (1640-1677); ESTIMATE_TIMEOUT 10 s, default 60 min, the three unknown-duration waits in Sequencer.js; the 5-min grid and 48 h forecast (300 s x 577 points); the 64-run VISIBILITY limit and its message text; the meridian flip condition and the negative-offset pause cost (plan.c 133-153); the hook failure table (startup stop_scheduler Alert, night start/resume request_stop through SHUTDOWN, night end/idle only reported, first hook by item order in hook_kind); the names-no-task and disabled-hook messages; every row of the Settings table (ranges and defaults, 3117-3127); the DATA and NIGHT defaults; the polar-night messages; the urgent-queued message; and the 511-byte label limit (INDIGO_VALUE_SIZE 512). Every internal link resolves to a heading, including #label-format, #choosing-a-strategy and #two-nights-compared, as well as the anchors SCHEDULER.md uses. busy_night.png, sparse_night.png, PLATESOLVER.md, Sequencer.md, SCHEDULER.md and PROPERTIES.md exist. (4) git diff --check master...branch is clean. The known optional polish items (the COMPACT recompute wording, the first sentence of \"What is put back.\", the dropped \"higher values avoid flips more strongly\") are not blocking, and the owner declined them.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "e4663c8d3d485ef6b6606f00bd4e3191f0bd668a",
+        "tree": "6713b61990799987a6f2bc896199eb9d0f9a6958",
+        "at": "2026-11-21T02:04:26.971949Z"
+      }
+    ],
+    "approvals": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": true,
+        "text": "",
+        "sha256": "94614f77463a42d8db5cd903df6bbf0727fbce853de2c4b6410836e4dd1b3094",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-21T00:21:28.087066Z"
+      }
+    ],
+    "notes": [
+      {
+        "at": "2026-11-20T23:47:35.649970Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision (2026-11-21): start this ticket only after ticket fed6144e (GUI clients and VISIBILITY priority fixes) is closed, so the rewrite builds on the corrected text.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T00:21:27.963342Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner answers to design.md open questions (2026-11-21): 1. show the score formula in the reference part only; the concepts part explains it in words. 2. wrong statements found during the rewrite are fixed in this ticket and each fix is listed in a ticket note; only a finding that means the code is wrong gets a separate ticket. 3. split the Unpark example so only the STARTUP hook sets the meridian flip; give the several-nights example a STARTUP hook. 4. remove the two planned features (Scripting Agent selection, @timeout) from the user guide; SCHEDULER.md keeps them. 5. appendix for the sandbox and chart regeneration: yes. 6. keep the header block and update the revision date. 7. 12,000-13,000 words is fine. 8. INDIGO_SCHEDULER_GUIDE.pdf is out of scope.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T00:39:07.636477Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Rule checklist for the scheduler guide rewrite (design 5.1). Old lines refer to INDIGO_SCHEDULER_GUIDE.md at 1b3e9749b; code references to indigo_drivers/agent_scheduler/ at the same commit (S = indigo_agent_scheduler.c, H = _header.c, P = _plan.c, K = _sky.c, N = _night.c, Q = Sequencer.js). Status: kept (K), merged with duplicate (M), removed (R), fixed (F).\n\nQuick start (old 9-131 -> Introduction, What you need, Loading the agents, How to talk, A first task)\n- Agents by exact name on same server, remote agent \"X @ host\" not used: K, S:54-57 -> Agents the scheduler depends on\n- Scripting Agent required, REASON 'waiting for the Scripting Agent': K, S:2014\n- Mount Agent site, 'site coordinates unknown' for @target/@twilight and night hooks: K, K:277-281, S:1857-1862\n- Guider stopped on abort/preempt; imager/solvers waited for: K, S:1457, S:3384-3388\n- Site source HOST/MOUNT/DOME/GPS, lat/long 0 accepted: K (Mount Agent behaviour, unchanged text)\n- Selecting the Scripting Agent is planned: R (owner answer 4)\n- Times are UTC: K -> Note in What you need\n- indigo_prop_tool set_script/set/get/-r/-s, empty value clears: K\n- First task walkthrough, task list label 'Test | QUEUED | normal 50 | run 0/1 | retries left 0 | 0h01 set': K, S:891\n- History line '... Test #1  succeeded': F -> history label format, S:688-693\n\nHeader (old 135-201 -> Tasks, Header syntax, Header keys, Constraints)\n- Header ends at first non-header line incl. plain comment; empty // allowed; later // @ lines ignored: K, H:537-546\n- Header line <= 255 bytes: K, H:36,548\n- Keys case-insensitive, once each (repeated key error), only @task required, body not empty: K, H:571-581,602-605,612-623\n- Comparison sign required, >= <= accepted: K, H parse_operator\n- All key ranges/defaults in the key table (task 1-40 no |, priority classes/level 0-100, airmass 1-100, ha -12..12 wrap, moon 0-180 width 0.5-30, illumination 0-100, twilight -6/-12/-18, duration 1-1440, repeat 1-10000 every 0-100000, retry 0-100 after 0-100000, preempted, enabled, folder 1-40/none, observer/pi/project 1-56 quote=2): K, H:313-492, K:171\n- Target keys need @target: K, H:606-609\n- scheduler_task fields: K\n- A task starts only if it can finish (whole duration): M (old 13,199,235,254,281,619,624) -> Constraints + Constraint rules, S:1575-1578\n- Five-minute grid: K, K.h SCHEDULER_GRID_STEP 300\n- Duration not a limit; runs not stopped at window end/target set; checkpoints break_at/break_at_ha/break_if_target_altitude_below + resume_point: M (old 201,399-428,446,725) -> Constraints, Q:147-179\n\nPriorities and selection (old 203-241 -> Priorities, How the next task is chosen, Score rules, Hook rules)\n- Verified in design 4.3 (classes, defaults, score formula, 900<1000, ties by list order, urgent order, preemption, triggers, WAITING, REASON first waiting task): K\n- Score formula: K, reference only (owner answer 1)\n- Any pending estimate blocks every non-urgent start: F (old 397 'A task is not started while its estimate is pending'), S:1647-1653,1673-1677\n- Hook class forbidden keys list: K -> Hook rules, H:59,610-613\n- Urgent submission cannot be a hook: K, S:2723-2726\n\nStrategy (old 243-295 -> Choosing a strategy, Strategy rules)\n- COMPACT/VISIBILITY behaviour, priority use per strategy, urgent never moved: K, P:1114,1159-1166,1210, S:1679\n- Quality definition, duration-weighted: K\n- Constraints hard under VISIBILITY; weights only shape COMPACT plan and fallbacks: K\n- Fallbacks: no better plan, >64 runs or >24 h (message once a night), planned run cannot start after one replan: K, P.h:41, S:2333-2338, S:2504-2533\n- Replan prefers previous runs, may drop COMPACT run of class not above lowest kept class: K (unchanged wording)\n- Repeat spacing, delays kept, hooks not blocked, whole UTC minutes, replan triggers incl. MERIDIAN_FLIP: K, S:2555-2560\n- IDLE hook not while planned run within IDLE_HOOK_DELAY: K, S:2079-2080\n- Six-task example table and text: K (numbers unchanged)\n- Duplicate VISIBILITY command in Settings (old 814-818): R as duplicate\n\nMeridian flips (old 297-306 -> Meridian flips, Meridian flip rules)\n- MERIDIAN_FLIP ENABLED/OFFSET, set once in STARTUP, change replans, missing = no flip: K, S:60,267,2555, Q:322-330\n- Flip condition ha<0 and reaches OFFSET before end; negative OFFSET pause added to cost; urgent not penalised; no effect under COMPACT or disabled; durations unchanged: K, P:133-153,480-482\n- 1000-night statistic: K\n\nTwo nights compared (old 308-353): tables and charts unchanged, text shortened; chart regeneration moved to Appendix: K\n\nTime windows, Moon (old 355-382 -> Constraints, Constraint rules)\n- Absolute expiry, nightly never expires, UTC days, across midnight needs both ends, whole run fits: K, K:226-266, S:1602-1611\n- Lorentzian formula d/(1+(t/w)^2), ~7 deg at new moon, Moon below horizon ignored: K, K:69-75,198-208\n- beyond the forecast (48 h): K, K.h:39-41, K:282-284\n\nTask duration (old 384-428 -> Task duration, Duration rules)\n- Sources set/measured/estimated/default 60: K, H.h:40\n- Formula, operations list, unknown-length steps, 10 s timeout, overhead change not retroactive: K, S:63,2105-2128, Q:18-22,121-167,430-614,626\n- Measurement incl. flips; forgotten on edit; kept over restart: K, S apply_status\n- @timeout planned: R (owner answer 4)\n\nRepeats, body, data (old 430-493 -> Repeats/retries/history, Rules for the body, Where the data goes, Data rules)\n- repeat/retry semantics, shared retries, RESET restores, whole sequence reruns, success = Ok: K\n- Body rules; meridian flip bullet reduced to pointer: M\n- OBJECT/FITS/FOLDER defaults, SCHTASK/SCHRUN/SCHNIGHT, OBSERVER/PI_NAME/PROPID: K, S:3133-3135, S:1197-1244\n- Folder <base>/<name>/, BASE empty = folder at START, char replacement, @folder none: K, S capture_original at START (S:2872-2874)\n- Restore after every run, task overrides last until run end: K, S:1247-1278\n- Hooks: no object/FITS/FOLDER, only @folder <name>; camera-deselect warning: M (old 486,491,703) -> Data rules\n- Only \"Imager Agent\"; nothing without CCD_LOCAL_MODE; estimate sets nothing: K\n\nSubmitting, urgent (old 553-630 -> Tasks, Urgent tasks, Urgent task rules, Managing tasks)\n- Duplicate M31 upload example: R as duplicate (the walk-through uses the shape example)\n- Upload steps, rejection message: F (example was truncated; now full text 'line 4: @altitude: expected '> degrees' with degrees 0-90'), H:361,594, S:2639\n- Limits 128 tasks, 16 KiB, 40-byte names, unique incl. urgent, non-empty body: K, S:51, H.h:37-39\n- Two ways urgent; one-off removed after any end, not stored; stored urgent kept: K\n- Preemption steps, @preempted retry/fail, no retry used: K, S:1423-1436\n- Urgent does not interrupt hook, task after STOP, while own estimate pending, other urgent: K, S:1623,1775-1781\n- Urgent aborts a hand-started sequence: K, S:2044-2052\n- 'Urgent task queued, but the scheduler is not running': K, S:2737\n\nRunning (old 632-790 -> Starting/stopping, Hooks and the night, Hook rules, Night rules)\n- START/STOP/ABORT; ABORT marks stored task RETRY, discards one-off: K\n- Automatic stop conditions, empty/hook-only list keeps running, add/reset before shutdown cancels: K, S:1700-1716,1980-1984\n- Hook table and failure behaviour: K; SHUTDOWN failure -> Alert added, S:1307-1311; SHUTDOWN skipped also when Scripting Agent or Sequencer.js missing: F (old text named only 'another sequence'), S:1996-2004\n- Unpark example set the flip in a task used for STARTUP and RESUME: F (owner answer 3) -> Startup sets flip, Unpark only unparks\n- Hook rules (rename detaches, disabled skip message, one task several hooks runs once, history kind hook, @priority hook upload order, removal): K, S:1820-1832,1909-1924\n- Scheduler night limit/offsets +-240, only times night hooks, NIGHT_START skip message and late start, NIGHT_END after NIGHT_START, never interrupt, START at night runs STARTUP+NIGHT_START, stops run only SHUTDOWN: K, N.h:38, S:1836-1960\n- Standby set at IDLE/NIGHT_END start, ended by NIGHT_START/RESUME success or task start, not kept over START: K, S:1497-1514,1316-1324,2871\n- Failures NIGHT_START/RESUME -> SHUTDOWN + Alert; NIGHT_END/IDLE reported: K, S:1320-1327\n- No-night messages and plan item: K, S:1895-1897,2494\n- Observatory example: K, plus STARTUP hook 'Setup' setting the flip (owner answer 3)\n\nSettings, watching, managing (old 792-1077 -> reference sections)\n- Settings table values: K, S:3118-3128 (all defaults and ranges match)\n- STATE property states and counters; CURRENT items: K, S:3097-3111\n- Label format rules, 511 bytes: K\n- Task list columns and states; plan items, hook items, NOT TONIGHT reasons; history results and 200 limit; clearing: K, S:61,2247,2475-2494,688-693\n- Messages and reasons: K, all checked verbatim by grep against S, H, K, Q (format-composed ones checked by their format strings)\n- Commands table, warn_on_set, DELETE_ALL only while stopped, RESET running rejected, RESET_ALL message: K, S:2742-2870, S:3085-3086\n- Edit rules (checked like upload, rename unique, keeps counters, forgets measurement, running edit after end): K, S:2659-2681\n- Delete rules: K, S:2687-2706\n- Restart rules: K, S apply_status\n\nAppendix (old 1079-1113, 353): sandbox commands and options checked against tools/scheduler_sandbox.py; chart regeneration: K\n\nResult: no rule dropped silently; removals are duplicates or owner-approved (planned features). Factual fixes are listed in a separate note.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T00:39:19.619201Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Factual fixes made in the guide rewrite (owner answer 2). Reproduction: each old statement compared with the code at 1b3e9749b; after the fix the new text matches the cited code. (1) Old line 397 'A task is not started while its estimate is pending' read as 'that task waits'; the code blocks every non-urgent start while any estimate is pending (indigo_agent_scheduler.c select_task 1647-1677). New text in Task duration (Note), Duration rules and Reasons. (2) Old line 585 quoted the rejection as 'Task rejected: line 4: @altitude: expected '> degrees''; the real message continues ' with degrees 0-90' (indigo_agent_scheduler_header.c 361, 594). Now quoted in full. (3) Old line 125 said the history shows '... Test #1  succeeded'; the history label is 'when | name | run 1 | task | SUCCEEDED | -' (indigo_agent_scheduler.c history_label 688-693). Fixed in the quick start. (4) Old hook table said SHUTDOWN is skipped only when another sequence occupies the Scripting Agent; it is also skipped with a message when the Scripting Agent or Sequencer.js is missing (indigo_agent_scheduler.c 1996-2004). Added to Hook rules, together with the existing rule that a failed SHUTDOWN stops with Alert (1307-1311). (5) Old Unpark example (line 684, 693) set the meridian flip in a task used for both STARTUP and RESUME; split per owner answer 3: Startup (STARTUP) unparks and sets the flip, Unpark (RESUME) only unparks; the observatory example gained a STARTUP hook 'Setup' that sets the flip. (6) Removed per owner answer 4: 'Selecting the Scripting Agent is planned' (old 37) and the planned @timeout (old 428). No finding indicated a code defect, so no separate ticket was opened.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T00:52:46.647432Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Checklist addendum after review round 1 (restored or changed rules, each checked against the code at 1b3e9749b): ABORT makes a stored task RETRY without using a retry and discards a one-off urgent task (indigo_agent_scheduler.c 1435-1439) - restored in Starting, stopping and restarting. Adding or resetting a task before the shutdown hook starts cancels the automatic stop (1980-1987) - restored. NIGHT_END runs only if NIGHT_START ran that scheduler night (indigo_agent_scheduler_night.c 202-208) - now a condition in Hooks and the night and a Night rules bullet. Flip condition: starts east of the meridian (negative hour angle) and the hour angle reaches OFFSET before the run ends (indigo_agent_scheduler_plan.c 133-137); OFFSET is hours of hour angle, -2..2 (Sequencer.js MERIDIAN_FLIP 934, imager clamp indigo_agent_imager.c 2664), negative pauses before the meridian and flips there - explained in Meridian flips and before first use in Choosing a strategy. 1000-night statistic restored with OFFSET 0, same number of runs, COMPACT 645 flips at 69.7 %. Pending estimate blocks starts only when it belongs to a task waiting to run: QUEUED or WAITING, enabled, not a hook, no script error (select_task 1641-1677) - corrected in Task duration, Duration rules and Reasons (refines factual fix 1). IDLE trigger worded as 'no task has run for IDLE_HOOK_DELAY minutes' everywhere: idle_since is reset at every task start and set at the first decision without a start, also while VISIBILITY waits (2069-2085, 1499). break_at() time string is UTC (Sequencer.js 147-148, Sequencer.md 145). Restored details: dome unparked with dome slaving (Mount Agent, old 730), large Moon width keeps the limit high (old 382), leave dome steps out without a dome (old 792), causes of late work: upload/reset, urgent task, constraint clears (old 725). Plate solver link restored (../indigo_drivers/agent_platesolver/doc/PLATESOLVER.md); the file exists on master (merge 0d794b9e6) but not at the ticket base 1b3e9749b, so the link resolves only after the branch meets current master.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T01:01:10.258037Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Correctness review round 2 (corrected text; the recorded verdict text lost backtick-quoted names):\n1. IDLE trigger wording \"when no task has run for `IDLE_HOOK_DELAY` minutes\" (lines 350, 482, 521, 606, 1019, 1217) is not exact. process_idle (indigo_agent_scheduler.c:2069-2085): the wait starts at the first decision that starts nothing and restarts at every task start, at `START` (2866) and when a `NIGHT_START` or `NIGHT_END` hook starts (1509-1514); a pending duration estimate also restarts it (2069-2072); nothing counts while a hand-started sequence runs. Suggested: define once (Hook rules or Settings): \"IDLE runs once the scheduler has waited `IDLE_HOOK_DELAY` minutes without starting a task. The wait counts from the end of the last task, from `START` or from the last night hook. Waiting for a duration estimate does not count.\" Short places: \"after `IDLE_HOOK_DELAY` minutes without a task start\".\n2. Line 280: \"`REASON` is `estimating the task duration`\" is not always true; select_task (1653-1677) shows it only when another task could start or the estimating task is the first waiting task; otherwise REASON shows the first waiting task's constraint reason. Suggested: \"If another task could start, `REASON` is `estimating the task duration`.\"\n3. Optional (already in master): lines 665 and 1115 say a task's own set_directory()/set_object_name() lasts only until the end of the run, but restore_context (1247-1250) restores only what the scheduler set itself; with OBJECT, FITS and FOLDER off and no @folder, the task's change stays.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T01:05:33.648531Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Checklist addendum after review round 2/3 (checked against the code at the merged tree; scheduler code unchanged since 1b3e9749b): (1) IDLE wait defined once in Hook rules: IDLE runs once the scheduler has waited IDLE_HOOK_DELAY minutes without starting a task; the wait counts from the end of the last task, from START or from the start of the last night hook; a pending duration estimate restarts it; under VISIBILITY it also waits while the next planned run is within the delay; once per wait, not in standby (indigo_agent_scheduler.c 1497-1514, 2066-2085, 2866-2867). Short form everywhere else: 'after IDLE_HOOK_DELAY minutes without a task start'; Settings row 'Wait without a task start before the IDLE hook runs'. (2) REASON 'estimating the task duration' only when another task could start or the estimating task is the first non-running task in list order; otherwise the first waiting task's reason (select_task 1645-1677) - Task duration note and Reasons table. (3) Restoring: restore_context (1247-1279) runs only when the scheduler applied something (context_applied set by OBJECT, folder from FOLDER/@folder, or FITS in apply_context 1197-1244); it then restores folder and object name to the originals, undoing the task's own change; with OBJECT, FITS, FOLDER off and no @folder nothing is restored and the task's changes stay; only SCHTASK/SCHRUN/SCHNIGHT and the used @observer/@pi/@project keywords are removed, other task keywords stay - fixed in Where the data goes and Data rules (this corrects the old guide's 'win only until the end of that run'). (4) Plan span: until the next sunrise, or 24 hours when the Sun does not set and rise within the 48-hour grid; longer when the scheduler night ends after sunrise (indigo_agent_scheduler_sky.c 478-493, indigo_agent_scheduler.c 2386-2393). (5) Session = START until the scheduler stops (PRIVATE_DATA->started, control 2856-2878, stop_scheduler). Readability N1-N11 applied; N12 covered by the new IDLE wording.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T01:15:29.427459Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Checklist addendum after review round 4: (1) IDLE wait now counts from whichever came last: the end of the last task, the end of the last night hook, or START (after the STARTUP hook if there is one). START (indigo_agent_scheduler.c 2866) and night hook starts (1509-1514) only clear idle_since; it is set only in process_idle (2075), which runs only in RUN_IDLE (2586), and the STARTUP branch returns before it (2024-2031). (2) Reasons row: 'comes first in the list among the tasks waiting to run' (select_task 1651-1662 skips non-QUEUED/WAITING, disabled, script-error and hook tasks). (3) Data rules: the scheduler sets nothing when OBJECT and FITS are off and the task gets no folder (FOLDER off without @folder <name>, or @folder none; data_directory 1140-1150), or when the Imager Agent is not loaded or has no CCD_LOCAL_MODE (apply_context 1203-1208); concept text says 'no @folder <name>'. (4) Plan time span: recomputed on every change and checked every IDLE_CHECK_INTERVAL seconds; a COMPACT plan is recomputed then, a valid VISIBILITY plan keeps its times (process 2589-2597, visibility_plan_valid 2539-2550). (5) Standby begins when the IDLE or NIGHT_END hook starts (start_task 1507-1509); concept text aligned. (6) Task duration note: 'REASON may then show estimating the task duration' (exact cases stay in the Reasons table). (7) Data lead renamed 'What is put back.'. (8) Owner request: the 'Regenerating the charts' appendix section and its See also link from Two nights compared were removed; the commands remain in tools/scheduler_plan_charts.py and indigo_test/benchmark/bench_scheduler_plan.c (unchanged; bench_scheduler_plan.c:189 names 'Two nights compared', which stays).",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "The rewrite is 15,488 words (was 15,183), above the approved 12,000-13,000. Prose is 10,130 words; tables 4,403 and code 849 are unchanged in size. Average sentence 10.6 words (was 16.8), longest 37 (was 73), 3 over 25 (was 105). Accept about 15,500 words, or move more reference detail to SCHEDULER.md, or trim harder?",
+        "at": "2026-11-21T00:39:59.954847Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Owner decision (2026-11-21): accept about 15,500 words; no further trimming and no move of detail to SCHEDULER.md.",
+        "answered_at": "2026-11-21T00:43:39.109045Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      },
+      {
+        "text": "Two correctness review rounds asked for changes. Round 2 found 2 wording inaccuracies (IDLE trigger, REASON during estimates) and 1 optional pre-existing one (task's own set_directory/set_object_name); the readability review passed with 12 minor nits. Continue with a third fix round covering all of them, then fresh reviews?",
+        "at": "2026-11-21T01:01:10.394291Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Owner decision (2026-11-21): continue with a third fix round covering the 2 correctness inaccuracies (IDLE trigger, REASON during estimates), the optional set_directory/set_object_name point and the 12 readability nits, then fresh correctness and readability reviews.",
+        "answered_at": "2026-11-21T01:03:50.518346Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      },
+      {
+        "text": "Correctness round 3 asked for changes again: 2 required (IDLE wait counts from the end of STARTUP / end of the night hook, not their start; Reasons table 'tasks waiting to run'), 2 optional; readability passed with 5 optional polish points. Do a fourth, final fix round for all of these, then fresh reviews?",
+        "at": "2026-11-21T01:10:05.142999Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Owner decision (2026-11-21): do a fourth, final fix round covering the 2 required and 2 optional correctness points and the 5 readability polish points; also remove the chart-regeneration appendix from the user guide (not needed there; the commands stay in tools/scheduler_plan_charts.py and bench_scheduler_plan.c). Then fresh reviews.",
+        "answered_at": "2026-11-21T01:14:10.134763Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      },
+      {
+        "text": "Correctness round 4: guide text correct; changes only because the branch adds indigo_docs/INDIGO_SCHEDULER_GUIDE.pdf (2 MB, created 2026-11-21 03:09 in the worktree, picked up by a flow check progress commit). Was it the owner's? Remove it from the branch (keeping a copy) and apply the last optional polish (readability n1-n4, correctness a-d), then a final review?",
+        "at": "2026-11-21T01:20:55.738575Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Owner decision (2026-11-21): commit and merge now without the optional polish. The stray INDIGO_SCHEDULER_GUIDE.pdf was deleted from the worktree; the deletion is recorded so the PDF does not land on master.",
+        "answered_at": "2026-11-21T02:02:43.754368Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      }
+    ],
+    "presented": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-21T00:16:13.889568Z"
+      }
+    ],
+    "landing": {
+      "commit": "5f94670534c9c63cfc6bf29591aa85ff81b6302f",
+      "tree": "6713b61990799987a6f2bc896199eb9d0f9a6958",
+      "base": "master",
+      "at": "2026-11-21T02:04:47.388185Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "full",
+    "at": "2026-11-20T23:47:03.917909Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-20T23:47:35.465991Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 8251032.144,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 16
+    }
+  },
+  "journal": {
+    "entries": 144,
+    "sha256": "1d90802bfd76ae04767814532e7674189f34254ede03c610b67e9b36d079d1e0"
+  }
+}
