@@ -23,7 +23,7 @@ driver lx200 {
 	label = "LX200 Mount";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 86;
+	version = 87;
 	serial {
 		configurable_speed = true;
 		// NYX_TEMPLATE_INDEX - Pegasus Astro NYX mount
@@ -56,6 +56,10 @@ driver lx200 {
 		#define TOUPTEK_PARK_START_TIMEOUT 5.0
 		#define TOUPTEK_HOME_START_TIMEOUT 5.0
 		#define TOUPTEK_UNPARK_CONFIRMATION_READS 10
+
+		// A slew in progress stays BUSY over this many consecutive polls whose position readback failed, the next poll
+		// retries; one more failure ends it ALERT.
+		#define POSITION_READ_RETRIES 2
 
 		#ifndef MAX
 		#define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -101,6 +105,8 @@ driver lx200 {
 		indigo_device *classicGuider;
 		double lastRA, lastDec;
 		bool coordinate_read_failed;
+		// Consecutive polls whose position readback failed.
+		int position_failures;
 		char product[64];
 		bool slewing, tracking, parked, parking, homed, homing;
 		// An OpenAstroTracker cannot be asked whether it is parked, so the driver remembers it.
@@ -147,6 +153,9 @@ driver lx200 {
 		char gemini_direction_ns, gemini_direction_we;
 		double gemini_park_deadline;
 		bool goto_issued;
+		// An abort stopped a slew and the axes may still decelerate: the slew the controller reports until they stand is
+		// that stop, not a new slew. See meade_update_mount_state().
+		bool stopping;
 		// The guider device, which shows the guiding speed of a Gemini as GUIDER_RATE.
 		indigo_device *guider_device;
 		bool park_allowed, unpark_allowed, home_allowed;
@@ -2758,10 +2767,15 @@ driver lx200 {
 		if (meade_command(device, ":D#")) {
 			PRIVATE_DATA->slewing = *PRIVATE_DATA->response;
 			if (!PRIVATE_DATA->slewing && PRIVATE_DATA->goto_issued) {
-				// GR/GD precede D in the poll; the slew may have ended between those reads.
-				PRIVATE_DATA->coordinate_read_failed = !meade_read_position(device);
-				if (PRIVATE_DATA->coordinate_read_failed) {
-					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				// GR/GD precede D in the poll; the slew may have ended between those reads. A failure of this
+				// readback counts once per poll with a failure of the first one; meade_update_mount_state()
+				// decides the state.
+				if (meade_read_position(device)) {
+					PRIVATE_DATA->coordinate_read_failed = false;
+					PRIVATE_DATA->position_failures = 0;
+				} else if (!PRIVATE_DATA->coordinate_read_failed) {
+					PRIVATE_DATA->coordinate_read_failed = true;
+					PRIVATE_DATA->position_failures++;
 				}
 			}
 		}
@@ -3528,7 +3542,9 @@ driver lx200 {
 		AP_PARK_POSITION_PROPERTY->hidden = true;
 		PRIVATE_DATA->use_dst_commands = false;
 		PRIVATE_DATA->slewing = PRIVATE_DATA->tracking = PRIVATE_DATA->parking = PRIVATE_DATA->parked = PRIVATE_DATA->homing = PRIVATE_DATA->homed = false;
-		PRIVATE_DATA->goto_issued = false;
+		PRIVATE_DATA->goto_issued = PRIVATE_DATA->stopping = false;
+		PRIVATE_DATA->coordinate_read_failed = false;
+		PRIVATE_DATA->position_failures = 0;
 		PRIVATE_DATA->meade_park_silent = PRIVATE_DATA->meade_no_gw = PRIVATE_DATA->meade_lxd600 = false;
 		// A park or a stall from the previous session says nothing about this one.
 		PRIVATE_DATA->gemini_park_expected = PRIVATE_DATA->gemini_park_failed = PRIVATE_DATA->stalled = false;
@@ -3673,9 +3689,10 @@ driver lx200 {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			PRIVATE_DATA->coordinate_read_failed = false;
+			PRIVATE_DATA->position_failures = 0;
 		} else {
 			PRIVATE_DATA->coordinate_read_failed = true;
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			PRIVATE_DATA->position_failures++;
 		}
 		bool ap_parked = MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->parked;
 		PRIVATE_DATA->slewing = PRIVATE_DATA->tracking = PRIVATE_DATA->parking = PRIVATE_DATA->parked = PRIVATE_DATA->homing = PRIVATE_DATA->homed = false;
@@ -3718,14 +3735,26 @@ driver lx200 {
 		PRIVATE_DATA->lastRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 		PRIVATE_DATA->lastDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		indigo_debug("*** slewing=%d, tracking=%d, parked=%d, parking=%d, homed=%d, homing=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->parking, PRIVATE_DATA->homed, PRIVATE_DATA->homing);
-		if (PRIVATE_DATA->coordinate_read_failed) {
+		// A failed readback during a slew is retried by the next poll, the slew stays BUSY with the last position read; an
+		// ALERT would be kept after the BUSY and turn the completion of a correct GOTO into ALERT. A readback that keeps
+		// failing, or one failing while the coordinates are not BUSY, is an ALERT.
+		bool retry_readback = PRIVATE_DATA->coordinate_read_failed && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE && PRIVATE_DATA->position_failures <= POSITION_READ_RETRIES;
+		if (PRIVATE_DATA->coordinate_read_failed && !retry_readback) {
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (PRIVATE_DATA->stalled) {
 			// The position is readable and the axis is not moving, which is what the branch
 			// below reads as an arrival. A stalled mount has not arrived anywhere.
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			PRIVATE_DATA->goto_issued = false;
+		} else if (retry_readback) {
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
+		} else if (PRIVATE_DATA->slewing && PRIVATE_DATA->stopping) {
+			// The axes decelerate after an abort and the controller reports the slew until they stand. That is the stop
+			// of the slew the abort ended, published with it, so the coordinates keep their state; a BUSY would clear the
+			// ALERT of an aborted GOTO, which indigo_update_coordinates() keeps until the next request.
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 		} else if (PRIVATE_DATA->slewing) {
 			// a running slew (driver or hand controller initiated) completes when it stops
 			PRIVATE_DATA->goto_issued = true;
@@ -3736,7 +3765,7 @@ driver lx200 {
 			// The coordinates were read, so the position is valid again after a failed readback.
 			// The ALERT of a refused or aborted GOTO stays until the next request: it was published
 			// right after BUSY, and indigo_update_coordinates() publishes this OK as ALERT until then.
-			PRIVATE_DATA->goto_issued = false;
+			PRIVATE_DATA->goto_issued = PRIVATE_DATA->stopping = false;
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -4556,6 +4585,7 @@ driver lx200 {
 						MOUNT_PARK_PARKED_ITEM->sw.value = false;
 					}
 					if (meade_park(device)) {
+						PRIVATE_DATA->stopping = false;
 						if (MOUNT_TYPE_AP_ITEM->sw.value) {
 							if (PRIVATE_DATA->ap_parking) {
 								// A firmware park position is reached through a slew, :GOS# tells when it is parked.
@@ -4624,7 +4654,9 @@ driver lx200 {
 				if (MOUNT_HOME_PROPERTY->count == 1) {
 					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
 				}
-				if (!meade_home(device)) {
+				if (meade_home(device)) {
+					PRIVATE_DATA->stopping = false;
+				} else {
 					MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				MOUNT_STATE_HOME_ITEM->light.value = MOUNT_HOME_PROPERTY->state;
@@ -4667,6 +4699,7 @@ driver lx200 {
 					if (meade_set_tracking_rate(device) && meade_slew(device, ra, dec)) {
 						indigo_usleep(500000); // wait for the mount to start slewing to get correct state in the position timer
 						PRIVATE_DATA->goto_issued = true;
+						PRIVATE_DATA->stopping = false;
 						PRIVATE_DATA->classicGoto = meade_host_timed_guiding(device);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 						// The slew light goes on with the coordinates that go BUSY, not a poll later.
@@ -4706,6 +4739,8 @@ driver lx200 {
 						PRIVATE_DATA->gemini_park_expected = PRIVATE_DATA->oat_park_expected = PRIVATE_DATA->ap_parking = false;
 						PRIVATE_DATA->zwo_park_stage = 0;
 						PRIVATE_DATA->touptek_park_pending = PRIVATE_DATA->touptek_home_pending = false;
+						// What the controller reports as a slew until the axes stand is this stop.
+						PRIVATE_DATA->stopping = true;
 						if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 							meade_restore_park_switch(device);
 							MOUNT_STATE_PARK_ITEM->light.value = PRIVATE_DATA->parked ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
@@ -4758,6 +4793,7 @@ driver lx200 {
 				}
 				if (meade_set_slew_rate(device) && meade_motion_dec(device)) {
 					if (PRIVATE_DATA->lastMotionNS) {
+						PRIVATE_DATA->stopping = false;
 						MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 					}
 				} else {
@@ -4775,6 +4811,7 @@ driver lx200 {
 				}
 				if (meade_set_slew_rate(device) && meade_motion_ra(device)) {
 					if (PRIVATE_DATA->lastMotionWE) {
+						PRIVATE_DATA->stopping = false;
 						MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 					}
 				} else {

@@ -423,8 +423,9 @@ static bool lx_coordinates(double ra, double dec, indigo_property_state state) {
 	return indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values) == INDIGO_OK && wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, state, revision);
 }
 
-static bool start_profile(external_serial_simulator *simulator, const char *model, const char *type) {
-	if (!start_lx200_simulator(simulator, model) || !bring_up_serial_driver(&lx200_mount)) {
+// The simulator started with the given arguments, the driver with the given mount type (NULL autodetects) connected to it.
+static bool start_profile_with_args(external_serial_simulator *simulator, const char * const *arguments, const char *type) {
+	if (!start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments) || !bring_up_serial_driver(&lx200_mount)) {
 		return false;
 	}
 	enumerate_simulator_device();
@@ -439,6 +440,11 @@ static bool start_profile(external_serial_simulator *simulator, const char *mode
 	disconnect_serial_device(&lx200_mount);
 	tear_down_serial_driver(&lx200_mount);
 	return false;
+}
+
+static bool start_profile(external_serial_simulator *simulator, const char *model, const char *type) {
+	const char *arguments[] = { "--model", model, NULL };
+	return start_profile_with_args(simulator, arguments, type);
 }
 
 typedef struct {
@@ -2163,11 +2169,16 @@ static void lx200_classic_timed_guiding(void) {
 	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
 	mount_connected = true;
+	// A position readback that keeps failing during a classic goto ends it ALERT, but nothing says the goto is over, so
+	// the guider stays refused. One failure alone is retried and keeps the goto BUSY. The goto creeps, so it is still
+	// under way when the guider is asked.
 	began = event_count(&simulator, "MS", NULL);
+	SERIAL_CHECK_TRUE(send_control(&simulator, "creep"));
 	SERIAL_CHECK_TRUE(lx_coordinates(18, 70, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", began));
-	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GR", "bad#"));
+	SERIAL_CHECK_TRUE(send_control(&simulator, "GR\tbad#\nGR\tbad#\nGR\tbad#"));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(3, event_count(&simulator, "fault GR", NULL));
 	reset_simulator_context(&lx200_guider);
 	enumerate_simulator_device();
 	int before = event_count(&simulator, "Mn", NULL);
@@ -4539,6 +4550,237 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The dialects whose polls read the position through the shared readback, with the mount type the case selects (NULL
+// autodetects, as check_profile() does) and the position query that opens their poll. Every dialect the simulator
+// serves except "asi", which belongs to the mount_asi driver.
+typedef struct {
+	const char *model, *type, *position;
+	// Whether the controller reports a slew in its status rather than the driver inferring it from the position, which
+	// is what a stop that lets the axes decelerate is seen through.
+	bool slew_status;
+} lx_readback_dialect;
+
+static const lx_readback_dialect readback_dialects[] = {
+	{ "meade", NULL, "GR", true },
+	{ "onstep", NULL, "GR", true },
+	{ "10mic", NULL, "GR", true },
+	{ "gemini", NULL, "GR", true },
+	{ "stargo", NULL, "GR", true },
+	{ "stargo2", "STARGO2", "GR", false },
+	{ "ap", "AP", "GR", true },
+	{ "agotino", NULL, "GR", true },
+	{ "zwo", NULL, "GR", true },
+	{ "nyx", NULL, "GRH", true },
+	{ "oat", NULL, "GR", true },
+	{ "teen", NULL, "GR", true },
+	{ "generic", NULL, "GR", false },
+	{ "esp32go", NULL, "GR", true },
+	{ "touptek", NULL, "GR", true },
+	{ "classic", "CLASSIC", "GR", false }
+};
+
+// Waits for the given number of polling cycles of a dialect whose poll opens with the given position query.
+static bool wait_position_polls(external_serial_simulator *simulator, const char *command, int polls) {
+	int before = event_count(simulator, command, NULL);
+	for (int i = 0; i < 1500; i++) {
+		if (event_count(simulator, command, NULL) > before + polls) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Fewer than %d polling cycles (%s) completed\n", polls, command);
+	return false;
+}
+
+static const char *state_name(indigo_property_state state) {
+	return state == INDIGO_OK_STATE ? "OK" : state == INDIGO_BUSY_STATE ? "BUSY" : state == INDIGO_ALERT_STATE ? "ALERT" : "IDLE";
+}
+
+// A goto from the start position to RA 22 h, DEC -60 that the simulator slows to a hundredth of its speed, so it is
+// still on its way for as long as the case needs; a poll has published it BUSY when this returns.
+static bool start_creeping_goto(external_serial_simulator *simulator, const char *position) {
+	int slews = event_count(simulator, "MS", NULL);
+	if (!lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE) || !lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE)) {
+		return false;
+	}
+	if (!send_control(simulator, "creep") || !lx_coordinates(22, -60, INDIGO_BUSY_STATE) || !wait_event(simulator, "MS", slews) || !wait_position_polls(simulator, position, 2)) {
+		return false;
+	}
+	indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	if (property->state != INDIGO_BUSY_STATE || fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 60) < 1) {
+		fprintf(stderr, "The goto is not on its way: %s at DEC %.4f\n", state_name(property->state), cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME));
+		return false;
+	}
+	return true;
+}
+
+static bool coordinates_at(double ra, double dec) {
+	return fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 0.01 && fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 0.01;
+}
+
+static bool targets_at(double ra, double dec) {
+	return fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target - ra) < 1e-6 && fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.target - dec) < 1e-6;
+}
+
+static void check_goto_survives_failed_readback(const lx_readback_dialect *dialect) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	char fault[32];
+	printf("    %s\n", dialect->model);
+	SERIAL_CHECK_TRUE(start_profile(&simulator, dialect->model, dialect->type));
+	online = true;
+	SERIAL_CHECK_TRUE(start_creeping_goto(&simulator, dialect->position));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	if (!strcmp(dialect->model, "agotino")) {
+		// The aGotino keeps reporting the start position while it slews, so the driver reads the position again once the
+		// distance bar reports the end of the slew. The slew ends right before the distance bar and that second
+		// readback fails.
+		SERIAL_CHECK_TRUE(send_control(&simulator, "D\tCOMPLETE\nGR\tinvalid#"));
+		SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+		SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "fault D", NULL));
+	} else {
+		// The readback that opens the next poll fails, and the slew ends right there, so the status read later in the
+		// same poll already reports it ended: the goto cannot complete before the failed readback.
+		snprintf(fault, sizeof(fault), "%s\tinvalid#\tarrive", dialect->position);
+		SERIAL_CHECK_TRUE(send_control(&simulator, fault));
+		SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	}
+	snprintf(fault, sizeof(fault), "fault %s", dialect->position);
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, fault, NULL));
+	indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	printf("      the goto ended %s after the failed readback, ALERT %s\n", state_name(property->state), alerts == property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE) ? "never published" : "published");
+	SERIAL_CHECK_EQ_INT(alerts, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, property->state);
+	SERIAL_CHECK_TRUE(coordinates_at(22, -60));
+	SERIAL_CHECK_TRUE(wait_position_polls(&simulator, dialect->position, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(alerts, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// One position readback that fails while a goto is under way is a transport hiccup, not a failed slew: the
+// coordinates stay BUSY with the last position read, the next poll retries, and a goto the mount completes at its
+// target in the same poll as the failure ends OK. No ALERT is published on the way or at the end. An ALERT would be
+// kept after the BUSY of the goto by indigo_update_coordinates() and turn the completion of a correct goto into ALERT.
+// Every dialect, since each derives the end of the slew from its own status; the aGotino through the readback it
+// repeats after the slew.
+static void lx200_goto_survives_failed_position_readback(void) {
+	for (int i = 0; i < ARRAY_SIZE(readback_dialects); i++) {
+		int failures = indigo_test_failures;
+		check_goto_survives_failed_readback(readback_dialects + i);
+		if (indigo_test_failures != failures) {
+			fprintf(stderr, "FAIL in dialect %s\n", readback_dialects[i].model);
+		}
+	}
+}
+
+// A position readback that keeps failing during a goto is not hidden: the third failure in a row ends the goto ALERT,
+// and indigo_update_coordinates() keeps that ALERT once the readback recovers, with the position really read as value
+// and the request as target, until the next request. The retry is shared by all dialects, OnStep and the NYX with its
+// own position query stand for them.
+static void lx200_goto_ends_alert_when_position_readback_keeps_failing(void) {
+	static const char *models[] = { "onstep", "nyx" };
+	for (int i = 0; i < ARRAY_SIZE(models); i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		const char *position = !strcmp(models[i], "nyx") ? "GRH" : "GR";
+		char rules[64], fault[32];
+		printf("    %s\n", models[i]);
+		SERIAL_CHECK_TRUE(start_profile(&simulator, models[i], NULL));
+		online = true;
+		SERIAL_CHECK_TRUE(start_creeping_goto(&simulator, position));
+		unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		unsigned int oks = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+		snprintf(rules, sizeof(rules), "%s\tinvalid#\tarrive\n%s\tinvalid#\n%s\tinvalid#", position, position, position);
+		SERIAL_CHECK_TRUE(send_control(&simulator, rules));
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+		// The two failures before stayed BUSY, the goto did not end OK on the way.
+		snprintf(fault, sizeof(fault), "fault %s", position);
+		SERIAL_CHECK_EQ_INT(3, event_count(&simulator, fault, NULL));
+		SERIAL_CHECK_EQ_INT(oks, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_position_polls(&simulator, position, 2));
+		indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		printf("      after the readback recovered: %s at RA %.4f DEC %.4f\n", state_name(property->state), cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME));
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, property->state);
+		SERIAL_CHECK_TRUE(coordinates_at(22, -60));
+		SERIAL_CHECK_TRUE(targets_at(22, -60));
+		// The next request clears the ALERT and ends OK.
+		SERIAL_CHECK_TRUE(lx_coordinates(6.25, 12.5, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(coordinates_at(6.25, 12.5));
+cleanup:
+		if (online) {
+			stop_serial_driver(&lx200_mount);
+		}
+		stop_external_serial_simulator(&simulator);
+	}
+}
+
+static void check_abort_keeps_alert_while_decelerating(const lx_readback_dialect *dialect) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--model", dialect->model, "--stop-ramp", NULL };
+	printf("    %s\n", dialect->model);
+	SERIAL_CHECK_TRUE(start_profile_with_args(&simulator, arguments, dialect->type));
+	online = true;
+	SERIAL_CHECK_TRUE(start_creeping_goto(&simulator, dialect->position));
+	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
+	unsigned int busy = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	// The axes decelerate, the controller reports the slew until they stand, and the polls see it: the slew light is on
+	// while the mount moves, but the stop of the goto is no new slew and the coordinates keep the ALERT of the abort.
+	SERIAL_CHECK_TRUE(wait_position_polls(&simulator, dialect->position, 2));
+	indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	printf("      while the axes decelerate: %s, slew light %s, %u BUSY publications\n", state_name(property->state), state_name(cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)), property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE) - busy);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(busy, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	// The axes stand short of the target: the slew light goes off and the ALERT stays until the next request.
+	SERIAL_CHECK_TRUE(send_control(&simulator, "halt"));
+	SERIAL_CHECK_TRUE(wait_position_polls(&simulator, dialect->position, 2));
+	property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	printf("      after the axes stood: %s at DEC %.4f, slew light %s\n", state_name(property->state), cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME), state_name(cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	SERIAL_CHECK_EQ_INT(busy, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 60) > 1);
+	SERIAL_CHECK_TRUE(targets_at(22, -60));
+	// The next goto is taken and ends OK at its target.
+	SERIAL_CHECK_TRUE(lx_coordinates(6.25, 12.5, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_at(6.25, 12.5));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// An abort of a goto ends it ALERT, and a real mount then decelerates while its controller still reports the slew. The
+// polls made during the deceleration must not publish that as a new slew: a BUSY would clear the ALERT the abort
+// published and indigo_update_coordinates() keeps, and the aborted goto would end OK short of its target. The
+// simulator models the deceleration with --stop-ramp. Every dialect whose controller reports a slew in its status; the
+// ones whose driver infers the slew from the position change and the aGotino, whose sketch ends its slew loop at
+// once, have no deceleration to see.
+static void lx200_goto_abort_keeps_alert_while_decelerating(void) {
+	for (int i = 0; i < ARRAY_SIZE(readback_dialects); i++) {
+		if (!readback_dialects[i].slew_status || !strcmp(readback_dialects[i].model, "agotino")) {
+			continue;
+		}
+		int failures = indigo_test_failures;
+		check_abort_keeps_alert_while_decelerating(readback_dialects + i);
+		if (indigo_test_failures != failures) {
+			fprintf(stderr, "FAIL in dialect %s\n", readback_dialects[i].model);
+		}
+	}
+}
+
 // An abort of a running park or home sends the stop and ends the request: MOUNT_PARK and
 // MOUNT_HOME are not left BUSY, the mount is shown neither parked nor at home, and no later poll
 // latches either. Homing leaves the park state alone. A park that runs to the end stops the
@@ -5579,6 +5821,9 @@ int main(int argc, char **argv) {
 		{ "lx200_classic_guider_pulse_survives_previous_finalizer", lx200_classic_guider_pulse_survives_previous_finalizer },
 		{ "lx200_utc_request_survives_host_time", lx200_utc_request_survives_host_time },
 		{ "lx200_goto_abort_ends_alert_and_idle_abort_keeps_state", lx200_goto_abort_ends_alert_and_idle_abort_keeps_state },
+		{ "lx200_goto_survives_failed_position_readback", lx200_goto_survives_failed_position_readback },
+		{ "lx200_goto_ends_alert_when_position_readback_keeps_failing", lx200_goto_ends_alert_when_position_readback_keeps_failing },
+		{ "lx200_goto_abort_keeps_alert_while_decelerating", lx200_goto_abort_keeps_alert_while_decelerating },
 		{ "lx200_onstep_park_and_home_abort_settle", lx200_onstep_park_and_home_abort_settle },
 		{ "lx200_disconnect_stops_motion_and_reconnect_is_clean", lx200_disconnect_stops_motion_and_reconnect_is_clean },
 		{ "lx200_connect_publishes_the_device_state", lx200_connect_publishes_the_device_state },

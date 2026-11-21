@@ -360,7 +360,7 @@
 |  | 2026-10-07 02:01 | 3.0.0.80 | linux arm64 | simulator | 150 / 150 | ✅ OK |
 |  | 2026-10-07 02:19 | 3.0.0.80 | linux arm64 | aGotino | 35 / 35 | ✅ OK |
 |  | 2026-11-06 08:43 | 3.0.0.83 | linux x64 | simulator | 163 / 163 | ✅ OK |
-|  | 2026-11-21 08:58 | 3.0.0.86 | mac arm64 | simulator | 165 / 165 | ✅ OK |
+|  | 2026-11-21 11:10 | 3.0.0.87 | mac arm64 | simulator | 168 / 168 | ✅ OK |
 | mount_nexstar | 2026-09-23 23:55 | 3.0.0.35 | mac arm64 | MountSim 2.3 (SE wedge EQ) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |
