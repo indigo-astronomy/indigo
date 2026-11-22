@@ -1,0 +1,575 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ce6bb0fe-5a29-42d3-85c1-afce275e87eb",
+  "revision": 23,
+  "title": "indigo_agent_scheduler: add a features overview to the user guide and say that the Auxiliary Agent is needed for the safety",
+  "description": "Reported by the owner on 2026-11-22. indigo_docs/INDIGO_SCHEDULER_GUIDE.md describes the unsafe hold (Unsafe conditions, Safety rules) and lists the Auxiliary Agent as optional in Reference > Agents the scheduler depends on (line ~888), but the Quick start does not say that the Auxiliary Agent (indigo_agent_auxiliary) must be loaded on the same server for the safety to work. The owner also asked, for the same ticket, for a features overview in the guide.\n\nChange:\n1. Quick start > What you need (~line 30): add the Auxiliary Agent as needed for weather and safety, i.e. for the unsafe hold and the UNSAFE and SAFE hooks; without it there is no safety information, handled by AGENT_SCHEDULER_SAFETY_MISSING.\n2. Quick start > Loading the agents (~line 47): add indigo_agent_auxiliary to the line after the commands (like the Imager and Guider Agents), for setups that use the safety.\n3. Unsafe conditions (~line 618): state at the start that the Auxiliary Agent must be loaded on the same server as the Scheduler Agent.\n4. Features overview: add a section 'Features' to the Quick start right after Introduction (and its entry in any table of contents). A short grouped list of what the scheduler does, each item one line and linked to the guide section that explains it. Cover at least: tasks as Sequencer.js sequences with // @key headers; constraints (target altitude, window, twilight, moon and the others the guide documents); duration estimation; priorities, scores and the strategies; the night plan; repeats, retries and the history; urgent tasks and @preempted; hooks, including the night hooks (STARTUP, SHUTDOWN, NIGHT_START, NIGHT_END, IDLE, RESUME); weather and safety with the unsafe hold, UNSAFE and SAFE hooks and SAFE_DELAY (needs the Auxiliary Agent); meridian flips; data placement and FITS header values; state, reasons and messages; persistence across server restarts. Take every feature from the existing guide text and the code, do not invent any; keep the Introduction's short bullet list or merge it so the two do not repeat each other.\nKeep the existing note that the current Auxiliary Agent does not compute the light yet. Check indigo_drivers/agent_scheduler/doc/SCHEDULER.md for the same Auxiliary Agent gap and fix it if present. Update the guide's Revision date. Documentation only; no README change.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-22T09:35:03.935793Z",
+  "status": "closed",
+  "branch": "ticket/ce6bb0fe-5a29-42d3-85c1-afce275e87eb",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "382f7d1c-c570-46f5-a739-d37cf1bb5174",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T09:37:23.019701Z",
+          "last_activity_at": "2026-11-22T09:39:25.958468Z",
+          "ended_at": "2026-11-22T09:39:25.958468Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 122938.767,
+          "tokens": null
+        },
+        {
+          "attempt_id": "595124a7-0a0f-444f-ad88-f3a650eb42b8",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-22T09:40:28.334365Z",
+          "last_activity_at": "2026-11-22T09:41:11.576006Z",
+          "ended_at": "2026-11-22T09:41:11.576006Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 43241.641,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T09:37:23.019701Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/ce6bb0fe-5a29-42d3-85c1-afce275e87eb"
+        },
+        {
+          "at": "2026-11-22T09:39:25.958468Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-22T09:40:28.334365Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-22T09:41:11.576006Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 166180.408,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "72644209-7565-42fe-b3aa-3744d7e98781",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-22T09:39:25.958515Z",
+          "last_activity_at": "2026-11-22T09:40:28.334281Z",
+          "ended_at": "2026-11-22T09:40:28.334281Z",
+          "outcome": {
+            "summary": "All anchors resolve; Introduction bullets are covered by Features; Auxiliary Agent edits (guide What you need, Loading, Unsafe conditions, Reference table; SCHEDULER.md:94) match the code (SAFETY_MISSING decides without it) and keep the 'does not compute the light yet' note; constraints, checkpoints, duration sources, priorities/bonuses, strategies, flip penalty, FITS keywords (indigo_agent_scheduler.c:1238-1281), task commands, restart persistence all verified. Required fixes, all in Features, indigo_docs/INDIGO_SCHEDULER_GUIDE.md: (1) line 49: 'The SAFE hook runs after the conditions have been safe for SAFE_DELAY minutes' is inaccurate: per Unsafe conditions and Safety rules the hold ends after SAFE_DELAY and SAFE runs only during a scheduler night with work; by day or without work it is skipped and the scheduler goes to standby. Say e.g. 'When the conditions have been safe for SAFE_DELAY minutes, the hold ends and, during a night with work, the SAFE hook runs.' (2) line 48: 'IDLE and RESUME while no task can run' is wrong for RESUME, which runs before the next task after IDLE or NIGHT_END, i.e. when a task can run again (hook table). Say e.g. 'IDLE after a wait without a task and RESUME before the next task'. Also 'NIGHT_START and NIGHT_END for every night' should be 'for every night with work' (hook table: 'When a scheduler night with work starts'). Optional: line 36 starts with a sentence fragment ('Priority classes ... with a level.'); line 34 'end a run' could be 'skip to the next resume_point() or end the run'.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 62375.766,
+          "tokens": null
+        },
+        {
+          "attempt_id": "4f692820-49b4-4193-89c7-907d4ec0cebc",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T09:41:11.576032Z",
+          "last_activity_at": "2026-11-22T09:42:15.126309Z",
+          "ended_at": "2026-11-22T09:42:15.126309Z",
+          "outcome": {
+            "summary": "Round 2: the first-round findings are fixed. In INDIGO_SCHEDULER_GUIDE.md Features (lines 23-58): SAFE runs only during a scheduler night with work after the hold ends (matches end_hold() in indigo_agent_scheduler.c:2122-2157), RESUME runs before the next task after IDLE or NIGHT_END, NIGHT_START/NIGHT_END are for nights with work, the priorities line is a full sentence, and the checkpoint wording now names time, hour angle and target altitude, as in Constraints. The other claims agree with the guide and the source: IDLE_HOOK_DELAY (c:2330-2331), the constraint list, @duration/measured/estimate, the strategies, the FITS keywords SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID (c:1238-1281), the task commands plus AGENT_SCHEDULER_DELETE_TASK, and persistence. Every #anchor in the guide resolves to a heading, and SCHEDULER.md #unsafe-hold resolves too. The Auxiliary Agent edits (What you need, Loading the agents, Unsafe conditions, the reference tables in both files) state that without the agent AGENT_SCHEDULER_SAFETY_MISSING decides, and they keep the note that the agent does not compute AGENT_AUX_SAFETY yet. The Revision date is updated and no README is changed. Non-blocking: standby, and so RESUME, also follows an unsafe hold that ends without SAFE (c:2154); like the existing hook table, the Features line names only IDLE/NIGHT_END. The urgent and hook classes have no meaningful level. Both are acceptable at overview level.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 63550.277,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T09:39:25.958515Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T09:40:28.334281Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "All anchors resolve; Introduction bullets are covered by Features; Auxiliary Agent edits (guide What you need, Loading, Unsafe conditions, Reference table; SCHEDULER.md:94) match the code (SAFETY_MISSING decides without it) and keep the 'does not compute the light yet' note; constraints, checkpoints, duration sources, priorities/bonuses, strategies, flip penalty, FITS keywords (indigo_agent_scheduler.c:1238-1281), task commands, restart persistence all verified. Required fixes, all in Features, indigo_docs/INDIGO_SCHEDULER_GUIDE.md: (1) line 49: 'The SAFE hook runs after the conditions have been safe for SAFE_DELAY minutes' is inaccurate: per Unsafe conditions and Safety rules the hold ends after SAFE_DELAY and SAFE runs only during a scheduler night with work; by day or without work it is skipped and the scheduler goes to standby. Say e.g. 'When the conditions have been safe for SAFE_DELAY minutes, the hold ends and, during a night with work, the SAFE hook runs.' (2) line 48: 'IDLE and RESUME while no task can run' is wrong for RESUME, which runs before the next task after IDLE or NIGHT_END, i.e. when a task can run again (hook table). Say e.g. 'IDLE after a wait without a task and RESUME before the next task'. Also 'NIGHT_START and NIGHT_END for every night' should be 'for every night with work' (hook table: 'When a scheduler night with work starts'). Optional: line 36 starts with a sentence fragment ('Priority classes ... with a level.'); line 34 'end a run' could be 'skip to the next resume_point() or end the run'."
+        },
+        {
+          "at": "2026-11-22T09:41:11.576032Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T09:42:15.126309Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2: the first-round findings are fixed. In INDIGO_SCHEDULER_GUIDE.md Features (lines 23-58): SAFE runs only during a scheduler night with work after the hold ends (matches end_hold() in indigo_agent_scheduler.c:2122-2157), RESUME runs before the next task after IDLE or NIGHT_END, NIGHT_START/NIGHT_END are for nights with work, the priorities line is a full sentence, and the checkpoint wording now names time, hour angle and target altitude, as in Constraints. The other claims agree with the guide and the source: IDLE_HOOK_DELAY (c:2330-2331), the constraint list, @duration/measured/estimate, the strategies, the FITS keywords SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID (c:1238-1281), the task commands plus AGENT_SCHEDULER_DELETE_TASK, and persistence. Every #anchor in the guide resolves to a heading, and SCHEDULER.md #unsafe-hold resolves too. The Auxiliary Agent edits (What you need, Loading the agents, Unsafe conditions, the reference tables in both files) state that without the agent AGENT_SCHEDULER_SAFETY_MISSING decides, and they keep the note that the agent does not compute AGENT_AUX_SAFETY yet. The Revision date is updated and no README is changed. Non-blocking: standby, and so RESUME, also follows an unsafe hold that ends without SAFE (c:2154); like the existing hook table, the Features line names only IDLE/NIGHT_END. The urgent and hook classes have no meaningful level. Both are acceptable at overview level."
+        }
+      ],
+      "result": {
+        "summary": "Round 2: the first-round findings are fixed. In INDIGO_SCHEDULER_GUIDE.md Features (lines 23-58): SAFE runs only during a scheduler night with work after the hold ends (matches end_hold() in indigo_agent_scheduler.c:2122-2157), RESUME runs before the next task after IDLE or NIGHT_END, NIGHT_START/NIGHT_END are for nights with work, the priorities line is a full sentence, and the checkpoint wording now names time, hour angle and target altitude, as in Constraints. The other claims agree with the guide and the source: IDLE_HOOK_DELAY (c:2330-2331), the constraint list, @duration/measured/estimate, the strategies, the FITS keywords SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID (c:1238-1281), the task commands plus AGENT_SCHEDULER_DELETE_TASK, and persistence. Every #anchor in the guide resolves to a heading, and SCHEDULER.md #unsafe-hold resolves too. The Auxiliary Agent edits (What you need, Loading the agents, Unsafe conditions, the reference tables in both files) state that without the agent AGENT_SCHEDULER_SAFETY_MISSING decides, and they keep the note that the agent does not compute AGENT_AUX_SAFETY yet. The Revision date is updated and no README is changed. Non-blocking: standby, and so RESUME, also follows an unsafe hold that ends without SAFE (c:2154); like the existing hook table, the Features line names only IDLE/NIGHT_END. The urgent and hook classes have no meaningful level. Both are acceptable at overview level.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 125926.043,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "dff1ff73-9ad8-440e-9e5b-8713d63ed97f",
+      "event": "ticket/created",
+      "at": "2026-11-22T09:35:03.936441Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "091b92c2-b580-4ba8-ba98-920409237fa7",
+      "event": "ticket/title_changed",
+      "at": "2026-11-22T09:36:04.680608Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "INDIGO_SCHEDULER_GUIDE: say that the Auxiliary Agent is needed for the safety",
+      "title": "INDIGO_SCHEDULER_GUIDE: add a features overview and say that the Auxiliary Agent is needed for the safety"
+    },
+    {
+      "event_id": "9609660e-c36d-48c3-83e7-2640f565dcd1",
+      "event": "ticket/description_changed",
+      "at": "2026-11-22T09:36:04.680635Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_description": "Reported by the owner on 2026-11-22. indigo_docs/INDIGO_SCHEDULER_GUIDE.md describes the unsafe hold (Unsafe conditions, Safety rules) and lists the Auxiliary Agent as optional in Reference > Agents the scheduler depends on (line ~888), but the Quick start does not say that the Auxiliary Agent (indigo_agent_auxiliary) must be loaded on the same server for the safety to work.\n\nChange:\n1. Quick start > What you need (~line 30): add the Auxiliary Agent as needed for weather and safety, i.e. for the unsafe hold and the UNSAFE and SAFE hooks; without it there is no safety information, handled by AGENT_SCHEDULER_SAFETY_MISSING.\n2. Quick start > Loading the agents (~line 47): add indigo_agent_auxiliary to the line after the commands (like the Imager and Guider Agents), for setups that use the safety.\n3. Unsafe conditions (~line 618): state at the start that the Auxiliary Agent must be loaded on the same server as the Scheduler Agent.\nKeep the existing note that the current Auxiliary Agent does not compute the light yet. Check indigo_drivers/agent_scheduler/doc/SCHEDULER.md for the same gap and fix it if present. Documentation only; no README change.",
+      "description": "Reported by the owner on 2026-11-22. indigo_docs/INDIGO_SCHEDULER_GUIDE.md describes the unsafe hold (Unsafe conditions, Safety rules) and lists the Auxiliary Agent as optional in Reference > Agents the scheduler depends on (line ~888), but the Quick start does not say that the Auxiliary Agent (indigo_agent_auxiliary) must be loaded on the same server for the safety to work. The owner also asked, for the same ticket, for a features overview in the guide.\n\nChange:\n1. Quick start > What you need (~line 30): add the Auxiliary Agent as needed for weather and safety, i.e. for the unsafe hold and the UNSAFE and SAFE hooks; without it there is no safety information, handled by AGENT_SCHEDULER_SAFETY_MISSING.\n2. Quick start > Loading the agents (~line 47): add indigo_agent_auxiliary to the line after the commands (like the Imager and Guider Agents), for setups that use the safety.\n3. Unsafe conditions (~line 618): state at the start that the Auxiliary Agent must be loaded on the same server as the Scheduler Agent.\n4. Features overview: add a section 'Features' to the Quick start right after Introduction (and its entry in any table of contents). A short grouped list of what the scheduler does, each item one line and linked to the guide section that explains it. Cover at least: tasks as Sequencer.js sequences with // @key headers; constraints (target altitude, window, twilight, moon and the others the guide documents); duration estimation; priorities, scores and the strategies; the night plan; repeats, retries and the history; urgent tasks and @preempted; hooks, including the night hooks (STARTUP, SHUTDOWN, NIGHT_START, NIGHT_END, IDLE, RESUME); weather and safety with the unsafe hold, UNSAFE and SAFE hooks and SAFE_DELAY (needs the Auxiliary Agent); meridian flips; data placement and FITS header values; state, reasons and messages; persistence across server restarts. Take every feature from the existing guide text and the code, do not invent any; keep the Introduction's short bullet list or merge it so the two do not repeat each other.\nKeep the existing note that the current Auxiliary Agent does not compute the light yet. Check indigo_drivers/agent_scheduler/doc/SCHEDULER.md for the same Auxiliary Agent gap and fix it if present. Update the guide's Revision date. Documentation only; no README change."
+    },
+    {
+      "event_id": "a1b049d5-600a-442a-aa3e-17a9463d1745",
+      "event": "ticket/confirmed",
+      "at": "2026-11-22T09:37:11.886889Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "aaa7f912-ebc7-46ca-b40a-d33182031ff5",
+      "event": "task/progress",
+      "at": "2026-11-22T09:37:23.019801Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "text": "Implementation started on branch ticket/ce6bb0fe-5a29-42d3-85c1-afce275e87eb"
+    },
+    {
+      "event_id": "cf332a41-77e3-41cf-881b-478dd1632ee6",
+      "event": "ticket/started",
+      "at": "2026-11-22T09:37:23.024274Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/ce6bb0fe-5a29-42d3-85c1-afce275e87eb",
+      "base": "master"
+    },
+    {
+      "event_id": "e3b20d38-8bc1-4a8f-929c-e3c87c2bc08b",
+      "event": "task/progress",
+      "at": "2026-11-22T09:37:23.352341Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "text": "Implementer launched",
+      "attempt_id": "382f7d1c-c570-46f5-a739-d37cf1bb5174",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "97fc5a0a-2ff9-461a-b020-83306f887d44",
+      "event": "task/progress",
+      "at": "2026-11-22T09:37:42.124698Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "text": "Reading the scheduler guide and planning the Features section"
+    },
+    {
+      "event_id": "671956ff-5731-4918-b2a3-ec92246d4d1c",
+      "event": "task/progress",
+      "at": "2026-11-22T09:38:57.740348Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "text": "Edits done, running flow check"
+    },
+    {
+      "event_id": "597bbe31-8f97-4512-9eb0-d12cad909eed",
+      "event": "task/progress",
+      "at": "2026-11-22T09:38:57.964976Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "98cb7915-cd14-4d65-89b5-4e8b2f5fc422",
+      "event": "task/progress",
+      "at": "2026-11-22T09:38:57.978665Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ef4dbdc8-388f-4fae-9d19-d33a044e735d",
+      "event": "check/passed",
+      "at": "2026-11-22T09:38:57.983584Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "b7f91e3e6d7e68262b60db2f3d4f4c32181cf2d9",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "6d9588bb-da60-41ca-8729-2d41d06bcd16",
+      "event": "task/progress",
+      "at": "2026-11-22T09:39:25.958591Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "text": "Review started"
+    },
+    {
+      "event_id": "c7839643-99fc-4c41-870d-b7390a70e23f",
+      "event": "review/started",
+      "at": "2026-11-22T09:39:25.959242Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "f204a4b6-b28d-4d7d-92c6-5532010dadcf",
+      "event": "task/progress",
+      "at": "2026-11-22T09:39:26.192907Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "text": "Reviewer launched",
+      "attempt_id": "72644209-7565-42fe-b3aa-3744d7e98781",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5892b0a4-46ee-4f60-9023-a8a8299239f2",
+      "event": "task/progress",
+      "at": "2026-11-22T09:40:28.334357Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "609fdacb-7a3a-4755-a774-113f723fe52d",
+      "event": "task/progress",
+      "at": "2026-11-22T09:40:28.334394Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "a71ea132-ceac-4095-8056-e5b09bef7206",
+      "event": "review/changes_requested",
+      "at": "2026-11-22T09:40:28.335019Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "b7f91e3e6d7e68262b60db2f3d4f4c32181cf2d9"
+    },
+    {
+      "event_id": "c753ded2-75cf-4f16-95b0-4a2c2ccf75ca",
+      "event": "task/progress",
+      "at": "2026-11-22T09:40:58.586458Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d028b7aa-5fe4-420e-a44b-ac5da961e835",
+      "event": "task/progress",
+      "at": "2026-11-22T09:40:58.600370Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fe73043b-b438-468b-a0b3-29b854eb30da",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "0336fe5a-6cfb-45bd-95f6-78fa0e1c5a1d",
+      "event": "check/passed",
+      "at": "2026-11-22T09:40:58.605582Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "817240774bbae34ab52d9115f57dfff748659af2",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "d3028b5f-8f13-4048-aef8-93846ed6c821",
+      "event": "task/progress",
+      "at": "2026-11-22T09:41:11.576120Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b4c246b6-f89e-406d-b079-0d745d2c9ffe",
+      "event": "review/started",
+      "at": "2026-11-22T09:41:11.576911Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "f48011b3-9e6c-49b3-a04e-d70617ecff23",
+      "event": "task/progress",
+      "at": "2026-11-22T09:41:11.757788Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "text": "Second reviewer launched",
+      "attempt_id": "4f692820-49b4-4193-89c7-907d4ec0cebc",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ca3d511c-71b2-4f70-a736-e2a56a8dd124",
+      "event": "task/progress",
+      "at": "2026-11-22T09:41:28.942089Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "text": "Second-round review of the Features section and Auxiliary Agent edits"
+    },
+    {
+      "event_id": "9837ab8a-3abc-4171-a310-844b765e2d2c",
+      "event": "task/progress",
+      "at": "2026-11-22T09:42:15.126386Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "e70a9ccf-34b1-4f7e-9770-1cf2b233fc20",
+      "event": "review/passed",
+      "at": "2026-11-22T09:42:15.127060Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c163da89-a8ce-48bb-aeee-d4ac9090ce37",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "817240774bbae34ab52d9115f57dfff748659af2"
+    },
+    {
+      "event_id": "991d06e1-351d-4ab5-a27e-72d4b5a6bbc6",
+      "event": "ticket/title_changed",
+      "at": "2026-11-22T09:44:29.749628Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "INDIGO_SCHEDULER_GUIDE: add a features overview and say that the Auxiliary Agent is needed for the safety",
+      "title": "indigo_agent_scheduler: add a features overview to the user guide and say that the Auxiliary Agent is needed for the safety"
+    },
+    {
+      "event_id": "5b8930c0-32f1-478d-94b0-762e814b7330",
+      "event": "ticket/closed",
+      "at": "2026-11-22T09:44:30.015359Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-22T09:44:30.015326Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "1c6f6de0e8d823fd09d230ac0bacd6259ca8060b"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "b7f91e3e6d7e68262b60db2f3d4f4c32181cf2d9",
+        "tree": "1246590f413e06a0f4ac5f9623b6395efcd402ee",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T09:38:57.977976Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ce6bb0fe-5a29-42d3-85c1-afce275e87eb/1246590f413e-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "817240774bbae34ab52d9115f57dfff748659af2",
+        "tree": "621927169f08092284ae126c47bc135de9c3e155",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T09:40:58.599524Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ce6bb0fe-5a29-42d3-85c1-afce275e87eb/621927169f08-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "All anchors resolve; Introduction bullets are covered by Features; Auxiliary Agent edits (guide What you need, Loading, Unsafe conditions, Reference table; SCHEDULER.md:94) match the code (SAFETY_MISSING decides without it) and keep the 'does not compute the light yet' note; constraints, checkpoints, duration sources, priorities/bonuses, strategies, flip penalty, FITS keywords (indigo_agent_scheduler.c:1238-1281), task commands, restart persistence all verified. Required fixes, all in Features, indigo_docs/INDIGO_SCHEDULER_GUIDE.md: (1) line 49: 'The SAFE hook runs after the conditions have been safe for SAFE_DELAY minutes' is inaccurate: per Unsafe conditions and Safety rules the hold ends after SAFE_DELAY and SAFE runs only during a scheduler night with work; by day or without work it is skipped and the scheduler goes to standby. Say e.g. 'When the conditions have been safe for SAFE_DELAY minutes, the hold ends and, during a night with work, the SAFE hook runs.' (2) line 48: 'IDLE and RESUME while no task can run' is wrong for RESUME, which runs before the next task after IDLE or NIGHT_END, i.e. when a task can run again (hook table). Say e.g. 'IDLE after a wait without a task and RESUME before the next task'. Also 'NIGHT_START and NIGHT_END for every night' should be 'for every night with work' (hook table: 'When a scheduler night with work starts'). Optional: line 36 starts with a sentence fragment ('Priority classes ... with a level.'); line 34 'end a run' could be 'skip to the next resume_point() or end the run'.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "b7f91e3e6d7e68262b60db2f3d4f4c32181cf2d9",
+        "tree": "1246590f413e06a0f4ac5f9623b6395efcd402ee",
+        "at": "2026-11-22T09:40:28.334256Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2: the first-round findings are fixed. In INDIGO_SCHEDULER_GUIDE.md Features (lines 23-58): SAFE runs only during a scheduler night with work after the hold ends (matches end_hold() in indigo_agent_scheduler.c:2122-2157), RESUME runs before the next task after IDLE or NIGHT_END, NIGHT_START/NIGHT_END are for nights with work, the priorities line is a full sentence, and the checkpoint wording now names time, hour angle and target altitude, as in Constraints. The other claims agree with the guide and the source: IDLE_HOOK_DELAY (c:2330-2331), the constraint list, @duration/measured/estimate, the strategies, the FITS keywords SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID (c:1238-1281), the task commands plus AGENT_SCHEDULER_DELETE_TASK, and persistence. Every #anchor in the guide resolves to a heading, and SCHEDULER.md #unsafe-hold resolves too. The Auxiliary Agent edits (What you need, Loading the agents, Unsafe conditions, the reference tables in both files) state that without the agent AGENT_SCHEDULER_SAFETY_MISSING decides, and they keep the note that the agent does not compute AGENT_AUX_SAFETY yet. The Revision date is updated and no README is changed. Non-blocking: standby, and so RESUME, also follows an unsafe hold that ends without SAFE (c:2154); like the existing hook table, the Features line names only IDLE/NIGHT_END. The urgent and hook classes have no meaningful level. Both are acceptable at overview level.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "817240774bbae34ab52d9115f57dfff748659af2",
+        "tree": "621927169f08092284ae126c47bc135de9c3e155",
+        "at": "2026-11-22T09:42:15.126284Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "1c6f6de0e8d823fd09d230ac0bacd6259ca8060b",
+      "tree": "621927169f08092284ae126c47bc135de9c3e155",
+      "base": "master",
+      "at": "2026-11-22T09:44:29.948514Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-22T09:35:03.935793Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-22T09:37:11.886862Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 292106.451,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 37,
+    "sha256": "25b48a6974947dfeafe6c28b60d7c46565b3767fc5cdddec94c9bf928b97df62"
+  }
+}
