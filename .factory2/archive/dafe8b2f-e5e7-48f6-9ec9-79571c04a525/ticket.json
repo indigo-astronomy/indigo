@@ -1,0 +1,461 @@
+{
+  "schema_version": 1,
+  "ticket_id": "dafe8b2f-e5e7-48f6-9ec9-79571c04a525",
+  "revision": 22,
+  "title": "indigo_generator: generated coordinates handler sets OK before on_change, opening a window in the BUSY guard",
+  "description": "Found on 2026-11-21 by reading the source while investigating ticket c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf; not reproduced. The generated property handler sets the property state to INDIGO_OK_STATE on the queue thread before the on_change code runs (indigo_tools/indigo_generator.c about lines 1903-1905). For MOUNT_EQUATORIAL_COORDINATES a second request arriving in that window passes the BUSY guard of INDIGO_COPY_*_PROCESS_COORDINATES_CHANGE although the first request is still being handled. First establish whether it can be reproduced in a simulator suite and which properties are concerned; a generator change needs the owner's explicit approval of the concrete proposed diff and a statement of its impact on existing drivers.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-21T12:32:13.821623Z",
+  "status": "closed",
+  "branch": "ticket/dafe8b2f-e5e7-48f6-9ec9-79571c04a525",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "82c7ed5c-4f3b-48bf-aee9-d0e9ea578281",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "cbb0ded0-dbf9-4a45-8db8-1fa9b2fc841f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T18:41:12.469148Z",
+          "last_activity_at": "2026-11-22T21:07:56.267101Z",
+          "ended_at": "2026-11-22T21:07:56.267101Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 8803797.953,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T18:41:12.469148Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/dafe8b2f-e5e7-48f6-9ec9-79571c04a525"
+        },
+        {
+          "at": "2026-11-22T21:07:56.267101Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 8803797.953,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "c98dfbf4-a1b2-41ff-8f07-4f6d62e4abab",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "27af3e08-fa25-41bd-a62a-8a3ffbf545c9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T21:07:56.267260Z",
+          "last_activity_at": "2026-11-22T21:53:43.470328Z",
+          "ended_at": "2026-11-22T21:53:43.470328Z",
+          "outcome": {
+            "summary": "Independent review (claude-opus-5-5, high) of f7daadc02. No blocking findings.\n1) Generator: diff is exactly the approved condition '&& strcmp(property->id, \"MOUNT_EQUATORIAL_COORDINATES\")' plus a comment in write_c_property_change_handler(). Rebuilt master and worktree generators in scratch and regenerated all 120 non-template .driver files (git archive trees, cwd = driver dir): old generator on master = 0 diffs; new generator on master = only mount_lx200.c:4835, mount_nexstar.c:1131, mount_simulator.c:433 (one removed prologue line each); new generator on HEAD = 0 diffs vs checked-in outputs.\n2) Paths without the prologue: mount_simulator (count=2 SYNC/TRACK): alignment sync -> indigo_mount_sync() sets OK or ALERT on every return (indigo_mount_driver.c:1322-1385), controller sync OK (:448), GoTo BUSY completed by position_handler (:452), parked -> reject. mount_nexstar: TRACK BUSY with goto_active completed by the queued poll, sync (guiding or not) now OK at .c:1138, nexstar_set_coordinates failure (incl. dev_id<0, not aligned) ALERT; poll is on the device queue and request_pending keeps it off the handler's BUSY. mount_lx200 (count=2): on_change wrote BUSY as first state before any I/O (meade_host_timed_guiding is a flag test), TRACK BUSY/ALERT, SYNC OK/ALERT, rejects via indigo_reject_coordinates_change(); behaviour unchanged. No path stays BUSY. The 7 unchanged generated drivers (ioptron, nexstaraux start with BUSY; pmc8, rainbow, starbook, temma, synscan have _finalizer) had no prologue; byte-identical output confirms.\n3) Tests: built scratch copy; after fix PASS: simulator request_during_sync_handler + sync filter (4 cases), nexstar request_during_sync, sync filter (2), poll_in_flight, coordinates_publish, lx200 request_during_coordinates, park_rejects, generic_goto_polling. Re-adding only the prologue line to the generated simulator/nexstar .c reproduces the claimed failures: test_mount_simulator.c:1786 and test_mount_nexstar_simulator.c:1973. No existing as",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 2747203.068,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T21:07:56.267260Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T21:53:43.470328Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Independent review (claude-opus-5-5, high) of f7daadc02. No blocking findings.\n1) Generator: diff is exactly the approved condition '&& strcmp(property->id, \"MOUNT_EQUATORIAL_COORDINATES\")' plus a comment in write_c_property_change_handler(). Rebuilt master and worktree generators in scratch and regenerated all 120 non-template .driver files (git archive trees, cwd = driver dir): old generator on master = 0 diffs; new generator on master = only mount_lx200.c:4835, mount_nexstar.c:1131, mount_simulator.c:433 (one removed prologue line each); new generator on HEAD = 0 diffs vs checked-in outputs.\n2) Paths without the prologue: mount_simulator (count=2 SYNC/TRACK): alignment sync -> indigo_mount_sync() sets OK or ALERT on every return (indigo_mount_driver.c:1322-1385), controller sync OK (:448), GoTo BUSY completed by position_handler (:452), parked -> reject. mount_nexstar: TRACK BUSY with goto_active completed by the queued poll, sync (guiding or not) now OK at .c:1138, nexstar_set_coordinates failure (incl. dev_id<0, not aligned) ALERT; poll is on the device queue and request_pending keeps it off the handler's BUSY. mount_lx200 (count=2): on_change wrote BUSY as first state before any I/O (meade_host_timed_guiding is a flag test), TRACK BUSY/ALERT, SYNC OK/ALERT, rejects via indigo_reject_coordinates_change(); behaviour unchanged. No path stays BUSY. The 7 unchanged generated drivers (ioptron, nexstaraux start with BUSY; pmc8, rainbow, starbook, temma, synscan have _finalizer) had no prologue; byte-identical output confirms.\n3) Tests: built scratch copy; after fix PASS: simulator request_during_sync_handler + sync filter (4 cases), nexstar request_during_sync, sync filter (2), poll_in_flight, coordinates_publish, lx200 request_during_coordinates, park_rejects, generic_goto_polling. Re-adding only the prologue line to the generated simulator/nexstar .c reproduces the claimed failures: test_mount_simulator.c:1786 and test_mount_nexstar_simulator.c:1973. No existing as"
+        }
+      ],
+      "result": {
+        "summary": "Independent review (claude-opus-5-5, high) of f7daadc02. No blocking findings.\n1) Generator: diff is exactly the approved condition '&& strcmp(property->id, \"MOUNT_EQUATORIAL_COORDINATES\")' plus a comment in write_c_property_change_handler(). Rebuilt master and worktree generators in scratch and regenerated all 120 non-template .driver files (git archive trees, cwd = driver dir): old generator on master = 0 diffs; new generator on master = only mount_lx200.c:4835, mount_nexstar.c:1131, mount_simulator.c:433 (one removed prologue line each); new generator on HEAD = 0 diffs vs checked-in outputs.\n2) Paths without the prologue: mount_simulator (count=2 SYNC/TRACK): alignment sync -> indigo_mount_sync() sets OK or ALERT on every return (indigo_mount_driver.c:1322-1385), controller sync OK (:448), GoTo BUSY completed by position_handler (:452), parked -> reject. mount_nexstar: TRACK BUSY with goto_active completed by the queued poll, sync (guiding or not) now OK at .c:1138, nexstar_set_coordinates failure (incl. dev_id<0, not aligned) ALERT; poll is on the device queue and request_pending keeps it off the handler's BUSY. mount_lx200 (count=2): on_change wrote BUSY as first state before any I/O (meade_host_timed_guiding is a flag test), TRACK BUSY/ALERT, SYNC OK/ALERT, rejects via indigo_reject_coordinates_change(); behaviour unchanged. No path stays BUSY. The 7 unchanged generated drivers (ioptron, nexstaraux start with BUSY; pmc8, rainbow, starbook, temma, synscan have _finalizer) had no prologue; byte-identical output confirms.\n3) Tests: built scratch copy; after fix PASS: simulator request_during_sync_handler + sync filter (4 cases), nexstar request_during_sync, sync filter (2), poll_in_flight, coordinates_publish, lx200 request_during_coordinates, park_rejects, generic_goto_polling. Re-adding only the prologue line to the generated simulator/nexstar .c reproduces the claimed failures: test_mount_simulator.c:1786 and test_mount_nexstar_simulator.c:1973. No existing as",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2747203.068,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "c10941d0-3bd6-451f-8875-316344f04dae",
+      "event": "ticket/created",
+      "at": "2026-11-21T12:32:13.822335Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "8ba9c845-7cb6-4c9d-85d1-a0931b54f021",
+      "event": "ticket/confirmed",
+      "at": "2026-11-21T12:33:11.134981Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "fd0422f0-dbda-4967-8fa8-b5a4e6f273aa",
+      "event": "ticket/note",
+      "at": "2026-11-22T18:41:07.918125Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner decision 2026-11-22: 'ok, oprav generator a skontroluj VSETKY mount drivery, ci sa ich to tyka'. Approved generator change, as described to the owner: for the property MOUNT_EQUATORIAL_COORDINATES the generated handler no longer writes INDIGO_OK_STATE before the on_change code, so the property stays BUSY from the admission of the request until the handler publishes its result; every driver whose on_change relied on that OK (paths that finish at once, e.g. a sync) sets OK itself. All mount drivers are to be checked, generated and hand-written; off-limit drivers (mount_asi, mount_mxhd, system_ascol) are read and reported only.",
+      "tokens": null
+    },
+    {
+      "event_id": "dc13d748-32b4-4477-82c5-b753383965f0",
+      "event": "task/progress",
+      "at": "2026-11-22T18:41:12.469685Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "82c7ed5c-4f3b-48bf-aee9-d0e9ea578281",
+      "text": "Implementation started on branch ticket/dafe8b2f-e5e7-48f6-9ec9-79571c04a525"
+    },
+    {
+      "event_id": "0032adcd-6eb9-4cae-869c-510e105cebec",
+      "event": "ticket/started",
+      "at": "2026-11-22T18:41:12.471838Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/dafe8b2f-e5e7-48f6-9ec9-79571c04a525",
+      "base": "master"
+    },
+    {
+      "event_id": "ef2e3698-99aa-485f-b362-55dd8cda0f47",
+      "event": "task/progress",
+      "at": "2026-11-22T18:41:58.144422Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "82c7ed5c-4f3b-48bf-aee9-d0e9ea578281",
+      "text": "Implementer started: auditing mount drivers for the coordinates OK prologue",
+      "attempt_id": "cbb0ded0-dbf9-4a45-8db8-1fa9b2fc841f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "612920c1-ad3e-480f-8c63-b1409ce28f86",
+      "event": "task/progress",
+      "at": "2026-11-22T18:47:31.048801Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "82c7ed5c-4f3b-48bf-aee9-d0e9ea578281",
+      "text": "Generator changed; only lx200, nexstar, simulator outputs change. Writing regression tests"
+    },
+    {
+      "event_id": "c4514cb0-af91-4fcb-883f-c3d6dc378f5c",
+      "event": "task/progress",
+      "at": "2026-11-22T18:52:26.619160Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "82c7ed5c-4f3b-48bf-aee9-d0e9ea578281",
+      "text": "Reproduction: running new cases against unchanged generated drivers"
+    },
+    {
+      "event_id": "02ff74c1-5c8b-436c-aa9c-904e80d9d6f5",
+      "event": "task/progress",
+      "at": "2026-11-22T19:20:02.346789Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "82c7ed5c-4f3b-48bf-aee9-d0e9ea578281",
+      "text": "Window reproduced (simulator, nexstar). Running fixed cases once, then 10x repeats"
+    },
+    {
+      "event_id": "6d70493d-bf96-43ef-af0c-3ab5b45590c8",
+      "event": "task/progress",
+      "at": "2026-11-22T19:59:54.383017Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "82c7ed5c-4f3b-48bf-aee9-d0e9ea578281",
+      "text": "Recorded runs: run_driver_test.py mount_simulator, mount_nexstar, mount_lx200"
+    },
+    {
+      "event_id": "0684a743-2eea-465a-9a35-3fd1f4b30907",
+      "event": "task/progress",
+      "at": "2026-11-22T21:06:16.876405Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "82c7ed5c-4f3b-48bf-aee9-d0e9ea578281",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "745141f1-9575-473f-b57a-3f48006d4adf",
+      "event": "task/progress",
+      "at": "2026-11-22T21:06:16.917586Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "82c7ed5c-4f3b-48bf-aee9-d0e9ea578281",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "bd4a299b-ba39-4ce4-b810-6b6e0f61568d",
+      "event": "check/passed",
+      "at": "2026-11-22T21:06:16.919169Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "f7daadc028c561b357a50d88afd6a4bea7925b1a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "833faa8f-827e-4717-9b86-94899a4b1e4b",
+      "event": "ticket/note",
+      "at": "2026-11-22T21:07:13.417015Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementation record (implementer, claude-opus-5-5).\n\nAUDIT (all mount drivers; generated list from git ls-files '*.driver' | xargs grep -l MOUNT_EQUATORIAL_COORDINATES, whole repository incl. linux/mac/optional dirs and agents: 10 files, all under indigo_drivers/)\n| driver | kind | OK prologue before this change | paths relying on it | changed |\n| mount_ioptron | generated | no (on_change starts with state = BUSY) | none | no (output identical) |\n| mount_lx200 | generated | yes | none: on_change rejects via indigo_reject_coordinates_change() or sets BUSY as its first state write; sync sets OK, slew BUSY, failures ALERT | yes: regenerated, prologue gone, version 87 -> 88, .driver otherwise unchanged |\n| mount_nexstar | generated | yes | accepted sync (both with and without guiding_in_progress) ended OK only through the prologue; the prologue OK also covered the whole serial sync/goto transaction | yes: sync path sets INDIGO_OK_STATE itself, version 54 -> 55 |\n| mount_nexstaraux | generated | no (starts with state = BUSY) | none | no |\n| mount_pmc8 | generated | no (_finalizer) | n/a | no |\n| mount_rainbow | generated | no (_finalizer) | n/a | no |\n| mount_simulator | generated | yes | none: controller sync sets OK, alignment sync gets OK/ALERT from indigo_mount_sync(), GoTo sets BUSY; ON_COORDINATES_SET has 2 items | yes: regenerated, prologue gone, version 28 -> 29, .driver otherwise unchanged |\n| mount_starbook | generated | no (_finalizer) | n/a | no |\n| mount_synscan | generated | no (_finalizer) | n/a | no (output byte-identical, not touched) |\n| mount_temma | generated | no (_finalizer) | n/a | no |\n| mount_asi (off limits, read only) | hand-written | no prologue, but no BUSY guard at admission at all: targets copied and handler queued unconditionally; BUSY set only inside mount_eq_coords_callback | a request during a running GoTo/sync overwrites the targets of the running one and is queued | not changed (off limits) |\n| mount_mxhd (off limits, read only) | h",
+      "tokens": null
+    },
+    {
+      "event_id": "83e7d397-fabd-4639-8f5c-47df9abfb33f",
+      "event": "task/progress",
+      "at": "2026-11-22T21:07:56.267324Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c98dfbf4-a1b2-41ff-8f07-4f6d62e4abab",
+      "text": "Review started"
+    },
+    {
+      "event_id": "9ce4aa92-1fd9-46d1-9a97-a464662d4e78",
+      "event": "review/started",
+      "at": "2026-11-22T21:07:56.268551Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "ddae10a0-3419-44de-96bb-38658e12f727",
+      "event": "task/progress",
+      "at": "2026-11-22T21:08:28.223956Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c98dfbf4-a1b2-41ff-8f07-4f6d62e4abab",
+      "text": "Review started",
+      "attempt_id": "27af3e08-fa25-41bd-a62a-8a3ffbf545c9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0e421e07-18d3-4ba3-bed6-d4543df5b054",
+      "event": "task/progress",
+      "at": "2026-11-22T21:08:59.613513Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c98dfbf4-a1b2-41ff-8f07-4f6d62e4abab",
+      "text": "Regenerating all .driver files in scratch with old and new generator"
+    },
+    {
+      "event_id": "581fe734-b38f-4672-832d-80a13a0ca341",
+      "event": "task/progress",
+      "at": "2026-11-22T21:12:12.931264Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c98dfbf4-a1b2-41ff-8f07-4f6d62e4abab",
+      "text": "Building library and three mount drivers in a scratch copy for test runs"
+    },
+    {
+      "event_id": "ec22f5b8-8c67-4a5b-924b-7970da3c0fde",
+      "event": "task/progress",
+      "at": "2026-11-22T21:13:32.706484Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c98dfbf4-a1b2-41ff-8f07-4f6d62e4abab",
+      "text": "Running filtered cases of the three mount suites in scratch under the shared lock"
+    },
+    {
+      "event_id": "06e83158-bea2-45ee-ac9d-c8604977c734",
+      "event": "task/progress",
+      "at": "2026-11-22T21:53:43.470424Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c98dfbf4-a1b2-41ff-8f07-4f6d62e4abab",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "770655df-552c-4557-bd4f-8c9f0888207d",
+      "event": "review/passed",
+      "at": "2026-11-22T21:53:43.472015Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c98dfbf4-a1b2-41ff-8f07-4f6d62e4abab",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "f7daadc028c561b357a50d88afd6a4bea7925b1a"
+    },
+    {
+      "event_id": "71555b5c-91ce-4e16-a54e-c8a378b33486",
+      "event": "ticket/note",
+      "at": "2026-11-22T21:54:13.789024Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review passed at f7daadc02. Report-only findings, not fixed (off-limit drivers): mount_asi and mount_mxhd have no BUSY guard at admission of MOUNT_EQUATORIAL_COORDINATES (a request during a GoTo overwrites its targets; mxhd never publishes a sync BUSY); system_ascol handles the request synchronously on the bus thread without a guard. Remarks: DRIVER_GENERATOR_BASICS.md issue 12 cites stale generator line numbers; nexstar_request_during_sync_is_refused relies on the simulator's 500 ms delay. Not verified: Linux, Windows, hardware.",
+      "tokens": null
+    },
+    {
+      "event_id": "d26987ae-e5b3-42c4-bfc5-22f5881b17fa",
+      "event": "ticket/closed",
+      "at": "2026-11-22T21:54:14.069115Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-22T21:54:14.069093Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "fa4a57ccc53e109c33890cd93ed9023b568a961f"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-21T12:32:13.821623Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-21T12:33:11.134860Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 11551001.021,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 28,
+    "sha256": "9a9ba6f8546d6e4db300489030f4b83c8e13230580154b33684af12678b7e97a"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f7daadc028c561b357a50d88afd6a4bea7925b1a",
+        "tree": "93657c58b98999e5bba6b9f3cfcdb02bd2c366fb",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T21:06:16.916891Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/dafe8b2f-e5e7-48f6-9ec9-79571c04a525/93657c58b989-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review (claude-opus-5-5, high) of f7daadc02. No blocking findings.\n1) Generator: diff is exactly the approved condition '&& strcmp(property->id, \"MOUNT_EQUATORIAL_COORDINATES\")' plus a comment in write_c_property_change_handler(). Rebuilt master and worktree generators in scratch and regenerated all 120 non-template .driver files (git archive trees, cwd = driver dir): old generator on master = 0 diffs; new generator on master = only mount_lx200.c:4835, mount_nexstar.c:1131, mount_simulator.c:433 (one removed prologue line each); new generator on HEAD = 0 diffs vs checked-in outputs.\n2) Paths without the prologue: mount_simulator (count=2 SYNC/TRACK): alignment sync -> indigo_mount_sync() sets OK or ALERT on every return (indigo_mount_driver.c:1322-1385), controller sync OK (:448), GoTo BUSY completed by position_handler (:452), parked -> reject. mount_nexstar: TRACK BUSY with goto_active completed by the queued poll, sync (guiding or not) now OK at .c:1138, nexstar_set_coordinates failure (incl. dev_id<0, not aligned) ALERT; poll is on the device queue and request_pending keeps it off the handler's BUSY. mount_lx200 (count=2): on_change wrote BUSY as first state before any I/O (meade_host_timed_guiding is a flag test), TRACK BUSY/ALERT, SYNC OK/ALERT, rejects via indigo_reject_coordinates_change(); behaviour unchanged. No path stays BUSY. The 7 unchanged generated drivers (ioptron, nexstaraux start with BUSY; pmc8, rainbow, starbook, temma, synscan have _finalizer) had no prologue; byte-identical output confirms.\n3) Tests: built scratch copy; after fix PASS: simulator request_during_sync_handler + sync filter (4 cases), nexstar request_during_sync, sync filter (2), poll_in_flight, coordinates_publish, lx200 request_during_coordinates, park_rejects, generic_goto_polling. Re-adding only the prologue line to the generated simulator/nexstar .c reproduces the claimed failures: test_mount_simulator.c:1786 and test_mount_nexstar_simulator.c:1973. No existing assertion weakened (only a comment corrected).\n4) MIGRATION_STATUS: lx200 172 is right: 169 default + 3 opt-in hardware-free --tcp simulator cases; the row has counted the TCP cases since at least f1c9d72d8 (e.g. 88cff3cc6: 168+3=171). nexstar 44 and simulator 32 match their tables.\n5) Docs accurate; README changes are script record lines only; AGENTS.md untouched; off-limit drivers untouched; formatting OK; versions bumped only for the three regenerated drivers. mount_asi finding verified (indigo_mount_asi.c:1506-1517 copies targets and queues without BUSY guard).\nNon-blocking: DRIVER_GENERATOR_BASICS issue 12 still cites lines 1771-1779 (pre-existing staleness); the nexstar case relies on the simulator's 500 ms 'delay' window.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "f7daadc028c561b357a50d88afd6a4bea7925b1a",
+        "tree": "93657c58b98999e5bba6b9f3cfcdb02bd2c366fb",
+        "at": "2026-11-22T21:53:43.470174Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-22T18:41:07.916768Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Owner decision 2026-11-22: 'ok, oprav generator a skontroluj VSETKY mount drivery, ci sa ich to tyka'. Approved generator change, as described to the owner: for the property MOUNT_EQUATORIAL_COORDINATES the generated handler no longer writes INDIGO_OK_STATE before the on_change code, so the property stays BUSY from the admission of the request until the handler publishes its result; every driver whose on_change relied on that OK (paths that finish at once, e.g. a sync) sets OK itself. All mount drivers are to be checked, generated and hand-written; off-limit drivers (mount_asi, mount_mxhd, system_ascol) are read and reported only.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T21:07:13.415791Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementation record (implementer, claude-opus-5-5).\n\nAUDIT (all mount drivers; generated list from git ls-files '*.driver' | xargs grep -l MOUNT_EQUATORIAL_COORDINATES, whole repository incl. linux/mac/optional dirs and agents: 10 files, all under indigo_drivers/)\n| driver | kind | OK prologue before this change | paths relying on it | changed |\n| mount_ioptron | generated | no (on_change starts with state = BUSY) | none | no (output identical) |\n| mount_lx200 | generated | yes | none: on_change rejects via indigo_reject_coordinates_change() or sets BUSY as its first state write; sync sets OK, slew BUSY, failures ALERT | yes: regenerated, prologue gone, version 87 -> 88, .driver otherwise unchanged |\n| mount_nexstar | generated | yes | accepted sync (both with and without guiding_in_progress) ended OK only through the prologue; the prologue OK also covered the whole serial sync/goto transaction | yes: sync path sets INDIGO_OK_STATE itself, version 54 -> 55 |\n| mount_nexstaraux | generated | no (starts with state = BUSY) | none | no |\n| mount_pmc8 | generated | no (_finalizer) | n/a | no |\n| mount_rainbow | generated | no (_finalizer) | n/a | no |\n| mount_simulator | generated | yes | none: controller sync sets OK, alignment sync gets OK/ALERT from indigo_mount_sync(), GoTo sets BUSY; ON_COORDINATES_SET has 2 items | yes: regenerated, prologue gone, version 28 -> 29, .driver otherwise unchanged |\n| mount_starbook | generated | no (_finalizer) | n/a | no |\n| mount_synscan | generated | no (_finalizer) | n/a | no (output byte-identical, not touched) |\n| mount_temma | generated | no (_finalizer) | n/a | no |\n| mount_asi (off limits, read only) | hand-written | no prologue, but no BUSY guard at admission at all: targets copied and handler queued unconditionally; BUSY set only inside mount_eq_coords_callback | a request during a running GoTo/sync overwrites the targets of the running one and is queued | not changed (off limits) |\n| mount_mxhd (off limits, read only) | hand-written | same as mount_asi: no admission BUSY guard, targets copied unconditionally; a sync is never published BUSY | same | not changed (off limits) |\n| system_ascol (off limits, read only) | hand-written | no admission BUSY guard; the request is handled synchronously on the bus thread (network I/O in change_property), sets OK before the TSRA/TGRA transaction and publishes ALERT through indigo_update_property() on unmet conditions | any request during a running slew is sent to the telescope | not changed (off limits) |\n| system_alpaca mount | hand-written | no window: system_alpaca_accept() admits under the device mutex, refuses while BUSY (ALPACA_ACCEPT_ANYTIME + mount_coordinates_refusal), state stays BUSY until the handler publishes | none | no |\n| indigo_libs base mount driver | library | handles only a passed-through sync synchronously in change_property (indigo_mount_sync + indigo_update_coordinates); no queue, no window | none | no |\n| agent_mount, agent_alpaca | clients of a mount | do not own MOUNT_EQUATORIAL_COORDINATES handling | n/a | no |\n\nREPRODUCTION (before the fix, unchanged generated drivers, under the shared lock)\n- mount_simulator, new case mount_request_during_sync_handler_is_refused: an alignment-model (NEAREST_POINT) sync; the client callback that receives the alignment point the sync adds (delivered on the device queue inside the handler, bus mutex is recursive) makes a second sync request. Before: FAIL test_mount_simulator.c:1786 context.busy_message_count > messages, i.e. the second request was admitted (no \"Sync refused, the mount is busy\"); an earlier variant of the case also saw a second alignment point. After: PASS.\n- mount_nexstar, new case nexstar_request_during_sync_is_refused: the simulator answers the precise sync ('s') 500 ms late (delay control); a second sync request sent while the handler waits for that answer. Before: FAIL test_mount_nexstar_simulator.c:1973 wait_for_busy_message_after (admitted). After: PASS.\n- mount_lx200: the window only spanned the few statements between the prologue and the on_change BUSY assignment, no I/O, so it is not reproducible; new regression case lx200_request_during_coordinates_handler_is_refused (GoTo: request sent after :MS# reached the controller is refused with the BUSY message and never sent, GoTo publications stay BUSY until one OK at its target; a following sync likewise BUSY then OK) passes before and after.\n\nGENERATOR (indigo_tools/indigo_generator.c, write_c_property_change_handler): the OK prologue condition gains && strcmp(property->id, \"MOUNT_EQUATORIAL_COORDINATES\") plus a two-line comment. Nothing else changed in generator, DSL, lifecycle or library.\nProof no other output changed: all 120 non-template .driver files were regenerated into a scratch tree (copied .driver + indigo_libs/*.c for the base scan) with the old generator (0 differences from the checked-in outputs) and with the new one: before the drivers were regenerated only mount_lx200.c, mount_nexstar.c, mount_simulator.c differed (each by exactly the removed prologue line); after regeneration in place, 0 differences over all 237 generated .c files and the .h files. The other drivers were regenerated only in scratch, not compiled; off-limit drivers have no .driver files and were not touched.\n\nDOCS: DRIVER_GENERATOR_BASICS.md (Change handlers prologue rule, Mount/Coordinates bullet, known issue 12, known issue 3 sentence on BUSY coordinates now says they are refused through indigo_reject_change() with a BUSY message), DRIVER_GENERATOR_MIGRATION.md (MOUNT_EQUATORIAL_COORDINATES has no OK prologue; every on_change path sets its state). test_mount_simulator.c comment that described the state as briefly not BUSY inside the driver corrected.\n\nTESTS: +1 hardware-free case each in test_mount_simulator.c, test_mount_nexstar_simulator.c, test_mount_lx200_simulator.c (above). 10x repeat of 11 affected cases (simulator: request_during_sync_handler, sync_publishes_busy_and_keeps_a_refusal, sync_during_goto_is_refused_with_busy_message, goto_runs_on_queue_and_rejects_overlap, alignment_model_is_frozen_during_slew; nexstar: request_during_sync, tracks_syncs_and_aborts_coordinate_changes, coordinates_publish_the_mount_position, poll_in_flight_does_not_complete_goto; lx200: request_during_coordinates_handler, park_rejects_motion_and_unpark_recovers): 110/110 passed.\nRecorded runs (tools/run_driver_test.py, under the lock):\n- mount_simulator: 2026-11-22 21:06 3.0.0.29 mac arm64 simulator 32/32 OK\n- mount_nexstar: 2026-11-22 21:14 3.0.0.55 mac arm64 simulator 44/44 OK\n- mount_lx200: 2026-11-22 21:41 3.0.0.88 mac arm64 simulator 169/169 OK\nMIGRATION_STATUS.md first counts +1: lx200 171 -> 172, nexstar 43 -> 44, simulator 31 -> 32 (Comment column untouched). Note: the lx200 row count (172) differs from the 169 cases the script runs; that difference existed before (171 vs 168).\n\nNOT VERIFIED: no hardware; macOS arm64 only (no Linux/Windows build of the changed drivers); unchanged generated drivers were regenerated (byte-identical) but not compiled. Findings in hand-written/off-limit drivers above are reported only; no tickets created.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T21:54:13.787819Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review passed at f7daadc02. Report-only findings, not fixed (off-limit drivers): mount_asi and mount_mxhd have no BUSY guard at admission of MOUNT_EQUATORIAL_COORDINATES (a request during a GoTo overwrites its targets; mxhd never publishes a sync BUSY); system_ascol handles the request synchronously on the bus thread without a guard. Remarks: DRIVER_GENERATOR_BASICS.md issue 12 cites stale generator line numbers; nexstar_request_during_sync_is_refused relies on the simulator's 500 ms delay. Not verified: Linux, Windows, hardware.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "fa4a57ccc53e109c33890cd93ed9023b568a961f",
+      "tree": "93657c58b98999e5bba6b9f3cfcdb02bd2c366fb",
+      "base": "master",
+      "at": "2026-11-22T21:54:13.983255Z"
+    }
+  }
+}
