@@ -1,0 +1,679 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a77b8810-b1df-4a37-b1f7-d0f2dfd8c4d4",
+  "revision": 27,
+  "title": "indigo_agent_scripting: document the meridian flipper and the messages of Sequencer.js in Sequencer.md",
+  "description": "Reported by the owner on 2026-11-22: indigo_drivers/agent_scripting/library/Sequencer.md is not up to date with the latest additions and the flipper.\n\nChecked on master 1c6f6de0e: all 109 Sequence.prototype methods and the MERIDIAN_FLIP property (cbbc6aedf, 47da62f95) are documented. Missing:\n1. The meridian flipper (indigo_flipper in Sequencer.js, ~lines 657-810, triggered from indigo_sequencer.on_update ~line 868) is described by one sentence in 'Internal implementation'. Add a user-facing 'How the meridian flip works' subsection under 'Meridian flip' describing, from the code: it starts when the Imager Agent's AGENT_PAUSE_PROCESS goes Busy with PAUSE_AFTER_TRANSIT; it waits for FLIP_REQUIRED in the Mount Agent's AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY; it remembers whether guiding ran, turns ENABLE_HA_LIMIT off if it was on, slews with AGENT_START_PROCESS.SLEW; with the solver it sets AGENT_PLATESOLVER_EXPOSURE.EXPOSURE (when the exposure is > 0) and runs CENTER on the solver agent loaded at that time; it restarts guiding only when guiding ran before and waits for settling (AGENT_GUIDER_STATS.FRAME > 3); then it restores the HA limit and releases the Imager Agent pause (PAUSE_AFTER_TRANSIT false). Failures of slew, recentering, guiding or a missing solver agent, and how they relate to the failure policy, are already documented for enable_meridian_flip(); link rather than repeat. Keep 'Internal implementation' short and consistent.\n2. FLIPPER_STATE row: explain the items (the WAITING_FOR_* phases, RESUME_GUIDING = guiding will be restarted, USE_SOLVER = recentering with the solver) and the states (Busy during the flip including waiting for transit, Ok when finished, Alert after a failure).\n3. Messages: Sequencer.md lists none of the messages Sequencer.js sends with indigo_send_message, e.g. 'Sequence started', 'Sequence finished', 'Sequence paused', 'Sequence resumed', 'Sequencer installed', 'Other sequence is executed', 'Break executed: HA / solar altitude / target altitude', 'Resumed from break at resume point #', 'Sequence finished, no resume point found', 'Recovered from failure at recovery point #', 'Sequence failed, no recovery point found', 'Possible error - break_at / wait_until ... more than 12 hours!', 'Waiting for GPS', 'Waiting for solar altitude to drop below', 'Waiting for target altitude to rise above', 'Target time has passed', 'Suspended', 'Meridian flip waits for transit', 'Meridian flip started', 'Settling down...', 'Meridian flip finished', and the 'Meridian flip failed (...)' messages. Add a 'Messages' section (table: message, when) built from the code (grep indigo_send_message and the failure() / flip_failed() reasons); do not invent messages.\nDocumentation only, no code change, no README change; English, style of the existing file.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-22T10:03:14.430386Z",
+  "status": "closed",
+  "branch": "ticket/a77b8810-b1df-4a37-b1f7-d0f2dfd8c4d4",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "0dd75f49-8b98-4611-b758-ce255e9b181f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T10:04:13.729645Z",
+          "last_activity_at": "2026-11-22T10:07:19.518070Z",
+          "ended_at": "2026-11-22T10:07:19.518070Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 185788.425,
+          "tokens": null
+        },
+        {
+          "attempt_id": "2ba375a3-7a08-48dc-a4c2-c10d10fe97f2",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-22T10:08:59.207625Z",
+          "last_activity_at": "2026-11-22T10:09:49.648599Z",
+          "ended_at": "2026-11-22T10:09:49.648599Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 50440.974,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T10:04:13.729645Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/a77b8810-b1df-4a37-b1f7-d0f2dfd8c4d4"
+        },
+        {
+          "at": "2026-11-22T10:07:19.518070Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-22T10:08:59.207625Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-22T10:09:49.648599Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 236229.399,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "61bec4e1-dfcb-46ec-a204-010ce416dbcf",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-22T10:07:19.518114Z",
+          "last_activity_at": "2026-11-22T10:08:59.207542Z",
+          "ended_at": "2026-11-22T10:08:59.207542Z",
+          "outcome": {
+            "summary": "Verified against Sequencer.js (indigo_flipper 657-810, trigger 868-870, flip_failed 1403-1419, failure 1421-1451, abort 1049-1050, all indigo_send_message and failure() sites) and indigo_agent_imager.c 1320-1365. Flip step order, conditions, FLIPPER_STATE states and the Alert item semantics, all message texts and the completeness of the message list are correct; anchors resolve; scope is Sequencer.md only. Two factual defects: (1) Sequencer.md 'Failure and recovery messages', paragraph after the table (diff line 'When the sequence ends in the Alert state, the SEQUENCE_STATE update also carries a message'): overgeneral. The Alert update after recover_on_failure() finds no recovery point (Sequencer.js 1165-1167) carries no message; only failure() under abort_on_failure (1449, 'Sequence failed') and abort() (1050, 'Sequence aborted') do. Reword, e.g. 'The SEQUENCE_STATE update that ends the sequence in the Alert state carries the message Sequence failed after ... or Sequence aborted after ...; the update after Sequence failed, no recovery point found carries none.' (2) Sequencer.md FLIPPER_STATE row ('RESUME_GUIDING is on when guiding ran when the flip started'): resume_guiding is determined only at FLIP_REQUIRED (Sequencer.js 683-691) and start() (790-805) does not reset it, so while WAITING_FOR_TRANSIT the item still shows the value of the previous flip. Say that it is set when the Mount Agent reports FLIP_REQUIRED ('Meridian flip started') and keeps the previous flip's value before. Non-blocking note: under continue/recover policies with a running sequence the 'Meridian flip failed (...)' message may be sent only when the interrupted step ends (flip_failed 1414-1417 defers it to failure()), the table's When describes the cause, which is acceptable.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 99689.428,
+          "tokens": null
+        },
+        {
+          "attempt_id": "90593bed-81ca-4463-9c60-486f6f3ed0fd",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T10:09:49.648619Z",
+          "last_activity_at": "2026-11-22T10:11:14.473312Z",
+          "ended_at": "2026-11-22T10:11:14.473312Z",
+          "outcome": {
+            "summary": "Round 2: both round-1 findings fixed. Sequencer.md:185 now names only failure() under abort_on_failure ('Sequence failed', Sequencer.js:1449) and abort() ('Sequence aborted', :1050) and states the recover_on_failure no-recovery-point Alert (:1166) carries none. FLIPPER_STATE row (:355) correctly says RESUME_GUIDING is computed at FLIP_REQUIRED (:686-693) and keeps the previous value before, start() (:793-805) does not reset it. New sentence :200 verified: flip_failed (:1403-1418) sends at once via failure() when cancel_wait_timer() cancels wait_for_timer, set only by wait()/wait_until() (:1457) and altitude waits (:1561-1587); otherwise flip_failure is consumed by failure() or execute_next() when the step ends; sequence==null or abort policy sends at once and aborts. Rechecked the whole diff: 'How the meridian flip works' steps 1-8 match indigo_flipper (:670-806) and the imager pause condition (indigo_agent_imager.c:1348-1353, ttt <= exposure - offset); every indigo_send_message call site in Sequencer.js has a verbatim row and no row is invented; anchors #use, #how-the-meridian-flip-works, #meridian-flip-messages, #meridian-flip, #failure-handling--recovery resolve; English, file style, only Sequencer.md changed, no README. Non-blocking nit: the 'is already selected/unselected' row (:141) says any step that selects an item already set sends it, but steps using allow_same_value (set_upload_mode, set_dome_goto, Sequencer.js:1288-1290) succeed silently.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 84824.693,
+          "tokens": null
+        },
+        {
+          "attempt_id": "92a07bf8-8a57-49cb-bf97-cb18c4ac4fb0",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T10:50:23.000679Z",
+          "last_activity_at": "2026-11-22T10:50:49.602019Z",
+          "ended_at": "2026-11-22T10:50:49.602019Z",
+          "outcome": {
+            "summary": "Round 3: git diff 27e8e8e13a HEAD shows only the Revision line reverted to '13.07.2026 (draft)'; the diff against master no longer touches it and is otherwise the content passed in round 2 (How the meridian flip works walkthrough, FLIPPER_STATE row, Messages section, indigo_flipper bullet). Only Sequencer.md changed, no README change, git diff --check clean. Spot-checked against Sequencer.js: flip failure messages (lines 711/717/743/762), Settling down... and FRAME > 3 (765/770), Sequence aborted/failed SEQUENCE_STATE messages (1050/1449), no recovery point message (1167), solar altitude wait message (1560), Sequencer installed/reloaded (2041/2044). No defects.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 26601.34,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T10:07:19.518114Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T10:08:59.207542Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Verified against Sequencer.js (indigo_flipper 657-810, trigger 868-870, flip_failed 1403-1419, failure 1421-1451, abort 1049-1050, all indigo_send_message and failure() sites) and indigo_agent_imager.c 1320-1365. Flip step order, conditions, FLIPPER_STATE states and the Alert item semantics, all message texts and the completeness of the message list are correct; anchors resolve; scope is Sequencer.md only. Two factual defects: (1) Sequencer.md 'Failure and recovery messages', paragraph after the table (diff line 'When the sequence ends in the Alert state, the SEQUENCE_STATE update also carries a message'): overgeneral. The Alert update after recover_on_failure() finds no recovery point (Sequencer.js 1165-1167) carries no message; only failure() under abort_on_failure (1449, 'Sequence failed') and abort() (1050, 'Sequence aborted') do. Reword, e.g. 'The SEQUENCE_STATE update that ends the sequence in the Alert state carries the message Sequence failed after ... or Sequence aborted after ...; the update after Sequence failed, no recovery point found carries none.' (2) Sequencer.md FLIPPER_STATE row ('RESUME_GUIDING is on when guiding ran when the flip started'): resume_guiding is determined only at FLIP_REQUIRED (Sequencer.js 683-691) and start() (790-805) does not reset it, so while WAITING_FOR_TRANSIT the item still shows the value of the previous flip. Say that it is set when the Mount Agent reports FLIP_REQUIRED ('Meridian flip started') and keeps the previous flip's value before. Non-blocking note: under continue/recover policies with a running sequence the 'Meridian flip failed (...)' message may be sent only when the interrupted step ends (flip_failed 1414-1417 defers it to failure()), the table's When describes the cause, which is acceptable."
+        },
+        {
+          "at": "2026-11-22T10:09:49.648619Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T10:11:14.473312Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2: both round-1 findings fixed. Sequencer.md:185 now names only failure() under abort_on_failure ('Sequence failed', Sequencer.js:1449) and abort() ('Sequence aborted', :1050) and states the recover_on_failure no-recovery-point Alert (:1166) carries none. FLIPPER_STATE row (:355) correctly says RESUME_GUIDING is computed at FLIP_REQUIRED (:686-693) and keeps the previous value before, start() (:793-805) does not reset it. New sentence :200 verified: flip_failed (:1403-1418) sends at once via failure() when cancel_wait_timer() cancels wait_for_timer, set only by wait()/wait_until() (:1457) and altitude waits (:1561-1587); otherwise flip_failure is consumed by failure() or execute_next() when the step ends; sequence==null or abort policy sends at once and aborts. Rechecked the whole diff: 'How the meridian flip works' steps 1-8 match indigo_flipper (:670-806) and the imager pause condition (indigo_agent_imager.c:1348-1353, ttt <= exposure - offset); every indigo_send_message call site in Sequencer.js has a verbatim row and no row is invented; anchors #use, #how-the-meridian-flip-works, #meridian-flip-messages, #meridian-flip, #failure-handling--recovery resolve; English, file style, only Sequencer.md changed, no README. Non-blocking nit: the 'is already selected/unselected' row (:141) says any step that selects an item already set sends it, but steps using allow_same_value (set_upload_mode, set_dome_goto, Sequencer.js:1288-1290) succeed silently."
+        },
+        {
+          "at": "2026-11-22T10:50:23.000679Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T10:50:49.602019Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 3: git diff 27e8e8e13a HEAD shows only the Revision line reverted to '13.07.2026 (draft)'; the diff against master no longer touches it and is otherwise the content passed in round 2 (How the meridian flip works walkthrough, FLIPPER_STATE row, Messages section, indigo_flipper bullet). Only Sequencer.md changed, no README change, git diff --check clean. Spot-checked against Sequencer.js: flip failure messages (lines 711/717/743/762), Settling down... and FRAME > 3 (765/770), Sequence aborted/failed SEQUENCE_STATE messages (1050/1449), no recovery point message (1167), solar altitude wait message (1560), Sequencer installed/reloaded (2041/2044). No defects."
+        }
+      ],
+      "result": {
+        "summary": "Round 3: git diff 27e8e8e13a HEAD shows only the Revision line reverted to '13.07.2026 (draft)'; the diff against master no longer touches it and is otherwise the content passed in round 2 (How the meridian flip works walkthrough, FLIPPER_STATE row, Messages section, indigo_flipper bullet). Only Sequencer.md changed, no README change, git diff --check clean. Spot-checked against Sequencer.js: flip failure messages (lines 711/717/743/762), Settling down... and FRAME > 3 (765/770), Sequence aborted/failed SEQUENCE_STATE messages (1050/1449), no recovery point message (1167), solar altitude wait message (1560), Sequencer installed/reloaded (2041/2044). No defects.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 211115.461,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9f7b6461-cf63-4566-bbb5-3996bc23b84b",
+      "event": "ticket/created",
+      "at": "2026-11-22T10:03:14.431023Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "36023346-aff3-4702-b1b1-094966e1def2",
+      "event": "ticket/confirmed",
+      "at": "2026-11-22T10:04:02.294972Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "258d7347-c1e3-4f9a-88d6-ec7d5095decf",
+      "event": "task/progress",
+      "at": "2026-11-22T10:04:13.729794Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "text": "Implementation started on branch ticket/a77b8810-b1df-4a37-b1f7-d0f2dfd8c4d4"
+    },
+    {
+      "event_id": "a66b425f-5bfd-4160-ac19-879d4eaa3c57",
+      "event": "ticket/started",
+      "at": "2026-11-22T10:04:13.730704Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/a77b8810-b1df-4a37-b1f7-d0f2dfd8c4d4",
+      "base": "master"
+    },
+    {
+      "event_id": "239cb915-c089-4f63-bcdd-f31046a4369a",
+      "event": "task/progress",
+      "at": "2026-11-22T10:04:14.002575Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "text": "Implementer launched",
+      "attempt_id": "0dd75f49-8b98-4611-b758-ce255e9b181f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "57e16b0f-135c-490d-89b0-9a737cdb6a19",
+      "event": "task/progress",
+      "at": "2026-11-22T10:04:34.674357Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "text": "Reading Sequencer.js flipper and messages"
+    },
+    {
+      "event_id": "b8118cad-c554-4613-9c3b-76b7bb652c53",
+      "event": "task/progress",
+      "at": "2026-11-22T10:05:40.559221Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "text": "Writing flip walkthrough, FLIPPER_STATE row and Messages section"
+    },
+    {
+      "event_id": "933a8cef-74ab-4fa3-96b1-723e03aecaa4",
+      "event": "task/progress",
+      "at": "2026-11-22T10:06:45.363283Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ef1ed3d5-74ae-45e0-92b9-7b4866c17d0f",
+      "event": "task/progress",
+      "at": "2026-11-22T10:06:45.376630Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "15ca76b3-971b-405d-b428-741a843075a9",
+      "event": "check/passed",
+      "at": "2026-11-22T10:06:45.381685Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "7b0c1f02679eec0c318291632df46279600635f4",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "2538a2ed-5285-40ed-8d79-9520ab329aba",
+      "event": "task/progress",
+      "at": "2026-11-22T10:07:19.518187Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f907c146-3f8b-4a71-ac67-3ef962ce62c8",
+      "event": "review/started",
+      "at": "2026-11-22T10:07:19.518796Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "333285a8-e42a-4410-a68c-f53cb338c054",
+      "event": "task/progress",
+      "at": "2026-11-22T10:07:19.697754Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Reviewer launched",
+      "attempt_id": "61bec4e1-dfcb-46ec-a204-010ce416dbcf",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "4ff52229-f1b2-44d8-b223-d164406c566b",
+      "event": "task/progress",
+      "at": "2026-11-22T10:08:59.207617Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "b9624573-bcd1-4f2c-abcc-833224155a45",
+      "event": "task/progress",
+      "at": "2026-11-22T10:08:59.207653Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "0076b949-19ed-4444-9101-4f41f90a8df1",
+      "event": "review/changes_requested",
+      "at": "2026-11-22T10:08:59.208288Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "7b0c1f02679eec0c318291632df46279600635f4"
+    },
+    {
+      "event_id": "54d3df14-9c2d-4c81-8092-66b40be63b9f",
+      "event": "task/progress",
+      "at": "2026-11-22T10:09:35.641443Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "896f1406-93bf-4bf8-8a6b-3c4745840c13",
+      "event": "task/progress",
+      "at": "2026-11-22T10:09:35.655059Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b173d4e-b92c-4f77-bcd0-027a878a1717",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "418da980-fb22-481f-be16-88174ea21bfe",
+      "event": "check/passed",
+      "at": "2026-11-22T10:09:35.660054Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "27e8e8e13a2221122372ea361a9c340460c5af0e",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "96f75f9d-8680-459b-be75-bd993bedce76",
+      "event": "task/progress",
+      "at": "2026-11-22T10:09:49.648691Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Review started"
+    },
+    {
+      "event_id": "4befe69a-7263-4ece-b143-1fc990a5bbbc",
+      "event": "review/started",
+      "at": "2026-11-22T10:09:49.649309Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "9608ef1f-b911-4e8f-9840-fcc5d676cc36",
+      "event": "task/progress",
+      "at": "2026-11-22T10:09:49.810706Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Second reviewer launched",
+      "attempt_id": "90593bed-81ca-4463-9c60-486f6f3ed0fd",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "1170d074-9677-4222-acfd-d5bf93c65c15",
+      "event": "task/progress",
+      "at": "2026-11-22T10:11:14.473389Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "7703d5ec-02d1-45f4-b072-8f9195f2a752",
+      "event": "review/passed",
+      "at": "2026-11-22T10:11:14.474089Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "27e8e8e13a2221122372ea361a9c340460c5af0e"
+    },
+    {
+      "event_id": "c86c5c16-2fbc-4d44-bcc4-bc23cd0f28cf",
+      "event": "task/progress",
+      "at": "2026-11-22T10:50:17.015497Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5d04503c-0bd4-4899-b3bb-29a25245f7c4",
+      "event": "task/progress",
+      "at": "2026-11-22T10:50:17.031768Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "923364dd-1d8a-4d1c-8363-22e0701fde16",
+      "event": "check/passed",
+      "at": "2026-11-22T10:50:17.037925Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "6edb09075cff3690133bf680fb19ccfeb6bf4c5f",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "0744a419-e6b1-47de-8e52-e0b711fed44d",
+      "event": "task/progress",
+      "at": "2026-11-22T10:50:23.000781Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Review started"
+    },
+    {
+      "event_id": "ece4e6e2-1adf-48b9-9f09-fa50abaf89fa",
+      "event": "review/started",
+      "at": "2026-11-22T10:50:23.001590Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "8344b254-ee19-44cb-b13b-79ccdaf2a775",
+      "event": "task/progress",
+      "at": "2026-11-22T10:50:23.188268Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Reviewer launched after the revision date revert",
+      "attempt_id": "92a07bf8-8a57-49cb-bf97-cb18c4ac4fb0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "d4b4d7d3-2bcd-49f2-8671-471adda80b3d",
+      "event": "task/progress",
+      "at": "2026-11-22T10:50:40.100034Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Review round 3: checking revision-line revert and spot-checking content"
+    },
+    {
+      "event_id": "0bcd6dc0-39c5-4bdb-940d-7b838f627932",
+      "event": "task/progress",
+      "at": "2026-11-22T10:50:49.602102Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "4be0d5bd-cc35-467c-9adf-463c0e0fd0df",
+      "event": "review/passed",
+      "at": "2026-11-22T10:50:49.602797Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d9999570-108b-4f97-8356-bced019a3452",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "6edb09075cff3690133bf680fb19ccfeb6bf4c5f"
+    },
+    {
+      "event_id": "029b674c-a533-4e92-a5d2-d72cc38dc96c",
+      "event": "ticket/closed",
+      "at": "2026-11-22T10:51:02.504606Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-22T10:51:02.504567Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "fc3d5f543806c900c8ac968033dfefb14ff4e15b"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7b0c1f02679eec0c318291632df46279600635f4",
+        "tree": "3866165a46090b10455cc587af95e6e83976b926",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T10:06:45.375910Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/a77b8810-b1df-4a37-b1f7-d0f2dfd8c4d4/3866165a4609-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "27e8e8e13a2221122372ea361a9c340460c5af0e",
+        "tree": "7623d0cc66ca26bcf89debc552081b235a8f3734",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T10:09:35.654224Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/a77b8810-b1df-4a37-b1f7-d0f2dfd8c4d4/7623d0cc66ca-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6edb09075cff3690133bf680fb19ccfeb6bf4c5f",
+        "tree": "f1684e3b08672903a08837d2dcffb3948bfb5a3e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T10:50:17.030579Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/a77b8810-b1df-4a37-b1f7-d0f2dfd8c4d4/f1684e3b0867-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Verified against Sequencer.js (indigo_flipper 657-810, trigger 868-870, flip_failed 1403-1419, failure 1421-1451, abort 1049-1050, all indigo_send_message and failure() sites) and indigo_agent_imager.c 1320-1365. Flip step order, conditions, FLIPPER_STATE states and the Alert item semantics, all message texts and the completeness of the message list are correct; anchors resolve; scope is Sequencer.md only. Two factual defects: (1) Sequencer.md 'Failure and recovery messages', paragraph after the table (diff line 'When the sequence ends in the Alert state, the SEQUENCE_STATE update also carries a message'): overgeneral. The Alert update after recover_on_failure() finds no recovery point (Sequencer.js 1165-1167) carries no message; only failure() under abort_on_failure (1449, 'Sequence failed') and abort() (1050, 'Sequence aborted') do. Reword, e.g. 'The SEQUENCE_STATE update that ends the sequence in the Alert state carries the message Sequence failed after ... or Sequence aborted after ...; the update after Sequence failed, no recovery point found carries none.' (2) Sequencer.md FLIPPER_STATE row ('RESUME_GUIDING is on when guiding ran when the flip started'): resume_guiding is determined only at FLIP_REQUIRED (Sequencer.js 683-691) and start() (790-805) does not reset it, so while WAITING_FOR_TRANSIT the item still shows the value of the previous flip. Say that it is set when the Mount Agent reports FLIP_REQUIRED ('Meridian flip started') and keeps the previous flip's value before. Non-blocking note: under continue/recover policies with a running sequence the 'Meridian flip failed (...)' message may be sent only when the interrupted step ends (flip_failed 1414-1417 defers it to failure()), the table's When describes the cause, which is acceptable.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "7b0c1f02679eec0c318291632df46279600635f4",
+        "tree": "3866165a46090b10455cc587af95e6e83976b926",
+        "at": "2026-11-22T10:08:59.207517Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2: both round-1 findings fixed. Sequencer.md:185 now names only failure() under abort_on_failure ('Sequence failed', Sequencer.js:1449) and abort() ('Sequence aborted', :1050) and states the recover_on_failure no-recovery-point Alert (:1166) carries none. FLIPPER_STATE row (:355) correctly says RESUME_GUIDING is computed at FLIP_REQUIRED (:686-693) and keeps the previous value before, start() (:793-805) does not reset it. New sentence :200 verified: flip_failed (:1403-1418) sends at once via failure() when cancel_wait_timer() cancels wait_for_timer, set only by wait()/wait_until() (:1457) and altitude waits (:1561-1587); otherwise flip_failure is consumed by failure() or execute_next() when the step ends; sequence==null or abort policy sends at once and aborts. Rechecked the whole diff: 'How the meridian flip works' steps 1-8 match indigo_flipper (:670-806) and the imager pause condition (indigo_agent_imager.c:1348-1353, ttt <= exposure - offset); every indigo_send_message call site in Sequencer.js has a verbatim row and no row is invented; anchors #use, #how-the-meridian-flip-works, #meridian-flip-messages, #meridian-flip, #failure-handling--recovery resolve; English, file style, only Sequencer.md changed, no README. Non-blocking nit: the 'is already selected/unselected' row (:141) says any step that selects an item already set sends it, but steps using allow_same_value (set_upload_mode, set_dome_goto, Sequencer.js:1288-1290) succeed silently.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "27e8e8e13a2221122372ea361a9c340460c5af0e",
+        "tree": "7623d0cc66ca26bcf89debc552081b235a8f3734",
+        "at": "2026-11-22T10:11:14.473288Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3: git diff 27e8e8e13a HEAD shows only the Revision line reverted to '13.07.2026 (draft)'; the diff against master no longer touches it and is otherwise the content passed in round 2 (How the meridian flip works walkthrough, FLIPPER_STATE row, Messages section, indigo_flipper bullet). Only Sequencer.md changed, no README change, git diff --check clean. Spot-checked against Sequencer.js: flip failure messages (lines 711/717/743/762), Settling down... and FRAME > 3 (765/770), Sequence aborted/failed SEQUENCE_STATE messages (1050/1449), no recovery point message (1167), solar altitude wait message (1560), Sequencer installed/reloaded (2041/2044). No defects.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "6edb09075cff3690133bf680fb19ccfeb6bf4c5f",
+        "tree": "f1684e3b08672903a08837d2dcffb3948bfb5a3e",
+        "at": "2026-11-22T10:50:49.601988Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "fc3d5f543806c900c8ac968033dfefb14ff4e15b",
+      "tree": "f1684e3b08672903a08837d2dcffb3948bfb5a3e",
+      "base": "master",
+      "at": "2026-11-22T10:51:02.437218Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-22T10:03:14.430386Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-22T10:04:02.294921Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 447344.86,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 44,
+    "sha256": "033ff43b200fb2a25543ec693444a9420f4572d739c445d3f5d1527ad6352b27"
+  }
+}
