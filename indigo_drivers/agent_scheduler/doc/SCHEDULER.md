@@ -185,7 +185,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 | `@duration` | `minutes` | Expected run time, 1–1440; all constraints must hold for this whole interval before the task starts | estimated, see [Task duration](#task-duration) |
 | `@repeat` | `count` [`every minutes`] | Number of successful runs, 1–10000, with an optional pause of 0–100000 minutes between them | `1` |
 | `@retry` | `count` [`after minutes`] | Number of reruns after a failure, 0–100, with an optional delay of 0–100000 minutes | `0` |
-| `@preempted` | `retry` \| `fail` | What happens to the task when an urgent task preempts it | `retry` |
+| `@preempted` | `retry` \| `fail` | What happens to the task when an urgent task preempts it or the [unsafe hold](#unsafe-hold) aborts it | `retry` |
 | `@enabled` | `yes` \| `no` | A disabled task is kept but never selected | `yes` |
 | `@folder` | `name` \| `none` | The folder under the data base folder where the frames of the task are saved, 1-40 bytes: `name` forces it, also when `FOLDER` of `AGENT_SCHEDULER_DATA` is off, and lets several tasks share it; `none` disables the folder of the task, which leaves `DIR` of the Imager Agent untouched, see [Observation data](#observation-data) | by `FOLDER` |
 | `@observer` | text | Observer name, written as the FITS header `OBSERVER` of the frames of the task when `FITS` of `AGENT_SCHEDULER_DATA` is on, 1-56 characters without control characters, a quote counts as two (it is doubled in the FITS value), see [Observation data](#observation-data) | no header |
@@ -302,10 +302,10 @@ Its upload succeeds with a warning that recommends an explicit `@duration`. The 
 | QUEUED | Ready for selection |
 | WAITING | Its constraints do not hold for the whole `@duration` now; the agent computes when they will |
 | RUNNING | The task's sequence is executing |
-| RETRY | Failed or preempted; returns to QUEUED after the retry delay |
+| RETRY | Failed, preempted or aborted by the unsafe hold; returns to QUEUED after the retry delay, at once after an abort by the unsafe hold |
 | REPEAT | Completed a run with more runs to go; returns to QUEUED after the repeat interval |
 | DONE | All runs completed |
-| FAILED | Failed with no retries left, or preempted with `@preempted fail` |
+| FAILED | Failed with no retries left, or preempted or aborted by the unsafe hold with `@preempted fail` |
 | EXPIRED | The end of its `@window` passed before it completed |
 | DISABLED | `@enabled no` or disabled by command |
 
@@ -333,12 +333,13 @@ Its upload succeeds with a warning that recommends an explicit `@duration`. The 
    QUEUED, WAITING, RETRY, REPEAT -- window end passed --> EXPIRED
    any state -- DISABLE --> DISABLED -- ENABLE --> previous state
    any state but RUNNING -- RESET --> QUEUED, counters cleared
+   RUNNING -- unsafe hold --> as preempted, RETRY without a retry delay
 ```
 
 Further rules:
 
 - `DISABLE` of a RUNNING task does not stop it: the run finishes and its result is applied, and the task is not selected again until it is enabled.
-- A preemption does not consume a retry, because the task did not fail on its own.
+- A preemption or an abort by the unsafe hold does not consume a retry, because the task did not fail on its own.
 - A sequence that ends Ok counts as a successful run, even if it ended early. This includes a `break_if_target_altitude_below()` or `break_at()` without a resume point, and failures skipped by `continue_on_failure()`. A body that must not count a shortened run as a success has to end with a failing step.
 - RESET of a RUNNING task is rejected.
 
@@ -613,7 +614,7 @@ AGENT_SCHEDULER_HOOKS: NIGHT_START = Evening, RESUME = Evening, IDLE = Park, NIG
 
 **Entering the hold.** When the conditions become unsafe while the scheduler runs, it enters the unsafe hold at once, without debounce, and says so (`Unsafe conditions, the scheduler holds`, or `No safety information, treated as unsafe, the scheduler holds`):
 
-- A running task is aborted as described in [Aborting a sequence](#aborting-a-sequence), also an urgent task. Its history entry has the result `unsafe` and the reason `unsafe conditions`. It returns to RETRY without consuming a retry and without a retry delay, and `@preempted fail` does not apply. A one-off urgent task stays in the list and runs after the hold, subject to its window. A preemption in progress is recorded as unsafe instead of preempted.
+- A running task is aborted as described in [Aborting a sequence](#aborting-a-sequence), also an urgent task. Its history entry has the result `unsafe` and the reason `unsafe conditions`. Its `@preempted` key applies as after a preemption: with `retry`, the default, it returns to RETRY without consuming a retry and without a retry delay, and a one-off urgent task stays in the list and runs after the hold, subject to its window; with `fail` it becomes FAILED (`Task '<name>' aborted by unsafe conditions and failed`), and a one-off urgent task leaves the list and is counted in `URGENT_FAILED`. A preemption in progress is recorded as unsafe instead of preempted, with the same `@preempted` rules.
 - A running `STARTUP`, `NIGHT_START`, `IDLE`, `RESUME` or `SAFE` hook is aborted, with the result `unsafe`; this is not a hook failure. An interrupted `STARTUP` hook runs again after the hold, an interrupted `NIGHT_START` hook does not, because the night counts as started, and the `SAFE` or `RESUME` hook prepares the equipment instead. A running `SHUTDOWN`, `NIGHT_END` or `UNSAFE` hook finishes.
 - A sequence started by hand that runs when the hold begins is aborted (`A sequence started by hand was aborted by unsafe conditions`), without a history entry. A sequence started by hand during the hold is left alone, since it may be the operator closing the roof; the `UNSAFE` hook waits for it with the reason `another sequence is running`.
 - Then the `UNSAFE` hook runs, once per hold. When it names a task that has just run successfully as the previous hook, for example `NIGHT_END`, the task does not run again.
@@ -962,4 +963,4 @@ Phases 1, 2, 3, 5 and 6 are implemented. Phases 4 and 7 are planned.
   - the limits through the agent: a 16 KiB task text stored, restored and run, one byte more rejected, 128 tasks and the 129th upload and an urgent task rejected;
   - the pauses of `@repeat … every` and `@retry … after`, each start seen when it happens;
   - `START` right after uploads starting the task of the highest priority;
-  - the [unsafe hold](#unsafe-hold), with a stand-in Auxiliary Agent that defines `AGENT_AUX_SAFETY` and is attached only by these cases: a running task, a one-off urgent task and a sequence started by hand aborted, the task kept in RETRY without a used retry and despite `@preempted fail`, the urgent task kept and run after the hold, and a sequence started by hand during the hold left alone; a running `SHUTDOWN` and `NIGHT_END` hook finishing; a running `STARTUP`, `IDLE`, `NIGHT_START`, `RESUME` and `SAFE` hook aborted with the result `UNSAFE` and without a stop, the startup hook run again and an aborted `SAFE` hook followed by a new hold with its own `UNSAFE` hook; `NIGHT_END` at dawn during the hold and `NIGHT_START` of a night that started during the hold waiting for its end; `SAFE_DELAY` restarted by an ALERT shorter than the evaluation interval; the `SAFE` hook only in the night with work, standby by day with `NIGHT_START` at dusk, and standby without work with `RESUME` before a later task; failed `UNSAFE` and `SAFE` hooks running `SHUTDOWN` and stopping with Alert, and a missing `UNSAFE` task reported without a stop; missing safety information counted as safe by default and as unsafe when selected (no agent, Idle light, deleted property); a postponed `START` without `UNSAFE` and `STARTUP` after `SAFE_DELAY`; `STOP` and `ABORT` during the hold; the hold across a restart with the restored settings, and a saved safe state older than the delay not postponing `START`; and the labels `hook unsafe` and `hook safe`.
+  - the [unsafe hold](#unsafe-hold), with a stand-in Auxiliary Agent that defines `AGENT_AUX_SAFETY` and is attached only by these cases: a running task, a one-off urgent task and a sequence started by hand aborted, the task kept in RETRY without a used retry with `@preempted retry`, the urgent task kept and run after the hold, a task and a one-off urgent task with `@preempted fail` failed and not run after the hold, the urgent one removed and counted in `URGENT_FAILED`, and a sequence started by hand during the hold left alone; a running `SHUTDOWN` and `NIGHT_END` hook finishing; a running `STARTUP`, `IDLE`, `NIGHT_START`, `RESUME` and `SAFE` hook aborted with the result `UNSAFE` and without a stop, the startup hook run again and an aborted `SAFE` hook followed by a new hold with its own `UNSAFE` hook; `NIGHT_END` at dawn during the hold and `NIGHT_START` of a night that started during the hold waiting for its end; `SAFE_DELAY` restarted by an ALERT shorter than the evaluation interval; the `SAFE` hook only in the night with work, standby by day with `NIGHT_START` at dusk, and standby without work with `RESUME` before a later task; failed `UNSAFE` and `SAFE` hooks running `SHUTDOWN` and stopping with Alert, and a missing `UNSAFE` task reported without a stop; missing safety information counted as safe by default and as unsafe when selected (no agent, Idle light, deleted property); a postponed `START` without `UNSAFE` and `STARTUP` after `SAFE_DELAY`; `STOP` and `ABORT` during the hold; the hold across a restart with the restored settings, and a saved safe state older than the delay not postponing `START`; and the labels `hook unsafe` and `hook safe`.

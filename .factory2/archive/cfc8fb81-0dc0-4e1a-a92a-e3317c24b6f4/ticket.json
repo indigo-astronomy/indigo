@@ -1,0 +1,417 @@
+{
+  "schema_version": 1,
+  "ticket_id": "cfc8fb81-0dc0-4e1a-a92a-e3317c24b6f4",
+  "revision": 18,
+  "title": "indigo_agent_scheduler: apply @preempted to a task aborted by the unsafe hold",
+  "description": "Owner's change of the approved unsafe-hold design (ticket a4c962a2, commit 0ee7bddca), requested on 2026-11-22: a task aborted by the unsafe hold must observe its @preempted key, as it does when an urgent task preempts it.\n\nToday finish_stop() in indigo_drivers/agent_scheduler/indigo_agent_scheduler.c handles STOP_UNSAFE as an interruption: the task returns to RETRY without consuming a retry and without a retry delay, and @preempted fail does not apply (comment at about line 1508; also the converted preemption at about line 2108).\n\nNew behaviour for a task (ordinary or urgent) aborted by the hold, including a preemption in progress that the hold converts:\n- @preempted retry (default): unchanged - RETRY, no retry consumed, no retry delay; it runs after the hold.\n- @preempted fail: the task becomes FAILED, as after an urgent preemption; a one-off urgent task leaves the list and is counted as an urgent failure, as for any ended one-off urgent task.\n- The history result stays 'unsafe' with the reason 'unsafe conditions'. The message for the failed case should say the task was aborted by unsafe conditions and failed.\nHooks are not affected (they reject @preempted).\n\nUpdate the tests in indigo_test/integration/test_agent_scheduler.c (the case that currently expects RETRY despite @preempted fail must expect FAILED; add a case keeping @preempted retry), and the docs: indigo_drivers/agent_scheduler/doc/SCHEDULER.md (Unsafe hold section, the @preempted key row, the task state table/diagram where it says 'preempted with @preempted fail', the testing list) and indigo_docs/INDIGO_SCHEDULER_GUIDE.md (Unsafe conditions, safety rules, @preempted key row, FAILED state). Bump DRIVER_VERSION.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-22T00:35:29.860993Z",
+  "status": "closed",
+  "branch": "ticket/cfc8fb81-0dc0-4e1a-a92a-e3317c24b6f4",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "c4063138-13af-4b23-b0dc-d7bc17b2494e",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "bcffb6c5-590c-41e9-8a8e-1bef99262fa9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T00:53:27.595451Z",
+          "last_activity_at": "2026-11-22T01:11:54.566641Z",
+          "ended_at": "2026-11-22T01:11:54.566641Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1106971.19,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T00:53:27.595451Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/cfc8fb81-0dc0-4e1a-a92a-e3317c24b6f4"
+        },
+        {
+          "at": "2026-11-22T01:11:54.566641Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1106971.19,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "b31891a8-6d19-4e52-aa39-496a69eabaac",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "714a4270-6a06-4610-a389-8cd12a117434",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T01:11:54.566680Z",
+          "last_activity_at": "2026-11-22T01:14:21.150244Z",
+          "ended_at": "2026-11-22T01:14:21.150244Z",
+          "outcome": {
+            "summary": "Pass. finish_stop() STOP_UNSAFE (indigo_agent_scheduler.c:1507-1518) honours preempted_fail -> TASK_FAILED with 'aborted by unsafe conditions and failed'; retry path unchanged (RETRY, delay 0, runs not incremented); history stays UNSAFE/'unsafe conditions'. One-off urgent failed by the hold is counted via count_urgent(false) and removed (1524-1526), matching finish_task (1446-1448) and window expiry (1689-1691); STOP_PREEMPT never targets an urgent task (only !is_urgent at 1857, or current=-1 hand sequence), so no inconsistency there. Converted preemption in enter_hold (2115-2118) sets stop=STOP_UNSAFE and reaches the same branch; other stop reasons unchanged. A task becoming FAILED during the hold cannot trigger the automatic stop until the hold ends, since process_hold returns true while holding; the later stop for all-finished is the same as after a preemption with @preempted fail - acceptable. DRIVER_VERSION 0x03000020->0x03000021. Tests: two new cases are deterministic and effective (message, history, FAILED/removal, URGENT_FAILED counter, no rerun after hold); changing the old case to explicit @preempted retry is justified since its fail expectation is now obsolete. Docs SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md consistent with code and each other; no stale '@preempted fail does not apply'. Missing dedicated test for the hold arriving during an in-progress preemption stop is acceptable: one-line state conversion into the tested branch. Reviewer ran: build, test_agent_scheduler filter unsafe_hold 13/13, preempt 8/8, urgent 16/16; git diff --check clean.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 146583.564,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T01:11:54.566680Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T01:14:21.150244Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. finish_stop() STOP_UNSAFE (indigo_agent_scheduler.c:1507-1518) honours preempted_fail -> TASK_FAILED with 'aborted by unsafe conditions and failed'; retry path unchanged (RETRY, delay 0, runs not incremented); history stays UNSAFE/'unsafe conditions'. One-off urgent failed by the hold is counted via count_urgent(false) and removed (1524-1526), matching finish_task (1446-1448) and window expiry (1689-1691); STOP_PREEMPT never targets an urgent task (only !is_urgent at 1857, or current=-1 hand sequence), so no inconsistency there. Converted preemption in enter_hold (2115-2118) sets stop=STOP_UNSAFE and reaches the same branch; other stop reasons unchanged. A task becoming FAILED during the hold cannot trigger the automatic stop until the hold ends, since process_hold returns true while holding; the later stop for all-finished is the same as after a preemption with @preempted fail - acceptable. DRIVER_VERSION 0x03000020->0x03000021. Tests: two new cases are deterministic and effective (message, history, FAILED/removal, URGENT_FAILED counter, no rerun after hold); changing the old case to explicit @preempted retry is justified since its fail expectation is now obsolete. Docs SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md consistent with code and each other; no stale '@preempted fail does not apply'. Missing dedicated test for the hold arriving during an in-progress preemption stop is acceptable: one-line state conversion into the tested branch. Reviewer ran: build, test_agent_scheduler filter unsafe_hold 13/13, preempt 8/8, urgent 16/16; git diff --check clean."
+        }
+      ],
+      "result": {
+        "summary": "Pass. finish_stop() STOP_UNSAFE (indigo_agent_scheduler.c:1507-1518) honours preempted_fail -> TASK_FAILED with 'aborted by unsafe conditions and failed'; retry path unchanged (RETRY, delay 0, runs not incremented); history stays UNSAFE/'unsafe conditions'. One-off urgent failed by the hold is counted via count_urgent(false) and removed (1524-1526), matching finish_task (1446-1448) and window expiry (1689-1691); STOP_PREEMPT never targets an urgent task (only !is_urgent at 1857, or current=-1 hand sequence), so no inconsistency there. Converted preemption in enter_hold (2115-2118) sets stop=STOP_UNSAFE and reaches the same branch; other stop reasons unchanged. A task becoming FAILED during the hold cannot trigger the automatic stop until the hold ends, since process_hold returns true while holding; the later stop for all-finished is the same as after a preemption with @preempted fail - acceptable. DRIVER_VERSION 0x03000020->0x03000021. Tests: two new cases are deterministic and effective (message, history, FAILED/removal, URGENT_FAILED counter, no rerun after hold); changing the old case to explicit @preempted retry is justified since its fail expectation is now obsolete. Docs SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md consistent with code and each other; no stale '@preempted fail does not apply'. Missing dedicated test for the hold arriving during an in-progress preemption stop is acceptable: one-line state conversion into the tested branch. Reviewer ran: build, test_agent_scheduler filter unsafe_hold 13/13, preempt 8/8, urgent 16/16; git diff --check clean.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 146583.564,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "424f5a3d-9b83-4a04-86f8-9491864d66ba",
+      "event": "ticket/created",
+      "at": "2026-11-22T00:35:29.861832Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "unknown",
+      "profile": "simple"
+    },
+    {
+      "event_id": "87eda33e-f301-45f9-8a0f-41ea007d918e",
+      "event": "ticket/confirmed",
+      "at": "2026-11-22T00:53:17.224975Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "unknown",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "e9681f45-814a-4154-962e-4b869d87a91b",
+      "event": "task/progress",
+      "at": "2026-11-22T00:53:27.595583Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c4063138-13af-4b23-b0dc-d7bc17b2494e",
+      "text": "Implementation started on branch ticket/cfc8fb81-0dc0-4e1a-a92a-e3317c24b6f4"
+    },
+    {
+      "event_id": "babc75f3-2819-4fb6-850c-1760d5364b6e",
+      "event": "ticket/started",
+      "at": "2026-11-22T00:53:27.596910Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/cfc8fb81-0dc0-4e1a-a92a-e3317c24b6f4",
+      "base": "master"
+    },
+    {
+      "event_id": "6906bd48-d8ac-444e-a51d-529fe0ef34dc",
+      "event": "task/progress",
+      "at": "2026-11-22T00:53:43.568009Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c4063138-13af-4b23-b0dc-d7bc17b2494e",
+      "text": "Implementer launched",
+      "attempt_id": "bcffb6c5-590c-41e9-8a8e-1bef99262fa9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "bc025814-2e91-438b-b928-9934feecfe93",
+      "event": "task/progress",
+      "at": "2026-11-22T00:54:22.506194Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c4063138-13af-4b23-b0dc-d7bc17b2494e",
+      "text": "Writing the failing tests for @preempted under the unsafe hold"
+    },
+    {
+      "event_id": "5abd3d54-13d1-4c3e-b95c-e6dcd39dd558",
+      "event": "task/progress",
+      "at": "2026-11-22T00:56:17.345936Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c4063138-13af-4b23-b0dc-d7bc17b2494e",
+      "text": "Running test_agent_scheduler unsafe_hold cases against unfixed code"
+    },
+    {
+      "event_id": "5a8839fb-befc-4e0d-a293-072eddd28681",
+      "event": "task/progress",
+      "at": "2026-11-22T00:58:55.753299Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c4063138-13af-4b23-b0dc-d7bc17b2494e",
+      "text": "Running full test_agent_scheduler suite, run 1 of 2"
+    },
+    {
+      "event_id": "dac9a9ba-98aa-49a8-a9a6-ebd2f80d6145",
+      "event": "task/progress",
+      "at": "2026-11-22T01:05:13.771712Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c4063138-13af-4b23-b0dc-d7bc17b2494e",
+      "text": "Running full test_agent_scheduler suite, run 2 of 2"
+    },
+    {
+      "event_id": "c16fa202-47ba-4f67-a607-d983778bfe6f",
+      "event": "task/progress",
+      "at": "2026-11-22T01:11:10.832492Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c4063138-13af-4b23-b0dc-d7bc17b2494e",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "910c7f32-ba65-4834-a626-a0350f4c0416",
+      "event": "task/progress",
+      "at": "2026-11-22T01:11:10.853946Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c4063138-13af-4b23-b0dc-d7bc17b2494e",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5b3f3755-8bda-42dc-a907-405012099788",
+      "event": "check/passed",
+      "at": "2026-11-22T01:11:10.858658Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "0b7e8b926384dbde811806eb20079ff7953ec974",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "5f618da7-6ddd-4aee-8ebd-97edffe71ac7",
+      "event": "ticket/note",
+      "at": "2026-11-22T01:11:19.888378Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: added integration cases unsafe_hold_fails_a_task_with_preempted_fail (ordinary task, @retry 1 + @preempted fail) and unsafe_hold_fails_an_urgent_task_with_preempted_fail (one-off urgent with @preempted fail); the former @preempted fail expectation in unsafe_hold_aborts_a_running_task now uses @preempted retry and keeps its RETRY expectations. Against the unfixed driver both new cases failed (message 'Task ... aborted by unsafe conditions, it will be retried' instead of '... and failed'); filter unsafe_hold: 13 run, 11 passed, 2 failed. Fix: finish_stop() STOP_UNSAFE honours preempted_fail -> TASK_FAILED with 'Task %s aborted by unsafe conditions and failed'; a one-off urgent task failed this way is counted with count_urgent(false) and removed; retry path unchanged (RETRY, delay 0, no retry used); history stays UNSAFE/'unsafe conditions'; the hold-converted preemption (enter_hold) reaches the same code, comment updated. DRIVER_VERSION 0x03000020 -> 0x03000021. Docs: SCHEDULER.md (key row, state table, diagram note, further rules, Unsafe hold, testing list) and INDIGO_SCHEDULER_GUIDE.md (Unsafe conditions, safety rules, key row, FAILED state, messages). After fix: unsafe_hold filter 13/13; full test_agent_scheduler suite twice: 165 run, 165 passed, 0 failed each. flow check (whitespace selected) passed. Not covered by a dedicated test: the hold arriving during an in-progress preemption stop (RUN_STOPPING/STOP_PREEMPT); it shares the STOP_UNSAFE branch.",
+      "tokens": null
+    },
+    {
+      "event_id": "731e86a7-a8d5-4c21-a416-098f580a8650",
+      "event": "task/progress",
+      "at": "2026-11-22T01:11:54.566748Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b31891a8-6d19-4e52-aa39-496a69eabaac",
+      "text": "Review started"
+    },
+    {
+      "event_id": "63e84886-4bca-48fe-bfb4-4fd63ab60aa5",
+      "event": "review/started",
+      "at": "2026-11-22T01:11:54.567311Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "0d7694a0-2ee0-4548-93f2-d941df8a7e91",
+      "event": "task/progress",
+      "at": "2026-11-22T01:11:54.711889Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b31891a8-6d19-4e52-aa39-496a69eabaac",
+      "text": "Reviewer launched",
+      "attempt_id": "714a4270-6a06-4610-a389-8cd12a117434",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5c69f534-96ae-4c8a-8c38-d10701b78f40",
+      "event": "task/progress",
+      "at": "2026-11-22T01:12:34.188101Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b31891a8-6d19-4e52-aa39-496a69eabaac",
+      "text": "Building and running test_agent_scheduler filter unsafe_hold"
+    },
+    {
+      "event_id": "53b4d78a-5845-4512-a7f5-8b2d7dbba759",
+      "event": "task/progress",
+      "at": "2026-11-22T01:14:21.150321Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b31891a8-6d19-4e52-aa39-496a69eabaac",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b8c53d3a-90f6-450e-9033-8d04793d9d7d",
+      "event": "review/passed",
+      "at": "2026-11-22T01:14:21.150932Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b31891a8-6d19-4e52-aa39-496a69eabaac",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0b7e8b926384dbde811806eb20079ff7953ec974"
+    },
+    {
+      "event_id": "8065a072-c862-45b5-839c-286897ee0075",
+      "event": "ticket/closed",
+      "at": "2026-11-22T01:24:38.322596Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-22T01:24:38.322572Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "3e4c122d036773b05100de777c872e80a3e5559b"
+  },
+  "priority": "medium",
+  "severity": "unknown",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0b7e8b926384dbde811806eb20079ff7953ec974",
+        "tree": "988800e01bbe911bcaa2a7825d41550b4f1f73a8",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T01:11:10.853251Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/cfc8fb81-0dc0-4e1a-a92a-e3317c24b6f4/988800e01bbe-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. finish_stop() STOP_UNSAFE (indigo_agent_scheduler.c:1507-1518) honours preempted_fail -> TASK_FAILED with 'aborted by unsafe conditions and failed'; retry path unchanged (RETRY, delay 0, runs not incremented); history stays UNSAFE/'unsafe conditions'. One-off urgent failed by the hold is counted via count_urgent(false) and removed (1524-1526), matching finish_task (1446-1448) and window expiry (1689-1691); STOP_PREEMPT never targets an urgent task (only !is_urgent at 1857, or current=-1 hand sequence), so no inconsistency there. Converted preemption in enter_hold (2115-2118) sets stop=STOP_UNSAFE and reaches the same branch; other stop reasons unchanged. A task becoming FAILED during the hold cannot trigger the automatic stop until the hold ends, since process_hold returns true while holding; the later stop for all-finished is the same as after a preemption with @preempted fail - acceptable. DRIVER_VERSION 0x03000020->0x03000021. Tests: two new cases are deterministic and effective (message, history, FAILED/removal, URGENT_FAILED counter, no rerun after hold); changing the old case to explicit @preempted retry is justified since its fail expectation is now obsolete. Docs SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md consistent with code and each other; no stale '@preempted fail does not apply'. Missing dedicated test for the hold arriving during an in-progress preemption stop is acceptable: one-line state conversion into the tested branch. Reviewer ran: build, test_agent_scheduler filter unsafe_hold 13/13, preempt 8/8, urgent 16/16; git diff --check clean.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "0b7e8b926384dbde811806eb20079ff7953ec974",
+        "tree": "988800e01bbe911bcaa2a7825d41550b4f1f73a8",
+        "at": "2026-11-22T01:14:21.150219Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-22T01:11:19.887807Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: added integration cases unsafe_hold_fails_a_task_with_preempted_fail (ordinary task, @retry 1 + @preempted fail) and unsafe_hold_fails_an_urgent_task_with_preempted_fail (one-off urgent with @preempted fail); the former @preempted fail expectation in unsafe_hold_aborts_a_running_task now uses @preempted retry and keeps its RETRY expectations. Against the unfixed driver both new cases failed (message 'Task ... aborted by unsafe conditions, it will be retried' instead of '... and failed'); filter unsafe_hold: 13 run, 11 passed, 2 failed. Fix: finish_stop() STOP_UNSAFE honours preempted_fail -> TASK_FAILED with 'Task %s aborted by unsafe conditions and failed'; a one-off urgent task failed this way is counted with count_urgent(false) and removed; retry path unchanged (RETRY, delay 0, no retry used); history stays UNSAFE/'unsafe conditions'; the hold-converted preemption (enter_hold) reaches the same code, comment updated. DRIVER_VERSION 0x03000020 -> 0x03000021. Docs: SCHEDULER.md (key row, state table, diagram note, further rules, Unsafe hold, testing list) and INDIGO_SCHEDULER_GUIDE.md (Unsafe conditions, safety rules, key row, FAILED state, messages). After fix: unsafe_hold filter 13/13; full test_agent_scheduler suite twice: 165 run, 165 passed, 0 failed each. flow check (whitespace selected) passed. Not covered by a dedicated test: the hold arriving during an in-progress preemption stop (RUN_STOPPING/STOP_PREEMPT); it shares the STOP_UNSAFE branch.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "3e4c122d036773b05100de777c872e80a3e5559b",
+      "tree": "988800e01bbe911bcaa2a7825d41550b4f1f73a8",
+      "base": "master",
+      "at": "2026-11-22T01:24:38.246967Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "unknown",
+    "profile": "simple",
+    "at": "2026-11-22T00:35:29.860993Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-22T00:53:17.224936Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1253554.754,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 24,
+    "sha256": "e943254385d2b91e6ff1dea6d921805ea4de189a9f49fab6d2e3679d363457cc"
+  }
+}

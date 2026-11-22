@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000020
+#define DRIVER_VERSION 0x03000021
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -1505,18 +1505,26 @@ static void finish_stop(indigo_device *device) {
 			indigo_send_message(device, NULL, "Task '%s' aborted", task->header.name);
 			break;
 		case STOP_UNSAFE:
-			// an interruption, not a run: no retry is used and @preempted does not apply
+			// @preempted applies as after a preemption, but a retried task uses no retry and waits for no retry delay
 			add_history(device, task, RESULT_UNSAFE, "unsafe conditions");
-			task->state = TASK_RETRY;
-			task->delay_until = 0;
-			indigo_send_message(device, NULL, "Task '%s' aborted by unsafe conditions, it will be retried", task->header.name);
+			if (task->header.preempted_fail) {
+				task->state = TASK_FAILED;
+				indigo_send_message(device, NULL, "Task '%s' aborted by unsafe conditions and failed", task->header.name);
+			} else {
+				task->state = TASK_RETRY;
+				task->delay_until = 0;
+				indigo_send_message(device, NULL, "Task '%s' aborted by unsafe conditions, it will be retried", task->header.name);
+			}
 			break;
 		case STOP_FAILURE:
 			break;
 	}
 	if (task->used) {
-		// a one-off urgent task aborted by the unsafe hold stays in the list and runs after it
-		if (!task->stored && PRIVATE_DATA->stop != STOP_UNSAFE) {
+		// a one-off urgent task retried after the unsafe hold stays in the list and runs after it
+		if (!task->stored && PRIVATE_DATA->stop == STOP_UNSAFE && task->state == TASK_FAILED) {
+			count_urgent(device, false);
+			remove_task(device, slot);
+		} else if (!task->stored && PRIVATE_DATA->stop != STOP_UNSAFE) {
 			remove_task(device, slot);
 		} else {
 			apply_pending_edit(device, task, slot);
@@ -2105,7 +2113,7 @@ static void enter_hold(indigo_device *device) {
 			begin_stop(device, STOP_UNSAFE);
 		}
 	} else if (PRIVATE_DATA->phase == RUN_STOPPING && PRIVATE_DATA->stop == STOP_PREEMPT) {
-		// the preempting urgent task cannot start during the hold, the run counts as unsafe and @preempted fail does not apply
+		// the preempting urgent task cannot start during the hold, the run counts as unsafe and its @preempted applies
 		PRIVATE_DATA->stop = STOP_UNSAFE;
 	}
 }

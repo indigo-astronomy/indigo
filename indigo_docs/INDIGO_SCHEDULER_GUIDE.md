@@ -623,7 +623,7 @@ The scheduler can follow a safety signal, for example from a weather station or 
 
 When the conditions become unsafe while the scheduler runs, it enters the **unsafe hold** at once:
 
-- The running task is aborted, also an urgent task and a sequence you started by hand. The task goes back to `RETRY` without using a retry, and runs again later. `@preempted fail` does not apply.
+- The running task is aborted, also an urgent task and a sequence you started by hand. Its `@preempted` key decides what follows, as after an urgent task: with `retry`, the default, the task goes back to `RETRY` without using a retry, and runs again after the hold; with `fail` it becomes `FAILED`.
 - A running `STARTUP`, `NIGHT_START`, `IDLE`, `RESUME` or `SAFE` hook is aborted too. A running `SHUTDOWN` or `NIGHT_END` hook finishes, because it puts the equipment away anyway.
 - Then the `UNSAFE` hook runs once, for example to park and close the roof.
 - During the hold, no task and no other hook starts, except `NIGHT_END` at dawn. `REASON` says `unsafe conditions`.
@@ -935,7 +935,7 @@ See also: [Tasks](#tasks).
 | `@duration` | `minutes` | Expected length of a run, 1–1440 | estimated |
 | `@repeat` | `count`, optionally `every minutes` | Number of successful runs, 1–10000, with an optional pause of 0–100000 minutes between them | `1` |
 | `@retry` | `count`, optionally `after minutes` | Number of reruns after failures, 0–100, with an optional delay of 0–100000 minutes | `0` |
-| `@preempted` | `retry` or `fail` | What happens to this task when an urgent task interrupts it | `retry` |
+| `@preempted` | `retry` or `fail` | What happens to this task when an urgent task or the unsafe hold interrupts it | `retry` |
 | `@enabled` | `yes` or `no` | A disabled task is kept but never selected | `yes` |
 | `@folder` | `name` or `none` | The folder for the frames of this task, 1–40 bytes. Several tasks may share it. `none` gives the task no folder of its own | set by `FOLDER` |
 | `@observer` | text | The observer, written as the FITS header `OBSERVER`, 1–56 characters. A quote counts as two | no header |
@@ -1132,7 +1132,7 @@ See also: [Hooks and the night](#hooks-and-the-night).
 
 - The safety is the light of the item `SAFE` of `AGENT_AUX_SAFETY` on the Auxiliary Agent of the same server. Ok is safe, Alert is unsafe. Idle, Busy, a missing property and a missing agent are no information, which `AGENT_SCHEDULER_SAFETY_MISSING` treats as safe (`SAFE`, the default) or unsafe (`UNSAFE`). The state of the property itself does not count.
 - An unsafe report while the scheduler runs starts the unsafe hold at once. Every task and every hook except `SHUTDOWN`, `NIGHT_END` and `UNSAFE` is aborted, and so is a sequence started by hand that runs at that moment. A sequence that you start by hand during the hold is left alone.
-- An aborted task returns to `RETRY` without using a retry and without a retry delay. `@preempted fail` does not apply. A one-off urgent task stays in the list and runs after the hold.
+- An aborted task with `@preempted retry` returns to `RETRY` without using a retry and without a retry delay; a one-off urgent task stays in the list and runs after the hold. With `@preempted fail` the task becomes `FAILED`; a one-off urgent task leaves the list and counts in `URGENT_FAILED`. The history result is `UNSAFE` in both cases.
 - `UNSAFE` runs once per hold. When it names the task that has just run as `NIGHT_END`, it does not run again.
 - During the hold, no task, urgent task or hook starts, except `UNSAFE` and `NIGHT_END` at dawn. A night that starts during the hold waits for its end. The automatic stop waits too.
 - The hold ends at the first check after the conditions have been safe for `SAFE_DELAY` minutes. Each unsafe report starts the delay again.
@@ -1393,7 +1393,7 @@ Park | HOOK | hook shutdown | - | - | -
 | `RETRY` | Idle | Failed or interrupted. It will run again after the retry delay |
 | `REPEAT` | Idle | Completed a run. More runs follow after the repeat interval |
 | `DONE` | Ok | All runs completed |
-| `FAILED` | Alert | Failed with no retries left, or interrupted with `@preempted fail` |
+| `FAILED` | Alert | Failed with no retries left, or interrupted by an urgent task or the unsafe hold with `@preempted fail` |
 | `EXPIRED` | Alert | The end of its `@window` passed before it completed |
 | `DISABLED` | Idle | `@enabled no`, or disabled by command. A disabled hook task shows it too, with its hook in the priority column |
 | `SCRIPT ERROR` | Alert | The body has an error. Fix it with an edit |
@@ -1460,7 +1460,7 @@ The scheduler reports events as INDIGO messages of the device "Scheduler Agent".
 | `The Sun does not rise above the night limit, the night does not end` | A polar night. `NIGHT_END` does not run until it ends |
 | `The sequence or an agent did not stop in time, the scheduler stopped` | An aborted sequence did not stop within `STOP_TIMEOUT` |
 | `Unsafe conditions, the scheduler holds`, `No safety information, treated as unsafe, the scheduler holds` | The unsafe hold starts |
-| `Task 'M31 LRGB' aborted by unsafe conditions, it will be retried`, `Hook 'Evening' aborted by unsafe conditions` | The unsafe hold aborted a run |
+| `Task 'M31 LRGB' aborted by unsafe conditions, it will be retried`, `... and failed`, `Hook 'Evening' aborted by unsafe conditions` | The unsafe hold aborted a run |
 | `A sequence started by hand was aborted by unsafe conditions` | The unsafe hold aborted a sequence you started by hand |
 | `Safe conditions, the unsafe hold ends`, `..., the scheduler continues in standby`, `Safe conditions, the scheduler starts` | The unsafe hold ends |
 | `Unsafe conditions, the start waits for safe conditions` | `START` while the conditions are unsafe |
