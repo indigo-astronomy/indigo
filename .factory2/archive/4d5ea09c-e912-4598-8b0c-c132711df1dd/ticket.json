@@ -1,0 +1,385 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4d5ea09c-e912-4598-8b0c-c132711df1dd",
+  "revision": 14,
+  "title": "test_agent_scheduler: remove the stale fallback safety names",
+  "description": "Requested by the owner on 2026-11-22. indigo_test/integration/test_agent_scheduler.c lines 47-53 define fallback values for AGENT_AUX_SAFETY_PROPERTY_NAME and AGENT_AUX_SAFETY_SAFE_ITEM_NAME under the comment 'the names of the safety of the Auxiliary Agent, until its header provides them'. Since commit 0ee7bddca, indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h (included at line 45) defines both names, so the comment is stale and the #ifndef block is dead code. Remove the comment and the block, so a renamed header name fails the build instead of being silently replaced. Test-only change: no driver behaviour or version changes. Verify that test_agent_scheduler still builds and its suite passes.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-22T01:29:22.863525Z",
+  "status": "closed",
+  "branch": "ticket/4d5ea09c-e912-4598-8b0c-c132711df1dd",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "370e23bb-21c9-4322-881e-69a3efc3f49f",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "59207c42-9e54-4c17-ae0e-b3ab3d28c910",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T01:29:55.970080Z",
+          "last_activity_at": "2026-11-22T01:40:41.528073Z",
+          "ended_at": "2026-11-22T01:40:41.528073Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 645557.993,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T01:29:55.970080Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/4d5ea09c-e912-4598-8b0c-c132711df1dd"
+        },
+        {
+          "at": "2026-11-22T01:40:41.528073Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 645557.993,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "115ed73d-1133-46b6-aedc-48fd2424613a",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "aee5ca62-f97a-4dce-bea2-b8a588edc66c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T01:40:41.528110Z",
+          "last_activity_at": "2026-11-22T01:41:06.689606Z",
+          "ended_at": "2026-11-22T01:41:06.689606Z",
+          "outcome": {
+            "summary": "Diff (master...HEAD, no uncommitted changes outside .factory2) is 8 deletions in indigo_test/integration/test_agent_scheduler.c only: the stale comment and both #ifndef fallbacks; one blank line remains between the auxiliary header include and #if defined(__SANITIZE_ADDRESS__). indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h lines 50-51 define AGENT_AUX_SAFETY_PROPERTY_NAME \"AGENT_AUX_SAFETY\" and AGENT_AUX_SAFETY_SAFE_ITEM_NAME \"SAFE\" unconditionally (same values), and the test includes it at line 45; the only uses (lines 981-982) resolve. git grep: other users (agent_auxiliary.c, test_agent_auxiliary.c) take the names from the header, no other fallback dependency. gcc -fsyntax-only (with _GNU_SOURCE and SEQUENCER_JS_PATH supplied as the Makefile would) completes with no errors. No defects.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 25161.496,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T01:40:41.528110Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T01:41:06.689606Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Diff (master...HEAD, no uncommitted changes outside .factory2) is 8 deletions in indigo_test/integration/test_agent_scheduler.c only: the stale comment and both #ifndef fallbacks; one blank line remains between the auxiliary header include and #if defined(__SANITIZE_ADDRESS__). indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h lines 50-51 define AGENT_AUX_SAFETY_PROPERTY_NAME \"AGENT_AUX_SAFETY\" and AGENT_AUX_SAFETY_SAFE_ITEM_NAME \"SAFE\" unconditionally (same values), and the test includes it at line 45; the only uses (lines 981-982) resolve. git grep: other users (agent_auxiliary.c, test_agent_auxiliary.c) take the names from the header, no other fallback dependency. gcc -fsyntax-only (with _GNU_SOURCE and SEQUENCER_JS_PATH supplied as the Makefile would) completes with no errors. No defects."
+        }
+      ],
+      "result": {
+        "summary": "Diff (master...HEAD, no uncommitted changes outside .factory2) is 8 deletions in indigo_test/integration/test_agent_scheduler.c only: the stale comment and both #ifndef fallbacks; one blank line remains between the auxiliary header include and #if defined(__SANITIZE_ADDRESS__). indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h lines 50-51 define AGENT_AUX_SAFETY_PROPERTY_NAME \"AGENT_AUX_SAFETY\" and AGENT_AUX_SAFETY_SAFE_ITEM_NAME \"SAFE\" unconditionally (same values), and the test includes it at line 45; the only uses (lines 981-982) resolve. git grep: other users (agent_auxiliary.c, test_agent_auxiliary.c) take the names from the header, no other fallback dependency. gcc -fsyntax-only (with _GNU_SOURCE and SEQUENCER_JS_PATH supplied as the Makefile would) completes with no errors. No defects.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 25161.496,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "02e74649-f2e2-451b-8d25-80d533f5bad4",
+      "event": "ticket/created",
+      "at": "2026-11-22T01:29:22.864147Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "unknown",
+      "profile": "simple"
+    },
+    {
+      "event_id": "34a14018-75e6-4abb-b90a-58e9502ecdc4",
+      "event": "ticket/confirmed",
+      "at": "2026-11-22T01:29:45.312810Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "unknown",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "afd890d1-ab57-4821-b53a-c0b77244dc21",
+      "event": "task/progress",
+      "at": "2026-11-22T01:29:55.970171Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "370e23bb-21c9-4322-881e-69a3efc3f49f",
+      "text": "Implementation started on branch ticket/4d5ea09c-e912-4598-8b0c-c132711df1dd"
+    },
+    {
+      "event_id": "1437c698-d48f-40c9-af8b-9820678acc58",
+      "event": "ticket/started",
+      "at": "2026-11-22T01:29:55.970943Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/4d5ea09c-e912-4598-8b0c-c132711df1dd",
+      "base": "master"
+    },
+    {
+      "event_id": "9fecb8a2-fb15-4025-8460-5a532138543e",
+      "event": "task/progress",
+      "at": "2026-11-22T01:30:09.506615Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "370e23bb-21c9-4322-881e-69a3efc3f49f",
+      "text": "Implementer launched",
+      "attempt_id": "59207c42-9e54-4c17-ae0e-b3ab3d28c910",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e4a9e6e2-9532-43cf-8777-1ecede71ce22",
+      "event": "task/progress",
+      "at": "2026-11-22T01:30:21.215256Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "370e23bb-21c9-4322-881e-69a3efc3f49f",
+      "text": "Building and running test_agent_scheduler suite"
+    },
+    {
+      "event_id": "a45a3853-6dc4-471c-b264-3c995e8ff9a8",
+      "event": "task/progress",
+      "at": "2026-11-22T01:40:12.833075Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "370e23bb-21c9-4322-881e-69a3efc3f49f",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "20073b0a-af9a-4f40-b394-e4287d162d98",
+      "event": "task/progress",
+      "at": "2026-11-22T01:40:12.847078Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "370e23bb-21c9-4322-881e-69a3efc3f49f",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "22a31ec6-3c65-4df6-8dff-3ba13294d694",
+      "event": "check/passed",
+      "at": "2026-11-22T01:40:12.851534Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "aced6642d03a0ee69a79fa1511966ed8e08eed69",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "43102813-61b1-4a61-97d7-89e251e8b52c",
+      "event": "ticket/note",
+      "at": "2026-11-22T01:40:17.936261Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Removed the stale comment and the #ifndef fallbacks for AGENT_AUX_SAFETY_PROPERTY_NAME / AGENT_AUX_SAFETY_SAFE_ITEM_NAME (indigo_agent_auxiliary.h lines 50-51 define both). Before: the fallbacks were dead code because the header defines both names. After: test_agent_scheduler builds with no new warnings (the -Wformat-truncation warnings at lines 2397/2399 were already there) and runs 165 run, 165 passed, 0 failed. flow check selected only whitespace (passed); the unit check does not cover indigo_test/integration.",
+      "tokens": null
+    },
+    {
+      "event_id": "996d8c30-52a2-456e-ba6c-325e3ae410ab",
+      "event": "task/progress",
+      "at": "2026-11-22T01:40:41.528176Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "115ed73d-1133-46b6-aedc-48fd2424613a",
+      "text": "Review started"
+    },
+    {
+      "event_id": "7be171dd-52e3-4ec7-96e9-af3837d2aff2",
+      "event": "review/started",
+      "at": "2026-11-22T01:40:41.528706Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "84dd3b14-fce7-4e7f-8732-1f5938c028ed",
+      "event": "task/progress",
+      "at": "2026-11-22T01:40:41.668564Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "115ed73d-1133-46b6-aedc-48fd2424613a",
+      "text": "Reviewer launched",
+      "attempt_id": "aee5ca62-f97a-4dce-bea2-b8a588edc66c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e3b630dd-365a-4940-8846-f5caa0bee259",
+      "event": "task/progress",
+      "at": "2026-11-22T01:41:06.689683Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "115ed73d-1133-46b6-aedc-48fd2424613a",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "841775b3-e7c3-45d1-83f5-2b8ac9399de0",
+      "event": "review/passed",
+      "at": "2026-11-22T01:41:06.690301Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "115ed73d-1133-46b6-aedc-48fd2424613a",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "aced6642d03a0ee69a79fa1511966ed8e08eed69"
+    },
+    {
+      "event_id": "dc3fe27c-617b-46a0-b4c9-3827bd9fb124",
+      "event": "ticket/closed",
+      "at": "2026-11-22T01:54:28.635427Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-22T01:54:28.635403Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "a597ec3a02a092fd418d090450fc16558c6a93f4"
+  },
+  "priority": "low",
+  "severity": "unknown",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "aced6642d03a0ee69a79fa1511966ed8e08eed69",
+        "tree": "4034379777e207a63449dbd296a98eb822a63189",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T01:40:12.846380Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/4d5ea09c-e912-4598-8b0c-c132711df1dd/4034379777e2-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Diff (master...HEAD, no uncommitted changes outside .factory2) is 8 deletions in indigo_test/integration/test_agent_scheduler.c only: the stale comment and both #ifndef fallbacks; one blank line remains between the auxiliary header include and #if defined(__SANITIZE_ADDRESS__). indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h lines 50-51 define AGENT_AUX_SAFETY_PROPERTY_NAME \"AGENT_AUX_SAFETY\" and AGENT_AUX_SAFETY_SAFE_ITEM_NAME \"SAFE\" unconditionally (same values), and the test includes it at line 45; the only uses (lines 981-982) resolve. git grep: other users (agent_auxiliary.c, test_agent_auxiliary.c) take the names from the header, no other fallback dependency. gcc -fsyntax-only (with _GNU_SOURCE and SEQUENCER_JS_PATH supplied as the Makefile would) completes with no errors. No defects.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "aced6642d03a0ee69a79fa1511966ed8e08eed69",
+        "tree": "4034379777e207a63449dbd296a98eb822a63189",
+        "at": "2026-11-22T01:41:06.689580Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-22T01:40:17.935697Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Removed the stale comment and the #ifndef fallbacks for AGENT_AUX_SAFETY_PROPERTY_NAME / AGENT_AUX_SAFETY_SAFE_ITEM_NAME (indigo_agent_auxiliary.h lines 50-51 define both). Before: the fallbacks were dead code because the header defines both names. After: test_agent_scheduler builds with no new warnings (the -Wformat-truncation warnings at lines 2397/2399 were already there) and runs 165 run, 165 passed, 0 failed. flow check selected only whitespace (passed); the unit check does not cover indigo_test/integration.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "a597ec3a02a092fd418d090450fc16558c6a93f4",
+      "tree": "4034379777e207a63449dbd296a98eb822a63189",
+      "base": "master",
+      "at": "2026-11-22T01:54:28.552855Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "unknown",
+    "profile": "simple",
+    "at": "2026-11-22T01:29:22.863525Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-22T01:29:45.312782Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 670719.489,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 20,
+    "sha256": "86c02226f823d0b8cc1d3b9c57e0f06e8da593800533f3b1a32bf5aeab7a31ae"
+  }
+}
