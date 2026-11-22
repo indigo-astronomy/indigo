@@ -91,7 +91,7 @@ The Scheduler Agent depends directly on these agents, found by their exact devic
 | "Mount Agent" | for tasks with `@target` or `@twilight` | observes `GEOGRAPHIC_COORDINATES` for the site; observes `AGENT_START_PROCESS` to wait until the agent is idle after an abort | these tasks wait with `site coordinates unknown`; tasks with only time windows still run |
 | "Guider Agent" | optional | changes `AGENT_ABORT_PROCESS` on `ABORT` and preemption, because the sequencer's abort leaves guiding running; observes `AGENT_START_PROCESS` | nothing to stop |
 | "Imager Agent", "Astrometry Agent", "Platesolver Agent" | optional | observe `AGENT_START_PROCESS`, to wait until they are idle after an abort before the next task starts | nothing to wait for |
-| "Auxiliary Agent" | optional | observes the light `AGENT_AUX_SAFETY`, item `SAFE`: Ok is safe, Alert is unsafe, Idle is no information | no safety information, which counts as safe by default or as unsafe with `AGENT_SCHEDULER_SAFETY_MISSING.UNSAFE`, see [Unsafe hold](#unsafe-hold) |
+| "Auxiliary Agent" | for the weather and safety: the unsafe hold and the `UNSAFE` and `SAFE` hooks | observes the light `AGENT_AUX_SAFETY`, item `SAFE`: Ok is safe, Alert is unsafe, Idle is no information | no safety information, which counts as safe by default or as unsafe with `AGENT_SCHEDULER_SAFETY_MISSING.UNSAFE`, see [Unsafe hold](#unsafe-hold) |
 
 An unconfigured Mount Agent reports 0° latitude and 0° longitude, which the scheduler cannot tell from a real site, so the site must be configured in the Mount Agent: set directly with the default `AGENT_SITE_DATA_SOURCE` `HOST`, or taken from the mount, dome or GPS selected there. The sky tables are rebuilt with a new site at the next selection check.
 

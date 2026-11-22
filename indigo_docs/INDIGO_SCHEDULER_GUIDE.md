@@ -1,6 +1,6 @@
 # INDIGO Scheduler Agent - User Guide
 
-Revision: 21.11.2026 (draft)
+Revision: 22.11.2026 (draft)
 
 Author: **Rumen G. Bogdanovski**
 
@@ -12,14 +12,7 @@ e-mail: *rumenastro@gmail.com*
 
 The INDIGO Scheduler Agent runs your imaging tasks unattended. Each task says what to observe, when it may run and how important it is. The scheduler decides which task runs next and when, over as many nights as the tasks need.
 
-The scheduler:
-
-- starts a task only when the sky allows the whole run;
-- picks the most important task among those that can run now;
-- repeats and retries tasks as you ask;
-- interrupts the running task for an urgent task, such as a new supernova;
-- runs your own tasks, called hooks, to prepare and put away the equipment;
-- shows what it does now, what it plans for the night, and what it has done.
+[Features](#features) lists what the scheduler can do.
 
 A task is a short text. A few `// @key value` header lines tell the scheduler when and how to run it. An ordinary `Sequencer.js` sequence follows and does the work. The scheduler runs that sequence in the Scripting Agent.
 
@@ -27,11 +20,49 @@ You control the scheduler through the INDIGO properties of the device **Schedule
 
 See also: [Sequencer.js](../indigo_drivers/agent_scripting/library/Sequencer.md) for the sequence steps, [SCHEDULER.md](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md) for the design, [PROPERTIES.md](PROPERTIES.md) for the list of all properties.
 
+### Features
+
+**Tasks**
+
+- A task is an ordinary `Sequencer.js` sequence with a few `// @key value` header lines. See [Tasks](#tasks).
+- Tasks can be uploaded, reset, disabled, enabled, moved and deleted. See [Managing tasks](#managing-tasks).
+
+**When a task runs**
+
+- A task starts only when all its constraints hold for its whole run. See [Constraints](#constraints).
+- The constraints are target altitude, airmass, hour angle, Moon distance, also following the Moon phase, Moon illumination, twilight and time windows, absolute or nightly. See [Constraints](#constraints).
+- Checkpoint steps in the body act at a time, an hour angle or a target altitude. They skip to the next `resume_point()`, or end the sequence when none follows. See [Constraints](#constraints).
+- The duration of a run comes from `@duration`, from the last successful run or from an estimate of the sequence. See [Task duration](#task-duration).
+- Every task has a priority class, `low`, `normal`, `high` or `urgent`, and a level. Within a class, a score adds bonuses for setting targets and for targets near culmination. See [Priorities](#priorities).
+- Two strategies: `COMPACT` starts the best task at once, `VISIBILITY` plans the night so that targets run close to their culmination. See [Choosing a strategy](#choosing-a-strategy).
+- The night plan shows the expected runs and hooks for the rest of the night, and the tasks that will not run tonight with the reason. See [The night plan](#the-night-plan).
+- The night plan takes meridian flips into account, and `VISIBILITY` avoids short flips. See [Meridian flips](#meridian-flips).
+
+**Runs**
+
+- Repeats with a pause between the runs, retries after a failure with a delay, and a history of every finished run. See [Repeats, retries and the history](#repeats-retries-and-the-history).
+- An urgent task, such as a new supernova, interrupts the running task. `@preempted` decides whether the interrupted task runs again or fails. See [Urgent tasks](#urgent-tasks).
+
+**Equipment and the night**
+
+- Hooks prepare and put away the equipment: `STARTUP` and `SHUTDOWN` for the session, `NIGHT_START` and `NIGHT_END` for every scheduler night with work, `IDLE` after `IDLE_HOOK_DELAY` minutes without a task start, and `RESUME` before the next task after `IDLE` or `NIGHT_END`. See [Hooks and the night](#hooks-and-the-night).
+- Weather and safety: the unsafe hold aborts the running task and runs the `UNSAFE` hook. When the conditions have been safe for `SAFE_DELAY` minutes, the hold ends and, during a scheduler night with work, the `SAFE` hook runs. It needs the Auxiliary Agent. See [Unsafe conditions](#unsafe-conditions).
+
+**Data**
+
+- The frames carry the task as the object name and in the FITS keywords `SCHTASK`, `SCHRUN` and `SCHNIGHT`, with `OBSERVER`, `PI_NAME` and `PROPID` and a folder per task if you ask. See [Where the data goes](#where-the-data-goes).
+
+**State and restarts**
+
+- The scheduler shows its state, the current task, the reason why nothing runs, and a message for every event. See [Scheduler state](#scheduler-state), [Reasons](#reasons) and [Messages](#messages).
+- The scheduler works over as many nights as the tasks need. The tasks, their states, the settings and the history survive a server restart. See [Starting, stopping and restarting](#starting-stopping-and-restarting) and [What happens when the server restarts](#what-happens-when-the-server-restarts).
+
 ### What you need
 
 - **The Scripting Agent.** It runs every task. Without it, no task starts.
 - **The Mount Agent.** It gives the scheduler the site coordinates. Tasks with a target or a twilight limit need them, and so do the night hooks.
-- **Both agents on the same server as the Scheduler Agent.** The scheduler finds them by their exact names.
+- **The Auxiliary Agent, for weather and safety.** It gives the scheduler the safety signal for the unsafe hold and the `UNSAFE` and `SAFE` hooks. Without it there is no safety information, and `AGENT_SCHEDULER_SAFETY_MISSING` decides. See [Unsafe conditions](#unsafe-conditions).
+- **These agents on the same server as the Scheduler Agent.** The scheduler finds them by their exact names.
 - **The site, set in the Mount Agent.** For example:
 
   ```
@@ -60,7 +91,7 @@ indigo_prop_tool set "Server.LOAD.DRIVER=indigo_agent_mount"
 indigo_prop_tool set "Server.LOAD.DRIVER=indigo_agent_scheduler"
 ```
 
-Add `indigo_agent_imager`, `indigo_agent_guider` and a plate solver agent for tasks that capture, guide or solve.
+Add `indigo_agent_imager`, `indigo_agent_guider` and a plate solver agent for tasks that capture, guide or solve. Add `indigo_agent_auxiliary` for the weather and safety.
 
 ### How to talk to the scheduler
 
@@ -617,7 +648,7 @@ A session then runs like this:
 
 #### Unsafe conditions
 
-The scheduler can follow a safety signal, for example from a weather station or a cloud sensor. It reads the light `AGENT_AUX_SAFETY` of the Auxiliary Agent (`indigo_agent_auxiliary`): item `SAFE` Ok means safe, Alert means unsafe, Idle means no information. The scheduler only reads the light.
+The safety needs the Auxiliary Agent (`indigo_agent_auxiliary`), loaded on the same server as the Scheduler Agent. The scheduler can follow a safety signal, for example from a weather station or a cloud sensor. It reads the light `AGENT_AUX_SAFETY` of the Auxiliary Agent: item `SAFE` Ok means safe, Alert means unsafe, Idle means no information. The scheduler only reads the light.
 
 > **Note:** The current Auxiliary Agent defines `AGENT_AUX_SAFETY` but does not compute it yet, so the light always stays Idle, which is no information. `AGENT_SCHEDULER_SAFETY_MISSING`, below, then decides. Keep it at `SAFE` until the Auxiliary Agent computes the safety.
 
@@ -885,7 +916,7 @@ The Scheduler Agent (`indigo_agent_scheduler`) works directly with these agents:
 | Mount Agent | `indigo_agent_mount` | for tasks with `@target` or `@twilight`, and for the night hooks | The site coordinates, from its `GEOGRAPHIC_COORDINATES` property. Without it, or without a site, these tasks wait with `site coordinates unknown`. The night hooks then do not run |
 | Guider Agent | `indigo_agent_guider` | optional | The scheduler stops guiding when a task is aborted or interrupted. The sequencer's own abort leaves guiding running |
 | Imager Agent and the plate solver agents | `indigo_agent_imager`, `indigo_agent_astrometry`, `indigo_agent_platesolver` | optional | After an abort, the scheduler waits until they are idle. Then it starts the next task |
-| Auxiliary Agent | `indigo_agent_auxiliary` | optional | The safety, from its `AGENT_AUX_SAFETY` light. Without it there is no safety information, which counts as safe unless `AGENT_SCHEDULER_SAFETY_MISSING` is `UNSAFE`. See [Unsafe conditions](#unsafe-conditions) |
+| Auxiliary Agent | `indigo_agent_auxiliary` | for the weather and safety | The safety, from its `AGENT_AUX_SAFETY` light. Without it there is no safety information, which counts as safe unless `AGENT_SCHEDULER_SAFETY_MISSING` is `UNSAFE`. See [Unsafe conditions](#unsafe-conditions) |
 
 - The agents must run on the same server as the Scheduler Agent. The scheduler finds them by their exact names, such as "Scripting Agent" and "Mount Agent".
 - An agent on another server appears under another name, such as `Scripting Agent @ obs2`. The scheduler does not use it.
