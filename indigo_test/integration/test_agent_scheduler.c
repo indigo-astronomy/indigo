@@ -4410,7 +4410,7 @@ static bool start_with_work_running(void) {
 static void unsafe_hold_aborts_a_running_task(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
-	REQUIRE(upload("// @task Work\n// @retry 1\n// @preempted fail\n" BODY_WAIT(30)));
+	REQUIRE(upload("// @task Work\n// @retry 1\n// @preempted retry\n" BODY_WAIT(30)));
 	REQUIRE(set_safety_hooks("Secure", ""));
 	REQUIRE(aux_attach(INDIGO_OK_STATE));
 	REQUIRE(start_with_work_running());
@@ -4423,7 +4423,7 @@ static void unsafe_hold_aborts_a_running_task(void) {
 	ASSERT_TRUE(message_position("Task 'Work' aborted") < message_position("Starting hook 'Secure'"));
 	ASSERT_TRUE(wait_reason("unsafe conditions", 5));
 	ASSERT_TRUE(history_has("Work #1", "| task | UNSAFE | unsafe conditions"));
-	// the run used no retry and @preempted fail does not apply
+	// the run used no retry and had no retry delay
 	ASSERT_TRUE(wait_task_state("Work", "QUEUED", 5));
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(task_label("Work", label, NULL) && strstr(label, "retries left 1"));
@@ -4438,6 +4438,28 @@ static void unsafe_hold_aborts_a_running_task(void) {
 	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 10));
 	ASSERT_TRUE(wait_message("Starting task 'Work'", 2, 10));
 	ASSERT_EQ_INT(1, count_messages("Starting hook 'Secure'"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void unsafe_hold_fails_a_task_with_preempted_fail(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n// @retry 1\n// @preempted fail\n" BODY_WAIT(30)));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Task 'Work' aborted by unsafe conditions and failed", 1, 10));
+	ASSERT_EQ_INT(0, count_messages("Task 'Work' aborted by unsafe conditions, it will be retried"));
+	ASSERT_TRUE(history_has("Work #1", "| task | UNSAFE | unsafe conditions"));
+	// @preempted fail applies as after an urgent preemption, the retry is not used
+	ASSERT_TRUE(wait_task_state("Work", "FAILED", 5));
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 10));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(1, count_messages("Starting task 'Work'"));
+	ASSERT_TRUE(wait_task_state("Work", "FAILED", 1));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
 }
 
@@ -4459,6 +4481,26 @@ static void unsafe_hold_aborts_an_urgent_task(void) {
 	ASSERT_TRUE(wait_message("Starting task 'Flash'", 2, 10));
 	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 20));
 	ASSERT_TRUE(wait_task_removed("Flash", 5));
+}
+
+static void unsafe_hold_fails_an_urgent_task_with_preempted_fail(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	REQUIRE(urgent("// @task Flash\n// @preempted fail\n" BODY_WAIT(8)));
+	ASSERT_TRUE(wait_task_state("Flash", "RUNNING", 15));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Task 'Flash' aborted by unsafe conditions and failed", 1, 10));
+	ASSERT_TRUE(history_has("Flash #1", "| urgent | UNSAFE | unsafe conditions"));
+	// the ended one-off urgent task leaves the list and is counted as an urgent failure
+	ASSERT_TRUE(wait_task_removed("Flash", 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, 1, 5));
+	ASSERT_EQ_INT(0, state_counter(AGENT_SCHEDULER_STATE_URGENT_DONE_ITEM_NAME));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 10));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(1, count_messages("Starting task 'Flash'"));
 }
 
 static void unsafe_hold_aborts_a_hand_started_sequence(void) {
@@ -5173,7 +5215,9 @@ static const indigo_test_case cases[] = {
 	{ "data_without_an_imager_agent_runs_unlabelled", data_without_an_imager_agent_runs_unlabelled },
 	{ "estimates_label_nothing", estimates_label_nothing },
 	{ "unsafe_hold_aborts_a_running_task", unsafe_hold_aborts_a_running_task },
+	{ "unsafe_hold_fails_a_task_with_preempted_fail", unsafe_hold_fails_a_task_with_preempted_fail },
 	{ "unsafe_hold_aborts_an_urgent_task", unsafe_hold_aborts_an_urgent_task },
+	{ "unsafe_hold_fails_an_urgent_task_with_preempted_fail", unsafe_hold_fails_an_urgent_task_with_preempted_fail },
 	{ "unsafe_hold_aborts_a_hand_started_sequence", unsafe_hold_aborts_a_hand_started_sequence },
 	{ "unsafe_hold_lets_shutdown_finish", unsafe_hold_lets_shutdown_finish },
 	{ "unsafe_hold_lets_night_end_finish", unsafe_hold_lets_night_end_finish },
