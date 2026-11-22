@@ -1,0 +1,611 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6a4e8bdf-ff81-4031-8723-df3f84d73b8a",
+  "revision": 32,
+  "title": "test_mount_synscan_hw: session start pointing is captured before the site set by the suite is applied",
+  "description": "Found on 2026-11-19 by the implementer of ticket 4ef695f1-88ae-4fd8-943e-91c6479a9c24 on the AZ-GTi.\n\nmain() of indigo_test/hardware/test_mount_synscan_hw.c reads the session's starting pointing right after set_site(), from coordinates still computed with the driver's site longitude from before the suite set its own (17 degrees). Observed: raw RA jumps by +1.133 h within about 3 s after set_site() while LST stays put. The final 'Restored the starting pointing' therefore leaves the RA axis about 17 degrees (the site longitude difference) away from where the session found it, and the starting RA shifts by -1.13 h from session to session.\n\nFix (test harness only, no driver change): capture the starting pointing only after fresh polls following set_site(), as the case synscan_reports_encoder_position already does, and verify with step counters read before and after a session that the axes return to where they started. Recorded hardware run afterwards.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-19T19:04:19.432485Z",
+  "status": "closed",
+  "branch": "ticket/6a4e8bdf-ff81-4031-8723-df3f84d73b8a",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "f05322c8-e0fe-4778-9d89-54f0c974a906",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T08:45:38.498339Z",
+          "last_activity_at": "2026-11-21T09:14:07.786302Z",
+          "ended_at": "2026-11-21T09:14:07.786302Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1709287.963,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T08:45:38.498339Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/6a4e8bdf-ff81-4031-8723-df3f84d73b8a"
+        },
+        {
+          "at": "2026-11-21T09:14:07.786302Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1709287.963,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "869319ed-95a2-4e34-a3ec-17f10df7de23",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "7ab744d7-a985-487a-8084-632a8e4bb852",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T09:14:07.786458Z",
+          "last_activity_at": "2026-11-21T09:18:31.860536Z",
+          "ended_at": "2026-11-21T09:18:31.860536Z",
+          "outcome": {
+            "summary": "Pass. Harness-only diff (indigo_test/hardware/test_mount_synscan_hw.c) plus script-written README/TEST_SUMMARY records; no driver or hand README edits, no unrelated changes, AGENTS.md formatting respected (single-line calls, braces, no blank lines in bodies). Correctness: capture_initial_settings() (l.628-629) now waits for three fresh MOUNT_RAW_COORDINATES polls, which the driver publishes unconditionally every poll (indigo_mount_synscan.c:1031), so it also works for a tracking start; the poll in flight during set_site() is superseded. Cleanup (l.1619-1631): stop_all_motion, restore_initial_settings, then set_site() again (covers synscan_reinitializes leaving the default site) and clear_alignment_model(); tracking start -> RA/DEC slew with TRACK, standing start -> slew_to_date_pointing(HA, DEC) with SLEW, ON_COORDINATES_SET reset to TRACK afterwards in either outcome, tracking restored last. slew_to_date_pointing() now uses indigo_lst(NULL, site_longitude) (l.620), the same whole-second time(NULL) source the driver uses in synscan_radec_to_steps (indigo_mount_synscan.c:1117), and the precession pair is a rigorous rotation, so the HA round trip is exact to within the occasional 1 s second-boundary (~24 steps); recorded evidence j1 -480178 -> -480173, j2 unchanged, in final2.log, run on the final source (mtime 10:01:45 < run 10:05:44). A timed-out restore slew is not aborted by the harness, but disconnect stops both axes (driver on_disconnect, indigo_mount_synscan.driver:1919-1928), so the mount is not left slewing. Limits, not defects of this change: the tracking-at-start branch was not exercised on hardware (start was tracking off); a coordinate restore always lands on the driver's selected encoder solution (indigo_mount_synscan.c:951-953), so a start on the other solution or a tracking start that crossed the flip boundary cannot be restored by coordinates (pre-existing). '21/20 Failed' is the script's normal planned/passed format (tools/run_driver_test.py:465,498)",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 264074.078,
+          "tokens": null
+        },
+        {
+          "attempt_id": "395ec4f8-e66e-4172-b55f-cf69ec922e52",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-22T15:54:17.236097Z",
+          "last_activity_at": "2026-11-22T15:54:17.236129Z",
+          "ended_at": "2026-11-22T15:54:17.236129Z",
+          "outcome": {
+            "summary": "Final review after the merge of master (head c3a5a73ff). 1) git diff master HEAD in the worktree is empty, .factory2 included, so closing adds nothing to master. 2) The harness change reviewed at 29167e11d is on master through 52e231e37 (ticket 4e2005ec). git diff 29167e11d master -- indigo_test/hardware/test_mount_synscan_hw.c shows only the two later 4e2005ec additions: wait_not_busy() now used by stop_all_motion(), and the opt-in SYNSCAN_HW_CASE case selection in main(). The reviewed parts are unchanged: wait_fresh_polls, raw_date_pointing, slew_to_date_pointing with indigo_lst(), the capture after fresh polls, and the cleanup that re-applies the site, clears alignment and restores by HA or RA/DEC. 3) Master indigo_drivers/mount_synscan/README.md has '2026-11-22 16:33 3.0.0.32 mac arm64 AZGTi 21/21 OK', and TEST_SUMMARY.md has the matching row, so the clean recorded hardware run exists. Read-only check: no build, test or hardware contact.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 0.032,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T09:14:07.786458Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T09:18:31.860536Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass. Harness-only diff (indigo_test/hardware/test_mount_synscan_hw.c) plus script-written README/TEST_SUMMARY records; no driver or hand README edits, no unrelated changes, AGENTS.md formatting respected (single-line calls, braces, no blank lines in bodies). Correctness: capture_initial_settings() (l.628-629) now waits for three fresh MOUNT_RAW_COORDINATES polls, which the driver publishes unconditionally every poll (indigo_mount_synscan.c:1031), so it also works for a tracking start; the poll in flight during set_site() is superseded. Cleanup (l.1619-1631): stop_all_motion, restore_initial_settings, then set_site() again (covers synscan_reinitializes leaving the default site) and clear_alignment_model(); tracking start -> RA/DEC slew with TRACK, standing start -> slew_to_date_pointing(HA, DEC) with SLEW, ON_COORDINATES_SET reset to TRACK afterwards in either outcome, tracking restored last. slew_to_date_pointing() now uses indigo_lst(NULL, site_longitude) (l.620), the same whole-second time(NULL) source the driver uses in synscan_radec_to_steps (indigo_mount_synscan.c:1117), and the precession pair is a rigorous rotation, so the HA round trip is exact to within the occasional 1 s second-boundary (~24 steps); recorded evidence j1 -480178 -> -480173, j2 unchanged, in final2.log, run on the final source (mtime 10:01:45 < run 10:05:44). A timed-out restore slew is not aborted by the harness, but disconnect stops both axes (driver on_disconnect, indigo_mount_synscan.driver:1919-1928), so the mount is not left slewing. Limits, not defects of this change: the tracking-at-start branch was not exercised on hardware (start was tracking off); a coordinate restore always lands on the driver's selected encoder solution (indigo_mount_synscan.c:951-953), so a start on the other solution or a tracking start that crossed the flip boundary cannot be restored by coordinates (pre-existing). '21/20 Failed' is the script's normal planned/passed format (tools/run_driver_test.py:465,498)"
+        },
+        {
+          "at": "2026-11-22T15:54:17.236097Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T15:54:17.236129Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Final review after the merge of master (head c3a5a73ff). 1) git diff master HEAD in the worktree is empty, .factory2 included, so closing adds nothing to master. 2) The harness change reviewed at 29167e11d is on master through 52e231e37 (ticket 4e2005ec). git diff 29167e11d master -- indigo_test/hardware/test_mount_synscan_hw.c shows only the two later 4e2005ec additions: wait_not_busy() now used by stop_all_motion(), and the opt-in SYNSCAN_HW_CASE case selection in main(). The reviewed parts are unchanged: wait_fresh_polls, raw_date_pointing, slew_to_date_pointing with indigo_lst(), the capture after fresh polls, and the cleanup that re-applies the site, clears alignment and restores by HA or RA/DEC. 3) Master indigo_drivers/mount_synscan/README.md has '2026-11-22 16:33 3.0.0.32 mac arm64 AZGTi 21/21 OK', and TEST_SUMMARY.md has the matching row, so the clean recorded hardware run exists. Read-only check: no build, test or hardware contact."
+        }
+      ],
+      "result": {
+        "summary": "Final review after the merge of master (head c3a5a73ff). 1) git diff master HEAD in the worktree is empty, .factory2 included, so closing adds nothing to master. 2) The harness change reviewed at 29167e11d is on master through 52e231e37 (ticket 4e2005ec). git diff 29167e11d master -- indigo_test/hardware/test_mount_synscan_hw.c shows only the two later 4e2005ec additions: wait_not_busy() now used by stop_all_motion(), and the opt-in SYNSCAN_HW_CASE case selection in main(). The reviewed parts are unchanged: wait_fresh_polls, raw_date_pointing, slew_to_date_pointing with indigo_lst(), the capture after fresh polls, and the cleanup that re-applies the site, clears alignment and restores by HA or RA/DEC. 3) Master indigo_drivers/mount_synscan/README.md has '2026-11-22 16:33 3.0.0.32 mac arm64 AZGTi 21/21 OK', and TEST_SUMMARY.md has the matching row, so the clean recorded hardware run exists. Read-only check: no build, test or hardware contact.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 264074.11,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "0a465eb8-8ad6-43a9-bd4d-1d813a103ca8",
+      "event": "ticket/created",
+      "at": "2026-11-19T19:04:19.433587Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "3cc49121-fa0b-4c9c-865e-529e0ee06ae4",
+      "event": "ticket/confirmed",
+      "at": "2026-11-19T19:06:42.020136Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "599fbfb4-77ff-4065-8191-012e9b93aa69",
+      "event": "ticket/note",
+      "at": "2026-11-21T08:41:51.674122Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner (2026-11-21): the recorded hardware run on the AZ-GTi is a non-interactive hardware run: fix defects found, rerun the full scope, record with tools/run_driver_test.py mount_synscan --hw. No physical hot-plug; hot-plug coverage is not established.",
+      "tokens": null
+    },
+    {
+      "event_id": "52552c3f-6ac8-436b-89dd-ac0d92051a2b",
+      "event": "task/progress",
+      "at": "2026-11-21T08:45:38.498615Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Implementation started on branch ticket/6a4e8bdf-ff81-4031-8723-df3f84d73b8a"
+    },
+    {
+      "event_id": "0fd55234-dbe0-4f1b-82ec-b7e0786b34f9",
+      "event": "ticket/started",
+      "at": "2026-11-21T08:45:38.500252Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/6a4e8bdf-ff81-4031-8723-df3f84d73b8a",
+      "base": "master"
+    },
+    {
+      "event_id": "6e5a4d86-6081-4ea6-9eab-f5cb8dc877f3",
+      "event": "task/progress",
+      "at": "2026-11-21T08:46:07.119372Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Implementer launched",
+      "attempt_id": "f05322c8-e0fe-4778-9d89-54f0c974a906",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3e7ea5d1-d7cc-4c6d-a38d-4188bb7090cf",
+      "event": "task/progress",
+      "at": "2026-11-21T08:48:25.719610Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Read j1/j2 before work: j1=-480197 j2=351953; editing the session start capture and restore"
+    },
+    {
+      "event_id": "05a3758d-0e37-459d-82eb-35dcffc15c1e",
+      "event": "task/progress",
+      "at": "2026-11-21T08:49:51.592044Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Building libindigo and test_mount_synscan_hw in the worktree"
+    },
+    {
+      "event_id": "b3b79f60-725f-462c-ba0f-4279a1937faf",
+      "event": "task/progress",
+      "at": "2026-11-21T08:50:53.600652Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Reproducing with the original harness, one non-moving case, j1/j2 before and after"
+    },
+    {
+      "event_id": "59c1b6ba-bfc2-4630-a7f8-5c64a4d87daf",
+      "event": "task/progress",
+      "at": "2026-11-21T08:51:45.448761Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Reproduced: RA axis +97922 steps (17.0 deg). Running fixed harness, same single case"
+    },
+    {
+      "event_id": "2bac069b-c97c-4795-95fb-5dc882378c49",
+      "event": "task/progress",
+      "at": "2026-11-21T08:52:38.979470Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Fixed harness restored j1/j2 exactly; returning RA axis to its pre-reproduction position"
+    },
+    {
+      "event_id": "28307db5-7b95-45bd-830b-cb8dbbf9586e",
+      "event": "task/progress",
+      "at": "2026-11-21T08:52:56.694816Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Final recorded run: run_driver_test.py mount_synscan --hw, j1/j2 read before and after"
+    },
+    {
+      "event_id": "d81ee7ec-7ffb-45a0-9826-c14441617363",
+      "event": "task/progress",
+      "at": "2026-11-21T09:01:45.895193Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Recorded run 21/20: guide 2000 ms outlier; restore flipped pier (site lost by reinit). Fixing cleanup"
+    },
+    {
+      "event_id": "58d05e89-0807-4a68-bbfc-7f1abe4189fa",
+      "event": "task/progress",
+      "at": "2026-11-21T09:01:56.715016Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Returning the mount to its session-start position with the original harness (one non-moving case)"
+    },
+    {
+      "event_id": "c7193ba6-79a4-401f-9b90-00e99f8d5875",
+      "event": "task/progress",
+      "at": "2026-11-21T09:02:47.557660Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Diagnosing the guide pulse outlier: guide_pulse_accuracy alone with driver debug log"
+    },
+    {
+      "event_id": "186db68b-97d5-43ec-8969-ad4c310ef612",
+      "event": "task/progress",
+      "at": "2026-11-21T09:05:22.065291Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Outlier = lost UDP replies (0.5-1% loss, 1 s retry). Verifying cleanup fix with synscan_reinitializes alone"
+    },
+    {
+      "event_id": "5004bae0-6119-4d99-82eb-f8c185dc49a4",
+      "event": "task/progress",
+      "at": "2026-11-21T09:05:41.969255Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Restore after reinit verified (0 steps). Full recorded rerun: run_driver_test.py mount_synscan --hw"
+    },
+    {
+      "event_id": "7676fee3-126e-4a02-a3a4-628b34e60054",
+      "event": "ticket/note",
+      "at": "2026-11-21T09:12:46.292400Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementer (2026-11-21), AZ-GTi fw 3.16 over UDP, step counters :j1/:j2 read with no driver connected (relative to 0x800000). Reproduction with the original harness, one non-moving case (synscan_discovers_and_connects): j1 -480197 -> -382275 (+97922 steps = 17.0 deg), j2 unchanged. Fixed harness, same case: j1 -382275 -> -382275, j2 351953 -> 351953. Second defect found by the first recorded run: synscan_reinitializes leaves the driver with its default site (private home), so the cleanup's restore ran with a 17 deg different sidereal time; the hour-angle target crossed 12 h and the driver chose the other pier side (after: j1 458688 j2 684847). Fixed by set_site() before the restore; synscan_reinitializes alone then restored j1/j2 exactly. The mount was put back to its starting counters (j1 -480182 j2 351952) between runs. Final recorded run (run_driver_test.py mount_synscan --hw): before j1 -480178 j2 351952, after j1 -480173 j2 351952 (RA +5 steps, DEC 0). Result 21/20 Failed: synscan_guide_pulse_accuracy failed in both recorded runs (RA 2000 ms max +816.8 ms; RA 500 ms max +1148.8 ms) and in a debug rerun of that case alone (RA 2000 ms max +1242.4 ms). Driver debug log shows lost UDP replies ('No SynScan response before timeout'): each costs the 1 s SYNSCAN_COMMAND_TIMEOUT before the retry, which delays the pulse stop or, when the start command's reply is lost, lengthens the pulse. A 400-query read-only probe measured 2 lost replies (0.5%), median 9.6 ms, max 19.2 ms. Not changed here: a shorter UDP per-attempt timeout would be a driver timing change for all UDP SynScan users and needs an owner decision.",
+      "tokens": null
+    },
+    {
+      "event_id": "42916580-f748-4086-acaa-30a9268252f8",
+      "event": "task/progress",
+      "at": "2026-11-21T09:12:51.106994Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f186902a-9b98-4df3-969f-1a50536aa161",
+      "event": "task/progress",
+      "at": "2026-11-21T09:12:51.133890Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "87eb92ff-1970-4ad0-b024-835b51c2687b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e062e1c6-9817-4832-99d2-4f191538493a",
+      "event": "check/passed",
+      "at": "2026-11-21T09:12:51.135598Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "29167e11dfd89b2446d7f9130e5974f3c8128e8e",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "8fd9f3e6-4a11-485f-be78-4fafc168bf04",
+      "event": "question/asked",
+      "at": "2026-11-21T09:14:07.698550Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Harness fix verified with step counters (RA +5 steps, DEC 0), but the recorded hardware run is 20 of 21: synscan_guide_pulse_accuracy fails because lost UDP replies cost the driver's 1 s SYNSCAN_COMMAND_TIMEOUT (pulse up to ~1.2 s too long, limit 400 ms). Owner: create a separate ticket for the driver's UDP retry timing and keep this ticket open until a clean run, or close it with the Failed record?"
+    },
+    {
+      "event_id": "42ef1ce9-e008-4e20-94ca-ceccdd45606d",
+      "event": "task/progress",
+      "at": "2026-11-21T09:14:07.786517Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "869319ed-95a2-4e34-a3ec-17f10df7de23",
+      "text": "Review started"
+    },
+    {
+      "event_id": "afd39962-c258-462a-bf8b-5980c0bfc8b3",
+      "event": "review/started",
+      "at": "2026-11-21T09:14:07.787639Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "9dddde41-d68b-4642-8d99-366ef5bac293",
+      "event": "task/progress",
+      "at": "2026-11-21T09:14:33.788756Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "869319ed-95a2-4e34-a3ec-17f10df7de23",
+      "text": "Reviewer launched",
+      "attempt_id": "7ab744d7-a985-487a-8084-632a8e4bb852",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3d532022-2a8e-44e7-b015-845ecf810d89",
+      "event": "task/progress",
+      "at": "2026-11-21T09:18:31.860629Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "869319ed-95a2-4e34-a3ec-17f10df7de23",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b39e0972-24b5-4c5b-9b52-d38fc2fa56e0",
+      "event": "review/passed",
+      "at": "2026-11-21T09:18:31.861886Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "869319ed-95a2-4e34-a3ec-17f10df7de23",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "29167e11dfd89b2446d7f9130e5974f3c8128e8e"
+    },
+    {
+      "event_id": "89a14274-45fb-4d26-a3f8-b7523dc33b78",
+      "event": "question/answered",
+      "at": "2026-11-21T11:23:59.602400Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner: yes - create a separate ticket for the driver's UDP retry timing and keep this ticket open until a clean recorded hardware run."
+    },
+    {
+      "event_id": "fadf0908-3f24-44cd-b965-f15aac1963f6",
+      "event": "ticket/note",
+      "at": "2026-11-22T15:53:49.392891Z",
+      "actor": "human/Peter Polakovic",
+      "text": "The harness change of this ticket (29167e11d, review pass) was merged into ticket 4e2005ec and landed on master with its commit 52e231e37, together with wait_not_busy() and SYNSCAN_HW_CASE; the clean recorded hardware run this ticket waited for is '2026-11-22 16:33 3.0.0.32 mac arm64 AZGTi 21/21 OK' (non-interactive, no hot-plug; hot-plug coverage not established). Master is merged into this branch; the branch no longer differs from master.",
+      "tokens": null
+    },
+    {
+      "event_id": "1e900baa-d594-45d4-bbda-002913917261",
+      "event": "task/progress",
+      "at": "2026-11-22T15:53:49.561033Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2d46c7af-d447-4f27-9b31-62dd821271a1",
+      "event": "task/progress",
+      "at": "2026-11-22T15:53:49.587736Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "dededcad-d56e-43b7-99b0-43a2f17bebb7",
+      "event": "check/passed",
+      "at": "2026-11-22T15:53:49.589744Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "c3a5a73ff4706c3a0218b7df34cfad53c7880cde",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "9b1f851a-d7b0-48f3-8a40-55d2b77ad953",
+      "event": "task/progress",
+      "at": "2026-11-22T15:54:17.236198Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "869319ed-95a2-4e34-a3ec-17f10df7de23",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "8f3f38d3-4a4c-4bc2-8990-cc66167e01f4",
+      "event": "review/passed",
+      "at": "2026-11-22T15:54:17.237505Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "869319ed-95a2-4e34-a3ec-17f10df7de23",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "c3a5a73ff4706c3a0218b7df34cfad53c7880cde"
+    },
+    {
+      "event_id": "f9e1f787-2993-4832-9c54-dc3041b3bfff",
+      "event": "ticket/closed",
+      "at": "2026-11-22T15:54:29.804155Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-22T15:54:29.804134Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "3fedc61890f0ac62930be19178f46158b025a577"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "29167e11dfd89b2446d7f9130e5974f3c8128e8e",
+        "tree": "ec8023a6352efb098b255dd3e7e2e887a64f6578",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T09:12:51.133220Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6a4e8bdf-ff81-4031-8723-df3f84d73b8a/ec8023a6352e-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c3a5a73ff4706c3a0218b7df34cfad53c7880cde",
+        "tree": "cea38391362cc5d7af8f45706b35a6b89934479c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T15:53:49.586923Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6a4e8bdf-ff81-4031-8723-df3f84d73b8a/cea38391362c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Harness-only diff (indigo_test/hardware/test_mount_synscan_hw.c) plus script-written README/TEST_SUMMARY records; no driver or hand README edits, no unrelated changes, AGENTS.md formatting respected (single-line calls, braces, no blank lines in bodies). Correctness: capture_initial_settings() (l.628-629) now waits for three fresh MOUNT_RAW_COORDINATES polls, which the driver publishes unconditionally every poll (indigo_mount_synscan.c:1031), so it also works for a tracking start; the poll in flight during set_site() is superseded. Cleanup (l.1619-1631): stop_all_motion, restore_initial_settings, then set_site() again (covers synscan_reinitializes leaving the default site) and clear_alignment_model(); tracking start -> RA/DEC slew with TRACK, standing start -> slew_to_date_pointing(HA, DEC) with SLEW, ON_COORDINATES_SET reset to TRACK afterwards in either outcome, tracking restored last. slew_to_date_pointing() now uses indigo_lst(NULL, site_longitude) (l.620), the same whole-second time(NULL) source the driver uses in synscan_radec_to_steps (indigo_mount_synscan.c:1117), and the precession pair is a rigorous rotation, so the HA round trip is exact to within the occasional 1 s second-boundary (~24 steps); recorded evidence j1 -480178 -> -480173, j2 unchanged, in final2.log, run on the final source (mtime 10:01:45 < run 10:05:44). A timed-out restore slew is not aborted by the harness, but disconnect stops both axes (driver on_disconnect, indigo_mount_synscan.driver:1919-1928), so the mount is not left slewing. Limits, not defects of this change: the tracking-at-start branch was not exercised on hardware (start was tracking off); a coordinate restore always lands on the driver's selected encoder solution (indigo_mount_synscan.c:951-953), so a start on the other solution or a tracking start that crossed the flip boundary cannot be restored by coordinates (pre-existing). '21/20 Failed' is the script's normal planned/passed format (tools/run_driver_test.py:465,498), not a defect. Guide-accuracy diagnosis is credible: guide_debug.log shows 'No SynScan response before timeout' at 10:03:22 (:j2) and 10:03:26 (:I, a pulse-period command) each costing the 1 s SYNSCAN_COMMAND_TIMEOUT before the retry, matching the +1242 ms outlier on top of a ~130 ms baseline; synscan_guide_pulse_accuracy is untouched by the diff and the harness change only affects session start and cleanup, so it cannot have contributed. Integration note: the branch base is ae5a33f77; master since changed the adjacent synscan record lines in indigo_drivers/mount_synscan/README.md and TEST_SUMMARY.md (simulator 3.0.0.26 107/107) and bumped the driver to 26, so close will need the record lines merged (keep master's simulator line and this AZGTi line); the hardware record truthfully names 3.0.0.25.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "29167e11dfd89b2446d7f9130e5974f3c8128e8e",
+        "tree": "ec8023a6352efb098b255dd3e7e2e887a64f6578",
+        "at": "2026-11-21T09:18:31.860376Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Final review after the merge of master (head c3a5a73ff). 1) git diff master HEAD in the worktree is empty, .factory2 included, so closing adds nothing to master. 2) The harness change reviewed at 29167e11d is on master through 52e231e37 (ticket 4e2005ec). git diff 29167e11d master -- indigo_test/hardware/test_mount_synscan_hw.c shows only the two later 4e2005ec additions: wait_not_busy() now used by stop_all_motion(), and the opt-in SYNSCAN_HW_CASE case selection in main(). The reviewed parts are unchanged: wait_fresh_polls, raw_date_pointing, slew_to_date_pointing with indigo_lst(), the capture after fresh polls, and the cleanup that re-applies the site, clears alignment and restores by HA or RA/DEC. 3) Master indigo_drivers/mount_synscan/README.md has '2026-11-22 16:33 3.0.0.32 mac arm64 AZGTi 21/21 OK', and TEST_SUMMARY.md has the matching row, so the clean recorded hardware run exists. Read-only check: no build, test or hardware contact.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "c3a5a73ff4706c3a0218b7df34cfad53c7880cde",
+        "tree": "cea38391362cc5d7af8f45706b35a6b89934479c",
+        "at": "2026-11-22T15:54:17.235925Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-21T08:41:51.672720Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Owner (2026-11-21): the recorded hardware run on the AZ-GTi is a non-interactive hardware run: fix defects found, rerun the full scope, record with tools/run_driver_test.py mount_synscan --hw. No physical hot-plug; hot-plug coverage is not established.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T09:12:46.290707Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementer (2026-11-21), AZ-GTi fw 3.16 over UDP, step counters :j1/:j2 read with no driver connected (relative to 0x800000). Reproduction with the original harness, one non-moving case (synscan_discovers_and_connects): j1 -480197 -> -382275 (+97922 steps = 17.0 deg), j2 unchanged. Fixed harness, same case: j1 -382275 -> -382275, j2 351953 -> 351953. Second defect found by the first recorded run: synscan_reinitializes leaves the driver with its default site (private home), so the cleanup's restore ran with a 17 deg different sidereal time; the hour-angle target crossed 12 h and the driver chose the other pier side (after: j1 458688 j2 684847). Fixed by set_site() before the restore; synscan_reinitializes alone then restored j1/j2 exactly. The mount was put back to its starting counters (j1 -480182 j2 351952) between runs. Final recorded run (run_driver_test.py mount_synscan --hw): before j1 -480178 j2 351952, after j1 -480173 j2 351952 (RA +5 steps, DEC 0). Result 21/20 Failed: synscan_guide_pulse_accuracy failed in both recorded runs (RA 2000 ms max +816.8 ms; RA 500 ms max +1148.8 ms) and in a debug rerun of that case alone (RA 2000 ms max +1242.4 ms). Driver debug log shows lost UDP replies ('No SynScan response before timeout'): each costs the 1 s SYNSCAN_COMMAND_TIMEOUT before the retry, which delays the pulse stop or, when the start command's reply is lost, lengthens the pulse. A 400-query read-only probe measured 2 lost replies (0.5%), median 9.6 ms, max 19.2 ms. Not changed here: a shorter UDP per-attempt timeout would be a driver timing change for all UDP SynScan users and needs an owner decision.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T15:53:49.391651Z",
+        "actor": "human/Peter Polakovic",
+        "text": "The harness change of this ticket (29167e11d, review pass) was merged into ticket 4e2005ec and landed on master with its commit 52e231e37, together with wait_not_busy() and SYNSCAN_HW_CASE; the clean recorded hardware run this ticket waited for is '2026-11-22 16:33 3.0.0.32 mac arm64 AZGTi 21/21 OK' (non-interactive, no hot-plug; hot-plug coverage not established). Master is merged into this branch; the branch no longer differs from master.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Harness fix verified with step counters (RA +5 steps, DEC 0), but the recorded hardware run is 20 of 21: synscan_guide_pulse_accuracy fails because lost UDP replies cost the driver's 1 s SYNSCAN_COMMAND_TIMEOUT (pulse up to ~1.2 s too long, limit 400 ms). Owner: create a separate ticket for the driver's UDP retry timing and keep this ticket open until a clean run, or close it with the Failed record?",
+        "at": "2026-11-21T09:14:07.697313Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner: yes - create a separate ticket for the driver's UDP retry timing and keep this ticket open until a clean recorded hardware run.",
+        "answered_at": "2026-11-21T11:23:59.600504Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "3fedc61890f0ac62930be19178f46158b025a577",
+      "tree": "cea38391362cc5d7af8f45706b35a6b89934479c",
+      "base": "master",
+      "at": "2026-11-22T15:54:29.745450Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-19T19:04:19.432485Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-19T19:06:42.019940Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 1973362.073,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 40,
+    "sha256": "26ec4ede88c8dfc72c78b1e10e498f5995fc904728bebd90ca2dee88f10cd622"
+  }
+}
