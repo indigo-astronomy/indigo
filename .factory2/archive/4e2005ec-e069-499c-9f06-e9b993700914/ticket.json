@@ -1,0 +1,1461 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4e2005ec-e069-499c-9f06-e9b993700914",
+  "revision": 97,
+  "title": "indigo_mount_synscan: a lost UDP reply costs a full 1 s command timeout and lengthens guide pulses",
+  "description": "Found on 2026-11-21 on the AZ-GTi (firmware 3.16, UDP over Wi-Fi) by the recorded hardware run of ticket 6a4e8bdf-ff81-4031-8723-df3f84d73b8a: synscan_guide_pulse_accuracy failed in two recorded runs and once alone (RA pulses +816.8 ms, +1148.8 ms, +1242.4 ms too long; limit 400 ms). The driver debug log shows 'No SynScan response before timeout' for a poll command (:j2) and for a pulse command (:I); each lost reply costs the 1 s SYNSCAN_COMMAND_TIMEOUT before the retry, so the end of a guide pulse is delayed by about 1 s, and if the reply to the command ending the pulse is lost the mount physically guides about 1 s longer. A read-only probe of 400 queries lost 2 replies (0.5 %); replies took 9.6 ms median, 19.2 ms maximum. On 2026-11-19 the same case passed 21/21.\n\nTo do: decide and implement how the driver retries a UDP command whose reply is lost (shorter per-attempt timeout for UDP, number of attempts, whether serial keeps the present timing; consider commands that are not idempotent and a reply that arrives late and could be taken for the next command's reply), keep guide pulse timing independent of a lost poll reply where possible, model reply loss in the simulator (drop every Nth reply or a named command) and add simulator cases that fail before the change. Bump the driver version. Recorded simulator run and a non-interactive hardware run on the AZ-GTi (no hot-plug). Ticket 6a4e8bdf stays open until a clean recorded hardware run; its harness change is reviewed and independent of this defect.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-21T11:23:59.699730Z",
+  "status": "closed",
+  "branch": "ticket/4e2005ec-e069-499c-9f06-e9b993700914",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "720ecb4e-37ff-4e95-aabc-52f365640c75",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T11:24:26.201613Z",
+          "last_activity_at": "2026-11-21T19:48:47.356459Z",
+          "ended_at": "2026-11-21T19:48:47.356459Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 30261154.846,
+          "tokens": null
+        },
+        {
+          "attempt_id": "442ee4e5-b047-4b1b-91fa-0deb77712af7",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T19:57:09.795547Z",
+          "last_activity_at": "2026-11-21T21:20:05.284168Z",
+          "ended_at": "2026-11-21T21:20:05.284168Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 4975488.621,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1933a640-7265-4ada-afbd-19e171ff4ee3",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T21:29:12.822591Z",
+          "last_activity_at": "2026-11-22T09:40:07.153716Z",
+          "ended_at": "2026-11-22T09:40:07.153716Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 43854331.125,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T11:24:26.201613Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/4e2005ec-e069-499c-9f06-e9b993700914"
+        },
+        {
+          "at": "2026-11-21T19:48:47.356459Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T19:57:09.795547Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-21T21:20:05.284168Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T21:29:12.822591Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-22T09:40:07.153716Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 79090974.592,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    },
+    {
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "2404d68e-3bf6-4b94-95cb-5cc7d207f638",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-21T19:48:47.356621Z",
+          "last_activity_at": "2026-11-21T19:57:09.795447Z",
+          "ended_at": "2026-11-21T19:57:09.795447Z",
+          "outcome": {
+            "summary": "BLOCKING (regression in kind from the 0.2 s UDP timeout, reproduced): a late reply to an earlier attempt of a retried query is taken as the reply to the NEXT query of the same reply length. synscan_reply_length() only rejects datagrams of a different length (.driver:283-293, :364-380), and the zero-wait drain (:421-428) only removes datagrams that have already arrived. Once a reply is slower than 0.2 s, the command is resent and completes on whichever reply comes first; the other reply arrives during a later command's wait. For :j2/:j1 (both 6 digits) that puts the DEC counter into the RA slot, and for :f1/:f2 (both 3) the status of the wrong axis is used. The GoTo and park finalizers read :f1 then :f2, so they can end a slew while one axis still runs, and the DEC pulse stop polling can misread the axis state. Under sustained 0.2-0.4 s latency (the AZ-GTi measurements in this ticket show a 5 s episode of 250-420 ms replies) the shift cascades through every same-length query of a burst. Reproduced in a scratch copy (own Makefile.inc, scratch dylibs) with a probe on the UDP simulator: GoTo to DEC 20, after a poll the faults ':j2 late:250 1' and ':j1 late:100 1' (a measured slow reply followed by a routine 100 ms spike). With the ticket driver, the raw RA published by the next poll jumped 10.31 h (the DEC counter as RA), i.e. another axis's value on the bus. With the master driver (1 s timeout, no resend) all 3 rounds deviated at most 0.001 h. This breaks the owner's rule that the driver never publishes another frame's values, even transiently, and it is the late-reply case the ticket asked to consider. Possible corrections, for the owner to choose: after a UDP query that succeeded on a retry (or failed after all attempts), wait up to one reply timeout for the unanswered attempts' replies and discard them before the next command (the cost falls only on the loss path, but it adds up to 0.2 s there); or, before the next query of the same length, discard datagrams that ar",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 502438.826,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ff0ffa79-ca3e-4a5f-973e-7a39955696b4",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-21T21:20:05.284310Z",
+          "last_activity_at": "2026-11-21T21:29:12.822499Z",
+          "ended_at": "2026-11-21T21:29:12.822499Z",
+          "outcome": {
+            "summary": "Re-review of 1b0415204 (delta from 0cb794c48). Stray-reply finding: fixed for positions and status. My probe (GoTo DEC 20, ':j2 late:250 1' + ':j1 late:100 1') and three consecutive retried-query variants not covered by a case (':j2 late:250 1/:j1 late:250 1', ':j2 late:350 1/:j1 late:100 1', ':j2 late:450 2/:j1 late:150 1') all keep RA within 0.0014 h; on 0cb794c48 the first variant still jumps 10.32 h. The new cases late_dec_reply_is_not_taken_for_ra, late_status_reply_does_not_end_goto and sustained_latency_keeps_positions pass. BLOCKING (regression introduced by the new stray wait; it contradicts the ticket's pulse-timing goal and the note's own claim that the end of a pulse is not held): synscan_slew_axis_at_rate() (indigo_mount_synscan.driver:738) sends the status query :f1 before the :I1 period change both at the start and at the end of an RA pulse. When the start :f1 is retried, a stray of length 3 is recorded until last send + 0.5 s, and synscan_drain_udp() (driver ~:425-441) makes the end-of-pulse :f1, a query of the same length, wait for it before the :I1 that restores tracking. If the lost datagram never arrives (a lost request or a lost reply), the RA pulse physically runs until that deadline. Reproduced in a scratch copy with the ':f1 lost 1' fault armed before an RA pulse on the UDP guiding fixture: 100 ms pulse physical +407 ms / completion +610 ms, 300 ms pulse +201 / +413 ms. With the 0cb794c48 driver the same probe gives +5 / +207 and +11 / +223. So one lost datagram now lengthens a short guide pulse by up to 0.4 s, and completion +610 ms would fail the 400 ms hardware limit. Suggested fix: record the command with each stray and make a query wait only for strays of a different command with the same reply length (:j1 vs :j2, :f1 vs :f2). A stray of the same command is that command's answer, exactly as the design already accepts within its own retries, so the end-of-pulse :f1 (and a repeated poll query) would not wait. Then add a case: RA pulse of 1",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 547538.189,
+          "tokens": null
+        },
+        {
+          "attempt_id": "229b67ba-1ed3-43ad-8308-1e8d750d5e6e",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T09:40:07.153849Z",
+          "last_activity_at": "2026-11-22T09:51:07.647109Z",
+          "ended_at": "2026-11-22T09:51:07.647109Z",
+          "outcome": {
+            "summary": "Third round, d2bcae094 (delta from 1b0415204). My blocking pulse finding is fixed. In a scratch copy (own Makefile.inc and dylibs, under the lock), with ':f1 lost 1' armed before an RA pulse on the UDP guiding fixture: 100 ms pulse physical +10 / completion +216 ms, 300 ms pulse +4 / +214 ms; on 1b0415204 it was +407/+610 and +201/+413. Position and status mix-ups still do not occur: my three retried-query variants keep RA within 0.0014 h. Accounting (driver:370-560: synscan_add_stray, synscan_take_stray :407, synscan_foreign_stray_deadline, synscan_drain_udp :443, synscan_command :518). Every UDP send is recorded when written. A reply or '!' on attempt k is credited to the oldest send of the same command, so k-1 sends stay outstanding; total failure leaves all k. When a same-command stray is taken as the answer, the latest send stays recorded, so the count cannot drift. Entries expire at send + 0.5 s; with 16 entries the oldest is dropped; stray_count is reset on close (:1631). Because a query waits for strays of other commands with the same reply length before it sends, at most one query command per reply length can have outstanding sends at any time (expiry excepted). So crediting an other-length datagram to the oldest send of that length always hits the right command, and errors in crediting only cause an unnecessary bounded wait, never a missed one. Late '!' and garbled datagrams are not credited, so the entry they answered only causes such a bounded wait. The worst wait is about 0.5 s once per command (strays are added only as sends happen), so a UDP command takes at most about 1.1 s on the queue, abort and disconnect included. Same-command stale reply (question 3), NON-BLOCKING: I tried to provoke a GoTo finalizer ending early with a stale RA status left over from the handler's stop wait (':f1 late:450 1 / late:0 1 / late:150 1', 3 rounds). It does not happen: the DEC stop wait's :f2 waits for the foreign :f1 stray (0.25 s seen in the simulator command log) a",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 660493.26,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1777aebf-69ab-4ead-8dca-713da62abf0b",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T15:41:40.831564Z",
+          "last_activity_at": "2026-11-22T15:52:44.796497Z",
+          "ended_at": "2026-11-22T15:52:44.796497Z",
+          "outcome": {
+            "summary": "Round 4, 4df2b94b2 (delta from d2bcae094, including merge 0a0e43fd6). Hardware diagnosis confirmed from 4e2005ec_r4_diag1.log: the :j2 sent at 12:37:41.120 got no reply, the repeat (41.331) was answered at 41.345, and :j1 went out only at 41.838, after the 0.5 s foreign-stray wait; the poll held the queue 0.766 s. My round-3 pass accepted that fallback cost as bounded; on hardware it is what broke the pulse case. The order log shows 905 of 905 complete pairs in order. The recorded run 4e2005ec_r4_hw_run.log is 21/21 with the pulse table as noted. ORDER MARKER (synscan_resync_udp, driver:471, called at :606 after a UDP command that needed more than one send): it reads until the 2-digit :g1 reply and then forgets every outstanding send, which is exact if replies keep their order; otherwise the per-send deadlines remain. Paths probed in a scratch copy on a retried :j2 (late 250 ms or lost): marker lost, marker 300 ms late, marker refused ('!0'), marker answered with 6 digits, :j2 lost plus marker lost, :j2 450 ms late plus marker 100 ms late. All 6 keep RA/DEC at the mount's position (max 0.0014 h), publish no coordinate ALERT and leave no pending fault. The RA query follows the repeated DEC query 257-368 ms later when the marker cannot help and 502-507 ms later in the fallback cases; the worst case per command is bounded at about 0.6 s plus the marker's 0.2 s plus at most one 0.5 s foreign wait. A late marker reply is credited to the :g1 send; a later :g1 query treats it as its own answer, which is the same value, and :g2 waits for it as a foreign stray. No marker is sent while one is outstanding. The marker write does not touch last_send_time, the serial path is untouched, close resets the strays, and configure needs no reset. Controllers that cannot answer :g1 with two hex digits cannot connect, because configure requires :g1/:g2 (driver ~:1507), so a different length or an error reply can only be transient and then falls back to the deadlines without harm (probed).",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 663964.933,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T19:48:47.356621Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T19:57:09.795447Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "BLOCKING (regression in kind from the 0.2 s UDP timeout, reproduced): a late reply to an earlier attempt of a retried query is taken as the reply to the NEXT query of the same reply length. synscan_reply_length() only rejects datagrams of a different length (.driver:283-293, :364-380), and the zero-wait drain (:421-428) only removes datagrams that have already arrived. Once a reply is slower than 0.2 s, the command is resent and completes on whichever reply comes first; the other reply arrives during a later command's wait. For :j2/:j1 (both 6 digits) that puts the DEC counter into the RA slot, and for :f1/:f2 (both 3) the status of the wrong axis is used. The GoTo and park finalizers read :f1 then :f2, so they can end a slew while one axis still runs, and the DEC pulse stop polling can misread the axis state. Under sustained 0.2-0.4 s latency (the AZ-GTi measurements in this ticket show a 5 s episode of 250-420 ms replies) the shift cascades through every same-length query of a burst. Reproduced in a scratch copy (own Makefile.inc, scratch dylibs) with a probe on the UDP simulator: GoTo to DEC 20, after a poll the faults ':j2 late:250 1' and ':j1 late:100 1' (a measured slow reply followed by a routine 100 ms spike). With the ticket driver, the raw RA published by the next poll jumped 10.31 h (the DEC counter as RA), i.e. another axis's value on the bus. With the master driver (1 s timeout, no resend) all 3 rounds deviated at most 0.001 h. This breaks the owner's rule that the driver never publishes another frame's values, even transiently, and it is the late-reply case the ticket asked to consider. Possible corrections, for the owner to choose: after a UDP query that succeeded on a retry (or failed after all attempts), wait up to one reply timeout for the unanswered attempts' replies and discard them before the next command (the cost falls only on the loss path, but it adds up to 0.2 s there); or, before the next query of the same length, discard datagrams that ar"
+        },
+        {
+          "at": "2026-11-21T21:20:05.284310Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T21:29:12.822499Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "Re-review of 1b0415204 (delta from 0cb794c48). Stray-reply finding: fixed for positions and status. My probe (GoTo DEC 20, ':j2 late:250 1' + ':j1 late:100 1') and three consecutive retried-query variants not covered by a case (':j2 late:250 1/:j1 late:250 1', ':j2 late:350 1/:j1 late:100 1', ':j2 late:450 2/:j1 late:150 1') all keep RA within 0.0014 h; on 0cb794c48 the first variant still jumps 10.32 h. The new cases late_dec_reply_is_not_taken_for_ra, late_status_reply_does_not_end_goto and sustained_latency_keeps_positions pass. BLOCKING (regression introduced by the new stray wait; it contradicts the ticket's pulse-timing goal and the note's own claim that the end of a pulse is not held): synscan_slew_axis_at_rate() (indigo_mount_synscan.driver:738) sends the status query :f1 before the :I1 period change both at the start and at the end of an RA pulse. When the start :f1 is retried, a stray of length 3 is recorded until last send + 0.5 s, and synscan_drain_udp() (driver ~:425-441) makes the end-of-pulse :f1, a query of the same length, wait for it before the :I1 that restores tracking. If the lost datagram never arrives (a lost request or a lost reply), the RA pulse physically runs until that deadline. Reproduced in a scratch copy with the ':f1 lost 1' fault armed before an RA pulse on the UDP guiding fixture: 100 ms pulse physical +407 ms / completion +610 ms, 300 ms pulse +201 / +413 ms. With the 0cb794c48 driver the same probe gives +5 / +207 and +11 / +223. So one lost datagram now lengthens a short guide pulse by up to 0.4 s, and completion +610 ms would fail the 400 ms hardware limit. Suggested fix: record the command with each stray and make a query wait only for strays of a different command with the same reply length (:j1 vs :j2, :f1 vs :f2). A stray of the same command is that command's answer, exactly as the design already accepts within its own retries, so the end-of-pulse :f1 (and a repeated poll query) would not wait. Then add a case: RA pulse of 1"
+        },
+        {
+          "at": "2026-11-22T09:40:07.153849Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T09:51:07.647109Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Third round, d2bcae094 (delta from 1b0415204). My blocking pulse finding is fixed. In a scratch copy (own Makefile.inc and dylibs, under the lock), with ':f1 lost 1' armed before an RA pulse on the UDP guiding fixture: 100 ms pulse physical +10 / completion +216 ms, 300 ms pulse +4 / +214 ms; on 1b0415204 it was +407/+610 and +201/+413. Position and status mix-ups still do not occur: my three retried-query variants keep RA within 0.0014 h. Accounting (driver:370-560: synscan_add_stray, synscan_take_stray :407, synscan_foreign_stray_deadline, synscan_drain_udp :443, synscan_command :518). Every UDP send is recorded when written. A reply or '!' on attempt k is credited to the oldest send of the same command, so k-1 sends stay outstanding; total failure leaves all k. When a same-command stray is taken as the answer, the latest send stays recorded, so the count cannot drift. Entries expire at send + 0.5 s; with 16 entries the oldest is dropped; stray_count is reset on close (:1631). Because a query waits for strays of other commands with the same reply length before it sends, at most one query command per reply length can have outstanding sends at any time (expiry excepted). So crediting an other-length datagram to the oldest send of that length always hits the right command, and errors in crediting only cause an unnecessary bounded wait, never a missed one. Late '!' and garbled datagrams are not credited, so the entry they answered only causes such a bounded wait. The worst wait is about 0.5 s once per command (strays are added only as sends happen), so a UDP command takes at most about 1.1 s on the queue, abort and disconnect included. Same-command stale reply (question 3), NON-BLOCKING: I tried to provoke a GoTo finalizer ending early with a stale RA status left over from the handler's stop wait (':f1 late:450 1 / late:0 1 / late:150 1', 3 rounds). It does not happen: the DEC stop wait's :f2 waits for the foreign :f1 stray (0.25 s seen in the simulator command log) a"
+        },
+        {
+          "at": "2026-11-22T15:41:40.831564Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T15:52:44.796497Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Round 4, 4df2b94b2 (delta from d2bcae094, including merge 0a0e43fd6). Hardware diagnosis confirmed from 4e2005ec_r4_diag1.log: the :j2 sent at 12:37:41.120 got no reply, the repeat (41.331) was answered at 41.345, and :j1 went out only at 41.838, after the 0.5 s foreign-stray wait; the poll held the queue 0.766 s. My round-3 pass accepted that fallback cost as bounded; on hardware it is what broke the pulse case. The order log shows 905 of 905 complete pairs in order. The recorded run 4e2005ec_r4_hw_run.log is 21/21 with the pulse table as noted. ORDER MARKER (synscan_resync_udp, driver:471, called at :606 after a UDP command that needed more than one send): it reads until the 2-digit :g1 reply and then forgets every outstanding send, which is exact if replies keep their order; otherwise the per-send deadlines remain. Paths probed in a scratch copy on a retried :j2 (late 250 ms or lost): marker lost, marker 300 ms late, marker refused ('!0'), marker answered with 6 digits, :j2 lost plus marker lost, :j2 450 ms late plus marker 100 ms late. All 6 keep RA/DEC at the mount's position (max 0.0014 h), publish no coordinate ALERT and leave no pending fault. The RA query follows the repeated DEC query 257-368 ms later when the marker cannot help and 502-507 ms later in the fallback cases; the worst case per command is bounded at about 0.6 s plus the marker's 0.2 s plus at most one 0.5 s foreign wait. A late marker reply is credited to the :g1 send; a later :g1 query treats it as its own answer, which is the same value, and :g2 waits for it as a foreign stray. No marker is sent while one is outstanding. The marker write does not touch last_send_time, the serial path is untouched, close resets the strays, and configure needs no reset. Controllers that cannot answer :g1 with two hex digits cannot connect, because configure requires :g1/:g2 (driver ~:1507), so a different length or an error reply can only be transient and then falls back to the deadlines without harm (probed)."
+        }
+      ],
+      "result": {
+        "summary": "Round 4, 4df2b94b2 (delta from d2bcae094, including merge 0a0e43fd6). Hardware diagnosis confirmed from 4e2005ec_r4_diag1.log: the :j2 sent at 12:37:41.120 got no reply, the repeat (41.331) was answered at 41.345, and :j1 went out only at 41.838, after the 0.5 s foreign-stray wait; the poll held the queue 0.766 s. My round-3 pass accepted that fallback cost as bounded; on hardware it is what broke the pulse case. The order log shows 905 of 905 complete pairs in order. The recorded run 4e2005ec_r4_hw_run.log is 21/21 with the pulse table as noted. ORDER MARKER (synscan_resync_udp, driver:471, called at :606 after a UDP command that needed more than one send): it reads until the 2-digit :g1 reply and then forgets every outstanding send, which is exact if replies keep their order; otherwise the per-send deadlines remain. Paths probed in a scratch copy on a retried :j2 (late 250 ms or lost): marker lost, marker 300 ms late, marker refused ('!0'), marker answered with 6 digits, :j2 lost plus marker lost, :j2 450 ms late plus marker 100 ms late. All 6 keep RA/DEC at the mount's position (max 0.0014 h), publish no coordinate ALERT and leave no pending fault. The RA query follows the repeated DEC query 257-368 ms later when the marker cannot help and 502-507 ms later in the fallback cases; the worst case per command is bounded at about 0.6 s plus the marker's 0.2 s plus at most one 0.5 s foreign wait. A late marker reply is credited to the :g1 send; a later :g1 query treats it as its own answer, which is the same value, and :g2 waits for it as a foreign stray. No marker is sent while one is outstanding. The marker write does not touch last_send_time, the serial path is untouched, close resets the strays, and configure needs no reset. Controllers that cannot answer :g1 with two hex digits cannot connect, because configure requires :g1/:g2 (driver ~:1507), so a different length or an error reply can only be transient and then falls back to the deadlines without harm (probed).",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2374435.208,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 4
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9dad6946-f403-4d08-ae55-8490ba9b4021",
+      "event": "ticket/created",
+      "at": "2026-11-21T11:23:59.700505Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "acf47ebd-6cb4-4ce4-bdb0-695797426e3e",
+      "event": "ticket/confirmed",
+      "at": "2026-11-21T11:24:21.889391Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "891a1b65-c5a1-45f7-8745-c3696d8c6e28",
+      "event": "task/progress",
+      "at": "2026-11-21T11:24:26.201902Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Implementation started on branch ticket/4e2005ec-e069-499c-9f06-e9b993700914"
+    },
+    {
+      "event_id": "e93dec13-0985-406a-bfb4-bf84a8f91c82",
+      "event": "ticket/started",
+      "at": "2026-11-21T11:24:26.203508Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/4e2005ec-e069-499c-9f06-e9b993700914",
+      "base": "master"
+    },
+    {
+      "event_id": "3601d938-ea4b-48e6-bf67-e8e5e19f1d42",
+      "event": "task/progress",
+      "at": "2026-11-21T11:24:57.648520Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Implementer launched (phase 1: analysis, reproduction, proposal)",
+      "attempt_id": "720ecb4e-37ff-4e95-aabc-52f365640c75",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0725b8b0-313b-41fc-85d5-191f20a94567",
+      "event": "task/progress",
+      "at": "2026-11-21T11:27:53.506487Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Driver/log analysis done; starting read-only UDP latency/loss probe on the AZ-GTi"
+    },
+    {
+      "event_id": "0893f6ba-d666-49d8-9635-1117cb9d8920",
+      "event": "task/progress",
+      "at": "2026-11-21T11:32:16.023177Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Running scratch simulator prototype: test_mount_synscan_simulator filter synscan_udp_pulse"
+    },
+    {
+      "event_id": "4243c8ab-1aac-4c66-b17a-188599ad53c0",
+      "event": "task/progress",
+      "at": "2026-11-21T11:41:57.700646Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "AZ-GTi probe done (3215 queries, 0.81% lost, 5% after 1 s idle); waiting for scratch prototype runs"
+    },
+    {
+      "event_id": "fe876fd9-e2b2-4c0c-9687-524805b3512a",
+      "event": "ticket/note",
+      "at": "2026-11-21T11:49:47.782966Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Phase 1 analysis (no driver change in the worktree; prototype in a scratch copy only). Evidence: scratchpad/udp_4e20 (probe.py, run1.json, analyze.py, prototype_*.diff, proto_*.log).\n\n1. Current transaction (indigo_mount_synscan.driver, version 26)\n- synscan_command(): before every attempt indigo_uni_discard() (on UDP a 10 ms select per call, visible as \"// timeout\" before each command in guide_debug.log, so every UDP command costs ~10 ms extra), write \"<cmd>\\r\", synscan_read_response(). Serial: 1 attempt, indigo_uni_read_section2() with 1 s first-byte / 0.1 s next-byte timeout. UDP: SYNSCAN_UDP_COMMAND_ATTEMPTS = 3, each indigo_uni_wait_for_data(SYNSCAN_COMMAND_TIMEOUT = 1 s) + one datagram read; a '!' reply ends the command at once, a missing/garbled one is retried. Worst UDP transaction 3.03 s.\n- Late replies: the discard before each attempt drains datagrams that already arrived (one 1-byte read per datagram drops the whole datagram on Linux/macOS). A reply arriving after that discard but before the next reply is taken as the next command's reply. Queries are shape-checked only by callers (synscan_valid_payload, payload length 6/3/2); setting commands accept any \"=...\\r\", so a late \"=XXXXXX\" would be taken as an :I/:J acknowledgement. One misattribution then self-heals (the displaced reply is drained by the following discard).\n- Windows (source audit, not reproduced): read_data() uses recv() with the caller's length; indigo_uni_discard() reads 1 byte, so a pending datagram gives WSAEMSGSIZE, which latches handle->last_error and silently kills the UDP session (synscan_validate_handle() never reports UDP loss). Any late reply on Windows is therefore fatal today.\n- Non-idempotent resends: queries, :E :F :G :I :K :L :M :O :P :V and the :W encoder/PPEC on/off settings are idempotent. Risky: :J after :H (H is a relative increment; a resent :J after a short GOTO already finished could repeat the move if the firmware keeps the increment; the simulator clears it, real beh",
+      "tokens": null
+    },
+    {
+      "event_id": "377a631f-9a09-40a1-b7ec-b2a036f48207",
+      "event": "task/progress",
+      "at": "2026-11-21T11:49:47.867217Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Phase 1 done: analysis, reproduction and proposal recorded as a ticket note; worktree unchanged"
+    },
+    {
+      "event_id": "fd8a4fa5-3453-4a3d-8c33-b5bc57bb6d57",
+      "event": "question/asked",
+      "at": "2026-11-21T11:50:31.436649Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Phase 1 proposal (see note): UDP per-attempt timeout 0.2 s (3 attempts, serial unchanged); length-checked replies and whole-datagram zero-wait drain on UDP instead of indigo_uni_discard(); synscan_now() on indigo_monotonic_time(); mount poll does not start within 0.2 s of a guide deadline; :J check-before-resend deferred. Approve this scope and the 0.2 s value?"
+    },
+    {
+      "event_id": "7437de92-f152-410e-a8fb-c519b3557b57",
+      "event": "question/answered",
+      "at": "2026-11-21T12:40:29.311310Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner: approved - UDP per-attempt timeout 0.2 s with 3 attempts (serial unchanged), length-checked replies and whole-datagram zero-wait drain on UDP, synscan_now() on indigo_monotonic_time(), mount poll not started within 0.2 s of a guide deadline; :J check-before-resend deferred."
+    },
+    {
+      "event_id": "b1760107-601d-498c-b345-bc1bd8fce5e1",
+      "event": "task/progress",
+      "at": "2026-11-21T12:40:49.094461Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Phase 2 started: merging master into the worktree"
+    },
+    {
+      "event_id": "5bfb4b0e-0ae3-4455-b72f-c0b5f72d4356",
+      "event": "task/progress",
+      "at": "2026-11-21T12:47:13.954576Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Simulator lost/late faults and 8 UDP cases written; building worktree to run them on the unchanged driver"
+    },
+    {
+      "event_id": "30f5d1f7-99a5-4cb9-b71e-2406c91d5876",
+      "event": "task/progress",
+      "at": "2026-11-21T13:04:08.465942Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Driver change (v31) regenerated; 7/8 new cases fail before, 7/8 pass after; fixing two case harness issues"
+    },
+    {
+      "event_id": "dd99d907-b343-4d49-9c9a-ba0d892503ad",
+      "event": "task/progress",
+      "at": "2026-11-21T13:46:48.206933Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Driver version set to 32 per coordinator; waiting for test lock"
+    },
+    {
+      "event_id": "4b262a73-33b7-4894-8c38-a045ba0c781c",
+      "event": "task/progress",
+      "at": "2026-11-21T14:20:51.939450Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "648d5e6a-f091-4400-80d7-b5bbf387106b",
+      "event": "task/progress",
+      "at": "2026-11-21T14:20:51.963729Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6d33724e-2f8b-432f-b6d5-e1e0531da995",
+      "event": "check/passed",
+      "at": "2026-11-21T14:20:51.965512Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "7b48b6e9d4bfeca5dc22214bf5aa7d905826e955",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "febac44b-b2c7-4c6f-9afb-5cd96828e2e6",
+      "event": "ticket/note",
+      "at": "2026-11-21T14:21:25.498267Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Phase 2 implementation (owner approved 0.2 s). Version 32 per coordinator (landing order e2f19dd5 29, 0b4af839 30, 9fbd00e2 31, this ticket 32).\n\nChange (indigo_mount_synscan.driver, regenerated with the generator built in the worktree; .c diff mirrors the .driver diff):\n- version 32 (:27); defines SYNSCAN_UDP_REPLY_TIMEOUT 0.2 s, SYNSCAN_POLL_GUIDE_GUARD 0.2, SYNSCAN_POLL_AFTER_GUIDE 0.05, SYNSCAN_POLL_GUIDE_STALE 2.0 (:48-53). SYNSCAN_UDP_COMMAND_ATTEMPTS 3 and serial timing (1 s / 0.1 s, one attempt, indigo_uni_discard) unchanged.\n- synscan_now() uses indigo_monotonic_time() (:279); also used by motion_deadline. synscan_reply_length() (:283-293): 3 for :f, 2 for :g, 6 for other lowercase queries and :D, 0 for settings.\n- synscan_read_response() takes the command (:355); on UDP waits until a 0.2 s attempt deadline and skips a '='-framed datagram whose payload length does not fit the command (:364-380); a right-length late reply is taken as the answer to the repeated command. '!' replies are not length-checked (an error reply cannot be attributed).\n- synscan_command(): on UDP drains pending datagrams whole with indigo_uni_wait_for_data(handle, 0) + indigo_uni_read() instead of indigo_uni_discard() (:421-428); serial path unchanged.\n- mount on_timer (:1935-1952): when a guide deadline is less than 0.2 s ahead (or passed by less than 2 s) the poll is rescheduled 50 ms after the deadline. The 2 s staleness bound is needed because a guider disconnect cancels the finalizer and leaves the deadline set (the generated guider connection handler calls indigo_cancel_pending_handlers()).\n- No library or generator change.\n\nSimulator (mount_synscan_simulator.c): the fault file holds up to 8 rules, one per line, a command takes the first matching rule (needed to delay two different commands in one transaction sequence); new replies \"lost\" (execute, withhold reply) and \"late:<ms>\" (execute, reply later from a detached thread on UDP; late:0 = immediate, used to let a rule pass one ",
+      "tokens": null
+    },
+    {
+      "event_id": "6fc547d0-9d21-4416-b85f-12443a1b1d60",
+      "event": "task/progress",
+      "at": "2026-11-21T14:21:25.583769Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Implementation done; 8/8 new cases fail before and pass after, suite 125/125; waiting for e2f19dd5/0b4af839/9fbd00e2 to land"
+    },
+    {
+      "event_id": "118738b1-8722-428a-8c70-dca12f2735a5",
+      "event": "task/progress",
+      "at": "2026-11-21T17:52:16.079422Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Merging master 0b381b43b (three synscan tickets landed)"
+    },
+    {
+      "event_id": "5f95175e-6e59-4cdd-8926-4b17e27f9dd1",
+      "event": "task/progress",
+      "at": "2026-11-21T17:53:18.485357Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Merged master (version 32, 131/21); running the 8 UDP cases"
+    },
+    {
+      "event_id": "1b2125c9-37f7-474a-afcb-e579acc16d18",
+      "event": "task/progress",
+      "at": "2026-11-21T17:54:07.814793Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "UDP cases 11/11 pass on merged tree; recorded simulator run: run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "aecd9d34-f7c5-4456-932b-06305e9f21e5",
+      "event": "task/progress",
+      "at": "2026-11-21T18:15:34.544841Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Recorded sim run 131/130: synscan_mount_aborts_goto_mid_slew failed; repeating it on this branch and on master's driver"
+    },
+    {
+      "event_id": "28eef95d-5cd1-438f-835e-1207625143eb",
+      "event": "task/progress",
+      "at": "2026-11-21T18:25:36.204425Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "abort_goto_mid_slew: second GOTO can be a low-speed GOTO beyond the 30 s wait; arrival wait raised to 90 s; rerunning recorded sim run"
+    },
+    {
+      "event_id": "8eaaf189-b9b2-4343-bad3-03a9fb07ba68",
+      "event": "task/progress",
+      "at": "2026-11-21T18:48:55.344934Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "24631e9e-cc05-46ce-aea5-119ef373ddb9",
+      "event": "task/progress",
+      "at": "2026-11-21T18:48:55.369213Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e98c931b-f58f-4b18-a85a-97836a61edc0",
+      "event": "check/passed",
+      "at": "2026-11-21T18:48:55.370952Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "309515ccc95026d5c2e717fb013b91b40f34aedd",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "c319d2b2-dadc-4410-80db-5ee4b7838aba",
+      "event": "ticket/note",
+      "at": "2026-11-21T18:49:10.604615Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Merge of master 0b381b43b (e2f19dd5, 0b4af839, 9fbd00e2 landed): conflicts in version (resolved 32), MIGRATION_STATUS (131 / 21 = master 123 + 8), simulator usage text (master's encoder lines plus the multi-rule fault description); master's generated .c taken and regenerated with the worktree generator, generated diff = .driver diff (75 lines). Reply-length helper covers the new connect-time :W settings (empty reply) and :d queries (6 digits); the simulator's new @arrived event lines do not affect the UDP cases. 11 UDP cases (3 existing + 8 new) pass on the merged tree (physical/completion errors +216/+217, +218/+219, +12/+13, +213/+214 ms; late cases +367/+372, +316; probe repeat 209 ms; restore +642 ms).\nRecorded simulator run 1 (18:54): 131/130 Failed, synscan_mount_aborts_goto_mid_slew (second GOTO not OK within 30 s). Cause: where the abort lands decides how much RA is left; below the 6400-step low-speed margin the second GOTO is a low-speed GOTO that the simulator steps on its 5 ms tick; in 20 repetitions the remaining RA was 35 steps (3.8 s) or 2451 steps (20 s), so a larger remainder or host load exceeds 30 s. Same behaviour on master's driver (10/10 pass alone on both). Test-only fix: the arrival wait of that GOTO raised to 90 s (start then three 30 s waits).\nRecorded simulator run 2 (19:25): 131/129 Failed, synscan_mount_goto_during_homing_is_refused (home not OK within 30 s) and synscan_mount_sync_during_homing_is_refused (first coordinates publication after the request is BUSY with the request targets, not the refusal). Both cases came with 15e8efabe. Repeated alone: sync case failed 2/3 on this branch and 1/3 on master's driver (test_master built from git show master:indigo_mount_synscan.c), goto case passed 6/6. Probable cause: when a poll during the homing has already published the coordinates BUSY, INDIGO_REJECT_COORDINATES_CHANGE_IF takes its BUSY branch (indigo_reject_change keeps BUSY) instead of the ALERT refusal the case expects; whether such a ",
+      "tokens": null
+    },
+    {
+      "event_id": "605eac16-1b52-43c2-8582-cba65086d79b",
+      "event": "task/progress",
+      "at": "2026-11-21T18:49:10.690579Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Recorded sim run 131/129: two homing-refusal cases from 15e8efabe flaky, also on master's driver; reporting"
+    },
+    {
+      "event_id": "4bdafa79-a5cd-4b64-864a-2672e2beac83",
+      "event": "task/progress",
+      "at": "2026-11-21T18:49:53.090374Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Diagnosing flaky homing-refusal cases"
+    },
+    {
+      "event_id": "9e6e05cc-b60c-4a1d-a783-281623cb476e",
+      "event": "task/progress",
+      "at": "2026-11-21T19:06:13.883502Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Temporary tracing added; repeating both homing cases 25x under the lock"
+    },
+    {
+      "event_id": "8f137050-1f9b-4be0-810b-b3ebd30c14a0",
+      "event": "task/progress",
+      "at": "2026-11-21T19:09:49.757144Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Hypothesis: stale gate_entered from the previous case; repeating both homing cases in one process with tracing"
+    },
+    {
+      "event_id": "329a6c65-b27d-41a7-ba49-c431f4da2391",
+      "event": "task/progress",
+      "at": "2026-11-21T19:15:18.270968Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Cause found (stale gate flag + admission race); driver claims HOMING at admission; comparing new queued cases before/after"
+    },
+    {
+      "event_id": "5948c3f0-17aa-4b4f-8b22-846d4725515d",
+      "event": "task/progress",
+      "at": "2026-11-21T19:26:51.631114Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Refusal cases 140/140 over 20 repetitions; recorded sim run run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "2c0d5381-3170-45f0-8587-97485edb4aac",
+      "event": "task/progress",
+      "at": "2026-11-21T19:47:51.430694Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "21db0ba0-9184-43cb-9e0f-a5cb69d46cf6",
+      "event": "task/progress",
+      "at": "2026-11-21T19:47:51.456814Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "be2d8aeb-65be-407b-a13d-5d080d887d66",
+      "event": "check/passed",
+      "at": "2026-11-21T19:47:51.458762Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "0cb794c48e28ab2a747c09c68281482ade8d7bec",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "02de8dca-9bf3-493e-b8fa-c9dcfe5c6abe",
+      "event": "ticket/note",
+      "at": "2026-11-21T19:48:18.932542Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Flaky homing refusal cases (from 15e8efabe): diagnosis and fix.\nEvidence: with temporary tracing (driver: request admission, home handler, finalizer, poll, MOUNT_STATE publications; test: request, gate queued/entered/released; removed afterwards) both cases passed 50/50 when each ran in its own process, and synscan_mount_sync_during_homing_is_refused failed 9/10 when it ran after synscan_mount_goto_during_homing_is_refused in one process. In the failing runs 'test gate entered' is logged right after the MOUNT_HOME request, before the home handler runs and before the gate is queued from the MOUNT_STATE HOME light; the coordinates request is then evaluated with global_mode IDLE and admitted (sync_pending=1), which is the 'BUSY with the requested values' publication; the sync handler runs after the home. Cause in the test: install_gate() never cleared gate_entered, so wait_for_gate() returned on the flag left by the previous case's gate (the goto case, or synscan_mount_tracking_request_survives_home_finalizer before the goto case in the full suite). For the goto variant the same ordering makes the GOTO claim SLEWING at admission and the home handler, finding the mode not IDLE, refuses the home (ALERT): 'home did not end OK within 30 s'.\nVerdict: both. (a) test defect: stale gate_entered; fixed by clearing it in install_gate() and before the busy-light gate is armed. (b) driver defect exposed by that ordering: a coordinates request sent after a home or auto home request was admitted (BUSY) but before its handler ran was admitted, because the HOMING mode was set only by the queued handler. Fix (indigo_mount_synscan.driver, version stays 32): MOUNT_HOME and X_MOUNT_AUTOHOME get on_change_request blocks that claim SYNSCAN_GLOBAL_HOMING at admission (only when the property is not BUSY, the request turns the item on, the mount is idle, and for auto home not parked) and set home_claimed / autohome_claimed; the handlers start the motion only on their own claim (otherwise the e",
+      "tokens": null
+    },
+    {
+      "event_id": "dd097b5b-12e1-4281-a2ae-84151decdb93",
+      "event": "task/progress",
+      "at": "2026-11-21T19:48:19.015556Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Recorded sim run 134/134 OK; flow check passed; waiting for hardware clearance"
+    },
+    {
+      "event_id": "b52a88c7-7338-44a1-baa8-5e51aa26907b",
+      "event": "task/progress",
+      "at": "2026-11-21T19:48:47.356681Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Review started"
+    },
+    {
+      "event_id": "de15db29-e23b-4cbe-9f20-0b61d310581d",
+      "event": "review/started",
+      "at": "2026-11-21T19:48:47.357943Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "f58c73a3-cd01-4682-8577-ee6fad4f01a0",
+      "event": "task/progress",
+      "at": "2026-11-21T19:49:26.613554Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Reviewer launched",
+      "attempt_id": "2404d68e-3bf6-4b94-95cb-5cc7d207f638",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "8edc74f6-33b7-47ae-b7a5-96ecbe26888a",
+      "event": "task/progress",
+      "at": "2026-11-21T19:52:27.439526Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Scratch probe: late same-length UDP reply taken by the next query"
+    },
+    {
+      "event_id": "6e62af08-1b2f-4bbf-9176-78c1c960eeb1",
+      "event": "task/progress",
+      "at": "2026-11-21T19:57:09.795543Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "afc4edb2-3c41-4376-9d95-12f0cf12ebe7",
+      "event": "task/progress",
+      "at": "2026-11-21T19:57:09.795567Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "0fa555e4-9d61-4baa-bfc1-1d44c8e26810",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T19:57:09.797279Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "0cb794c48e28ab2a747c09c68281482ade8d7bec"
+    },
+    {
+      "event_id": "86a2dc21-7591-456a-99ed-4ec0e7aac267",
+      "event": "task/progress",
+      "at": "2026-11-21T20:01:52.736711Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Review changes: implementing stray-reply tracking, park claim, auto home parked release"
+    },
+    {
+      "event_id": "485ce1b9-5e07-45ea-bf47-a5f0f06b1107",
+      "event": "task/progress",
+      "at": "2026-11-21T20:08:41.286447Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "New stray/park cases fail on the candidate and pass now; running UDP and refusal cases 20x"
+    },
+    {
+      "event_id": "b3a25deb-2371-47e6-8aa1-ed3271145fc8",
+      "event": "task/progress",
+      "at": "2026-11-21T20:56:24.612999Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "23 affected cases 460/460 over 20 repetitions; recorded sim run"
+    },
+    {
+      "event_id": "017f403d-6d5f-491e-8243-c928671a9fc6",
+      "event": "task/progress",
+      "at": "2026-11-21T21:19:38.264368Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "58faffaf-1bae-463a-bd6f-e5ef29c3de66",
+      "event": "task/progress",
+      "at": "2026-11-21T21:19:38.292087Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "32c7bf73-9f88-4542-9b45-42f021b9b5d4",
+      "event": "check/passed",
+      "at": "2026-11-21T21:19:38.294335Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "1b0415204c10d896916c38f64363f57aec27c108",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "f9a68c12-db3c-41c8-8f3b-9be392f6bd74",
+      "event": "ticket/note",
+      "at": "2026-11-21T21:19:38.380928Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review `changes` addressed (stray replies after a repeated UDP command; park claim; auto home parked release). Version stays 32.\n\nStray-reply rule (indigo_mount_synscan.driver, synscan_command(), synscan_drain_udp(), synscan_read_response() and helpers synscan_datagram_length/synscan_forget_stray/synscan_add_strays/synscan_stray_deadline; private data stray_count/stray_length[8]/stray_deadline[8]):\n- A UDP command ends on the first reply. Every other send of it may still be answered: after success on attempt k, k-1 strays; after a '!' reply also k-1; after failure, all k sends. They are recorded with the command's reply length and the deadline last send + SYNSCAN_UDP_STRAY_WINDOW (0.5 s, conservative: the consumed reply may be the late one of an earlier send).\n- Window: on the AZ-GTi replies took up to 0.42 s (a 5 s episode of 0.25-0.42 s replies), one reply in 3215 arrived 1.58 s late; 0.5 s covers all but that outlier.\n- Before every send (each attempt) the driver reads and drops the datagrams already there (zero wait, whole datagrams), each one counting down an outstanding stray of its length. A query (reply length > 0) whose length equals an outstanding stray's first waits, bounded by that deadline, until those strays have arrived or expired. A command with a different reply length does not wait: the length check rejects the stray (and counts it down) while it waits for its own reply. A setting (\"=\" reply) does not wait either: an \"=\" carries no value, and waiting would hold the end of an RA guide pulse after every repeated start (start reply lost: +0.4 s instead of +0.2 s).\n- After that, a datagram of the command's length that arrives while it waits is its reply; any other length is skipped. Serial unchanged.\n- What remains possible: a stray later than its 0.5 s window (seen once in 3215 queries, at 1.58 s) that arrives while a query of the same length waits is taken as its reply, one wrong reading published once (the next poll corrects it); one arriving betwee",
+      "tokens": null
+    },
+    {
+      "event_id": "77231c6e-644a-4387-99c8-dee1056d5836",
+      "event": "task/progress",
+      "at": "2026-11-21T21:19:38.464714Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Recorded sim run 139/139 OK; flow check passed; review changes done"
+    },
+    {
+      "event_id": "22c8d5b3-ebfe-444f-98f3-68c44ada83f7",
+      "event": "task/progress",
+      "at": "2026-11-21T21:20:05.284381Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a750e285-52c7-4408-88ca-74bfe335fa1e",
+      "event": "review/started",
+      "at": "2026-11-21T21:20:05.285711Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "b05b91cc-84d0-4296-be19-11e51628d00a",
+      "event": "task/progress",
+      "at": "2026-11-21T21:20:48.059966Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Re-review started",
+      "attempt_id": "ff0ffa79-ca3e-4a5f-973e-7a39955696b4",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "2e74818c-4c92-434a-88d3-17c95e6910b8",
+      "event": "task/progress",
+      "at": "2026-11-21T21:22:10.273941Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Scratch probes: short RA pulse with start :f1 lost, consecutive retried :j"
+    },
+    {
+      "event_id": "869807f7-769b-4c0d-abf4-29565981ac37",
+      "event": "task/progress",
+      "at": "2026-11-21T21:29:12.822587Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "8c7e2e07-abca-4b08-b7de-a5a365dbc58e",
+      "event": "task/progress",
+      "at": "2026-11-21T21:29:12.822610Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "59d3ac1d-c42d-40c4-8cb5-890eb58badaf",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T21:29:12.824095Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "1b0415204c10d896916c38f64363f57aec27c108"
+    },
+    {
+      "event_id": "f59c484b-e4fd-4592-9623-1120edf878fb",
+      "event": "question/asked",
+      "at": "2026-11-21T21:29:46.521933Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Two review rounds asked for changes. Round 2 finding: the stray-reply wait delays the end-of-pulse :f1 when the start :f1 of an RA pulse was retried, so a 100 ms pulse with one lost datagram runs +407 ms physical / +610 ms completion (was +5 / +207 ms). Proposed: one more round with the reviewer's fix (key strays by command; a query waits only for strays of a different command with the same reply length), a new 100 ms pulse case, and removal of blank lines inside the new test function bodies. Continue with this third round?"
+    },
+    {
+      "event_id": "58e8543b-7690-469a-bc23-023798a2019f",
+      "event": "question/answered",
+      "at": "2026-11-22T07:51:49.637726Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner: 'Yes, third round' - continue with the reviewer's fix (strays keyed by command; a query waits only for strays of a different command with the same reply length), the 100 ms pulse case and removal of blank lines in new test function bodies."
+    },
+    {
+      "event_id": "06968434-65b7-478e-8afc-3a664dfb860b",
+      "event": "task/progress",
+      "at": "2026-11-22T07:53:21.524985Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Round 3 started: per-command stray accounting, start-status-loss pulse cases, test formatting"
+    },
+    {
+      "event_id": "a26c8763-64a6-4092-8f51-d2327624616c",
+      "event": "task/progress",
+      "at": "2026-11-22T07:56:14.766662Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Running new start-status pulse cases and variants on 1b0415204 and now, then all UDP cases"
+    },
+    {
+      "event_id": "408b47a0-8049-4d47-aa95-0af6b6fcf1ff",
+      "event": "task/progress",
+      "at": "2026-11-22T07:59:39.604536Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "New cases fail on 1b0415204 and pass now; running UDP, refusal and guider cases 20x"
+    },
+    {
+      "event_id": "0fc9a4d3-61fc-4f82-95ec-503823d26ada",
+      "event": "task/progress",
+      "at": "2026-11-22T09:16:46.486197Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Affected cases 900/900 over 20 repetitions; recorded sim run run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "fb7d5a6d-8d0e-487d-aacd-ab5f6303a9fa",
+      "event": "task/progress",
+      "at": "2026-11-22T09:39:39.376896Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ec916a8a-4beb-4b06-9e1d-f0fa1725336b",
+      "event": "task/progress",
+      "at": "2026-11-22T09:39:39.405909Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "66a36bcd-1e38-4534-9839-ef436a5cb48a",
+      "event": "check/passed",
+      "at": "2026-11-22T09:39:39.408858Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "d2bcae09464b4abcd4b0f71a731c95defae18b69",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a937b7ab-ac3b-4ef6-95fb-aab8c9a9d8e9",
+      "event": "ticket/note",
+      "at": "2026-11-22T09:39:39.506440Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Round 3 (re-review of 1b0415204): per-command stray accounting. Version stays 32.\n\nFinal rule (indigo_mount_synscan.driver: synscan_add_stray, synscan_take_stray, synscan_expire_strays, synscan_foreign_stray_deadline, synscan_drain_udp, synscan_command, synscan_read_response):\n- Every UDP send is recorded when it is written: the full command text, the payload length of its reply and a deadline of send time + 0.5 s (SYNSCAN_UDP_STRAY_WINDOW; AZ-GTi late replies up to 0.42 s, one outlier 1.58 s in 3215). Up to 16 outstanding sends, the oldest is forgotten when full.\n- A reply the command accepts (or a '!' reply) is accounted to the oldest outstanding send of that same command. Taking the oldest leaves the later deadlines, which cover the send whose reply is really still on its way. Sends that got no reply stay outstanding as strays until their own deadline.\n- \"Same command\" is the full command text including axis and argument (\":f1\" and \":f2\", \":j1\" and \":j2\", \":q1010000\" and \":q2010000\" differ). For queries only the axis and, for :q, the inquiry code are arguments, and they select different values, so they must be different commands. Settings carry their argument (\":I1<period>\"); since settings never wait, their identity only decides which send a datagram is accounted to.\n- Before a send, the datagrams already there are read and dropped without waiting, each accounted to an outstanding send of this command with that length first, otherwise to the oldest send of any command with that length (other lengths: the oldest send of that length). A query first waits, bounded by their deadlines, until no send of ANOTHER command with the same reply length is outstanding. Outstanding sends of the same command never make it wait: a late answer to the same query is a valid answer to it. Commands with another reply length and settings do not wait.\n- While a command waits for its own reply, a datagram of its length is its answer; any other length is accounted to the oldest send of t",
+      "tokens": null
+    },
+    {
+      "event_id": "a684c260-00ea-42e9-9f24-1242ec19857d",
+      "event": "task/progress",
+      "at": "2026-11-22T09:39:39.601224Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "40918464-40aa-4320-a8b6-9f5944208777",
+      "text": "Round 3 done: recorded sim run 143/143 OK, flow check passed"
+    },
+    {
+      "event_id": "01f0dfbd-0e61-4f1c-8b77-513c84447e29",
+      "event": "task/progress",
+      "at": "2026-11-22T09:40:07.153922Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Review started"
+    },
+    {
+      "event_id": "6f8eecce-26d9-4dc1-8083-8ccf49113501",
+      "event": "review/started",
+      "at": "2026-11-22T09:40:07.155323Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "7a728e50-6426-42cf-8613-0cb989f7c5e3",
+      "event": "task/progress",
+      "at": "2026-11-22T09:40:43.885150Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Third review round started",
+      "attempt_id": "229b67ba-1ed3-43ad-8308-1e8d750d5e6e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6cb09075-5519-43d5-82ec-6ba71c1e19da",
+      "event": "task/progress",
+      "at": "2026-11-22T09:42:07.163007Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Scratch probes: pulse reproduction, stale same-command :f1 reply ending a GoTo"
+    },
+    {
+      "event_id": "2cd3b166-ad17-4fd4-8e83-098d884f3422",
+      "event": "task/progress",
+      "at": "2026-11-22T09:51:07.647205Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "0244ec23-50e5-4d87-b56c-9f074a0b717c",
+      "event": "review/passed",
+      "at": "2026-11-22T09:51:07.649111Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "d2bcae09464b4abcd4b0f71a731c95defae18b69"
+    },
+    {
+      "event_id": "99014a03-6345-48dc-ac64-2ed0537719d3",
+      "event": "ticket/note",
+      "at": "2026-11-22T09:52:02.803596Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review round 3 passed at d2bcae094. Known residual, not fixed here (reviewer, non-blocking): a status query repeated on one axis with no other same-length query in between can be answered by its own stale reply after the axis state changed, e.g. the :f2 before a DEC pulse's :J2 is retried and its late 'stopped' reply lands in the stop wait's :f2 after :K2, ending the stop wait early (needs a reply 0.2-0.5 s late in a ~10 ms window; consequence: early completion or a '!' on the next mode change). Possible refinement: after :J/:K/:G to an axis treat that axis's older status strays as foreign. AZ-GTi state 2026-11-22 10:51: j1=-480181, j2=351953 unchanged since 2026-11-21, d1 still running away (-3314805 -> -3315129 in 7 s), d2=181; the mount has not been power-cycled. Hardware run not done yet.",
+      "tokens": null
+    },
+    {
+      "event_id": "519f52b4-f99e-4f4c-af76-577391983253",
+      "event": "question/answered",
+      "at": "2026-11-22T11:15:18.006430Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner 2026-11-22: 'Yes, run hardware' - run the non-interactive AZ-GTi hardware run before closing, although the RA encoder reading :d1 still runs away (mount not power-cycled)."
+    },
+    {
+      "event_id": "3d138e70-8ec3-4c14-b089-e1cc574a9e88",
+      "event": "task/progress",
+      "at": "2026-11-22T11:15:50.216853Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Merged the 6a4e8bdf hardware harness; recorded hardware run on the AZ-GTi: run_driver_test.py mount_synscan --hw, j1/j2 read before and after"
+    },
+    {
+      "event_id": "6c08db79-50d2-4282-b86b-18e6a4469695",
+      "event": "task/progress",
+      "at": "2026-11-22T11:28:06.325739Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Hardware run 1: 18 of 21, three cases failed in prepare_mount() because the harness waited for coordinates OK while the refused GoTo of the park case leaves a kept ALERT; harness now waits for not-BUSY. Full recorded rerun."
+    },
+    {
+      "event_id": "956a30a6-1f18-4193-96fe-f3dbeece044d",
+      "event": "task/progress",
+      "at": "2026-11-22T11:36:18.926422Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Round 4 started: diagnosing hardware pulse overrun on the AZ-GTi"
+    },
+    {
+      "event_id": "79fa6e10-2e25-46cd-a87d-ab56d15da7e4",
+      "event": "task/progress",
+      "at": "2026-11-22T11:36:57.024707Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Hardware diagnosis: guide pulse accuracy case alone with driver debug log"
+    },
+    {
+      "event_id": "cb2b0e05-ef89-414d-8220-403b5b4d7991",
+      "event": "task/progress",
+      "at": "2026-11-22T11:40:09.311883Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Read-only reply-order probe on the AZ-GTi (:j1 + :g1 pairs)"
+    },
+    {
+      "event_id": "652a8c76-a187-41ed-853f-bfa0b80cebe5",
+      "event": "task/progress",
+      "at": "2026-11-22T12:00:47.503301Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Running lost-poll-reply case on d2bcae094 and now, then UDP and guider cases"
+    },
+    {
+      "event_id": "803a4ade-a31c-4cc1-bdf3-ac8c6ed6763c",
+      "event": "task/progress",
+      "at": "2026-11-22T12:12:31.520638Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Hardware: guide pulse accuracy case alone with the order-marker and anchored-deadline change"
+    },
+    {
+      "event_id": "562d63a6-2e57-4ebc-9607-983a3f4b0714",
+      "event": "task/progress",
+      "at": "2026-11-22T12:14:43.468551Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Simulator: UDP, refusal and guider cases 20x"
+    },
+    {
+      "event_id": "1a58ef6e-dc80-4213-a2be-da60e9603a1d",
+      "event": "task/progress",
+      "at": "2026-11-22T13:21:33.995304Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Simulator: UDP, refusal and guider cases 20x (rerun after the poll-wait fix)"
+    },
+    {
+      "event_id": "a1500b27-2c1b-44a7-ad1b-554276ad2767",
+      "event": "task/progress",
+      "at": "2026-11-22T15:06:21.703657Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Guider/GoTo case: fixed hour-angle target; running it 20x"
+    },
+    {
+      "event_id": "755a86bf-2333-4723-9bd2-3ce1cd1637b4",
+      "event": "task/progress",
+      "at": "2026-11-22T15:10:52.396661Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Recorded simulator run: run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "8a243e37-6b44-47d8-927f-bcab309dc0e2",
+      "event": "task/progress",
+      "at": "2026-11-22T15:33:18.521415Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Recorded hardware run on the AZ-GTi: run_driver_test.py mount_synscan --hw"
+    },
+    {
+      "event_id": "6498c777-6e01-4a1d-af6a-fa824684884b",
+      "event": "task/progress",
+      "at": "2026-11-22T15:40:48.509940Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2a21b8df-ce57-4961-a0ea-0339e2d653fd",
+      "event": "task/progress",
+      "at": "2026-11-22T15:40:48.540142Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6a22460c-02e3-46a7-8bb7-57ad86a08437",
+      "event": "check/passed",
+      "at": "2026-11-22T15:40:48.543476Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "4df2b94b2a58626c5630814e04f1bb9ef4571014",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "0c479f2d-66cc-4641-9033-f8809644c8ee",
+      "event": "ticket/note",
+      "at": "2026-11-22T15:41:04.241258Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Round 4 (hardware run 2 failed synscan_guide_pulse_accuracy, 21/20): diagnosis on the AZ-GTi and fix. Version stays 32.\n\nDiagnosis (pulse case alone, SYNSCAN_HW_DEBUG=1, log 4e2005ec_r4_diag1.log; j1/j2 before -480175/351953, after -480173/351953):\n1. DEC +711 ms: the poll's :j2 at 12:37:41.120 got no reply (a true loss, no late reply ever arrived), the repeat at 41.331 was answered at 41.345, and the poll's :j1 then waited until 41.838 for the outstanding :j2 stray (deadline repeat + 0.5 s) before it was sent; the poll held the queue 0.766 s (\"took 0.766s\") and the DEC pulse requested meanwhile started after it. Confirms the hypothesis: every truly lost datagram on a query followed by a same-length query of another command cost 0.5 s.\n2. RA/DEC completion growing with the pulse length: per-pulse breakdown (4e2005ec_r4_diag2.log) shows the finalizer on time (end :f1 0-10 ms after the deadline) and no poll at the deadline; the growth is the round trip of the end-of-pulse :f1, the first datagram after the link was quiet: 9-17 ms after 100-250 ms pulses, 34-47 ms after 1000 ms, 86-100 ms after 2000 ms (Wi-Fi power save on the link; earlier probe: 5 % loss and slower replies for the first query after 1 s idle). The pulse is physically longer by that much, because the :I1 that ends it waits for the :f1 reply: physical error RA +17..+28 ms (100-500 ms), +41..+50 ms (1000), +41..+110 ms (2000). The start :f1 after the harness's 400 ms pause between samples is slowed the same way, which adds to completion only. Before the fix the finalizer was also scheduled the full duration after the start handler returned, i.e. after the :I1 acknowledgement, which added that reply's latency (10-100 ms) to the physical pulse.\n3. Floor: with the link awake, completion = start :f1 + :I1 round trips + end :f1 + :I1 round trips + bus, about 40-50 ms (RTT ~10 ms). Measured on this link with idle wake-ups: RA +67..+248 ms, DEC +65..+235 ms without any loss. One lost datagram adds about 200 ms, ",
+      "tokens": null
+    },
+    {
+      "event_id": "ab6c14a2-3388-4c74-be05-a2c4f00427ce",
+      "event": "task/progress",
+      "at": "2026-11-22T15:41:04.326391Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": null,
+      "text": "Round 4 done: sim 144/144 OK, AZ-GTi 21/21 OK, flow check passed"
+    },
+    {
+      "event_id": "faadba37-a9df-4bfe-a99e-fd28e167043c",
+      "event": "task/progress",
+      "at": "2026-11-22T15:41:40.831763Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e3fffe59-76bf-4794-8519-1684fe69e783",
+      "event": "review/started",
+      "at": "2026-11-22T15:41:40.833156Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "825cc9c4-fa9b-4046-9d83-e150e05faa25",
+      "event": "task/progress",
+      "at": "2026-11-22T15:42:28.172341Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Round 4 review started",
+      "attempt_id": "1777aebf-69ab-4ead-8dca-713da62abf0b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b958a93d-9074-45a8-afb8-22fd28e872eb",
+      "event": "task/progress",
+      "at": "2026-11-22T15:44:52.507850Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Scratch probes: pulse reproduction, order marker lost/late/refused/wrong length"
+    },
+    {
+      "event_id": "1e6c5c70-72d4-48db-8ac5-76da5c439d85",
+      "event": "task/progress",
+      "at": "2026-11-22T15:52:44.796589Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "0a8905cf-f354-4e2d-9c40-087a25b52f4a",
+      "event": "review/passed",
+      "at": "2026-11-22T15:52:44.798170Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8fa0d578-2795-4c2e-8df6-75178f6a87a7",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "4df2b94b2a58626c5630814e04f1bb9ef4571014"
+    },
+    {
+      "event_id": "d05bdb2c-fe68-4b45-9862-d3a0770471c8",
+      "event": "ticket/note",
+      "at": "2026-11-22T15:53:17.076195Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review round 4 passed at 4df2b94b2. This ticket's commit also carries the hardware harness change of ticket 6a4e8bdf (merged as 0a0e43fd6; one hardware run serves both, owner 2026-11-21). Left as known remarks, not fixed: round 2 of synscan_udp_late_reply_of_another_shape_is_ignored accepts any pulse state (should pin ALERT with tracking restored); SYNSCAN_HW_CASE duplicates INDIGO_TEST_CASE_FILTER of indigo_run_tests(); the order marker never fired in the recorded hardware run (no datagram lost), proven in the simulator and by the order probe only; a 2000 ms pulse that loses a datagram on this link is expected near +0.45 s completion, above the hardware case's 400 ms limit (link wake-up latency on the end-of-pulse :f1); in-order replies measured on one AZ-GTi only. Not verified: Linux and Windows builds, hot-plug.",
+      "tokens": null
+    },
+    {
+      "event_id": "f048d029-50be-411b-bc2c-d3ec3463ad8f",
+      "event": "ticket/closed",
+      "at": "2026-11-22T15:53:22.619491Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-22T15:53:22.619469Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "52e231e375719667bba37048e887bad53700aed2"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-21T11:23:59.699730Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-21T11:24:21.889244Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 81465409.8,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 7
+    }
+  },
+  "journal": {
+    "entries": 121,
+    "sha256": "31eb4b9bf2d23711bfff7ffc3aef1e94d13db9c5079be2e53cf1fafa9a2eec8a"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7b48b6e9d4bfeca5dc22214bf5aa7d905826e955",
+        "tree": "2d4f992b2c8ba49ca1c116733b1c2cd6fb722818",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T14:20:51.963006Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4e2005ec-e069-499c-9f06-e9b993700914/2d4f992b2c8b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "309515ccc95026d5c2e717fb013b91b40f34aedd",
+        "tree": "c6d5e58d5ed01b9d52f562f570367bc899f1fbb4",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T18:48:55.368419Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4e2005ec-e069-499c-9f06-e9b993700914/c6d5e58d5ed0-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0cb794c48e28ab2a747c09c68281482ade8d7bec",
+        "tree": "1f5b4e9e33460961f7d7690acefb5311a7b83eea",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T19:47:51.455988Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4e2005ec-e069-499c-9f06-e9b993700914/1f5b4e9e3346-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "1b0415204c10d896916c38f64363f57aec27c108",
+        "tree": "33848c054ed325c282349a8c8d9a88aa2223f9e6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T21:19:38.291112Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4e2005ec-e069-499c-9f06-e9b993700914/33848c054ed3-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d2bcae09464b4abcd4b0f71a731c95defae18b69",
+        "tree": "c6fbf9e5406cf4a411c45961ab87d032d5497165",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T09:39:39.404608Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4e2005ec-e069-499c-9f06-e9b993700914/c6fbf9e5406c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "4df2b94b2a58626c5630814e04f1bb9ef4571014",
+        "tree": "1e6c12650501402dab5adb2a19f476057bd71b1e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T15:40:48.538662Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4e2005ec-e069-499c-9f06-e9b993700914/1e6c12650501-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "BLOCKING (regression in kind from the 0.2 s UDP timeout, reproduced): a late reply to an earlier attempt of a retried query is taken as the reply to the NEXT query of the same reply length. synscan_reply_length() only rejects datagrams of a different length (.driver:283-293, :364-380), and the zero-wait drain (:421-428) only removes datagrams that have already arrived. Once a reply is slower than 0.2 s, the command is resent and completes on whichever reply comes first; the other reply arrives during a later command's wait. For :j2/:j1 (both 6 digits) that puts the DEC counter into the RA slot, and for :f1/:f2 (both 3) the status of the wrong axis is used. The GoTo and park finalizers read :f1 then :f2, so they can end a slew while one axis still runs, and the DEC pulse stop polling can misread the axis state. Under sustained 0.2-0.4 s latency (the AZ-GTi measurements in this ticket show a 5 s episode of 250-420 ms replies) the shift cascades through every same-length query of a burst. Reproduced in a scratch copy (own Makefile.inc, scratch dylibs) with a probe on the UDP simulator: GoTo to DEC 20, after a poll the faults ':j2 late:250 1' and ':j1 late:100 1' (a measured slow reply followed by a routine 100 ms spike). With the ticket driver, the raw RA published by the next poll jumped 10.31 h (the DEC counter as RA), i.e. another axis's value on the bus. With the master driver (1 s timeout, no resend) all 3 rounds deviated at most 0.001 h. This breaks the owner's rule that the driver never publishes another frame's values, even transiently, and it is the late-reply case the ticket asked to consider. Possible corrections, for the owner to choose: after a UDP query that succeeded on a retry (or failed after all attempts), wait up to one reply timeout for the unanswered attempts' replies and discard them before the next command (the cost falls only on the loss path, but it adds up to 0.2 s there); or, before the next query of the same length, discard datagrams that arrive within a guard time; or record the risk as accepted. Add a test like the probe (late :j2 after a retry, then a slightly delayed :j1: RA must not jump). VERIFIED / NON-BLOCKING: Part A otherwise matches the approved scope. The serial path is unchanged (1 s / 0.1 s, one attempt, indigo_uni_discard()). The UDP drain uses only indigo_uni_wait_for_data(handle, 0), a zero-time select on both POSIX and Windows, plus a 31-byte indigo_uni_read(), so there is no OS-specific code and the Windows short-recv WSAEMSGSIZE latch is avoided. synscan_now() now uses the monotonic clock. The guide deadlines are read and written only by handlers on the master queue (mount poll and guider handlers/finalizers), so there is no data race. The 2.0 s staleness limit is a sound answer to the cancelled finalizer. Continuous back-to-back pulses shorter than 0.2 s with gaps under 50 ms would keep deferring the poll; that is unlikely with real guiding cadence. Ending OK after three losses at the pulse end matches the existing contract. Non-idempotent resends: the kind of risk is unchanged, but the frequency rises. Before, :J/:E/:S/:G were resent only after a reply loss or a reply later than 1 s; now replies of 0.2-0.42 s (measured) cause a resend, e.g. :J on an axis the first :J already started, with unknown firmware behaviour. An error reply ('!') is never length-checked, so a late '!' can still fail a later command; that is pre-existing. Part B: all claims (coordinates SLEWING, home and auto home HOMING) are now made in change_property under bus_mutex, so they are serialized and cannot overwrite one another. on_change_request is the generator-supported place. The BUSY condition does not duplicate the copy macro's guard: the claim must happen only when the macro admits the request, because otherwise a claim on a still-BUSY property would leave HOMING without a handler. The regenerated .c matches (93 added lines each). Claim leak paths checked: handler refusal consumes the flag; a failed start goes through mount_motion_failed() to IDLE; abort cancels the handlers, clears both flags and sets IDLE; on disconnect global_mode is set to IDLE and the flags are reset at the next configure; turning the item off or re-requesting while BUSY does not claim. The auto home handler's parked branch returns with a claim held (HOMING stuck); that is unreachable because the claim requires !parked and parked only becomes true through a PARKING run, but releasing the mode there would be cheaper than relying on that. Park is now the only queue-side check-then-set claimer. If a home or auto home claim lands between the park handler's read of IDLE and its write of PARKING, the home handler, which no longer checks the mode, starts a second motion, and MOUNT_HOME stays BUSY. The window is a couple of instructions and replaces the former coordinates-vs-home race of the same width; the whole-window cases (park admitted, then home) resolve consistently (park refused). Claiming PARKING at park admission would close the last bus/queue race. Separate ticket candidate, not this one: a low-speed GOTO sends no :I, so its approach runs at the last step period (the tracking period after an abort), which makes short GoTos slow (up to tens of seconds); the 90 s wait in aborts_goto_mid_slew only accommodates it. Tests: on the master driver, the 3 queued-behind cases, both late-reply cases and the poll-loss case fail. On this ticket's driver they pass, as do the during_homing, during_parking and aborts_goto_mid_slew cases. Version 32, MIGRATION_STATUS 123->134 with the Comment column untouched, and the record lines match. Formatting follows AGENTS.md.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "0cb794c48e28ab2a747c09c68281482ade8d7bec",
+        "tree": "1f5b4e9e33460961f7d7690acefb5311a7b83eea",
+        "at": "2026-11-21T19:57:09.794160Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Re-review of 1b0415204 (delta from 0cb794c48). Stray-reply finding: fixed for positions and status. My probe (GoTo DEC 20, ':j2 late:250 1' + ':j1 late:100 1') and three consecutive retried-query variants not covered by a case (':j2 late:250 1/:j1 late:250 1', ':j2 late:350 1/:j1 late:100 1', ':j2 late:450 2/:j1 late:150 1') all keep RA within 0.0014 h; on 0cb794c48 the first variant still jumps 10.32 h. The new cases late_dec_reply_is_not_taken_for_ra, late_status_reply_does_not_end_goto and sustained_latency_keeps_positions pass. BLOCKING (regression introduced by the new stray wait; it contradicts the ticket's pulse-timing goal and the note's own claim that the end of a pulse is not held): synscan_slew_axis_at_rate() (indigo_mount_synscan.driver:738) sends the status query :f1 before the :I1 period change both at the start and at the end of an RA pulse. When the start :f1 is retried, a stray of length 3 is recorded until last send + 0.5 s, and synscan_drain_udp() (driver ~:425-441) makes the end-of-pulse :f1, a query of the same length, wait for it before the :I1 that restores tracking. If the lost datagram never arrives (a lost request or a lost reply), the RA pulse physically runs until that deadline. Reproduced in a scratch copy with the ':f1 lost 1' fault armed before an RA pulse on the UDP guiding fixture: 100 ms pulse physical +407 ms / completion +610 ms, 300 ms pulse +201 / +413 ms. With the 0cb794c48 driver the same probe gives +5 / +207 and +11 / +223. So one lost datagram now lengthens a short guide pulse by up to 0.4 s, and completion +610 ms would fail the 400 ms hardware limit. Suggested fix: record the command with each stray and make a query wait only for strays of a different command with the same reply length (:j1 vs :j2, :f1 vs :f2). A stray of the same command is that command's answer, exactly as the design already accepts within its own retries, so the end-of-pulse :f1 (and a repeated poll query) would not wait. Then add a case: RA pulse of 100 ms with the start :f1 reply lost, physical and completion near +0.2 s. VERIFIED: accounting: success on attempt k records k-1 strays, an error reply k-1, total failure all k sends; strays are counted down by the drain and by the length check while a command waits for its reply, and they expire at last send + 0.5 s. The wait is bounded at about 0.5 s once per command (strays are added only after a command ends), so the worst UDP command is about 1.1 s; the queue, abort and disconnect wait at most that long. stray_count is reset on close. The park claim follows the home pattern: it is made in on_change_request only when the copy macro admits the request and the mount is idle, and the handler parks only on its own claim. Refusal, failure (mount_motion_failed -> IDLE), abort (cancels the handler, clears all claims, IDLE), disconnect (IDLE; claims reset at configure) all release it. Every claim (SLEWING, HOMING, PARKING) is now made in change_property under bus_mutex, so the last bus/queue race I reported is closed. The auto home parked branch releases a held claim. The .c regenerated in scratch with the generator is identical to the checked-in .c, .h and _main.c. There is no property change, no platform-specific code, no file outside the ticket's scope, and README/TEST_SUMMARY/MIGRATION_STATUS carry only the record (139/139, 139 / 21, Comment column untouched); version 32. NON-BLOCKING: (1) AGENTS.md formatting: blank lines inside new test function bodies in indigo_test/integration/test_mount_synscan_simulator.c at lines 1440, 1473, 1496, 1511, 1527, 1553, 1565, 1585, 1594, 1604, 1620, 1643, 5524, 5569 and 5617; the driver and simulator have none. (2) Within the retries of one command, the drain before attempt 2 can drop that command's own late attempt-1 reply and count down an older stray of the same length, and the command then records a stray that has already been drained. The cost is only an unnecessary wait, but the older stray, if it is still out, is no longer tracked. Keying strays by command (the blocking fix) would also clear this up. (3) The residuals the implementer acknowledges (a stray later than 0.5 s, a late '=' or '!') are acceptable as documented. Ran in a scratch copy (own Makefile.inc and dylibs, under the lock): the 2 probes on the candidate, on 0cb794c48 and against new cases; filters 'udp' and '_is_refused' 23/23 PASS on the candidate; the queued-behind-park cases PASS.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "1b0415204c10d896916c38f64363f57aec27c108",
+        "tree": "33848c054ed325c282349a8c8d9a88aa2223f9e6",
+        "at": "2026-11-21T21:29:12.822340Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Third round, d2bcae094 (delta from 1b0415204). My blocking pulse finding is fixed. In a scratch copy (own Makefile.inc and dylibs, under the lock), with ':f1 lost 1' armed before an RA pulse on the UDP guiding fixture: 100 ms pulse physical +10 / completion +216 ms, 300 ms pulse +4 / +214 ms; on 1b0415204 it was +407/+610 and +201/+413. Position and status mix-ups still do not occur: my three retried-query variants keep RA within 0.0014 h. Accounting (driver:370-560: synscan_add_stray, synscan_take_stray :407, synscan_foreign_stray_deadline, synscan_drain_udp :443, synscan_command :518). Every UDP send is recorded when written. A reply or '!' on attempt k is credited to the oldest send of the same command, so k-1 sends stay outstanding; total failure leaves all k. When a same-command stray is taken as the answer, the latest send stays recorded, so the count cannot drift. Entries expire at send + 0.5 s; with 16 entries the oldest is dropped; stray_count is reset on close (:1631). Because a query waits for strays of other commands with the same reply length before it sends, at most one query command per reply length can have outstanding sends at any time (expiry excepted). So crediting an other-length datagram to the oldest send of that length always hits the right command, and errors in crediting only cause an unnecessary bounded wait, never a missed one. Late '!' and garbled datagrams are not credited, so the entry they answered only causes such a bounded wait. The worst wait is about 0.5 s once per command (strays are added only as sends happen), so a UDP command takes at most about 1.1 s on the queue, abort and disconnect included. Same-command stale reply (question 3), NON-BLOCKING: I tried to provoke a GoTo finalizer ending early with a stale RA status left over from the handler's stop wait (':f1 late:450 1 / late:0 1 / late:150 1', 3 rounds). It does not happen: the DEC stop wait's :f2 waits for the foreign :f1 stray (0.25 s seen in the simulator command log) and drains it, so the finalizer's :f1/:f2 alternation protects itself; all 3 GoTos ended only after @arrived1. The hazard remains where a same-axis status query is repeated with no foreign same-length query in between and the axis state changed in the meantime. Example: the :f2 sent before a DEC pulse's :J2 is retried, its stale 'stopped' reply lands in the ~10 ms window of the stop wait's :f2 after :K2, and the stop wait ends early; the same goes for the stop wait after a short manual motion. That needs a reply late by 0.2-0.5 s, landing exactly in the next same-command query's window within 0.5 s, so it is rare; the possible consequence is an early completion or a '!' on the next mode change. The RA pulse end :f1 is harmless (the axis state equals the start's). Possible refinement if the owner wants it: treat a query's own strays as foreign once a start, stop or mode setting (:J/:K/:G) has gone to that axis. This would not touch RA pulses, which use only :I, and would delay only a DEC stop wait's completion, not the physical stop. Rules: the .c, .h and _main.c regenerated with the generator in scratch are identical to the checked-in files. The new test function bodies have no blank lines; the driver's added blank lines are function separators. Calls are on one line, there is no platform code and no new property, and nothing outside the ticket's scope is touched. README, TEST_SUMMARY and MIGRATION_STATUS carry only the record (2026-11-22 10:16 3.0.0.32 143/143, 143 / 21, Comment column untouched); version 32. Ran: 3 review probes on the candidate (pulse 2 durations, retried queries 3 variants, stale-status GoTo 3 rounds, all PASS); filter 'udp' 18/18 and '_is_refused' 9/9 PASS; filter 'synscan_guider_' 18/18 PASS (rerun in full after a first pass I cut short by removing its scratch directory while it ran; that partial pass showed no failures).",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "d2bcae09464b4abcd4b0f71a731c95defae18b69",
+        "tree": "c6fbf9e5406cf4a411c45961ab87d032d5497165",
+        "at": "2026-11-22T09:51:07.646939Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 4, 4df2b94b2 (delta from d2bcae094, including merge 0a0e43fd6). Hardware diagnosis confirmed from 4e2005ec_r4_diag1.log: the :j2 sent at 12:37:41.120 got no reply, the repeat (41.331) was answered at 41.345, and :j1 went out only at 41.838, after the 0.5 s foreign-stray wait; the poll held the queue 0.766 s. My round-3 pass accepted that fallback cost as bounded; on hardware it is what broke the pulse case. The order log shows 905 of 905 complete pairs in order. The recorded run 4e2005ec_r4_hw_run.log is 21/21 with the pulse table as noted. ORDER MARKER (synscan_resync_udp, driver:471, called at :606 after a UDP command that needed more than one send): it reads until the 2-digit :g1 reply and then forgets every outstanding send, which is exact if replies keep their order; otherwise the per-send deadlines remain. Paths probed in a scratch copy on a retried :j2 (late 250 ms or lost): marker lost, marker 300 ms late, marker refused ('!0'), marker answered with 6 digits, :j2 lost plus marker lost, :j2 450 ms late plus marker 100 ms late. All 6 keep RA/DEC at the mount's position (max 0.0014 h), publish no coordinate ALERT and leave no pending fault. The RA query follows the repeated DEC query 257-368 ms later when the marker cannot help and 502-507 ms later in the fallback cases; the worst case per command is bounded at about 0.6 s plus the marker's 0.2 s plus at most one 0.5 s foreign wait. A late marker reply is credited to the :g1 send; a later :g1 query treats it as its own answer, which is the same value, and :g2 waits for it as a foreign stray. No marker is sent while one is outstanding. The marker write does not touch last_send_time, the serial path is untouched, close resets the strays, and configure needs no reset. Controllers that cannot answer :g1 with two hex digits cannot connect, because configure requires :g1/:g2 (driver ~:1507), so a different length or an error reply can only be transient and then falls back to the deadlines without harm (probed). If replies are reordered, a reply that overtakes the marker could again be taken by a same-length query of another command. That is measured on one AZ-GTi only, and Wi-Fi to a serial bridge keeps order in practice; acceptable as documented. SIMULATOR in-order replies: the earlier out-of-order probes are no longer reproducible, but they model reordering the hardware never showed. The real hazard (a retry whose earlier reply arrives just after the repeat's) is still produced, so late_dec_reply_is_not_taken_for_ra, late_status_reply_does_not_end_goto, the variants and sustained latency test something real. My round-2 probe (:f1 lost before a 100 / 300 ms RA pulse) gives +10 / +219 and +2 / +209 ms, and my three retried-query variants still hold. The adapted round 2 of late_reply_of_another_shape_is_ignored is legitimate (with in-order replies a 1120 ms late acknowledgement blocks every later reply past three attempts) but weaker; see non-blocking item 1. udp_wait_for_poll (time-based 3 s), udp_wait_after_faults (counts publications) and the pulse_and_goto case retargeted to hour angle 2 h (avoids a low-speed GoTo) are sound harness fixes and do not weaken assertions. GUIDE DEADLINE (driver:2926, :2984): anchored at the last send of the command that changes the rate or starts the axis (:I1 for RA, :J2 or the last setting for DEC; when a period is unchanged the :f status send). With a retried start it anchors at the repeat, so the pulse can be up to one reply timeout longer but never ends early; the finalizer rechecks the deadline; replaced pulses reset it. The hardware record shows replaced and cancelled pulses as expected. HARNESS: diff of test_mount_synscan_hw.c against ticket/6a4e8bdf-ff81-4031-8723-df3f84d73b8a (29167e11d, an ancestor of HEAD) shows exactly the two additions. wait_not_busy() in stop_all_motion does not hide a defect: since 3beb3554, an abort of a BUSY GoTo or a refused request leaves the kept ALERT by design until the next BUSY. RULES: the .c, .h and _main.c regenerated in scratch are identical to the checked-in files; the only blank line added in a function-body context is a function separator; calls are on one line; there is no platform code and no new property. README and TEST_SUMMARY change only by the script's records: the new AZGTi line replaces the 2026-11-19 one, which is the script's keep-latest rule. MIGRATION_STATUS is 144 / 21 with the Comment column untouched; version 32. NON-BLOCKING: (1) round 2 of synscan_udp_late_reply_of_another_shape_is_ignored now accepts any pulse state and stop count; pin the expected outcome (ALERT, tracking restored). (2) SYNSCAN_HW_CASE duplicates the INDIGO_TEST_CASE_FILTER that indigo_run_tests() already honours (test_runner.h:259); the default path is unchanged, but the new variable is redundant and on zero matches passes count 0. (3) The marker adds one round trip before the next command whenever a pulse-end :f1 was retried, and 0.2 s if the marker is lost too; this is within the two-loss budget. Ran in a scratch copy under the lock: 3 probes (pulse 2 durations; retried queries 3 variants; marker faults 6 variants), all PASS; filters udp 19/19, _is_refused 9/9, synscan_guider_ 19/19, pulse_and_goto_share 1/1.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "4df2b94b2a58626c5630814e04f1bb9ef4571014",
+        "tree": "1e6c12650501402dab5adb2a19f476057bd71b1e",
+        "at": "2026-11-22T15:52:44.796344Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-21T11:49:47.781767Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Phase 1 analysis (no driver change in the worktree; prototype in a scratch copy only). Evidence: scratchpad/udp_4e20 (probe.py, run1.json, analyze.py, prototype_*.diff, proto_*.log).\n\n1. Current transaction (indigo_mount_synscan.driver, version 26)\n- synscan_command(): before every attempt indigo_uni_discard() (on UDP a 10 ms select per call, visible as \"// timeout\" before each command in guide_debug.log, so every UDP command costs ~10 ms extra), write \"<cmd>\\r\", synscan_read_response(). Serial: 1 attempt, indigo_uni_read_section2() with 1 s first-byte / 0.1 s next-byte timeout. UDP: SYNSCAN_UDP_COMMAND_ATTEMPTS = 3, each indigo_uni_wait_for_data(SYNSCAN_COMMAND_TIMEOUT = 1 s) + one datagram read; a '!' reply ends the command at once, a missing/garbled one is retried. Worst UDP transaction 3.03 s.\n- Late replies: the discard before each attempt drains datagrams that already arrived (one 1-byte read per datagram drops the whole datagram on Linux/macOS). A reply arriving after that discard but before the next reply is taken as the next command's reply. Queries are shape-checked only by callers (synscan_valid_payload, payload length 6/3/2); setting commands accept any \"=...\\r\", so a late \"=XXXXXX\" would be taken as an :I/:J acknowledgement. One misattribution then self-heals (the displaced reply is drained by the following discard).\n- Windows (source audit, not reproduced): read_data() uses recv() with the caller's length; indigo_uni_discard() reads 1 byte, so a pending datagram gives WSAEMSGSIZE, which latches handle->last_error and silently kills the UDP session (synscan_validate_handle() never reports UDP loss). Any late reply on Windows is therefore fatal today.\n- Non-idempotent resends: queries, :E :F :G :I :K :L :M :O :P :V and the :W encoder/PPEC on/off settings are idempotent. Risky: :J after :H (H is a relative increment; a resent :J after a short GOTO already finished could repeat the move if the firmware keeps the increment; the simulator clears it, real behaviour unverified), :J on a running axis (if the firmware answers '!' the DEC pulse start fails with the axis left running and no finalizer), :W start-PPEC-training (may answer !7 when already started). All exist today with 3 attempts; a shorter timeout does not add resends after real losses, only after replies slower than the timeout.\n\n2. Guide pulse timing\n- RA (tracking, low speed): start = :f1 + :I1<guide period>, end = :f1 + :I1<tracking period>; no stop. DEC: start = :f2 [+ :G2 :I2] + :J2, end = :K2 + :f2 polling (100 ms sleeps). Deadline = synscan_now() (gettimeofday, wall clock) + duration, set before the start commands; the URGENT finalizer is scheduled `duration` after the start handler returns and rechecks the deadline. Handlers of mount, guider and aux share the master queue; the mount poll (on_timer, every 1 s idle / 0.5 s busy) reads :j2 :j1 (+ :d2 :d1 for X_ENCODER_POSITION) and cannot be preempted.\n- Physical effect of one lost datagram (T = per-attempt timeout, today 1 s): start :f1 lost or start :I1 request lost -> pulse starts late, length correct, completion late by T; start :I1 reply lost (executed) -> physical +T (finalizer timed from handler end); end :f1 lost or end :I1 request lost -> physical +T; end :I1 reply lost -> length correct, completion late T; poll reply lost while the deadline passes -> finalizer waits for the poll, physical + up to T. Hardware log guide_debug.log shows exactly these: :j2 poll loss at 10:03:21.66 just as a pulse came due (finalizer ran at 22.785, +1.12 s) and :I15FC306 start-reply loss at 10:03:25.88 (+1.03 s).\n- Even without loss the poll (4 x ~25 ms on hardware) delays a finalizer that comes due during it by up to ~100 ms.\n- Pulse timing can be made largely independent of retry timing: (a) monotonic deadlines, (b) do not start a poll within a guard before a guide deadline (reschedule it after the deadline), (c) T bounds the remaining cases. A truly preemptive stop is not possible: the protocol has no timed pulse and replies are not tagged, so a stop cannot be interleaved with a transaction in flight.\n\n3. AZ-GTi measurement (read-only :j1/:j2/:f1/:f2 by unicast to 192.168.111.139:11880, firmware reply =0310A5; broadcast skipped because a concurrent simulator test listened on loopback 11880; 3215 queries, 516 s, 3 s late-reply window after each loss)\n- Overall: 26 lost (0.81 %), median 9.6 ms, p95 80 ms, p99 96 ms, max 419 ms. No stray or mismatched replies; exactly one late reply, 1580 ms after its :j1.\n- Loss depends on idle time before the datagram: back-to-back 15 ms gaps 3/2000 (0.15 %); 100 ms gaps 5/600 (0.83 %); driver poll pattern (burst of 4 after 1 s idle) 12/600 (2.0 %), 8 of them on the first query of the burst = 5.3 % of polls; first query after 8 s idle 6/15 (40 %). Consistent with Wi-Fi power save (mount MAC is Espressif, 5c:cf:7f); the query after a loss answered in ~10 ms in most cases. Direction (request or reply lost) cannot be told from read-only queries.\n- Bursts: one outage of three consecutive losses (>= 9 s without reply, t = 76-85 s); otherwise isolated losses.\n- Slow replies: routine spikes 80-136 ms about twice a second (back-to-back phase: >100 ms 7/2000, max 136 ms); one 5 s episode where every reply took 250-420 ms (10 of 3215 > 250 ms, none 420-1000 ms).\n- Consequence: the pulse end (after an idle of the pulse length) and the first poll query are the most exposed transactions, which explains why 1000/2000 ms pulses failed the 400 ms limit.\n\n4. Simulator\n- Already has: --udp-port, --drop-nth-reply n and --drop-first-replies n (command executed, reply withheld), fault file \"<prefix> <reply> <count>\" with reply \"silent\" (= request lost: logged in .events but not executed), monotonic timestamps in the .events log (allows ON/OFF edge timing).\n- Missing: reply lost for a named command (executed), late reply. Prototyped (scratch, prototype_simulator.diff): fault reply \"lost\" executes and withholds the reply; \"late:<ms>\" executes and sends the reply <ms> later from a detached thread. Proposed additionally: a deterministic idle-loss option (lose the first datagram after >= N ms idle, every k-th time) to model the measured power-save behaviour.\n- Prototype test (prototype_test.diff), RA 300/1100 ms pulse over UDP, physical length = .events time from :I1<guide period> to the executed :I1<tracking period>; asserts physical error < 300 ms and completion error < 400 ms:\n  current driver: start reply lost physical +1055 ms / completion +1102 ms FAIL; end request lost +1063 / +1196 FAIL; poll :j2 reply lost during a 1100 ms pulse +972 / +1039 FAIL (reproduced twice).\n  prototype fix (T 0.25 s): +256 / +335 PASS; +256 / +334 PASS; +4 / +64 PASS. Existing UDP cases (explicit URL, lost replies 1/7, autodetection) and all 15 guider cases (filter \"guide\") pass with the prototype.\n\n5. Proposal\n- UDP only: per-attempt reply timeout SYNSCAN_UDP_REPLY_TIMEOUT = 0.2 s (recommended; 0.25 s acceptable), 3 attempts kept (worst transaction ~0.6 s instead of 3 s). Serial unchanged (1 attempt, 1 s / 0.1 s), USB/serial EQ6-R/HEQ5 are not affected.\n- Wait loop: keep waiting until the attempt deadline and ignore a datagram whose payload length does not match the command (0 for settings, 3 for :f, 2 for :g, 6 for other queries); a same-shape late reply to a retry of the same command is accepted (it is that command's answer).\n- Drain on UDP with indigo_uni_wait_for_data(handle, 0) + full-size indigo_uni_read() instead of indigo_uni_discard(): drops stale datagrams whole, removes the 10 ms per command and the Windows WSAEMSGSIZE latch.\n- synscan_now() -> indigo_monotonic_time() (also used for motion_deadline; check the autohome clock-offset tests).\n- Poll guard: mount on_timer does not poll when a guide deadline is less than 0.2 s away (or passed) and reschedules itself 50 ms after it.\n- Optional, not recommended now: verify-before-resend for :J (query :f, resend only when not running); removing the :f1 before the period change at the pulse edges (changes the recorded command manner); pre-wake/keep-alive query before the pulse end against the idle loss (measure after the basic fix first).\n- Expected physical pulse error (RA, T = 0.2 s, ~10 ms RTT): no loss ~+10-20 ms (today up to +100 ms when a poll overlaps); one lost datagram at the risky points <= ~+0.22 s (today ~+1.03 s); two consecutive <= ~+0.43 s (today ~+2.05 s); three -> command fails after ~0.65 s and RA tracking is restored with ALERT (today ~3 s). Completion is late by the same amounts; a loss at the start that does not lengthen the pulse delays completion by <= T.\n- Connect: explicit synscan://host with no mount answering fails after ~0.6 s instead of ~3 s; broadcast autodetection is library-bound (8 x 5 x 1 s + 7 x 1 s = ~47 s without a mount) and unchanged.\n- Risks: SynScan Wi-Fi dongle / other ESP-based adapters with a serial hop to the motor board are slower (RTT a few tens of ms, unmeasured here) but well inside 0.2 s; a link with sustained >0.2 s latency (as in the 5 s episode) causes resends, harmless for idempotent commands and handled by the shape check, with the :J caveats above. Serial behaviour unchanged.\n- Tests (phase 2): simulator \"lost\"/\"late:<ms>\" faults and idle-loss option; cases start reply lost, end request lost, poll reply lost during a pulse (all three fail on the current driver), DEC end (:K2) request lost, late reply of another shape during a setting command is ignored, late same-shape reply after a retry, connect with first :e1 lost, three consecutive losses at the pulse end restore tracking with ALERT; existing UDP and guider cases. Then recorded simulator run and non-interactive hardware run on the AZ-GTi.\n- Hardware test limit: synscan_guide_pulse_accuracy measures public completion, not the physical pulse. With T = 0.2 s one lost datagram costs <= ~0.22 s plus latency spikes up to ~0.14 s, so 400 ms remains a sound limit for \"at most one loss per pulse\"; two consecutive losses in one pulse (rare) would still fail it. Recommend keeping 400 ms.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T14:21:25.496990Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Phase 2 implementation (owner approved 0.2 s). Version 32 per coordinator (landing order e2f19dd5 29, 0b4af839 30, 9fbd00e2 31, this ticket 32).\n\nChange (indigo_mount_synscan.driver, regenerated with the generator built in the worktree; .c diff mirrors the .driver diff):\n- version 32 (:27); defines SYNSCAN_UDP_REPLY_TIMEOUT 0.2 s, SYNSCAN_POLL_GUIDE_GUARD 0.2, SYNSCAN_POLL_AFTER_GUIDE 0.05, SYNSCAN_POLL_GUIDE_STALE 2.0 (:48-53). SYNSCAN_UDP_COMMAND_ATTEMPTS 3 and serial timing (1 s / 0.1 s, one attempt, indigo_uni_discard) unchanged.\n- synscan_now() uses indigo_monotonic_time() (:279); also used by motion_deadline. synscan_reply_length() (:283-293): 3 for :f, 2 for :g, 6 for other lowercase queries and :D, 0 for settings.\n- synscan_read_response() takes the command (:355); on UDP waits until a 0.2 s attempt deadline and skips a '='-framed datagram whose payload length does not fit the command (:364-380); a right-length late reply is taken as the answer to the repeated command. '!' replies are not length-checked (an error reply cannot be attributed).\n- synscan_command(): on UDP drains pending datagrams whole with indigo_uni_wait_for_data(handle, 0) + indigo_uni_read() instead of indigo_uni_discard() (:421-428); serial path unchanged.\n- mount on_timer (:1935-1952): when a guide deadline is less than 0.2 s ahead (or passed by less than 2 s) the poll is rescheduled 50 ms after the deadline. The 2 s staleness bound is needed because a guider disconnect cancels the finalizer and leaves the deadline set (the generated guider connection handler calls indigo_cancel_pending_handlers()).\n- No library or generator change.\n\nSimulator (mount_synscan_simulator.c): the fault file holds up to 8 rules, one per line, a command takes the first matching rule (needed to delay two different commands in one transaction sequence); new replies \"lost\" (execute, withhold reply) and \"late:<ms>\" (execute, reply later from a detached thread on UDP; late:0 = immediate, used to let a rule pass one command). Usage text updated. Idle-loss option not added: no test needed it.\n\nTests (test_mount_synscan_simulator.c, 8 cases after synscan_mount_connects_with_udp_autodetection; completion from a client callback timestamp, physical pulse from the simulator's monotonic command log):\n1 synscan_guider_udp_ra_pulse_start_reply_lost: before physical +1049 / completion +1090 ms FAIL; after +205 / +206 PASS\n2 synscan_guider_udp_ra_pulse_end_request_lost: before +1041 / +1089 FAIL; after +211 / +211 PASS\n3 synscan_guider_udp_poll_loss_does_not_delay_pulse_end (1050 ms pulse, poll due 0.1 s before its end, 3 lost :j2 replies): before +3005 / +3048 FAIL; after +4 / +5 PASS\n4 synscan_guider_udp_dec_pulse_stop_request_lost (:K2 request lost): before +1033 / +1117 FAIL; after +209 / +211 PASS\n5 synscan_udp_late_reply_of_another_shape_is_ignored (start :I1 acknowledged 250 ms and 1120 ms late, end :f1 reply 150 ms late): before FAIL (late \"=\" taken as the :f1 status, pulse end failed, :K1 stop to restore tracking); after PASS, completion +372 / +368 ms\n6 synscan_udp_late_reply_after_retry_is_accepted (:I1 late 300 ms twice): before 1 period command, completion +681 FAIL; after 2 period commands, +310 PASS\n7 synscan_mount_connects_after_lost_first_udp_reply: before probe repeated after 1014 ms FAIL; after 203 ms PASS\n8 synscan_guider_udp_pulse_end_lost_three_times_restores_tracking: before restored after +3184 ms FAIL; after +627 ms, one :K1, tracking ON/OK PASS. Correction to my phase-1 text: with tracking restored the pulse ends OK (existing contract, as in synscan_guider_restores_tracking_after_refused_pulse_end), not ALERT.\nFull test_mount_synscan_simulator with the change (unrecorded, version 31 build; 32 differs only in DRIVER_VERSION): 125/125 PASS, including the three existing UDP cases, all guider cases and the auto-home cases that shift the test clock by 200 s.\nMIGRATION_STATUS.md: mount_synscan 117 / 21 -> 125 / 21 (counts only).\nflow check (whitespace) passed. Pending: merge of e2f19dd5, 0b4af839, 9fbd00e2 when they land, then the recorded simulator run and the AZ-GTi hardware run.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T18:49:10.603226Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Merge of master 0b381b43b (e2f19dd5, 0b4af839, 9fbd00e2 landed): conflicts in version (resolved 32), MIGRATION_STATUS (131 / 21 = master 123 + 8), simulator usage text (master's encoder lines plus the multi-rule fault description); master's generated .c taken and regenerated with the worktree generator, generated diff = .driver diff (75 lines). Reply-length helper covers the new connect-time :W settings (empty reply) and :d queries (6 digits); the simulator's new @arrived event lines do not affect the UDP cases. 11 UDP cases (3 existing + 8 new) pass on the merged tree (physical/completion errors +216/+217, +218/+219, +12/+13, +213/+214 ms; late cases +367/+372, +316; probe repeat 209 ms; restore +642 ms).\nRecorded simulator run 1 (18:54): 131/130 Failed, synscan_mount_aborts_goto_mid_slew (second GOTO not OK within 30 s). Cause: where the abort lands decides how much RA is left; below the 6400-step low-speed margin the second GOTO is a low-speed GOTO that the simulator steps on its 5 ms tick; in 20 repetitions the remaining RA was 35 steps (3.8 s) or 2451 steps (20 s), so a larger remainder or host load exceeds 30 s. Same behaviour on master's driver (10/10 pass alone on both). Test-only fix: the arrival wait of that GOTO raised to 90 s (start then three 30 s waits).\nRecorded simulator run 2 (19:25): 131/129 Failed, synscan_mount_goto_during_homing_is_refused (home not OK within 30 s) and synscan_mount_sync_during_homing_is_refused (first coordinates publication after the request is BUSY with the request targets, not the refusal). Both cases came with 15e8efabe. Repeated alone: sync case failed 2/3 on this branch and 1/3 on master's driver (test_master built from git show master:indigo_mount_synscan.c), goto case passed 6/6. Probable cause: when a poll during the homing has already published the coordinates BUSY, INDIGO_REJECT_COORDINATES_CHANGE_IF takes its BUSY branch (indigo_reject_change keeps BUSY) instead of the ALERT refusal the case expects; whether such a poll ran before the gate closed is timing dependent. Pre-existing on master, not caused by this ticket; not fixed here (another ticket's admission code and test). README/TEST_SUMMARY hold the failed record line 2026-11-21 19:25 3.0.0.32 mac arm64 simulator 131/129 Failed until a clean run replaces it. Side finding: synscan_slew_axis_to_steps() sends no :I before a low-speed GOTO, so its speed is whatever step period was last set (tracking after an abort).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T19:48:18.931273Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Flaky homing refusal cases (from 15e8efabe): diagnosis and fix.\nEvidence: with temporary tracing (driver: request admission, home handler, finalizer, poll, MOUNT_STATE publications; test: request, gate queued/entered/released; removed afterwards) both cases passed 50/50 when each ran in its own process, and synscan_mount_sync_during_homing_is_refused failed 9/10 when it ran after synscan_mount_goto_during_homing_is_refused in one process. In the failing runs 'test gate entered' is logged right after the MOUNT_HOME request, before the home handler runs and before the gate is queued from the MOUNT_STATE HOME light; the coordinates request is then evaluated with global_mode IDLE and admitted (sync_pending=1), which is the 'BUSY with the requested values' publication; the sync handler runs after the home. Cause in the test: install_gate() never cleared gate_entered, so wait_for_gate() returned on the flag left by the previous case's gate (the goto case, or synscan_mount_tracking_request_survives_home_finalizer before the goto case in the full suite). For the goto variant the same ordering makes the GOTO claim SLEWING at admission and the home handler, finding the mode not IDLE, refuses the home (ALERT): 'home did not end OK within 30 s'.\nVerdict: both. (a) test defect: stale gate_entered; fixed by clearing it in install_gate() and before the busy-light gate is armed. (b) driver defect exposed by that ordering: a coordinates request sent after a home or auto home request was admitted (BUSY) but before its handler ran was admitted, because the HOMING mode was set only by the queued handler. Fix (indigo_mount_synscan.driver, version stays 32): MOUNT_HOME and X_MOUNT_AUTOHOME get on_change_request blocks that claim SYNSCAN_GLOBAL_HOMING at admission (only when the property is not BUSY, the request turns the item on, the mount is idle, and for auto home not parked) and set home_claimed / autohome_claimed; the handlers start the motion only on their own claim (otherwise the existing refusal), consume the flag, and keep their other checks; abort clears both flags with the global mode, synscan_configure() resets them. Both claims (coordinates SLEWING, home HOMING) are made on the request path and only from IDLE, so neither can overwrite another motion's mode. Refusals unchanged (reject_change 'Mount is homing'), no client target rewritten, no library or generator change.\nNew deterministic cases (gate holds the queue before the motion request): synscan_mount_goto_queued_behind_home_is_refused, synscan_mount_sync_queued_behind_home_is_refused, synscan_mount_goto_queued_behind_autohome_is_refused. Before the driver fix: FAIL (home not OK; first publication BUSY; first publication BUSY, no message), after: PASS. The 'during' cases take a queued flag (false keeps the busy-light gate). The seven refusal cases (_is_refused) passed 140/140 over 20 in-process repetitions.\nRecorded simulator run: 2026-11-21 20:26 3.0.0.32 mac arm64 simulator 134/134 OK. MIGRATION_STATUS mount_synscan 134 / 21.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T21:19:38.379571Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review `changes` addressed (stray replies after a repeated UDP command; park claim; auto home parked release). Version stays 32.\n\nStray-reply rule (indigo_mount_synscan.driver, synscan_command(), synscan_drain_udp(), synscan_read_response() and helpers synscan_datagram_length/synscan_forget_stray/synscan_add_strays/synscan_stray_deadline; private data stray_count/stray_length[8]/stray_deadline[8]):\n- A UDP command ends on the first reply. Every other send of it may still be answered: after success on attempt k, k-1 strays; after a '!' reply also k-1; after failure, all k sends. They are recorded with the command's reply length and the deadline last send + SYNSCAN_UDP_STRAY_WINDOW (0.5 s, conservative: the consumed reply may be the late one of an earlier send).\n- Window: on the AZ-GTi replies took up to 0.42 s (a 5 s episode of 0.25-0.42 s replies), one reply in 3215 arrived 1.58 s late; 0.5 s covers all but that outlier.\n- Before every send (each attempt) the driver reads and drops the datagrams already there (zero wait, whole datagrams), each one counting down an outstanding stray of its length. A query (reply length > 0) whose length equals an outstanding stray's first waits, bounded by that deadline, until those strays have arrived or expired. A command with a different reply length does not wait: the length check rejects the stray (and counts it down) while it waits for its own reply. A setting (\"=\" reply) does not wait either: an \"=\" carries no value, and waiting would hold the end of an RA guide pulse after every repeated start (start reply lost: +0.4 s instead of +0.2 s).\n- After that, a datagram of the command's length that arrives while it waits is its reply; any other length is skipped. Serial unchanged.\n- What remains possible: a stray later than its 0.5 s window (seen once in 3215 queries, at 1.58 s) that arrives while a query of the same length waits is taken as its reply, one wrong reading published once (the next poll corrects it); one arriving between commands is dropped by the next drain. A stray \"=\" can be taken as the acknowledgement of a later setting; it hides a lost request of that setting only if that request is lost too (both rare). Late '!' replies are not tracked (out of scope).\n- Cost: only after a repeated command, and only for the next query of the same length (at most until 0.5 s after the last send). Under sustained 300 ms replies every query takes two sends and the next same-length query waits for the second reply; polls stay correct and slower.\n\nTests (fail on the candidate 0cb794c48, pass now):\n- synscan_udp_late_dec_reply_is_not_taken_for_ra (reviewer's probe: GoTo to DEC 20, ':j2 late:250 1' then ':j1 late:100 1'): before a publication at RA 7.44 h with the mount at 22.13 h; after all publications at the mount's position.\n- synscan_udp_sustained_latency_keeps_positions (': late:300 24', about six polls): before 4 of 6 publications at RA 7.45 h instead of 22.13 h; after 5/5 correct, coordinates OK.\n- synscan_udp_late_status_reply_does_not_end_goto (GoTo DEC 20 -> 80 with RA arrived, ':f1 late:250 1' then ':f2 late:100 1'): before the GoTo ended OK with DEC still moving at 26.6 deg; after it ended with DEC arrived at 80.000.\n- Pulse table with one lost datagram (unchanged near +0.2 s): start reply lost physical +221 / completion +222 ms, end request lost +212 / +213, poll replies lost during a 1050 ms pulse +11 / +13, DEC stop request lost +219 / +220.\nPark/home claim (MOUNT_PARK on_change_request claims SYNSCAN_GLOBAL_PARKING at admission, only when the copy macro admits it and only from idle; the handler parks only on its claim; abort and close clear park_claimed):\n- synscan_mount_home_queued_behind_park_is_refused: before park ALERT, home OK (the home claimed at admission and the park handler refused); after park OK and parked, home ALERT.\n- synscan_mount_park_queued_behind_home_is_refused: home OK, park ALERT and unparked, before and after (characterization).\nAuto home handler: a claim made before the mount got parked is released (global mode back to IDLE) in its parked branch; not covered by a case (the parked flag would have to change between admission and handler).\nRepetitions: the 23 UDP and refusal cases (filters 'udp' and '_is_refused') passed 460/460 over 20 in-process repetitions. Recorded simulator run: 2026-11-21 21:56 3.0.0.32 mac arm64 simulator 139/139 OK. MIGRATION_STATUS mount_synscan 139 / 21.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T09:39:39.504816Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Round 3 (re-review of 1b0415204): per-command stray accounting. Version stays 32.\n\nFinal rule (indigo_mount_synscan.driver: synscan_add_stray, synscan_take_stray, synscan_expire_strays, synscan_foreign_stray_deadline, synscan_drain_udp, synscan_command, synscan_read_response):\n- Every UDP send is recorded when it is written: the full command text, the payload length of its reply and a deadline of send time + 0.5 s (SYNSCAN_UDP_STRAY_WINDOW; AZ-GTi late replies up to 0.42 s, one outlier 1.58 s in 3215). Up to 16 outstanding sends, the oldest is forgotten when full.\n- A reply the command accepts (or a '!' reply) is accounted to the oldest outstanding send of that same command. Taking the oldest leaves the later deadlines, which cover the send whose reply is really still on its way. Sends that got no reply stay outstanding as strays until their own deadline.\n- \"Same command\" is the full command text including axis and argument (\":f1\" and \":f2\", \":j1\" and \":j2\", \":q1010000\" and \":q2010000\" differ). For queries only the axis and, for :q, the inquiry code are arguments, and they select different values, so they must be different commands. Settings carry their argument (\":I1<period>\"); since settings never wait, their identity only decides which send a datagram is accounted to.\n- Before a send, the datagrams already there are read and dropped without waiting, each accounted to an outstanding send of this command with that length first, otherwise to the oldest send of any command with that length (other lengths: the oldest send of that length). A query first waits, bounded by their deadlines, until no send of ANOTHER command with the same reply length is outstanding. Outstanding sends of the same command never make it wait: a late answer to the same query is a valid answer to it. Commands with another reply length and settings do not wait.\n- While a command waits for its own reply, a datagram of its length is its answer; any other length is accounted to the oldest send of that length and skipped. If the answer taken is a late one to an earlier send of the same command, the reply to the new send stays outstanding as that command's stray, so the count does not drift.\n- Within one command's retries the drain before attempt 2 accounts a late attempt-1 reply to attempt 1's own record (the reviewer's accounting nuance), not to another command's stray.\n- Residual: a reply later than its send + 0.5 s that lands while a query of the same length to another command waits is taken once as that query's reading; a late \"=\" may acknowledge a later setting; late '!' replies are not tracked. Serial unchanged; no library or generator change.\n\nNew cases (fail on 1b0415204, pass now):\n- synscan_guider_udp_ra_100ms_pulse_start_status_reply_lost: 1b0415204 physical +403 / completion +609 ms; now +3 / +210 (second run +10 / +213).\n- synscan_guider_udp_ra_300ms_pulse_start_status_reply_lost: 1b0415204 +205 / +412; now +6 / +211 (+1 / +205).\n- synscan_guider_udp_ra_100ms_pulse_start_status_request_lost: 1b0415204 +402 / +603; now +6 / +212 (+6 / +217).\n- synscan_udp_late_query_reply_variants_keep_positions (reviewer's three variants :j2 late:250/:j1 late:250, :j2 late:350/:j1 late:100, :j2 late:450 x2/:j1 late:150): all publications at the mount's position, on 1b0415204 and now (re-verification).\nPulse table now (physical / completion): start reply lost +217 / +218 ms, end request lost +222 / +224, start status reply lost 100 ms +10 / +213, 300 ms +1 / +205, start status request lost 100 ms +6 / +217, poll replies lost during a 1050 ms pulse +6 / +7, DEC stop request lost +216 / +218.\nMix-up cases pass: late_dec_reply_is_not_taken_for_ra, sustained_latency_keeps_positions (5/5 correct), late_status_reply_does_not_end_goto (DEC arrived at 80.000), late_reply_of_another_shape_is_ignored, late_reply_after_retry_is_accepted (2 period commands).\nFormatting: blank lines removed inside the bodies of the test functions added by this ticket (12 lines, plus those of the rewritten RA loss and positions helpers); pre-existing functions are left as they were.\nMIGRATION_STATUS mount_synscan 143 / 21.\nRepetitions: filters 'udp', '_is_refused' and 'synscan_guider_' (45 cases) 900/900 over 20 in-process repetitions. Recorded simulator run: 2026-11-22 10:16 3.0.0.32 mac arm64 simulator 143/143 OK.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T09:52:02.802081Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review round 3 passed at d2bcae094. Known residual, not fixed here (reviewer, non-blocking): a status query repeated on one axis with no other same-length query in between can be answered by its own stale reply after the axis state changed, e.g. the :f2 before a DEC pulse's :J2 is retried and its late 'stopped' reply lands in the stop wait's :f2 after :K2, ending the stop wait early (needs a reply 0.2-0.5 s late in a ~10 ms window; consequence: early completion or a '!' on the next mode change). Possible refinement: after :J/:K/:G to an axis treat that axis's older status strays as foreign. AZ-GTi state 2026-11-22 10:51: j1=-480181, j2=351953 unchanged since 2026-11-21, d1 still running away (-3314805 -> -3315129 in 7 s), d2=181; the mount has not been power-cycled. Hardware run not done yet.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T15:41:04.239748Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Round 4 (hardware run 2 failed synscan_guide_pulse_accuracy, 21/20): diagnosis on the AZ-GTi and fix. Version stays 32.\n\nDiagnosis (pulse case alone, SYNSCAN_HW_DEBUG=1, log 4e2005ec_r4_diag1.log; j1/j2 before -480175/351953, after -480173/351953):\n1. DEC +711 ms: the poll's :j2 at 12:37:41.120 got no reply (a true loss, no late reply ever arrived), the repeat at 41.331 was answered at 41.345, and the poll's :j1 then waited until 41.838 for the outstanding :j2 stray (deadline repeat + 0.5 s) before it was sent; the poll held the queue 0.766 s (\"took 0.766s\") and the DEC pulse requested meanwhile started after it. Confirms the hypothesis: every truly lost datagram on a query followed by a same-length query of another command cost 0.5 s.\n2. RA/DEC completion growing with the pulse length: per-pulse breakdown (4e2005ec_r4_diag2.log) shows the finalizer on time (end :f1 0-10 ms after the deadline) and no poll at the deadline; the growth is the round trip of the end-of-pulse :f1, the first datagram after the link was quiet: 9-17 ms after 100-250 ms pulses, 34-47 ms after 1000 ms, 86-100 ms after 2000 ms (Wi-Fi power save on the link; earlier probe: 5 % loss and slower replies for the first query after 1 s idle). The pulse is physically longer by that much, because the :I1 that ends it waits for the :f1 reply: physical error RA +17..+28 ms (100-500 ms), +41..+50 ms (1000), +41..+110 ms (2000). The start :f1 after the harness's 400 ms pause between samples is slowed the same way, which adds to completion only. Before the fix the finalizer was also scheduled the full duration after the start handler returned, i.e. after the :I1 acknowledgement, which added that reply's latency (10-100 ms) to the physical pulse.\n3. Floor: with the link awake, completion = start :f1 + :I1 round trips + end :f1 + :I1 round trips + bus, about 40-50 ms (RTT ~10 ms). Measured on this link with idle wake-ups: RA +67..+248 ms, DEC +65..+235 ms without any loss. One lost datagram adds about 200 ms, so a 2000 ms pulse with a loss reaches about +0.45 s, above the 400 ms limit; short pulses stay below it. The limit is not changed; the residual is the link's wake-up latency, which only a query shortly before the deadline (the deferred wake-up query) or dropping the end-of-pulse :f1 (deferred) would remove.\nReply order on the AZ-GTi (4e2005ec_r4_order.json, 1000 + 30 pairs of :j1 then :g1 30 ms later): 905 complete pairs all in order, 0 overtaken; 115 pairs lost the second request (the controller drops a request sent while it is still answering the previous one; back to back with 0-5 ms gap the second request is lost always or often), 10 lost the :j1 reply with the :g1 reply delivered and no late :j1 afterwards. :g1 answers \"=01\" (2 hex digits, a length no other command of a session gets).\n\nFix:\n- Order marker (synscan_resync_udp): after a UDP command that was sent more than once, the driver sends :g1 once and reads until its 2-digit reply; replies keep their order, so then no reply to an earlier send can come and all outstanding sends are forgotten; the next same-length query goes out at once (cost one round trip instead of up to 0.5 s). Without the marker's reply the per-command stray deadlines stay as the fallback; no marker is sent while an earlier marker send is outstanding (its late reply could be mistaken for the new one's). The marker is sent only after the command's reply was read, never pipelined (the controller drops pipelined requests).\n- Guide pulse deadline anchored at the send of the command that changes the rate or starts the axis (PRIVATE_DATA->last_send_time, set at every write), not at the moment the start handler returns; the finalizer is scheduled for the remaining time.\n- Simulator: UDP replies now leave in command order (a late reply holds back the replies after it), as measured on the AZ-GTi; before, a late reply could be overtaken, which the hardware never showed.\n- Harness: opt-in SYNSCAN_HW_CASE selects cases by name for diagnosis (unset in recorded runs).\nSimulator: new case synscan_guider_udp_lost_poll_reply_does_not_hold_a_pulse reproduces the hardware failure (d2bcae094: RA query 506 ms after the repeated DEC query, 100 ms DEC pulse completion +719 ms, FAIL; now 0-1 ms, one marker, +210..+221 ms, PASS). Pulse table now (physical / completion): start reply lost +211 / +212 ms, end request lost +219 / +221, start status reply lost 100 ms +3 / +211, 300 ms +11 / +214, start status request lost 100 ms +9 / +212, poll replies lost (1050 ms) +11 / +12, DEC stop request lost +212 / +214. With in-order replies synscan_udp_late_reply_of_another_shape_is_ignored round 2 (1120 ms) now holds every later reply past three attempts: the pulse start fails, tracking is restored and the next polls publish no ALERT (assertions adapted to that, round 1 unchanged). Test-harness fixes found by the 20x runs: udp_wait_for_poll time-based 3 s (a failed first poll query leaves a poll without RA query); udp_wait_after_faults counts two equatorial publications instead of RA queries (a repeated query is no new poll); synscan_guider_pulse_and_goto_share_the_axes (pre-existing) targets hour angle 2 h instead of RA + 1 h, which became a low-speed GoTo of up to 5789 steps at some sidereal times and timed out (reproduced 1 in 3 with simulator traces). Repetitions: filters udp, _is_refused, synscan_guider_ 940/940 over 20 in-process runs after the fixes (one earlier failure each of the two harness timings and the GoTo target, all fixed and rerun); the GoTo case 20/20 alone after its fix.\nRecorded runs: 2026-11-22 16:10 3.0.0.32 mac arm64 simulator 144/144 OK; 2026-11-22 16:33 3.0.0.32 mac arm64 AZGTi 21/21 OK (non-interactive, no hot-plug). Hardware pulse table of the recorded run (completion minus request, 5 samples): RA 100 mean +69.8 max +78.5, 250 +47.9/+81.0, 500 +82.2/+86.7, 1000 +62.2/+92.8, 2000 +106.4/+276.5; DEC 100 +67.5/+75.8, 250 +98.3/+104.7, 500 +72.2/+93.9, 1000 +87.7/+105.8, 2000 +97.2/+109.7. Step counters of that run: before j1=-480170 j2=351953, after j1=-480168 j2=351952; diagnosis sessions 12:36 (-480175/351953 -> -480173/351953) and 13:12 (-480173/351953 -> -480170/351953). MIGRATION_STATUS mount_synscan 144 / 21.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T15:53:17.074588Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review round 4 passed at 4df2b94b2. This ticket's commit also carries the hardware harness change of ticket 6a4e8bdf (merged as 0a0e43fd6; one hardware run serves both, owner 2026-11-21). Left as known remarks, not fixed: round 2 of synscan_udp_late_reply_of_another_shape_is_ignored accepts any pulse state (should pin ALERT with tracking restored); SYNSCAN_HW_CASE duplicates INDIGO_TEST_CASE_FILTER of indigo_run_tests(); the order marker never fired in the recorded hardware run (no datagram lost), proven in the simulator and by the order probe only; a 2000 ms pulse that loses a datagram on this link is expected near +0.45 s completion, above the hardware case's 400 ms limit (link wake-up latency on the end-of-pulse :f1); in-order replies measured on one AZ-GTi only. Not verified: Linux and Windows builds, hot-plug.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Phase 1 proposal (see note): UDP per-attempt timeout 0.2 s (3 attempts, serial unchanged); length-checked replies and whole-datagram zero-wait drain on UDP instead of indigo_uni_discard(); synscan_now() on indigo_monotonic_time(); mount poll does not start within 0.2 s of a guide deadline; :J check-before-resend deferred. Approve this scope and the 0.2 s value?",
+        "at": "2026-11-21T11:50:31.435438Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner: approved - UDP per-attempt timeout 0.2 s with 3 attempts (serial unchanged), length-checked replies and whole-datagram zero-wait drain on UDP, synscan_now() on indigo_monotonic_time(), mount poll not started within 0.2 s of a guide deadline; :J check-before-resend deferred.",
+        "answered_at": "2026-11-21T12:40:29.309033Z",
+        "answered_by": "human/Peter Polakovic"
+      },
+      {
+        "text": "Two review rounds asked for changes. Round 2 finding: the stray-reply wait delays the end-of-pulse :f1 when the start :f1 of an RA pulse was retried, so a 100 ms pulse with one lost datagram runs +407 ms physical / +610 ms completion (was +5 / +207 ms). Proposed: one more round with the reviewer's fix (key strays by command; a query waits only for strays of a different command with the same reply length), a new 100 ms pulse case, and removal of blank lines inside the new test function bodies. Continue with this third round?",
+        "at": "2026-11-21T21:29:46.520471Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner: 'Yes, third round' - continue with the reviewer's fix (strays keyed by command; a query waits only for strays of a different command with the same reply length), the 100 ms pulse case and removal of blank lines in new test function bodies.",
+        "answered_at": "2026-11-22T07:51:49.635282Z",
+        "answered_by": "human/Peter Polakovic"
+      },
+      {
+        "text": null,
+        "at": "2026-11-22T11:15:18.004212Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner 2026-11-22: 'Yes, run hardware' - run the non-interactive AZ-GTi hardware run before closing, although the RA encoder reading :d1 still runs away (mount not power-cycled).",
+        "answered_at": "2026-11-22T11:15:18.004212Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "52e231e375719667bba37048e887bad53700aed2",
+      "tree": "1e6c12650501402dab5adb2a19f476057bd71b1e",
+      "base": "master",
+      "at": "2026-11-22T15:53:22.548773Z"
+    }
+  }
+}
