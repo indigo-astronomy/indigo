@@ -1281,6 +1281,422 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// ---- Datagram loss on the UDP transport (Wi-Fi mounts such as the AZ-GTi)
+//
+// Measured on an AZ-GTi (firmware 3.16) over Wi-Fi: 0.8 % of the replies are lost, 5 % of the first query after one
+// second without traffic, replies take 10 ms (median) to 140 ms and, in rare episodes, up to 420 ms, and one arrived
+// 1.6 s late. Each case loses or delays one named datagram through the simulator's fault file. The physical length of
+// a guide pulse is taken from the simulator's command log, from the command that switches the axis to the guide rate
+// to the executed command that ends it; the completion is taken from the client callback.
+
+static const char *udp_watch_property;
+static _Atomic double udp_watch_busy, udp_watch_done;
+static atomic_int udp_watch_done_state;
+static atomic_int udp_coordinates_alerts;
+
+static indigo_result udp_watch_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	const char *watched = udp_watch_property;
+	if (!strcmp(property->device, synscan_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && property->state == INDIGO_ALERT_STATE) {
+		atomic_fetch_add(&udp_coordinates_alerts, 1);
+	}
+	if (watched != NULL && !strcmp(property->device, synscan_guider.device_name) && !strcmp(property->name, watched)) {
+		if (property->state == INDIGO_BUSY_STATE && atomic_load(&udp_watch_busy) == 0) {
+			atomic_store(&udp_watch_busy, indigo_monotonic_time());
+		} else if (property->state != INDIGO_BUSY_STATE && atomic_load(&udp_watch_busy) != 0 && atomic_load(&udp_watch_done) == 0) {
+			atomic_store(&udp_watch_done_state, property->state);
+			atomic_store(&udp_watch_done, indigo_monotonic_time());
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+// Requests a guide pulse and returns the time from the request to the publication that ends it, or -1.
+static double udp_guide_pulse(const char *property, const char *item, double duration_ms, indigo_property_state *state) {
+	atomic_store(&udp_watch_busy, 0);
+	atomic_store(&udp_watch_done, 0);
+	udp_watch_property = property;
+	double requested = indigo_monotonic_time();
+	indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, property, item, duration_ms);
+	for (int i = 0; i < 1500 && atomic_load(&udp_watch_done) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	udp_watch_property = NULL;
+	double done = atomic_load(&udp_watch_done);
+	*state = atomic_load(&udp_watch_done_state);
+	return done == 0 ? -1 : (done - requested) * 1000.0;
+}
+
+// The simulator's command log entry `nth` (1 based) at or after line `from` that starts with `prefix` and, with
+// `exclude`, is not exactly `exclude`: its monotonic time, 0 when there is none; *line is the line after it.
+static double udp_command_time(external_serial_simulator *simulator, int from, const char *prefix, const char *exclude, int nth, int *line) {
+	char path[PATH_MAX];
+	int line_number = 0;
+	double result = 0;
+	if (!simulator_fixture_path(path, sizeof(path), "%s.events", simulator->ready_file, NULL)) {
+		return 0;
+	}
+	FILE *file = fopen(path, "r");
+	if (file == NULL) {
+		return 0;
+	}
+	char text[256];
+	while (fgets(text, sizeof(text), file)) {
+		char *command = strchr(text, '\t');
+		if (command == NULL) {
+			continue;
+		}
+		*command++ = 0;
+		command[strcspn(command, "\r\n")] = 0;
+		if (line_number++ >= from && !strncmp(command, prefix, strlen(prefix)) && (exclude == NULL || strcmp(command, exclude)) && --nth == 0) {
+			result = atof(text);
+			if (line != NULL) {
+				*line = line_number;
+			}
+			break;
+		}
+	}
+	fclose(file);
+	return result;
+}
+
+// Writes several fault rules at once; a command takes the first rule whose prefix it starts with.
+static bool write_synscan_faults(external_serial_simulator *simulator, const char *rules) {
+	char path[PATH_MAX], temporary[PATH_MAX + 8];
+	if (!simulator_fixture_path(path, sizeof(path), "%s.fault", simulator->ready_file, NULL)) {
+		return false;
+	}
+	snprintf(temporary, sizeof(temporary), "%s.tmp", path);
+	FILE *file = fopen(temporary, "w");
+	if (file == NULL) {
+		return false;
+	}
+	fputs(rules, file);
+	fclose(file);
+	return rename(temporary, path) == 0;
+}
+
+// Waits for the mount poll to read the RA axis, which leaves most of a second without traffic before the next poll.
+static bool udp_wait_for_poll(external_serial_simulator *simulator) {
+	int seen = count_synscan_commands(simulator, 0, ":j1", NULL, 0, NULL);
+	// a poll whose first query failed after three attempts reads no RA axis, the next one comes 1 s after it
+	double deadline = indigo_monotonic_time() + 3;
+	while (indigo_monotonic_time() < deadline) {
+		if (count_synscan_commands(simulator, 0, ":j1", NULL, 0, NULL) > seen) {
+			return true;
+		}
+		indigo_usleep(5000);
+	}
+	fprintf(stderr, "    no poll of the RA axis within 3 s\n");
+	return false;
+}
+
+typedef struct {
+	external_serial_simulator simulator;
+	bool mount_connected;
+	bool guider_connected;
+	char tracking_period[32];
+} udp_guiding_fixture;
+
+// UDP simulator, mount tracking at the sidereal rate and the guider connected.
+static bool udp_start_guiding(udp_guiding_fixture *fixture) {
+	if (!start_udp_simulator(&fixture->simulator, 0) || !start_serial_driver(&synscan_mount, fixture->simulator.port)) {
+		return false;
+	}
+	fixture->mount_connected = true;
+	if (indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true) != INDIGO_OK || !wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true) || !wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE)) {
+		return false;
+	}
+	if (count_synscan_commands(&fixture->simulator, 0, ":I1", fixture->tracking_period, sizeof(fixture->tracking_period), NULL) <= 0) {
+		return false;
+	}
+	simulator_test_client.update_property = udp_watch_update;
+	fixture->guider_connected = connect_serial_device(&synscan_guider, NULL);
+	return fixture->guider_connected;
+}
+
+static void udp_stop_guiding(udp_guiding_fixture *fixture) {
+	simulator_test_client.update_property = simulator_client_update_property;
+	remove_synscan_fault(&fixture->simulator);
+	if (fixture->guider_connected) {
+		disconnect_serial_device(&synscan_guider);
+	}
+	if (fixture->mount_connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&fixture->simulator);
+}
+
+typedef enum {
+	UDP_RA_START_REPLY_LOST,
+	UDP_RA_END_REQUEST_LOST,
+	UDP_RA_POLL_REPLIES_LOST,
+	UDP_RA_START_STATUS_REPLY_LOST,
+	UDP_RA_START_STATUS_REQUEST_LOST
+} udp_ra_loss;
+
+static const char *udp_ra_loss_names[] = { "start reply lost", "end request lost", "poll replies lost", "start status reply lost", "start status request lost" };
+
+// One RA guide pulse on a tracking mount with datagrams lost at a named point. Each lost datagram costs one reply
+// timeout of the driver; it may lengthen the physical pulse or delay its completion by that much, not by a second.
+static void synscan_udp_ra_pulse_with_loss(udp_ra_loss loss, double duration_ms) {
+	udp_guiding_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	indigo_property_state state = INDIGO_IDLE_STATE;
+	int from = 0, line = 0;
+	SERIAL_CHECK_TRUE(udp_start_guiding(&fixture));
+	SERIAL_CHECK_TRUE(udp_wait_for_poll(simulator));
+	if (loss == UDP_RA_START_REPLY_LOST) {
+		// the mount takes the guide period, its acknowledgement is lost on the way back
+		SERIAL_CHECK_TRUE(write_synscan_fault(simulator, ":I1", "lost", 1));
+	} else if (loss == UDP_RA_END_REQUEST_LOST) {
+		// the command restoring the tracking period never reaches the mount
+		SERIAL_CHECK_TRUE(write_synscan_fault(simulator, fixture.tracking_period, "silent", 1));
+	} else if (loss == UDP_RA_START_STATUS_REPLY_LOST || loss == UDP_RA_START_STATUS_REQUEST_LOST) {
+		// the status query before the period change is answered and the answer lost, or it never reaches the mount; the
+		// status query at the end of the pulse is the same query, a late answer to the first one does not hold it
+		SERIAL_CHECK_TRUE(write_synscan_fault(simulator, ":f1", loss == UDP_RA_START_STATUS_REPLY_LOST ? "lost" : "silent", 1));
+	} else {
+		// the next poll comes due 0.1 s before the end of the pulse and all three replies to its first query are lost
+		SERIAL_CHECK_TRUE(write_synscan_fault(simulator, ":j2", "lost", 3));
+	}
+	SERIAL_CHECK_TRUE(count_synscan_commands(simulator, 0, ":", NULL, 0, &from) >= 0);
+	double completion_ms = udp_guide_pulse(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, duration_ms, &state);
+	SERIAL_CHECK_TRUE(completion_ms > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
+	double on = udp_command_time(simulator, from, ":I1", fixture.tracking_period, 1, &line);
+	// a lost request is logged by the simulator too, the rate changes at the repeated one
+	double off = on > 0 ? udp_command_time(simulator, line, fixture.tracking_period, NULL, loss == UDP_RA_END_REQUEST_LOST ? 2 : 1, NULL) : 0;
+	SERIAL_CHECK_TRUE(on > 0 && off > on);
+	double physical_ms = (off - on) * 1000.0;
+	printf("    %.0f ms RA pulse, %s: physical %+.0f ms, completion %+.0f ms\n", duration_ms, udp_ra_loss_names[loss], physical_ms - duration_ms, completion_ms - duration_ms);
+	// the pulse is changed on the running axis, tracking is never stopped
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(simulator, from, ":K1", NULL, 0, NULL));
+	if (loss == UDP_RA_POLL_REPLIES_LOST) {
+		// a poll does not start that close to the end of a pulse
+		SERIAL_CHECK_TRUE(physical_ms - duration_ms < 150);
+		SERIAL_CHECK_TRUE(completion_ms - duration_ms < 250);
+	} else if (loss == UDP_RA_START_STATUS_REPLY_LOST || loss == UDP_RA_START_STATUS_REQUEST_LOST) {
+		// the pulse starts one reply timeout late and keeps its length
+		SERIAL_CHECK_TRUE(physical_ms - duration_ms < 100);
+		SERIAL_CHECK_TRUE(completion_ms - duration_ms < 400);
+	} else {
+		SERIAL_CHECK_TRUE(physical_ms - duration_ms < 300);
+		SERIAL_CHECK_TRUE(completion_ms - duration_ms < 400);
+	}
+cleanup:
+	udp_stop_guiding(&fixture);
+}
+
+static void synscan_guider_udp_ra_pulse_start_reply_lost(void) {
+	synscan_udp_ra_pulse_with_loss(UDP_RA_START_REPLY_LOST, 300);
+}
+
+static void synscan_guider_udp_ra_pulse_end_request_lost(void) {
+	synscan_udp_ra_pulse_with_loss(UDP_RA_END_REQUEST_LOST, 300);
+}
+
+static void synscan_guider_udp_poll_loss_does_not_delay_pulse_end(void) {
+	synscan_udp_ra_pulse_with_loss(UDP_RA_POLL_REPLIES_LOST, 1050);
+}
+
+static void synscan_guider_udp_ra_100ms_pulse_start_status_reply_lost(void) {
+	synscan_udp_ra_pulse_with_loss(UDP_RA_START_STATUS_REPLY_LOST, 100);
+}
+
+static void synscan_guider_udp_ra_300ms_pulse_start_status_reply_lost(void) {
+	synscan_udp_ra_pulse_with_loss(UDP_RA_START_STATUS_REPLY_LOST, 300);
+}
+
+static void synscan_guider_udp_ra_100ms_pulse_start_status_request_lost(void) {
+	synscan_udp_ra_pulse_with_loss(UDP_RA_START_STATUS_REQUEST_LOST, 100);
+}
+
+// Hardware run on the AZ-GTi: the reply to the poll's DEC query was lost for good, the repeated query was answered, and
+// the RA query then waited half a second for a late DEC reply that never came; a DEC pulse requested meanwhile ended
+// 0.7 s late. After a repeated command the driver asks for the high speed ratio as an order marker: once its reply is
+// in, no earlier reply can come, so the RA query goes out at once and the pulse ends about one reply timeout late.
+static void synscan_guider_udp_lost_poll_reply_does_not_hold_a_pulse(void) {
+	udp_guiding_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	indigo_property_state state = INDIGO_IDLE_STATE;
+	int from = 0, line = 0;
+	SERIAL_CHECK_TRUE(udp_start_guiding(&fixture));
+	SERIAL_CHECK_TRUE(udp_wait_for_poll(simulator));
+	SERIAL_CHECK_TRUE(count_synscan_commands(simulator, 0, ":", NULL, 0, &from) >= 0);
+	SERIAL_CHECK_TRUE(write_synscan_fault(simulator, ":j2", "lost", 1));
+	// the next poll sends the DEC query whose reply is lost, the pulse request waits behind the poll
+	for (int i = 0; i < 300 && count_synscan_commands(simulator, from, ":j2", NULL, 0, NULL) == 0; i++) {
+		indigo_usleep(5000);
+	}
+	SERIAL_CHECK_TRUE(count_synscan_commands(simulator, from, ":j2", NULL, 0, NULL) > 0);
+	double completion_ms = udp_guide_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, &state);
+	SERIAL_CHECK_TRUE(completion_ms > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
+	double repeated = udp_command_time(simulator, from, ":j2", NULL, 2, &line);
+	double ra_query = repeated > 0 ? udp_command_time(simulator, line, ":j1", NULL, 1, NULL) : 0;
+	SERIAL_CHECK_TRUE(repeated > 0 && ra_query > repeated);
+	printf("    lost DEC poll reply: RA query %.0f ms after the repeated DEC query, %d order marker(s), 100 ms DEC pulse completion %+.0f ms\n", (ra_query - repeated) * 1000.0, count_synscan_commands(simulator, from, ":g1", NULL, 0, NULL), completion_ms - 100);
+	SERIAL_CHECK_TRUE(ra_query - repeated < 0.1);
+	SERIAL_CHECK_TRUE(completion_ms - 100 < 400);
+cleanup:
+	udp_stop_guiding(&fixture);
+}
+
+// A DEC pulse ends with a stop; when that request is lost the repeated stop must follow within one reply timeout.
+static void synscan_guider_udp_dec_pulse_stop_request_lost(void) {
+	udp_guiding_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	indigo_property_state state = INDIGO_IDLE_STATE;
+	int from = 0, line = 0;
+	SERIAL_CHECK_TRUE(udp_start_guiding(&fixture));
+	SERIAL_CHECK_TRUE(udp_wait_for_poll(simulator));
+	SERIAL_CHECK_TRUE(write_synscan_fault(simulator, ":K2", "silent", 1));
+	SERIAL_CHECK_TRUE(count_synscan_commands(simulator, 0, ":", NULL, 0, &from) >= 0);
+	double completion_ms = udp_guide_pulse(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 300, &state);
+	SERIAL_CHECK_TRUE(completion_ms > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
+	double on = udp_command_time(simulator, from, ":J2", NULL, 1, &line);
+	double off = on > 0 ? udp_command_time(simulator, line, ":K2", NULL, 2, NULL) : 0;
+	SERIAL_CHECK_TRUE(on > 0 && off > on);
+	double physical_ms = (off - on) * 1000.0;
+	printf("    300 ms DEC pulse, stop request lost: physical %+.0f ms, completion %+.0f ms\n", physical_ms - 300, completion_ms - 300);
+	SERIAL_CHECK_TRUE(physical_ms - 300 < 300);
+	SERIAL_CHECK_TRUE(completion_ms - 300 < 400);
+cleanup:
+	udp_stop_guiding(&fixture);
+}
+
+// A reply that arrives after its command gave up must not be taken for the reply to a later command of another shape.
+// The start of an RA pulse gets its acknowledgement late, after the driver already repeated the period change. Replies
+// keep their order, so in the first round (250 ms) the late "=" and the reply to the repetition arrive together, the
+// order marker after the repeated command separates them from the status query that ends the pulse, whose own reply is
+// 150 ms late; a stray "=" taken for that status would fail the pulse end and make the driver stop the axis to restore
+// tracking. In the second round (1120 ms) every reply after the late one is held back past all three attempts, so the
+// pulse start fails and tracking is restored; the burst of held replies that follows must not be taken for the
+// readings of the next polls, which publish no ALERT.
+static void synscan_udp_late_reply_of_another_shape_is_ignored(void) {
+	udp_guiding_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	static const int delays[] = { 250, 1120 };
+	char rules[128];
+	SERIAL_CHECK_TRUE(udp_start_guiding(&fixture));
+	for (int round = 0; round < 2; round++) {
+		indigo_property_state state = INDIGO_IDLE_STATE;
+		int from = 0;
+		SERIAL_CHECK_TRUE(udp_wait_for_poll(simulator));
+		atomic_store(&udp_coordinates_alerts, 0);
+		// the status query starting the pulse is answered at once, the end's status query 150 ms late
+		snprintf(rules, sizeof(rules), ":f1 late:0 1\n:I1 late:%d 1\n:f1 late:150 1\n", delays[round]);
+		SERIAL_CHECK_TRUE(write_synscan_faults(simulator, rules));
+		SERIAL_CHECK_TRUE(count_synscan_commands(simulator, 0, ":", NULL, 0, &from) >= 0);
+		double completion_ms = udp_guide_pulse(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 20, &state);
+		printf("    20 ms RA pulse, start acknowledged %d ms late: state %d, completion %+.0f ms, %d stop(s)\n", delays[round], state, completion_ms - 20, count_synscan_commands(simulator, from, ":K1", NULL, 0, NULL));
+		SERIAL_CHECK_TRUE(completion_ms > 0);
+		SERIAL_CHECK_TRUE(!synscan_fault_pending(simulator));
+		if (round == 0) {
+			SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
+			SERIAL_CHECK_EQ_INT(0, count_synscan_commands(simulator, from, ":K1", NULL, 0, NULL));
+		}
+		// let the held replies arrive, then the next polls read the axes
+		indigo_usleep(1200000);
+		SERIAL_CHECK_TRUE(udp_wait_for_poll(simulator));
+		char last_period[32] = "";
+		SERIAL_CHECK_TRUE(count_synscan_commands(simulator, from, ":I1", last_period, sizeof(last_period), NULL) > 0);
+		SERIAL_CHECK_TRUE(!strcmp(fixture.tracking_period, last_period));
+		atomic_store(&udp_coordinates_alerts, 0);
+		SERIAL_CHECK_TRUE(udp_wait_for_poll(simulator));
+		SERIAL_CHECK_TRUE(udp_wait_for_poll(simulator));
+		indigo_usleep(100000);
+		SERIAL_CHECK_EQ_INT(0, atomic_load(&udp_coordinates_alerts));
+	}
+cleanup:
+	udp_stop_guiding(&fixture);
+}
+
+// A reply delayed beyond one reply timeout arrives while the repeated command waits; it is the answer to the same
+// command and is taken, so the command is sent twice, not three times, and the pulse does not wait for the second reply.
+static void synscan_udp_late_reply_after_retry_is_accepted(void) {
+	udp_guiding_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	indigo_property_state state = INDIGO_IDLE_STATE;
+	int from = 0, line = 0;
+	SERIAL_CHECK_TRUE(udp_start_guiding(&fixture));
+	SERIAL_CHECK_TRUE(udp_wait_for_poll(simulator));
+	SERIAL_CHECK_TRUE(write_synscan_fault(simulator, ":I1", "late:300", 2));
+	SERIAL_CHECK_TRUE(count_synscan_commands(simulator, 0, ":", NULL, 0, &from) >= 0);
+	double completion_ms = udp_guide_pulse(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 300, &state);
+	SERIAL_CHECK_TRUE(completion_ms > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
+	double on = udp_command_time(simulator, from, ":I1", fixture.tracking_period, 1, &line);
+	int starts = 0;
+	while (udp_command_time(simulator, from, ":I1", fixture.tracking_period, starts + 1, NULL) > 0) {
+		starts++;
+	}
+	double off = on > 0 ? udp_command_time(simulator, line, fixture.tracking_period, NULL, 1, NULL) : 0;
+	SERIAL_CHECK_TRUE(on > 0 && off > on);
+	printf("    300 ms RA pulse, start acknowledged 300 ms late twice: %d period command(s), physical %+.0f ms, completion %+.0f ms\n", starts, (off - on) * 1000.0 - 300, completion_ms - 300);
+	SERIAL_CHECK_EQ_INT(2, starts);
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(simulator));
+	SERIAL_CHECK_TRUE(completion_ms - 300 < 400);
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(simulator, from, ":K1", NULL, 0, NULL));
+cleanup:
+	udp_stop_guiding(&fixture);
+}
+
+// The first datagram after a pause is the one most often lost on the Wi-Fi link; the probe that opens the connection
+// is repeated after one reply timeout.
+static void synscan_mount_connects_after_lost_first_udp_reply(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_udp_simulator(&simulator, 0));
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":e1", "lost", 1));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+	double first = udp_command_time(&simulator, 0, ":e1", NULL, 1, NULL);
+	double second = udp_command_time(&simulator, 0, ":e1", NULL, 2, NULL);
+	printf("    probe repeated after %.0f ms\n", (second - first) * 1000.0);
+	SERIAL_CHECK_TRUE(first > 0 && second > first);
+	SERIAL_CHECK_TRUE(second - first > 0.15 && second - first < 0.5);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// When all three attempts to restore the tracking period at the end of an RA pulse are lost, the driver restores
+// tracking with the full stop, mode, period and start sequence, as after a refused pulse end, within three reply
+// timeouts instead of three seconds; the pulse ran its time and ends OK because tracking was restored.
+static void synscan_guider_udp_pulse_end_lost_three_times_restores_tracking(void) {
+	udp_guiding_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	indigo_property_state state = INDIGO_IDLE_STATE;
+	int from = 0, line = 0;
+	SERIAL_CHECK_TRUE(udp_start_guiding(&fixture));
+	SERIAL_CHECK_TRUE(udp_wait_for_poll(simulator));
+	SERIAL_CHECK_TRUE(write_synscan_fault(simulator, fixture.tracking_period, "silent", 3));
+	SERIAL_CHECK_TRUE(count_synscan_commands(simulator, 0, ":", NULL, 0, &from) >= 0);
+	double completion_ms = udp_guide_pulse(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 300, &state);
+	SERIAL_CHECK_TRUE(completion_ms > 0);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, state);
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(simulator));
+	double on = udp_command_time(simulator, from, ":I1", fixture.tracking_period, 1, &line);
+	// the first three commands restoring the period are lost, then the axis is stopped and started again
+	double restored = on > 0 ? udp_command_time(simulator, line, ":J1", NULL, 1, NULL) : 0;
+	SERIAL_CHECK_TRUE(on > 0 && restored > on);
+	printf("    300 ms RA pulse, end lost three times: tracking period restored after %+.0f ms, completion %+.0f ms\n", (restored - on) * 1000.0 - 300, completion_ms - 300);
+	SERIAL_CHECK_EQ_INT(1, count_synscan_commands(simulator, from, ":K1", NULL, 0, NULL));
+	SERIAL_CHECK_EQ_INT(4, count_synscan_commands(simulator, from, fixture.tracking_period, NULL, 0, NULL));
+	// the mount device's own view of the tracking state
+	reset_simulator_context(&synscan_mount);
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE((restored - on) * 1000.0 - 300 < 1000);
+	SERIAL_CHECK_TRUE(completion_ms - 300 < 1200);
+cleanup:
+	udp_stop_guiding(&fixture);
+}
+
 static void synscan_pec_training_disconnect(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
@@ -1358,6 +1774,7 @@ static indigo_result gate_send_message(indigo_client *client, indigo_device *dev
 
 static void install_gate(void) {
 	atomic_store(&gate_device, NULL);
+	atomic_store(&gate_entered, false);
 	atomic_store(&gate_release, true);
 	atomic_store(&gate_on_busy_light, NULL);
 	simulator_test_client.update_property = gate_device_update;
@@ -2622,8 +3039,11 @@ static void synscan_mount_aborts_goto_mid_slew(void) {
 	SERIAL_CHECK_TRUE(synscan_ra_runs_at(&simulator, tracking));
 	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
 	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_OK_STATE));
-	// the next GOTO is accepted and arrives
-	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, target_ra, target_dec));
+	// the next GOTO is accepted and arrives. What is left of the RA move depends on where the abort landed; below the
+	// low-speed margin (6400 steps) it is a low-speed GOTO, which the simulator steps on its 5 ms tick and which can
+	// take longer than the 30 s of synscan_goto(), so the arrival is given 90 s.
+	SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, target_ra, target_dec));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE) || wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE) || wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fabs(synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME) - target_dec) < 0.05);
 
 cleanup:
@@ -3042,8 +3462,11 @@ static void synscan_guider_pulse_and_goto_share_the_axes(void) {
 	SERIAL_CHECK_TRUE(synscan_start_tracking(&simulator) > 0);
 	SERIAL_CHECK_TRUE(connect_sibling_guider());
 	double dec = synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
-	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	double target_dec = synscan_far_dec(dec, 40);
+	// The target is at hour angle 2 h, a high speed move of the RA axis from the home position at any sidereal time. One
+	// hour of RA from the current position became a low speed move of up to 5800 steps depending on the time of day, which
+	// the simulator steps at the tracking period and did not finish within the wait.
+	double target_ra = fmod(synscan_lst() - 2 + 24, 24);
 	// a long north pulse runs, then a GOTO
 	unsigned int revision = atomic_load(&sibling_guide_revision[0]);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&sibling_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 2500));
@@ -3051,7 +3474,7 @@ static void synscan_guider_pulse_and_goto_share_the_axes(void) {
 		indigo_usleep(10000);
 	}
 	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, atomic_load(&sibling_guide_state[0]));
-	SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, fmod(ra + 1, 24), target_dec));
+	SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, target_ra, target_dec));
 	// a pulse while the GOTO runs, after its handler has started the axes, is refused and sends nothing
 	SERIAL_CHECK_TRUE(synscan_wait_for_dec_motion(dec, 2));
 	int mark = synscan_mark(&simulator);
@@ -4941,8 +5364,9 @@ static bool synscan_check_refused_during_motion(const char *label, const coordin
 // The motion goes to the current position and ends on the first run of its finalizer, which comes due while a gate holds
 // the queue right after the motion handler, so the finalizer, a time critical task, runs ahead of a change handler the
 // request queued. A request admitted there would get BUSY, then the OK of the motion's end over it, then the refusal of
-// its handler.
-static void synscan_check_request_refused_during_motion(const char *label, const char *set_property, const char *set_item, const char *motion_property, const char *motion_item, const char *light_item, const char *on_set, const char *reason) {
+// its handler. With `queued` the gate holds the queue before the motion request, so the coordinates request comes after
+// the motion request was admitted but before its handler ran; it is refused the same way, and the motion still runs.
+static void synscan_check_request_refused_during_motion(const char *label, const char *set_property, const char *set_item, const char *motion_property, const char *motion_item, const char *light_item, const char *on_set, const char *reason, bool queued) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
 	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
@@ -4958,10 +5382,17 @@ static void synscan_check_request_refused_during_motion(const char *label, const
 	double ra0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	double dec0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
 	int mark = synscan_mark(&simulator);
-	atomic_store(&gate_on_busy_light, light_item);
-	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, motion_property, motion_item, true));
-	SERIAL_CHECK_TRUE(wait_for_gate());
-	// The finalizer has not run yet
+	if (queued) {
+		SERIAL_CHECK_TRUE(hold_device_queue());
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, motion_property, motion_item, true));
+	} else {
+		// the gate queued from the busy light of this motion, not a gate of an earlier case or step
+		atomic_store(&gate_entered, false);
+		atomic_store(&gate_on_busy_light, light_item);
+		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, motion_property, motion_item, true));
+		SERIAL_CHECK_TRUE(wait_for_gate());
+	}
+	// The motion request is admitted, the finalizer has not run yet
 	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(motion_property)->state);
 	start_coordinates_publications(synscan_mount.device_name);
 	atomic_store(&gate_alert_message_seen, false);
@@ -5002,16 +5433,292 @@ cleanup:
 }
 
 static void synscan_mount_goto_during_homing_is_refused(void) {
-	synscan_check_request_refused_during_motion("GOTO during homing", MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, MOUNT_STATE_HOME_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, "Mount is homing");
+	synscan_check_request_refused_during_motion("GOTO during homing", MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, MOUNT_STATE_HOME_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, "Mount is homing", false);
 }
 
 static void synscan_mount_sync_during_homing_is_refused(void) {
-	synscan_check_request_refused_during_motion("SYNC during homing", MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, MOUNT_STATE_HOME_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, "Mount is homing");
+	synscan_check_request_refused_during_motion("SYNC during homing", MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, MOUNT_STATE_HOME_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, "Mount is homing", false);
+}
+
+// The home request claims the homing when it is admitted: a GOTO or SYNC sent right after it, while its handler still
+// waits in the queue, is refused as during the homing. It used to be admitted, the GOTO then claimed the axes and the
+// home handler refused the home, the SYNC was carried out after the home.
+static void synscan_mount_goto_queued_behind_home_is_refused(void) {
+	synscan_check_request_refused_during_motion("GOTO queued behind a home", MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, MOUNT_STATE_HOME_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, "Mount is homing", true);
+}
+
+static void synscan_mount_sync_queued_behind_home_is_refused(void) {
+	synscan_check_request_refused_during_motion("SYNC queued behind a home", MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, MOUNT_STATE_HOME_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, "Mount is homing", true);
+}
+
+// The same for an auto home: a GOTO sent while the auto home handler waits in the queue is refused with ALERT and
+// "Mount is homing", without its BUSY, and the auto home starts instead of being refused as "mount is busy".
+static void synscan_mount_goto_queued_behind_autohome_is_refused(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	install_gate();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(synscan_set_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	double ra0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	SERIAL_CHECK_TRUE(hold_device_queue());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_AUTOHOME_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_AUTOHOME_PROPERTY_NAME)->state);
+	start_coordinates_publications(synscan_mount.device_name);
+	atomic_store(&gate_alert_message_seen, false);
+	atomic_store(&gate_record_alert_message, true);
+	const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	double values[] = { fmod(ra0 + 1, 24), 10 };
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(items), items, values));
+	for (int i = 0; i < 100 && property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == revision; i++) {
+		indigo_usleep(10000);
+	}
+	int count = stop_coordinates_publications(events);
+	atomic_store(&gate_record_alert_message, false);
+	atomic_store(&gate_release, true);
+	int refusal = -1;
+	for (int i = 0; i < count && refusal < 0; i++) {
+		if (events[i].kind == 'E') {
+			refusal = i;
+		}
+	}
+	printf("    GOTO queued behind an auto home: first coordinates publication %d, state %d, message '%s'\n", refusal, refusal >= 0 ? events[refusal].state : -1, atomic_load(&gate_alert_message_seen) ? gate_alert_message : "");
+	SERIAL_CHECK_TRUE(refusal > 0 && events[refusal].state == INDIGO_ALERT_STATE && events[refusal - 1].kind == 'H' && events[refusal - 1].state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(atomic_load(&gate_alert_message_seen) && !strcmp(gate_alert_message, "Mount is homing"));
+	SERIAL_CHECK_TRUE(events[refusal].target[0] != values[0] || events[refusal].target[1] != values[1]);
+	// the auto home was started, not refused, and is aborted to end the case
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_HOME_ITEM_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_AUTOHOME_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_AUTOHOME_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop_coordinates_publications(NULL);
+	remove_gate();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
 }
 
 // The park request sets the parked switch, so the parked-mount guard of the change branch refuses the request
 static void synscan_mount_goto_during_parking_is_refused(void) {
-	synscan_check_request_refused_during_motion("GOTO during parking", MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, MOUNT_STATE_PARK_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, "Mount is parked!");
+	synscan_check_request_refused_during_motion("GOTO during parking", MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, MOUNT_STATE_PARK_ITEM_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, "Mount is parked!", false);
+}
+
+// ---- Late replies after a repeated UDP command
+//
+// A UDP command whose reply is slower than the reply timeout is sent again and ends on the first reply; the other one
+// arrives later. Taken for the reply to the next query of the same length it would publish another axis's value. The
+// AZ-GTi answered in 0.25-0.42 s for several seconds at a time.
+
+// Waits until the simulator has used up the fault rules, then for two more equatorial publications of the polls that
+// follow; a repeated query is no new poll, so the publications are counted, not the queries.
+static bool udp_wait_after_faults(external_serial_simulator *simulator) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	for (int i = 0; i < 600 && synscan_fault_pending(simulator); i++) {
+		indigo_usleep(50000);
+	}
+	if (synscan_fault_pending(simulator)) {
+		return false;
+	}
+	int seen = -1;
+	double deadline = indigo_monotonic_time() + 5;
+	while (indigo_monotonic_time() < deadline) {
+		int count = copy_coordinates_publications(events);
+		int published = 0;
+		for (int i = 0; i < count; i++) {
+			published += events[i].kind == 'E';
+		}
+		if (seen < 0) {
+			seen = published;
+		} else if (published >= seen + 2) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	fprintf(stderr, "    fewer than two polls published the coordinates within 5 s\n");
+	return false;
+}
+
+// Every equatorial publication recorded since `start` stays at the position the mount had: no other axis's counter is
+// taken for a position. Without tracking the RA of the date follows the sidereal time, a few seconds are far below 0.05 h.
+static bool udp_positions_kept(const char *label, double ra0, double dec0, int *published) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	int count = stop_coordinates_publications(events);
+	bool ok = true;
+	*published = 0;
+	for (int i = 0; i < count; i++) {
+		if (events[i].kind != 'E') {
+			continue;
+		}
+		(*published)++;
+		double ra_error = fabs(events[i].value[0] - ra0);
+		if (ra_error > 12) {
+			ra_error = 24 - ra_error;
+		}
+		if (ra_error > 0.05 || fabs(events[i].value[1] - dec0) > 0.05) {
+			fprintf(stderr, "    %s: publication %d RA %.4f DEC %.4f, the mount is at RA %.4f DEC %.4f\n", label, i, events[i].value[0], events[i].value[1], ra0, dec0);
+			ok = false;
+		}
+	}
+	return ok;
+}
+
+typedef struct {
+	const char *label;
+	const char *rules;
+} udp_stray_round;
+
+// In each round late replies of the poll's queries are injected after a poll; the positions published by the next polls
+// stay at the mount's position.
+static void synscan_udp_late_replies_keep_positions(const udp_stray_round *rounds, int count) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_udp_simulator(&simulator, 0));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	// RA and DEC counters far apart
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 2 + 24, 24), 20));
+	for (int round = 0; round < count; round++) {
+		int published = 0;
+		SERIAL_CHECK_TRUE(udp_wait_for_poll(&simulator));
+		double ra0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+		double dec0 = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+		start_coordinates_publications(synscan_mount.device_name);
+		SERIAL_CHECK_TRUE(write_synscan_faults(&simulator, rounds[round].rules));
+		SERIAL_CHECK_TRUE(udp_wait_after_faults(&simulator));
+		bool kept = udp_positions_kept(rounds[round].label, ra0, dec0, &published);
+		printf("    %s: %d equatorial publications, all at RA %.4f DEC %.4f: %s\n", rounds[round].label, published, ra0, dec0, kept ? "yes" : "no");
+		SERIAL_CHECK_TRUE(published >= 2);
+		SERIAL_CHECK_TRUE(kept);
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	}
+cleanup:
+	stop_coordinates_publications(NULL);
+	remove_synscan_fault(&simulator);
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The DEC reply arrives 250 ms late, after the repeated query was answered, while the RA query waits for its own reply,
+// which is 100 ms late.
+static void synscan_udp_late_dec_reply_is_not_taken_for_ra(void) {
+	static const udp_stray_round rounds[] = { { "late DEC reply", ":j2 late:250 1\n:j1 late:100 1\n" } };
+	synscan_udp_late_replies_keep_positions(rounds, ARRAY_SIZE(rounds));
+}
+
+// Every reply takes 300 ms for about six polls, so every query is sent twice.
+static void synscan_udp_sustained_latency_keeps_positions(void) {
+	static const udp_stray_round rounds[] = { { "300 ms replies", ": late:300 24\n" } };
+	synscan_udp_late_replies_keep_positions(rounds, ARRAY_SIZE(rounds));
+}
+
+// Both replies late past one timeout; a DEC reply later than the RA query's send; two late DEC replies.
+static void synscan_udp_late_query_reply_variants_keep_positions(void) {
+	static const udp_stray_round rounds[] = {
+		{ "DEC and RA replies 250 ms late", ":j2 late:250 1\n:j1 late:250 1\n" },
+		{ "DEC reply 350 ms late, RA reply 100 ms late", ":j2 late:350 1\n:j1 late:100 1\n" },
+		{ "DEC reply 450 ms late twice, RA reply 150 ms late", ":j2 late:450 2\n:j1 late:150 1\n" }
+	};
+	synscan_udp_late_replies_keep_positions(rounds, ARRAY_SIZE(rounds));
+}
+
+// The GoTo finalizer reads the status of RA and then of DEC. With RA arrived and DEC still moving, the RA status reply
+// arrives 250 ms late, after the repeated query was answered, while the DEC status query waits for its own reply. Taken
+// for the DEC status it would end the GoTo while DEC still moves: the GoTo ends OK only after DEC arrived.
+static void synscan_udp_late_status_reply_does_not_end_goto(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_udp_simulator(&simulator, 0));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 2 + 24, 24), 20));
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	int mark = synscan_mark(&simulator);
+	// RA moves 15 minutes at high speed and arrives first, DEC moves 60 degrees
+	SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(ra + 0.25, 24), 80));
+	for (int i = 0; i < 500 && count_synscan_commands(&simulator, mark, "@arrived1", NULL, 0, NULL) == 0; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, "@arrived1", NULL, 0, NULL) > 0);
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, mark, "@arrived2", NULL, 0, NULL));
+	SERIAL_CHECK_TRUE(write_synscan_faults(&simulator, ":f1 late:250 1\n:f2 late:100 1\n"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	int dec_arrived = count_synscan_commands(&simulator, mark, "@arrived2", NULL, 0, NULL);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	printf("    GoTo ended with DEC %s, DEC %.3f\n", dec_arrived > 0 ? "arrived" : "still moving", dec);
+	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
+	SERIAL_CHECK_TRUE(dec_arrived > 0);
+	SERIAL_CHECK_TRUE(fabs(dec - 80) < 0.1);
+cleanup:
+	remove_synscan_fault(&simulator);
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Park and home claim the axes when their request is admitted. With both requests admitted while a gate holds the queue,
+// the first one runs and the second one is refused, whichever comes first.
+static void synscan_check_queued_park_and_home(bool park_first) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	install_gate();
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, false));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_HOME_SET_CURRENT_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(hold_device_queue());
+	for (int i = 0; i < 2; i++) {
+		if ((i == 0) == park_first) {
+			SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+		} else {
+			SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+		}
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_PARK_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(MOUNT_HOME_PROPERTY_NAME));
+	indigo_property_state park = find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state;
+	indigo_property_state home = find_cached_property(MOUNT_HOME_PROPERTY_NAME)->state;
+	printf("    %s first: park ends %d, home ends %d\n", park_first ? "park" : "home", park, home);
+	if (park_first) {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, park);
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, home);
+	} else {
+		SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, home);
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, park);
+		SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+	}
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+cleanup:
+	remove_gate();
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+	synscan_remove_park_file();
+}
+
+static void synscan_mount_home_queued_behind_park_is_refused(void) {
+	synscan_check_queued_park_and_home(true);
+}
+
+static void synscan_mount_park_queued_behind_home_is_refused(void) {
+	synscan_check_queued_park_and_home(false);
 }
 
 int main(void) {
@@ -5083,6 +5790,11 @@ int main(void) {
 		{ "synscan_mount_goto_during_homing_is_refused", synscan_mount_goto_during_homing_is_refused },
 		{ "synscan_mount_sync_during_homing_is_refused", synscan_mount_sync_during_homing_is_refused },
 		{ "synscan_mount_goto_during_parking_is_refused", synscan_mount_goto_during_parking_is_refused },
+		{ "synscan_mount_goto_queued_behind_home_is_refused", synscan_mount_goto_queued_behind_home_is_refused },
+		{ "synscan_mount_sync_queued_behind_home_is_refused", synscan_mount_sync_queued_behind_home_is_refused },
+		{ "synscan_mount_goto_queued_behind_autohome_is_refused", synscan_mount_goto_queued_behind_autohome_is_refused },
+		{ "synscan_mount_home_queued_behind_park_is_refused", synscan_mount_home_queued_behind_park_is_refused },
+		{ "synscan_mount_park_queued_behind_home_is_refused", synscan_mount_park_queued_behind_home_is_refused },
 		{ "synscan_mount_pec_training_request_survives_training_end", synscan_mount_pec_training_request_survives_training_end },
 		{ "synscan_mount_encoders_request_survives_autohome", synscan_mount_encoders_request_survives_autohome },
 		{ "synscan_mount_reports_new_model_codes", synscan_mount_reports_new_model_codes },
@@ -5100,6 +5812,22 @@ int main(void) {
 		{ "synscan_mount_connects_with_explicit_udp_url", synscan_mount_connects_with_explicit_udp_url },
 		{ "synscan_mount_survives_lost_udp_replies", synscan_mount_survives_lost_udp_replies },
 		{ "synscan_mount_connects_with_udp_autodetection", synscan_mount_connects_with_udp_autodetection },
+		{ "synscan_guider_udp_ra_pulse_start_reply_lost", synscan_guider_udp_ra_pulse_start_reply_lost },
+		{ "synscan_guider_udp_ra_pulse_end_request_lost", synscan_guider_udp_ra_pulse_end_request_lost },
+		{ "synscan_guider_udp_ra_100ms_pulse_start_status_reply_lost", synscan_guider_udp_ra_100ms_pulse_start_status_reply_lost },
+		{ "synscan_guider_udp_ra_300ms_pulse_start_status_reply_lost", synscan_guider_udp_ra_300ms_pulse_start_status_reply_lost },
+		{ "synscan_guider_udp_ra_100ms_pulse_start_status_request_lost", synscan_guider_udp_ra_100ms_pulse_start_status_request_lost },
+		{ "synscan_guider_udp_poll_loss_does_not_delay_pulse_end", synscan_guider_udp_poll_loss_does_not_delay_pulse_end },
+		{ "synscan_guider_udp_dec_pulse_stop_request_lost", synscan_guider_udp_dec_pulse_stop_request_lost },
+		{ "synscan_guider_udp_lost_poll_reply_does_not_hold_a_pulse", synscan_guider_udp_lost_poll_reply_does_not_hold_a_pulse },
+		{ "synscan_udp_late_reply_of_another_shape_is_ignored", synscan_udp_late_reply_of_another_shape_is_ignored },
+		{ "synscan_udp_late_reply_after_retry_is_accepted", synscan_udp_late_reply_after_retry_is_accepted },
+		{ "synscan_mount_connects_after_lost_first_udp_reply", synscan_mount_connects_after_lost_first_udp_reply },
+		{ "synscan_guider_udp_pulse_end_lost_three_times_restores_tracking", synscan_guider_udp_pulse_end_lost_three_times_restores_tracking },
+		{ "synscan_udp_late_dec_reply_is_not_taken_for_ra", synscan_udp_late_dec_reply_is_not_taken_for_ra },
+		{ "synscan_udp_sustained_latency_keeps_positions", synscan_udp_sustained_latency_keeps_positions },
+		{ "synscan_udp_late_query_reply_variants_keep_positions", synscan_udp_late_query_reply_variants_keep_positions },
+		{ "synscan_udp_late_status_reply_does_not_end_goto", synscan_udp_late_status_reply_does_not_end_goto },
 		{ "synscan_mount_reports_identity_and_handshake", synscan_mount_reports_identity_and_handshake },
 		{ "synscan_mount_defines_options_from_feature_bits", synscan_mount_defines_options_from_feature_bits },
 		{ "synscan_mount_moves_the_requested_way_on_both_pier_sides", synscan_mount_moves_the_requested_way_on_both_pier_sides },

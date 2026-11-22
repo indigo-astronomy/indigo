@@ -108,7 +108,7 @@ static const char *mount_url = "synscan://";
 
 // The pointing, tracking state and settings captured once the mount is connected. Every scenario
 // works relative to these values and the session restores them before it disconnects.
-static double initial_ra, initial_dec, initial_guide_ra, initial_guide_dec;
+static double initial_ra, initial_dec, initial_ha, initial_date_dec, initial_guide_ra, initial_guide_dec;
 static double initial_park_ha, initial_park_dec, initial_home_ha, initial_home_dec;
 static bool initial_tracking, settings_captured;
 
@@ -555,9 +555,24 @@ static void nearby_target(double ra, double dec, double *target_ra, double *targ
 	}
 }
 
+// Waits until the property is no longer BUSY, whatever state it ends in.
+static bool wait_not_busy(int d, const char *name, double timeout) {
+	double deadline = indigo_monotonic_time() + timeout;
+	while (indigo_monotonic_time() < deadline) {
+		if (property_state(d, name) != INDIGO_BUSY_STATE) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "    timeout: %s %s is still busy\n", devices[d].name, name);
+	return false;
+}
+
+// The coordinates keep the ALERT of a refused or failed request until the next motion starts, so a
+// stopped mount is one whose coordinates are no longer BUSY, not one whose coordinates are OK.
 static bool stop_all_motion(void) {
 	bool ok = set_switch(mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
-	return wait_settled(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, MOTION_TIMEOUT) && ok;
+	return wait_not_busy(mount, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOTION_TIMEOUT) && ok;
 }
 
 // Brings the mount back to a known idle state. An assertion aborts its test case where it stands,
@@ -584,8 +599,49 @@ static bool slew_to_test_pointing(void) {
 	return slew_coordinates(mount, ra, test_declination, MOTION_TIMEOUT);
 }
 
+// Waits until the driver has published three more polls of MOUNT_RAW_COORDINATES, whose right ascension follows the
+// sidereal time even while the axes stand. A poll that was under way when a setting changed is then superseded.
+static bool wait_fresh_polls(void) {
+	unsigned before = revision(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME);
+	double deadline = indigo_monotonic_time() + SHORT_TIMEOUT;
+	while (indigo_monotonic_time() < deadline) {
+		if (revision(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME) > before + 2) {
+			return true;
+		}
+		indigo_usleep(50000);
+	}
+	fprintf(stderr, "    timeout waiting for fresh polls of %s\n", MOUNT_RAW_COORDINATES_PROPERTY_NAME);
+	return false;
+}
+
+// The hour angle and declination of the date the raw coordinates, J2000 on the bus, stand for.
+static bool raw_date_pointing(double *ha, double *dec) {
+	double ra = 0, lst = 0;
+	if (!number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME, &ra) || !number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME, dec) || !number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst)) {
+		return false;
+	}
+	indigo_j2k_to_jnow(&ra, dec);
+	*ha = ra_difference(lst, ra);
+	return true;
+}
+
+// A slew without tracking to the place of the date at hour angle `ha` and declination `dec`, so the axes stand after it.
+// The sidereal time is computed now, as the driver computes it for the slew, rather than taken from MOUNT_LST_TIME, which
+// is up to a poll old: a second of sidereal time is about 24 steps of an AZ-GTi.
+static bool slew_to_date_pointing(double ha, double dec) {
+	if (!set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT)) {
+		return false;
+	}
+	double ra = fmod(indigo_lst(NULL, site_longitude) - ha + 48.0, 24.0);
+	indigo_jnow_to_j2k(&ra, &dec);
+	return slew_coordinates(mount, ra, dec, MOTION_TIMEOUT);
+}
+
+// The starting pointing is read only after fresh polls: the coordinates published at connect, and by a poll under way
+// while the suite set its site, were computed for the site longitude the driver had before. Both the right ascension and
+// the hour angle of the date are kept, because a tracking mount is put back on the former and standing axes on the latter.
 static bool capture_initial_settings(void) {
-	bool ok = current_coordinates(&initial_ra, &initial_dec);
+	bool ok = wait_fresh_polls() && current_coordinates(&initial_ra, &initial_dec) && raw_date_pointing(&initial_ha, &initial_date_dec);
 	ok = ok && number_item(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, &initial_guide_ra);
 	ok = ok && number_item(mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, &initial_guide_dec);
 	ok = ok && number_item(mount, MOUNT_PARK_POSITION_PROPERTY_NAME, MOUNT_PARK_POSITION_HA_ITEM_NAME, &initial_park_ha);
@@ -1043,38 +1099,7 @@ static void synscan_refuses_sync_near_the_pole(void) {
 // when they change, which they do not while the axes stand, so the polls are counted on MOUNT_RAW_COORDINATES, whose
 // right ascension follows the sidereal time.
 static bool fresh_encoder_position(double *ra, double *dec) {
-	unsigned before = revision(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME);
-	double deadline = indigo_monotonic_time() + SHORT_TIMEOUT;
-	while (indigo_monotonic_time() < deadline) {
-		if (revision(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME) > before + 2) {
-			return property_state(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && number_item(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME, MOUNT_ENCODER_POSITION_RA_ITEM_NAME, ra) && number_item(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME, MOUNT_ENCODER_POSITION_DEC_ITEM_NAME, dec);
-		}
-		indigo_usleep(50000);
-	}
-	fprintf(stderr, "    timeout waiting for fresh polls of %s\n", MOUNT_ENCODER_POSITION_PROPERTY_NAME);
-	return false;
-}
-
-// The hour angle and declination of the date the raw coordinates, J2000 on the bus, stand for.
-static bool raw_date_pointing(double *ha, double *dec) {
-	double ra = 0, lst = 0;
-	if (!number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME, &ra) || !number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME, dec) || !number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst)) {
-		return false;
-	}
-	indigo_j2k_to_jnow(&ra, dec);
-	*ha = ra_difference(lst, ra);
-	return true;
-}
-
-// A slew without tracking to the place of the date at hour angle `ha` and declination `dec`, so the axes stand after it.
-static bool slew_to_date_pointing(double ha, double dec) {
-	double lst = 0;
-	if (!set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT) || !number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst)) {
-		return false;
-	}
-	double ra = fmod(lst - ha + 48.0, 24.0);
-	indigo_jnow_to_j2k(&ra, &dec);
-	return slew_coordinates(mount, ra, dec, MOTION_TIMEOUT);
+	return wait_fresh_polls() && property_state(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && number_item(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME, MOUNT_ENCODER_POSITION_RA_ITEM_NAME, ra) && number_item(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME, MOUNT_ENCODER_POSITION_DEC_ITEM_NAME, dec);
 }
 
 // X_ENCODER_POSITION shows the raw counts of the encoders as the controller reports them with ':d', in a resolution of
@@ -1601,15 +1626,31 @@ int main(int argc, char **argv) {
 	CHECK(clear_alignment_model());
 	CHECK(set_site());
 	CHECK(capture_initial_settings());
-	printf("Starting pointing: RA %.5f, DEC %.5f, tracking %s\n", initial_ra, initial_dec, initial_tracking ? "on" : "off");
-	result = indigo_run_tests("SynScan mount hardware", tests, ARRAY_SIZE(tests));
+	printf("Starting pointing: RA %.5f, DEC %.5f (HA %+.5f, DEC %+.5f of the date), tracking %s\n", initial_ra, initial_dec, initial_ha, initial_date_dec, initial_tracking ? "on" : "off");
+	// SYNSCAN_HW_CASE runs only the cases whose name contains it, for diagnosis; a recorded run leaves it unset
+	const char *only = getenv("SYNSCAN_HW_CASE");
+	indigo_test_case selected[ARRAY_SIZE(tests)];
+	int count = 0;
+	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
+		if (only == NULL || *only == 0 || strstr(tests[i].name, only)) {
+			selected[count++] = tests[i];
+		}
+	}
+	result = indigo_run_tests("SynScan mount hardware", selected, count);
 cleanup:
 	if (mount >= 0 && devices[mount].present) {
 		stop_all_motion();
 		restore_initial_settings();
-		// Put the mount back where the session found it.
-		if (settings_captured && slew_coordinates(mount, initial_ra, initial_dec, MOTION_TIMEOUT)) {
-			printf("Restored the starting pointing RA %.5f, DEC %.5f\n", initial_ra, initial_dec);
+		// Put the mount back where the session found it: a tracking mount on the starting right ascension, standing axes on
+		// the starting hour angle, so their step counters return to the values they had. The site is set again because a
+		// case that reinitializes the driver leaves it with its default site, whose sidereal time turns the same hour angle
+		// into another right ascension. Alignment points a case left behind would shift the slew, and the session started
+		// from an empty model anyway.
+		if (settings_captured && set_site() && clear_alignment_model()) {
+			if (initial_tracking ? slew_coordinates(mount, initial_ra, initial_dec, MOTION_TIMEOUT) : slew_to_date_pointing(initial_ha, initial_date_dec)) {
+				printf("Restored the starting pointing RA %.5f, DEC %.5f (HA %+.5f, DEC %+.5f of the date)\n", initial_ra, initial_dec, initial_ha, initial_date_dec);
+			}
+			set_switch(mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
 		}
 		set_switch(mount, MOUNT_TRACKING_PROPERTY_NAME, initial_tracking ? MOUNT_TRACKING_ON_ITEM_NAME : MOUNT_TRACKING_OFF_ITEM_NAME, INDIGO_OK_STATE, SHORT_TIMEOUT);
 	}

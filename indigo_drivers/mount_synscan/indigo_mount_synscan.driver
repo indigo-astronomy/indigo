@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 31;
+	version = 32;
 	serial {
 		configurable_speed = true;
 	}
@@ -45,7 +45,14 @@ driver synscan {
 		#define SYNSCAN_UDP_DISCOVERY_ATTEMPTS   8
 		#define SYNSCAN_UDP_DISCOVERY_RETRY_DELAY INDIGO_DELAY(1)
 		#define SYNSCAN_UDP_COMMAND_ATTEMPTS     3
+		#define SYNSCAN_UDP_REPLY_TIMEOUT        INDIGO_DELAY(0.2)
 		#define SYNSCAN_COMMAND_TIMEOUT          INDIGO_DELAY(1)
+		#define SYNSCAN_POLL_GUIDE_GUARD         0.2
+		#define SYNSCAN_POLL_AFTER_GUIDE         0.05
+		#define SYNSCAN_POLL_GUIDE_STALE         2.0
+		#define SYNSCAN_UDP_STRAY_WINDOW         0.5
+		#define SYNSCAN_MAX_STRAYS               16
+		#define SYNSCAN_UDP_MARKER               ":g1"
 		#define SYNSCAN_NEXT_BYTE_TIMEOUT        INDIGO_DELAY(0.1)
 		// A motion in progress stays BUSY over this many consecutive polls whose position readback failed, the next poll
 		// retries; one more failure ends it ALERT.
@@ -184,6 +191,19 @@ driver synscan {
 		bool homed;
 		bool snap_port_supported;
 		bool abort_motion;
+		// a home, auto home or park request claimed SYNSCAN_GLOBAL_HOMING or SYNSCAN_GLOBAL_PARKING when it was admitted, its
+		// handler has not run yet
+		bool home_claimed;
+		bool autohome_claimed;
+		bool park_claimed;
+		// UDP sends whose reply has not been read yet, in the order they were sent: the command, the payload length of its
+		// reply and the time after which the reply is not expected any more
+		// the time the last command was written, a guide pulse starts at its period change or start command
+		double last_send_time;
+		int stray_count;
+		char stray_command[SYNSCAN_MAX_STRAYS][16];
+		int stray_length[SYNSCAN_MAX_STRAYS];
+		double stray_deadline[SYNSCAN_MAX_STRAYS];
 		synscan_home_stage home_stage;
 		synscan_home_stage home_resume;
 		synscan_home_stage home_move_resume;
@@ -270,9 +290,21 @@ driver synscan {
 		static void synscan_handle_connection_loss(indigo_device *device);
 
 		static double synscan_now(void) {
-			struct timeval now;
-			gettimeofday(&now, NULL);
-			return now.tv_sec + now.tv_usec / 1000000.0;
+			return indigo_monotonic_time();
+		}
+
+		// The payload length of the reply to a command: a setting is answered with "=" alone, a query with a fixed number
+		// of hex digits. A datagram of another length is a late reply to an earlier command.
+		static int synscan_reply_length(const char *command) {
+			switch (command[1]) {
+				case 'f':
+					return 3;
+				case 'g':
+					return 2;
+				case 'D':
+					return 6;
+			}
+			return command[1] >= 'a' && command[1] <= 'z' ? 6 : 0;
 		}
 
 		static int synscan_hex_value(char value) {
@@ -334,7 +366,140 @@ driver synscan {
 			return (synscan_hex_value(buffer[2]) << 8) | (synscan_hex_value(buffer[0]) << 4) | synscan_hex_value(buffer[1]);
 		}
 
-		static synscan_response_result synscan_read_response(indigo_device *device, char *response, size_t response_size) {
+		// The payload length of a reply datagram, -1 for anything that is not a "=...\r" reply.
+		static int synscan_datagram_length(const char *buffer, long count) {
+			return count >= 2 && buffer[0] == '=' && buffer[count - 1] == '\r' ? (int)count - 2 : -1;
+		}
+
+		// Removes outstanding send `index`.
+		static void synscan_remove_stray(indigo_device *device, int index) {
+			for (int i = index + 1; i < PRIVATE_DATA->stray_count; i++) {
+				memcpy(PRIVATE_DATA->stray_command[i - 1], PRIVATE_DATA->stray_command[i], sizeof(PRIVATE_DATA->stray_command[i]));
+				PRIVATE_DATA->stray_length[i - 1] = PRIVATE_DATA->stray_length[i];
+				PRIVATE_DATA->stray_deadline[i - 1] = PRIVATE_DATA->stray_deadline[i];
+			}
+			PRIVATE_DATA->stray_count--;
+		}
+
+		// Forgets the outstanding sends whose reply is not expected any more.
+		static void synscan_expire_strays(indigo_device *device) {
+			double now = indigo_monotonic_time();
+			for (int i = PRIVATE_DATA->stray_count - 1; i >= 0; i--) {
+				if (PRIVATE_DATA->stray_deadline[i] <= now) {
+					synscan_remove_stray(device, i);
+				}
+			}
+		}
+
+		// Remembers a send of `command`, whose reply may arrive until SYNSCAN_UDP_STRAY_WINDOW from now; with no room left the
+		// oldest send is forgotten.
+		static void synscan_add_stray(indigo_device *device, const char *command) {
+			synscan_expire_strays(device);
+			if (PRIVATE_DATA->stray_count == SYNSCAN_MAX_STRAYS) {
+				synscan_remove_stray(device, 0);
+			}
+			int index = PRIVATE_DATA->stray_count++;
+			snprintf(PRIVATE_DATA->stray_command[index], sizeof(PRIVATE_DATA->stray_command[index]), "%s", command);
+			PRIVATE_DATA->stray_length[index] = synscan_reply_length(command);
+			PRIVATE_DATA->stray_deadline[index] = indigo_monotonic_time() + SYNSCAN_UDP_STRAY_WINDOW;
+		}
+
+		// Accounts a reply datagram of `length`: it answers the oldest outstanding send of `command` with that reply length, or
+		// else the oldest outstanding send of any command with that length. Taking the oldest send keeps the later deadlines,
+		// which cover the send whose reply is really still on its way.
+		static void synscan_take_stray(indigo_device *device, int length, const char *command) {
+			int oldest = -1;
+			synscan_expire_strays(device);
+			for (int i = 0; i < PRIVATE_DATA->stray_count; i++) {
+				if (PRIVATE_DATA->stray_length[i] == length) {
+					if (command != NULL && !strcmp(PRIVATE_DATA->stray_command[i], command)) {
+						oldest = i;
+						break;
+					}
+					if (oldest < 0) {
+						oldest = i;
+					}
+				}
+			}
+			if (oldest >= 0) {
+				synscan_remove_stray(device, oldest);
+			}
+		}
+
+		// The time until which a reply of the same length to another command may still arrive, 0 when none is outstanding.
+		static double synscan_foreign_stray_deadline(indigo_device *device, const char *command) {
+			int length = synscan_reply_length(command);
+			double deadline = 0;
+			synscan_expire_strays(device);
+			for (int i = 0; i < PRIVATE_DATA->stray_count; i++) {
+				if (PRIVATE_DATA->stray_length[i] == length && strcmp(PRIVATE_DATA->stray_command[i], command) && PRIVATE_DATA->stray_deadline[i] > deadline) {
+					deadline = PRIVATE_DATA->stray_deadline[i];
+				}
+			}
+			return deadline;
+		}
+
+		// Reads and drops the datagrams that arrived before a UDP command is sent. A query first waits until the outstanding
+		// replies of its own length to other commands, which it could not tell from its own reply, have arrived or their
+		// time is up. A late reply to the same query is a valid answer to it, a reply of another length is told apart by the
+		// length, so neither makes it wait. A setting does not wait either: its "=" carries no value.
+		static void synscan_drain_udp(indigo_device *device, const char *command) {
+			char late[32];
+			double deadline = synscan_reply_length(command) > 0 ? synscan_foreign_stray_deadline(device, command) : 0;
+			while (true) {
+				double now = indigo_monotonic_time();
+				long wait = deadline > now ? (long)((deadline - now) * 1000000.0) : 0;
+				if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, wait) <= 0) {
+					break;
+				}
+				long count = indigo_uni_read(PRIVATE_DATA->handle, late, sizeof(late) - 1);
+				if (count <= 0) {
+					break;
+				}
+				synscan_take_stray(device, synscan_datagram_length(late, count), command);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Discarded late SynScan reply %.*s before %s", (int)count - 1, late, command);
+				deadline = synscan_reply_length(command) > 0 ? synscan_foreign_stray_deadline(device, command) : 0;
+			}
+		}
+
+		// After a UDP command was sent more than once, asks for the high speed ratio of RA, whose reply of two hex digits no
+		// other command of a session gets, and reads until it arrives. The controller answers requests in the order it
+		// receives them and the link keeps that order (no reply overtook another in 1500 pipelined pairs on the AZ-GTi), so
+		// once this reply is in, no reply to an earlier send can still come: those sends are forgotten and the next query of
+		// the same length does not wait for them. Without that reply they stay outstanding until their deadlines. A marker
+		// whose own earlier send is still outstanding could be answered by that send, so then none is sent.
+		static void synscan_resync_udp(indigo_device *device) {
+			char buffer[32];
+			synscan_expire_strays(device);
+			for (int i = 0; i < PRIVATE_DATA->stray_count; i++) {
+				if (!strcmp(PRIVATE_DATA->stray_command[i], SYNSCAN_UDP_MARKER)) {
+					return;
+				}
+			}
+			synscan_drain_udp(device, SYNSCAN_UDP_MARKER);
+			if (indigo_uni_write(PRIVATE_DATA->handle, SYNSCAN_UDP_MARKER "\r", (long)strlen(SYNSCAN_UDP_MARKER "\r")) <= 0) {
+				return;
+			}
+			synscan_add_stray(device, SYNSCAN_UDP_MARKER);
+			double deadline = indigo_monotonic_time() + SYNSCAN_UDP_REPLY_TIMEOUT / 1000000.0;
+			while (true) {
+				long remaining = (long)((deadline - indigo_monotonic_time()) * 1000000.0);
+				if (remaining <= 0 || indigo_uni_wait_for_data(PRIVATE_DATA->handle, remaining) <= 0) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No reply to the SynScan order marker, earlier sends stay outstanding");
+					return;
+				}
+				long count = indigo_uni_read(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
+				int length = synscan_datagram_length(buffer, count);
+				if (length == synscan_reply_length(SYNSCAN_UDP_MARKER)) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SynScan order marker answered, %d earlier send(s) forgotten", PRIVATE_DATA->stray_count - 1);
+					PRIVATE_DATA->stray_count = 0;
+					return;
+				}
+				synscan_take_stray(device, length, NULL);
+			}
+		}
+
+		static synscan_response_result synscan_read_response(indigo_device *device, const char *command, char *response, size_t response_size) {
 			char buffer[32] = { 0 };
 			long count;
 			if (PRIVATE_DATA->udp) {
@@ -343,11 +508,25 @@ driver synscan {
 				// makes every later read and write fail without touching the socket, so a single
 				// lost reply would silence the mount for the rest of the session and the retry
 				// below could never recover it.
-				if (indigo_uni_wait_for_data(PRIVATE_DATA->handle, SYNSCAN_COMMAND_TIMEOUT) <= 0) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan response before timeout");
-					return SYNSCAN_RESPONSE_IO_ERROR;
+				// A lost datagram costs one SYNSCAN_UDP_REPLY_TIMEOUT: an AZ-GTi answers in 10 ms, rarely in up to 0.4 s, and
+				// loses about one reply in a hundred. A datagram whose length does not fit this command is a late reply to an
+				// earlier one and is skipped; a late reply of the right length answers a repetition of this same command.
+				double deadline = indigo_monotonic_time() + SYNSCAN_UDP_REPLY_TIMEOUT / 1000000.0;
+				while (true) {
+					long remaining = (long)((deadline - indigo_monotonic_time()) * 1000000.0);
+					if (remaining <= 0 || indigo_uni_wait_for_data(PRIVATE_DATA->handle, remaining) <= 0) {
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan response before timeout");
+						return SYNSCAN_RESPONSE_IO_ERROR;
+					}
+					count = indigo_uni_read(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
+					int length = synscan_datagram_length(buffer, count);
+					if (length >= 0 && length != synscan_reply_length(command)) {
+						synscan_take_stray(device, length, NULL);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Ignoring late SynScan reply %.*s to %s", (int)count - 1, buffer, command);
+						continue;
+					}
+					break;
 				}
-				count = indigo_uni_read(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
 			} else {
 				count = indigo_uni_read_section2(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1, "\r", "", SYNSCAN_COMMAND_TIMEOUT, SYNSCAN_NEXT_BYTE_TIMEOUT);
 			}
@@ -387,8 +566,17 @@ driver synscan {
 			snprintf(buffer, sizeof(buffer), "%s\r", command);
 			// A failed discard, write or reply only ends the session when the connection is lost, see
 			// synscan_validate_handle(); a missing or garbled reply fails just this command.
+			// Every UDP send is remembered until its reply is read or SYNSCAN_UDP_STRAY_WINDOW has passed: the AZ-GTi
+			// delivered late replies up to 0.42 s after their command (one outlier 1.6 s). The reply the command ends on is
+			// accounted to its oldest outstanding send, the others stay outstanding as strays.
+			synscan_response_result result = SYNSCAN_RESPONSE_IO_ERROR;
+			int sent = 0;
 			for (int attempt = 0; attempt < attempts; attempt++) {
-				if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 && !udp) {
+				if (udp) {
+					// Late datagrams are read whole; indigo_uni_discard() waits 10 ms for more data before every command and
+					// reads a datagram byte by byte.
+					synscan_drain_udp(device, command);
+				} else if (indigo_uni_discard(PRIVATE_DATA->handle) < 0) {
 					synscan_validate_handle(device);
 					return false;
 				}
@@ -399,18 +587,26 @@ driver synscan {
 					}
 					continue;
 				}
-				synscan_response_result result = synscan_read_response(device, response, response_size);
-				if (result == SYNSCAN_RESPONSE_OK) {
-					return true;
+				PRIVATE_DATA->last_send_time = indigo_monotonic_time();
+				sent++;
+				if (udp) {
+					synscan_add_stray(device, command);
 				}
-				if (result == SYNSCAN_RESPONSE_COMMAND_ERROR) {
-					return false;
+				result = synscan_read_response(device, command, response, response_size);
+				if (result != SYNSCAN_RESPONSE_IO_ERROR) {
+					if (udp) {
+						synscan_take_stray(device, synscan_reply_length(command), command);
+					}
+					break;
 				}
 				if (!udp) {
 					synscan_validate_handle(device);
 				}
 			}
-			return false;
+			if (udp && sent > 1) {
+				synscan_resync_udp(device);
+			}
+			return result == SYNSCAN_RESPONSE_OK;
 		}
 
 		// A reply payload of exactly `length` hex digits; a short or garbled reply is refused instead of being decoded.
@@ -1357,6 +1553,7 @@ driver synscan {
 				}
 			}
 			PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+			PRIVATE_DATA->home_claimed = PRIVATE_DATA->autohome_claimed = PRIVATE_DATA->park_claimed = false;
 			PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
 			PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
 			PRIVATE_DATA->position_failures = 0;
@@ -1477,6 +1674,7 @@ driver synscan {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 			PRIVATE_DATA->udp = false;
+			PRIVATE_DATA->stray_count = 0;
 		}
 
 		static bool synscan_validate_handle(indigo_device *device) {
@@ -1917,6 +2115,24 @@ driver synscan {
 			if (!IS_CONNECTED || PRIVATE_DATA->handle == NULL) {
 				return;
 			}
+			// A poll in progress holds the shared queue, so a guide pulse coming due meanwhile ends late, by a whole reply
+			// timeout when a reply is lost. Close to the end of a pulse the poll waits until just after it. The finalizer
+			// runs a little after the deadline; a deadline long past is one whose finalizer a guider disconnect cancelled.
+			double now = synscan_now();
+			double guide_remaining = 0;
+			bool guide_due = false;
+			if (PRIVATE_DATA->guide_ra_deadline > 0 && PRIVATE_DATA->guide_ra_deadline - now > -SYNSCAN_POLL_GUIDE_STALE) {
+				guide_remaining = PRIVATE_DATA->guide_ra_deadline - now;
+				guide_due = true;
+			}
+			if (PRIVATE_DATA->guide_dec_deadline > 0 && PRIVATE_DATA->guide_dec_deadline - now > -SYNSCAN_POLL_GUIDE_STALE && (!guide_due || PRIVATE_DATA->guide_dec_deadline - now < guide_remaining)) {
+				guide_remaining = PRIVATE_DATA->guide_dec_deadline - now;
+				guide_due = true;
+			}
+			if (guide_due && guide_remaining < SYNSCAN_POLL_GUIDE_GUARD) {
+				indigo_execute_handler_in(device, guide_remaining > 0 ? guide_remaining + SYNSCAN_POLL_AFTER_GUIDE : SYNSCAN_POLL_AFTER_GUIDE, mount_timer_callback);
+				return;
+			}
 			// A failed reading keeps the last valid coordinates with ALERT, the next good poll restores the state. During a
 			// motion or a request the reading is retried by the next poll and the coordinates stay BUSY: an ALERT published
 			// after BUSY is kept and would turn the successful end of the motion into ALERT. A reading that keeps failing,
@@ -2012,7 +2228,16 @@ driver synscan {
 				MOUNT_PARK_PARKED_ITEM->sw.value = false;
 				MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
 			}
+			on_change_request {
+				// Claimed when admitted, see MOUNT_HOME: a home request admitted after this one finds the mount parking.
+				if (MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE && indigo_get_switch(property, MOUNT_PARK_PARKED_ITEM_NAME) && PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE) {
+					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_PARKING;
+					PRIVATE_DATA->park_claimed = true;
+				}
+			}
 			on_change {
+				bool claimed = PRIVATE_DATA->park_claimed;
+				PRIVATE_DATA->park_claimed = false;
 				// A sync admitted just before this park request never reaches its handler body, the parked-mount guard of
 				// the handler refuses it; it must not keep the coordinates BUSY.
 				PRIVATE_DATA->sync_pending = false;
@@ -2020,14 +2245,13 @@ driver synscan {
 					PRIVATE_DATA->parked = false;
 					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
 					synscan_update_mount_state(device);
-				} else if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_IDLE) {
+				} else if (!claimed) {
 					indigo_set_switch(MOUNT_PARK_PROPERTY, PRIVATE_DATA->parked ? MOUNT_PARK_PARKED_ITEM : MOUNT_PARK_UNPARKED_ITEM, true);
 					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				} else {
 					long ra_target = 0;
 					long dec_target = 0;
 					PRIVATE_DATA->abort_motion = false;
-					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_PARKING;
 					PRIVATE_DATA->homed = false;
 					synscan_update_mount_state(device);
 					synscan_ha_dec_to_steps(device, MOUNT_PARK_POSITION_HA_ITEM->number.value, MOUNT_PARK_POSITION_DEC_ITEM->number.value, &ra_target, &dec_target);
@@ -2049,17 +2273,27 @@ driver synscan {
 			// on_detach { }
 		}
 		inherited MOUNT_HOME {
+			on_change_request {
+				// Claim the homing when the request is admitted, as a coordinates request claims its slew: a coordinates request
+				// sent after this one, before its handler runs, is then refused as during the homing instead of claiming the
+				// axes itself and making this handler refuse the home.
+				if (MOUNT_HOME_PROPERTY->state != INDIGO_BUSY_STATE && indigo_get_switch(property, MOUNT_HOME_ITEM_NAME) && PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE) {
+					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_HOMING;
+					PRIVATE_DATA->home_claimed = true;
+				}
+			}
 			on_change {
+				bool claimed = PRIVATE_DATA->home_claimed;
+				PRIVATE_DATA->home_claimed = false;
 				if (!MOUNT_HOME_ITEM->sw.value) {
 					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_OK_STATE, NULL);
-				} else if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_IDLE) {
+				} else if (!claimed) {
 					MOUNT_HOME_ITEM->sw.value = false;
 					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				} else {
 					long ra_target = 0;
 					long dec_target = 0;
 					PRIVATE_DATA->abort_motion = false;
-					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_HOMING;
 					PRIVATE_DATA->homed = false;
 					synscan_update_mount_state(device);
 					synscan_ha_dec_to_steps(device, MOUNT_HOME_POSITION_HA_ITEM->number.value, MOUNT_HOME_POSITION_DEC_ITEM->number.value, &ra_target, &dec_target);
@@ -2288,6 +2522,8 @@ driver synscan {
 				}
 				indigo_cancel_pending_handler(device, mount_home_handler);
 				indigo_cancel_pending_handler(device, mount_home_finalizer);
+				// the claims of cancelled home and park handlers end with the global mode below
+				PRIVATE_DATA->home_claimed = PRIVATE_DATA->autohome_claimed = PRIVATE_DATA->park_claimed = false;
 				if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
 					MOUNT_HOME_ITEM->sw.value = false;
 					INDIGO_UPDATE_PROPERTY_STATE(MOUNT_HOME_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -2439,25 +2675,37 @@ driver synscan {
 			label = "Auto home";
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			hidden = true;
+			on_change_request {
+				// Claimed when admitted, see MOUNT_HOME
+				if (MOUNT_AUTOHOME_PROPERTY->state != INDIGO_BUSY_STATE && indigo_get_switch(property, MOUNT_AUTOHOME_ITEM_NAME) && !PRIVATE_DATA->parked && PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE) {
+					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_HOMING;
+					PRIVATE_DATA->autohome_claimed = true;
+				}
+			}
 			on_change {
+				bool claimed = PRIVATE_DATA->autohome_claimed;
+				PRIVATE_DATA->autohome_claimed = false;
 				if (!MOUNT_AUTOHOME_ITEM->sw.value) {
 					MOUNT_AUTOHOME_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
 					return;
 				}
 				if (PRIVATE_DATA->parked) {
+					// a claim made before the mount was parked is given up
+					if (claimed) {
+						PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+					}
 					MOUNT_AUTOHOME_ITEM->sw.value = false;
 					MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Mount is parked.");
 					return;
 				}
-				if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_IDLE) {
+				if (!claimed) {
 					MOUNT_AUTOHOME_ITEM->sw.value = false;
 					MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Auto home not started - mount is busy.");
 					return;
 				}
-				PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_HOMING;
 				PRIVATE_DATA->homed = false;
 				// Homing owns both axes immediately; an older guide finalizer must not restore a rate.
 				PRIVATE_DATA->ra_axis_mode = PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_GOTO;
@@ -2673,10 +2921,15 @@ driver synscan {
 						}
 						synscan_update_mount_state(device->master_device);
 					}
+					if (ok) {
+						// the pulse runs from the command that changed the period, not from the acknowledgement of it
+						PRIVATE_DATA->guide_ra_deadline = PRIVATE_DATA->last_send_time + duration;
+					}
 					GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
 					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, ok ? NULL : "Failed to start RA guide pulse.");
 					if (ok) {
-						indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration, guider_guide_ra_finalizer);
+						double remaining = PRIVATE_DATA->guide_ra_deadline - synscan_now();
+						indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, remaining > 0 ? remaining : 0, guider_guide_ra_finalizer);
 					}
 			}
 			// on_attach { }
@@ -2726,10 +2979,15 @@ driver synscan {
 					PRIVATE_DATA->guide_dec_direction = direction;
 					bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, guide_rate);
 					PRIVATE_DATA->dec_axis_mode = ok ? SYNSCAN_AXIS_GUIDING : SYNSCAN_AXIS_IDLE;
+					if (ok) {
+						// the pulse runs from the command that started the axis, not from the acknowledgement of it
+						PRIVATE_DATA->guide_dec_deadline = PRIVATE_DATA->last_send_time + duration;
+					}
 					GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
 					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, ok ? NULL : "Failed to start DEC guide pulse.");
 					if (ok) {
-						indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration, guider_guide_dec_finalizer);
+						double remaining = PRIVATE_DATA->guide_dec_deadline - synscan_now();
+						indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, remaining > 0 ? remaining : 0, guider_guide_dec_finalizer);
 					}
 			}
 			// on_attach { }
