@@ -30,6 +30,8 @@ Driver is developed and tested with:
 
 Use URL in form synscan://host:port to connect to the mount over UDP (default port is 11880). Use just synscan:// for UDP autodetection.
 
+X_MOUNT_USE_ENCODERS switches the dual (axis) encoders of the motor controller on or off; the coordinates always come from the motor step counters. When an encoder is switched on, the controller corrects the step counter of that axis from the encoder (an AZ-GTi does it at once and only to the encoder's coarse grid of about 0.34°), so sync or plate-solve again after switching it on.
+
 ## Testing
 
 - 2026-09-24 09:35 3.0.0.7 mac arm64 MountSim 2.3 (EQMOD) 15/15 OK
