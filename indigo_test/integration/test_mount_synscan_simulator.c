@@ -61,7 +61,7 @@ static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
 #define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME      "X_MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME        "DEC_OFFSET"
 #define MOUNT_OPERATING_MODE_PROPERTY_NAME         "X_MOUNT_OPERATING_MODE"
-#define MOUNT_ENCODER_POSITION_PROPERTY_NAME       "X_ENCODER_POSITION"
+#define MOUNT_ENCODER_POSITION_PROPERTY_NAME       "X_MOUNT_ENCODER_POSITION"
 #define MOUNT_ENCODER_POSITION_RA_ITEM_NAME        "RA"
 #define MOUNT_ENCODER_POSITION_DEC_ITEM_NAME       "DEC"
 
@@ -2255,7 +2255,7 @@ static _Atomic double observed_previous_ra, observed_previous_dec, observed_aler
 static pthread_mutex_t observed_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char observed_coordinates_message[INDIGO_VALUE_SIZE], observed_park_message[INDIGO_VALUE_SIZE];
 
-// The same for X_ENCODER_POSITION: the state it was defined with and the values around its first ALERT.
+// The same for X_MOUNT_ENCODER_POSITION: the state it was defined with and the values around its first ALERT.
 static atomic_int observed_encoder_define_state;
 static atomic_bool observed_encoder_alert;
 static _Atomic double observed_encoder_previous_ra, observed_encoder_previous_dec, observed_encoder_alert_ra, observed_encoder_alert_dec, observed_encoder_alert_previous_ra, observed_encoder_alert_previous_dec;
@@ -2505,7 +2505,7 @@ static void synscan_mount_reports_identity_and_handshake(void) {
 	// The commands from opening the port to the first coordinate read, in order. The axes start uninitialized, so
 	// the driver initializes them and restores the saved position; the value depends on what an earlier case parked.
 	// The axes have encoders: the driver sends X_MOUNT_USE_ENCODERS, off in a new driver, before the first reading, so
-	// the dual encoders of the controller agree with it, and X_ENCODER_POSITION reads the encoders after the step counters.
+	// the dual encoders of the controller agree with it, and X_MOUNT_ENCODER_POSITION reads the encoders after the step counters.
 	static const char *handshake[] = { ":e1", ":e1", ":f1", ":f2", ":a1", ":a2", ":s1", ":s2", ":b1", ":b2", ":g1", ":g2", ":q1010000", ":q2010000", ":V100", ":F1", ":E1", ":F2", ":E2", ":W1050000", ":W2050000", ":j2", ":j1", ":d2", ":d1" };
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
@@ -4739,7 +4739,7 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// X_ENCODER_POSITION. The simulator started with --encoder-counts answers :d with the encoder ticks of the axis turn,
+// X_MOUNT_ENCODER_POSITION. The simulator started with --encoder-counts answers :d with the encoder ticks of the axis turn,
 // SIM_ENCODER_COUNTS per revolution against the SIM_STEPS_PER_REVOLUTION steps of the step counter, as an AZ-GTi
 // counts 1068 against 2073600, plus 512 ticks on RA and 1024 ticks on DEC, all around 0x800000. The driver has to
 // publish that reply as it is, minus 0x800000, without knowing the resolution.
@@ -4843,7 +4843,7 @@ static void synscan_simulated_encoder_counts(external_serial_simulator *simulato
 	*dec = synscan_simulated_encoder_ticks(synscan_replayed_axis(simulator, '2', &dec_offset)) + dec_offset;
 }
 
-// The X_ENCODER_POSITION values after the third poll from this call; false unless they are OK. The bus publishes the
+// The X_MOUNT_ENCODER_POSITION values after the third poll from this call; false unless they are OK. The bus publishes the
 // property only when its values or state change, which they do not while the axes stand, so the polls are counted on
 // MOUNT_RAW_COORDINATES, whose right ascension follows the sidereal time. A poll publishes the encoder position after
 // the raw coordinates, so the values are at least those of the second poll, which read the axes after the call.
@@ -4882,7 +4882,7 @@ static bool synscan_select_encoders(bool ra, bool dec) {
 	return wait_for_property_state_after(MOUNT_USE_ENCODERS_PROPERTY_NAME, INDIGO_OK_STATE, revision) && find_cached_item(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_RA_ENCODER_ITEM_NAME)->sw.value == ra && find_cached_item(MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_USE_DEC_ENCODER_ITEM_NAME)->sw.value == dec;
 }
 
-// X_ENCODER_POSITION is a read-only integer number in the alignment group with the 24-bit signed range. A mount with
+// X_MOUNT_ENCODER_POSITION is a read-only integer number in the alignment group with the 24-bit signed range. A mount with
 // an encoder on one axis only defines it too: that axis shows its encoder count, the axis without an encoder shows 0
 // and is never asked for an encoder reading. A client request to change it changes nothing.
 static void synscan_mount_encoder_position_with_one_encoder(void) {
@@ -5070,7 +5070,7 @@ static void synscan_mount_use_encoders_rebases_and_keeps_step_counters(void) {
 	printf("    switched on: counters re-based by %+ld %+ld steps, the client had HA %+.4f h DEC %+.4f deg with the answer, the re-based counters give HA %+.4f h DEC %+.4f deg\n", rebased_ra_steps - ra_steps, rebased_dec_steps - dec_steps, ha, dec, expected_ha, expected_dec);
 	SERIAL_CHECK_TRUE(labs(rebased_ra_steps - ra_steps) > 10000 && labs(rebased_dec_steps - dec_steps) > 1000);
 	SERIAL_CHECK_TRUE(fabs(synscan_wrap_hours(ha - expected_ha)) < 0.01 && fabs(dec - expected_dec) < 0.05);
-	// the polls keep reading the step counters, the encoders only for X_ENCODER_POSITION
+	// the polls keep reading the step counters, the encoders only for X_MOUNT_ENCODER_POSITION
 	int mark = synscan_mark(&simulator);
 	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
 	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":j1", NULL, 0, NULL) >= 2 && count_synscan_commands(&simulator, mark, ":j2", NULL, 0, NULL) >= 2);
@@ -5270,7 +5270,7 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// A refused or malformed encoder reply, at connect or in a poll, publishes X_ENCODER_POSITION ALERT with the last
+// A refused or malformed encoder reply, at connect or in a poll, publishes X_MOUNT_ENCODER_POSITION ALERT with the last
 // valid values and leaves the coordinates alone; a failed step counter query marks both. The next good poll restores
 // OK and the connection stays up.
 static void synscan_mount_encoder_position_alert_on_a_failed_query(void) {

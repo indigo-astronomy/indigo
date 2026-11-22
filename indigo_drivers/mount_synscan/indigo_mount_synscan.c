@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000020
+#define DRIVER_VERSION       0x03000021
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -98,7 +98,7 @@
 #define MOUNT_OPERATING_MODE_PROPERTY_NAME "X_MOUNT_OPERATING_MODE"
 #define POLAR_MODE_ITEM_NAME "POLAR"
 #define ALTAZ_MODE_ITEM_NAME "ALTAZ"
-#define MOUNT_ENCODER_POSITION_PROPERTY_NAME "X_ENCODER_POSITION"
+#define MOUNT_ENCODER_POSITION_PROPERTY_NAME "X_MOUNT_ENCODER_POSITION"
 #define MOUNT_ENCODER_POSITION_RA_ITEM_NAME "RA"
 #define MOUNT_ENCODER_POSITION_DEC_ITEM_NAME "DEC"
 
@@ -1235,7 +1235,7 @@ static bool synscan_update_mount_coordinates(indigo_device *device) {
 	return true;
 }
 
-// X_ENCODER_POSITION: the signed count of the encoder of each axis exactly as ':d' reports it (the 24-bit reply minus
+// X_MOUNT_ENCODER_POSITION: the signed count of the encoder of each axis exactly as ':d' reports it (the 24-bit reply minus
 // 0x800000), without scaling or a zero position; the resolution is model dependent, so the driver does not interpret
 // it. An axis without an encoder shows 0.
 static bool synscan_read_encoder_position(indigo_device *device) {

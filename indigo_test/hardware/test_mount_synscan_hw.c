@@ -77,7 +77,7 @@ static char park_folder[] = "/tmp/indigo-synscan-hw-park-XXXXXX";
 #define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME "X_MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME "DEC_OFFSET"
 #define MOUNT_OPERATING_MODE_PROPERTY_NAME "X_MOUNT_OPERATING_MODE"
-#define MOUNT_ENCODER_POSITION_PROPERTY_NAME "X_ENCODER_POSITION"
+#define MOUNT_ENCODER_POSITION_PROPERTY_NAME "X_MOUNT_ENCODER_POSITION"
 #define MOUNT_ENCODER_POSITION_RA_ITEM_NAME "RA"
 #define MOUNT_ENCODER_POSITION_DEC_ITEM_NAME "DEC"
 
@@ -1095,14 +1095,14 @@ static void synscan_refuses_sync_near_the_pole(void) {
 	ASSERT_TRUE(back);
 }
 
-// The X_ENCODER_POSITION counts after the third poll from now; false unless they are OK. The bus publishes them only
+// The X_MOUNT_ENCODER_POSITION counts after the third poll from now; false unless they are OK. The bus publishes them only
 // when they change, which they do not while the axes stand, so the polls are counted on MOUNT_RAW_COORDINATES, whose
 // right ascension follows the sidereal time.
 static bool fresh_encoder_position(double *ra, double *dec) {
 	return wait_fresh_polls() && property_state(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME) == INDIGO_OK_STATE && number_item(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME, MOUNT_ENCODER_POSITION_RA_ITEM_NAME, ra) && number_item(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME, MOUNT_ENCODER_POSITION_DEC_ITEM_NAME, dec);
 }
 
-// X_ENCODER_POSITION shows the raw counts of the encoders as the controller reports them with ':d', in a resolution of
+// X_MOUNT_ENCODER_POSITION shows the raw counts of the encoders as the controller reports them with ':d', in a resolution of
 // the mount model (an AZ-GTi counts 1068 per revolution against 2073600 steps), so the case assumes no ratio between
 // the counts and the motion and no absolute pointing. X_MOUNT_USE_ENCODERS is left as it is: switching the encoders on
 // re-bases the step counter of an AZ-GTi. The counts stand still while the axes stand, change on both axes after a GoTo
@@ -1113,7 +1113,7 @@ static void synscan_reports_encoder_position(void) {
 	double start_ha = NAN, start_dec = NAN, goto_ha = NAN, goto_dec = NAN, ra = 0, dec = 0;
 	double start_ra_count = NAN, start_dec_count = NAN, still_ra_count = NAN, still_dec_count = NAN, goto_ra_count = NAN, goto_dec_count = NAN, synced_ra_count = NAN, synced_dec_count = NAN, back_ra_count = NAN, back_dec_count = NAN;
 	bool encoders_selected = false;
-	// a controller without encoders defines neither X_MOUNT_USE_ENCODERS nor X_ENCODER_POSITION
+	// a controller without encoders defines neither X_MOUNT_USE_ENCODERS nor X_MOUNT_ENCODER_POSITION
 	if (!property_defined(mount, MOUNT_USE_ENCODERS_PROPERTY_NAME)) {
 		ASSERT_TRUE(!property_defined(mount, MOUNT_ENCODER_POSITION_PROPERTY_NAME));
 		printf("    controller reports no encoders, encoder position not applicable\n");
