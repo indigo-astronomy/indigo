@@ -481,6 +481,8 @@ Hooks are tasks that the scheduler runs at fixed moments, to prepare the equipme
 | `NIGHT_END` | When that scheduler night ends |
 | `IDLE` | Once, after `IDLE_HOOK_DELAY` minutes without a task start |
 | `RESUME` | Before the next task after `IDLE` or `NIGHT_END` |
+| `UNSAFE` | Once, when the conditions become unsafe, see [Unsafe conditions](#unsafe-conditions) |
+| `SAFE` | When the conditions are safe again during a night with work |
 
 **Example: park while waiting.** Three short tasks unpark and park the mount. `Startup` also sets the meridian flip for all tasks:
 
@@ -613,7 +615,56 @@ A session then runs like this:
 
 `enable_cooler()` waits for the temperature, and the start offset gives it that time. `dome_open()` and `dome_close()` need a dome selected in the Mount Agent. Leave them out if you have no dome. Keep hook tasks short and safe to repeat, because `RESUME` may run several times a night.
 
-Details: [Hook rules](#hook-rules), [Night rules](#night-rules).
+#### Unsafe conditions
+
+The scheduler can follow a safety signal, for example from a weather station or a cloud sensor. It reads the light `AGENT_AUX_SAFETY` of the Auxiliary Agent (`indigo_agent_auxiliary`): item `SAFE` Ok means safe, Alert means unsafe, Idle means no information. The scheduler only reads the light.
+
+> **Note:** The current Auxiliary Agent defines `AGENT_AUX_SAFETY` but does not compute it yet, so the light always stays Idle, which is no information. `AGENT_SCHEDULER_SAFETY_MISSING`, below, then decides. Keep it at `SAFE` until the Auxiliary Agent computes the safety.
+
+When the conditions become unsafe while the scheduler runs, it enters the **unsafe hold** at once:
+
+- The running task is aborted, also an urgent task and a sequence you started by hand. The task goes back to `RETRY` without using a retry, and runs again later. `@preempted fail` does not apply.
+- A running `STARTUP`, `NIGHT_START`, `IDLE`, `RESUME` or `SAFE` hook is aborted too. A running `SHUTDOWN` or `NIGHT_END` hook finishes, because it puts the equipment away anyway.
+- Then the `UNSAFE` hook runs once, for example to park and close the roof.
+- During the hold, no task and no other hook starts, except `NIGHT_END` at dawn. `REASON` says `unsafe conditions`.
+
+The hold ends when the conditions have been safe for `SAFE_DELAY` minutes without interruption (default 10). Every unsafe report, even a short one, starts the delay again, so a sensor that flickers does not open the roof. Meanwhile `REASON` says `unsafe hold ends in <n> min`. When the hold ends:
+
+- During a scheduler night with work, the `SAFE` hook runs, for example to open the roof and unpark. Then the tasks continue.
+- During the day, or with nothing to do, the `SAFE` hook is skipped. The scheduler goes into standby, so `NIGHT_START` or `RESUME` prepares the equipment when it is needed.
+
+`START` while the conditions are unsafe does not start right away. The state message is `Unsafe conditions, the start waits for safe conditions`, and `STARTUP` runs once the conditions have been safe for `SAFE_DELAY`. `STOP` and `ABORT` work during the hold as usual, and run `SHUTDOWN`.
+
+`AGENT_SCHEDULER_SAFETY_MISSING` decides what happens when there is no safety information: no Auxiliary Agent, no `AGENT_AUX_SAFETY`, or an Idle light. `SAFE` (the default) ignores it, so a setup without a safety signal works as before. `UNSAFE` holds the scheduler until a safe signal arrives. With the current Auxiliary Agent no safe signal ever arrives, so `UNSAFE` holds the scheduler permanently.
+
+**Example: close on rain.** Add two hooks to the observatory above. `Close` parks the mount and closes the dome, `Open` opens it again:
+
+```js
+// @task Close
+
+var sequence = new Sequence(scheduler_task.name);
+sequence.park();
+sequence.dome_close();
+sequence.start();
+```
+
+```js
+// @task Open
+
+var sequence = new Sequence(scheduler_task.name);
+sequence.dome_open();
+sequence.unpark();
+sequence.start();
+```
+
+```
+indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=close.task"
+indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=open.task"
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.UNSAFE=Close;SAFE=Open"
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.SAFE_DELAY=15"
+```
+
+Details: [Hook rules](#hook-rules), [Night rules](#night-rules), [Safety rules](#safety-rules).
 
 ### Meridian flips
 
@@ -746,7 +797,7 @@ Details: [The history](#the-history).
 
 `AGENT_SCHEDULER_CONTROL` has three switches:
 
-- **`START`** runs the `STARTUP` hook, then starts scheduling. During a scheduler night with work, `NIGHT_START` runs right after `STARTUP`.
+- **`START`** runs the `STARTUP` hook, then starts scheduling. During a scheduler night with work, `NIGHT_START` runs right after `STARTUP`. While the conditions are unsafe, the start waits for safe conditions, see [Unsafe conditions](#unsafe-conditions).
 - **`STOP`** lets the running task finish. Then it runs the `SHUTDOWN` hook and stops.
 - **`ABORT`** aborts the running task at once. Then it runs the `SHUTDOWN` hook and stops. A stored task becomes `RETRY`, without using a retry. A one-off urgent task is discarded.
 
@@ -834,6 +885,7 @@ The Scheduler Agent (`indigo_agent_scheduler`) works directly with these agents:
 | Mount Agent | `indigo_agent_mount` | for tasks with `@target` or `@twilight`, and for the night hooks | The site coordinates, from its `GEOGRAPHIC_COORDINATES` property. Without it, or without a site, these tasks wait with `site coordinates unknown`. The night hooks then do not run |
 | Guider Agent | `indigo_agent_guider` | optional | The scheduler stops guiding when a task is aborted or interrupted. The sequencer's own abort leaves guiding running |
 | Imager Agent and the plate solver agents | `indigo_agent_imager`, `indigo_agent_astrometry`, `indigo_agent_platesolver` | optional | After an abort, the scheduler waits until they are idle. Then it starts the next task |
+| Auxiliary Agent | `indigo_agent_auxiliary` | optional | The safety, from its `AGENT_AUX_SAFETY` light. Without it there is no safety information, which counts as safe unless `AGENT_SCHEDULER_SAFETY_MISSING` is `UNSAFE`. See [Unsafe conditions](#unsafe-conditions) |
 
 - The agents must run on the same server as the Scheduler Agent. The scheduler finds them by their exact names, such as "Scripting Agent" and "Mount Agent".
 - An agent on another server appears under another name, such as `Scripting Agent @ obs2`. The scheduler does not use it.
@@ -1020,6 +1072,10 @@ See also: [Meridian flips](#meridian-flips).
 | `NIGHT_END` | When that scheduler night ends | Only reported |
 | `IDLE` | Once, after `IDLE_HOOK_DELAY` minutes without a task start. For example while waiting for clouds, for a target to rise, or for a run planned later by `VISIBILITY` | Only reported |
 | `RESUME` | Before a task that starts in standby, after `IDLE` or `NIGHT_END` | `SHUTDOWN` runs, and the scheduler stops with Alert |
+| `UNSAFE` | Once per unsafe hold, after everything that ran was aborted | `SHUTDOWN` runs, and the scheduler stops with Alert |
+| `SAFE` | When the unsafe hold ends during a scheduler night with work | `SHUTDOWN` runs, and the scheduler stops with Alert |
+
+A hook aborted by the unsafe hold is not a failure. Its history entry has the result `UNSAFE`, and the scheduler continues. An aborted `STARTUP` hook runs again after the hold.
 
 **When `SHUTDOWN` does not run.**
 
@@ -1071,6 +1127,21 @@ See also: [Hooks and the night](#hooks-and-the-night).
 The night plan then shows the item `no night at the night limit within a day, the night hooks do not run`.
 
 See also: [Hooks and the night](#hooks-and-the-night).
+
+### Safety rules
+
+- The safety is the light of the item `SAFE` of `AGENT_AUX_SAFETY` on the Auxiliary Agent of the same server. Ok is safe, Alert is unsafe. Idle, Busy, a missing property and a missing agent are no information, which `AGENT_SCHEDULER_SAFETY_MISSING` treats as safe (`SAFE`, the default) or unsafe (`UNSAFE`). The state of the property itself does not count.
+- An unsafe report while the scheduler runs starts the unsafe hold at once. Every task and every hook except `SHUTDOWN`, `NIGHT_END` and `UNSAFE` is aborted, and so is a sequence started by hand that runs at that moment. A sequence that you start by hand during the hold is left alone.
+- An aborted task returns to `RETRY` without using a retry and without a retry delay. `@preempted fail` does not apply. A one-off urgent task stays in the list and runs after the hold.
+- `UNSAFE` runs once per hold. When it names the task that has just run as `NIGHT_END`, it does not run again.
+- During the hold, no task, urgent task or hook starts, except `UNSAFE` and `NIGHT_END` at dawn. A night that starts during the hold waits for its end. The automatic stop waits too.
+- The hold ends at the first check after the conditions have been safe for `SAFE_DELAY` minutes. Each unsafe report starts the delay again.
+- At the end of the hold, during a scheduler night with work, `SAFE` runs. Otherwise the scheduler continues in standby, and `NIGHT_START` or `RESUME` prepares the equipment when it is needed. Without a known site the whole time counts as night.
+- `START` while unsafe, or less than `SAFE_DELAY` after the last unsafe report, waits for safe conditions. `UNSAFE` does not run for it, and `STARTUP` runs at the end of the wait.
+- The time of the last unsafe report is kept while the scheduler is stopped and across a server restart. A server that stopped during unsafe conditions counts as unsafe until it starts again.
+- `STOP`, `ABORT` and the automatic stop work as usual during the hold.
+
+See also: [Unsafe conditions](#unsafe-conditions).
 
 ### Urgent task rules
 
@@ -1232,12 +1303,13 @@ See also: [Tasks](#tasks).
 | `OPERATION_OVERHEAD` | s | 120 | 0–3600 | Time added per slew, centering, focus or guiding start in the duration estimate |
 | `NIGHT_START_OFFSET` | min | 0 | −240–240 | Shift of the start of the scheduler night. Negative is earlier |
 | `NIGHT_END_OFFSET` | min | 0 | −240–240 | Shift of the end of the scheduler night. Negative is earlier |
+| `SAFE_DELAY` | min | 10 | 0–1440 | How long the conditions must be safe without interruption before the unsafe hold ends or a waiting `START` begins. Steps of 0.1 |
 
 ```
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.IDLE_CHECK_INTERVAL=10;IDLE_HOOK_DELAY=20"
 ```
 
-The scheduler saves its configuration and restores it when the server starts. This covers the tasks with their states and counters, the settings, the strategy, the data settings, the hooks, the night limit and the history.
+The scheduler saves its configuration and restores it when the server starts. This covers the tasks with their states and counters, the settings, the strategy, the data settings, the hooks, the night limit, `AGENT_SCHEDULER_SAFETY_MISSING`, the time of the last unsafe report and the history.
 
 ### Scheduler state
 
@@ -1246,9 +1318,9 @@ The scheduler saves its configuration and restores it when the server starts. Th
 | Property state | Meaning |
 |---|---|
 | Idle | Not started since the server started |
-| Busy | Running |
+| Busy | Running, also during the unsafe hold and while `START` waits for safe conditions |
 | Ok | Stopped, after `STOP` or after all tasks finished |
-| Alert | Stopped after `ABORT`, even when `ABORT` is pressed while stopped. Also after a failed `STARTUP`, `NIGHT_START`, `RESUME` or `SHUTDOWN` hook, or after a stop timeout |
+| Alert | Stopped after `ABORT`, even when `ABORT` is pressed while stopped. Also after a failed `STARTUP`, `NIGHT_START`, `RESUME`, `UNSAFE`, `SAFE` or `SHUTDOWN` hook, or after a stop timeout |
 
 Its items count the tasks:
 
@@ -1353,6 +1425,7 @@ See also: [The night plan](#the-night-plan).
 | `FAILED` | Alert | The sequence ended Alert, or the task could not start. The reason follows. For a failed step, it is the failure message of the step, for example `There is no CCD_GAIN on Imager Agent`. `Sequencer.js` publishes it in `SEQUENCE_FAILURE`. A sequence aborted by hand, outside the scheduler, has no reason |
 | `PREEMPTED` | Busy | An urgent task interrupted the run. The reason names the urgent task. It says `did not stop in time` when the sequence did not stop within `STOP_TIMEOUT` |
 | `ABORTED` | Busy | `ABORT`, or a delete of the running task. A deleted task has the reason `deleted`. A run aborted by `ABORT` that does not stop within `STOP_TIMEOUT` has the reason `did not stop in time` |
+| `UNSAFE` | Busy | The unsafe hold aborted the run. The reason is `unsafe conditions` |
 
 The history survives restarts. To clear it, together with the urgent counters of `AGENT_SCHEDULER_STATE`:
 
@@ -1386,6 +1459,12 @@ The scheduler reports events as INDIGO messages of the device "Scheduler Agent".
 | `The Sun does not go below the night limit within a day, the night hooks do not run` | No night at the night limit, for example near the poles in summer |
 | `The Sun does not rise above the night limit, the night does not end` | A polar night. `NIGHT_END` does not run until it ends |
 | `The sequence or an agent did not stop in time, the scheduler stopped` | An aborted sequence did not stop within `STOP_TIMEOUT` |
+| `Unsafe conditions, the scheduler holds`, `No safety information, treated as unsafe, the scheduler holds` | The unsafe hold starts |
+| `Task 'M31 LRGB' aborted by unsafe conditions, it will be retried`, `Hook 'Evening' aborted by unsafe conditions` | The unsafe hold aborted a run |
+| `A sequence started by hand was aborted by unsafe conditions` | The unsafe hold aborted a sequence you started by hand |
+| `Safe conditions, the unsafe hold ends`, `..., the scheduler continues in standby`, `Safe conditions, the scheduler starts` | The unsafe hold ends |
+| `Unsafe conditions, the start waits for safe conditions` | `START` while the conditions are unsafe |
+| `The unsafe hook failed, the scheduler stopped`, `The safe hook failed, the scheduler stopped` | The `UNSAFE` or `SAFE` hook failed. `SHUTDOWN` ran |
 
 A rejected request puts the property you changed into the Alert state. A message gives the reason, for example `Task 'M42' not found`. The messages of property updates, such as the stop messages of `AGENT_SCHEDULER_STATE`, arrive the same way as the other messages.
 
@@ -1412,6 +1491,8 @@ A rejected request puts the property you changed into the Alert state. A message
 | `another sequence is running` | A sequence started by hand occupies the Scripting Agent |
 | `loading Sequencer.js`, `waiting for the Scripting Agent` | The scheduler is preparing the Scripting Agent |
 | `stopping the running sequence` | An aborted sequence is still stopping |
+| `unsafe conditions`, `no safety information, treated as unsafe` | The unsafe hold, see [Unsafe conditions](#unsafe-conditions) |
+| `unsafe hold ends in <n> min` | The conditions are safe again, the hold ends after `SAFE_DELAY` |
 
 ### What happens when the server restarts
 
@@ -1422,6 +1503,7 @@ A rejected request puts the property you changed into the Alert state. A message
 - One-off urgent tasks are lost. Stored tasks with `@priority urgent` are kept.
 - The scheduler starts stopped. Press `START`. During a scheduler night with work, `STARTUP` runs and then `NIGHT_START`, so the equipment is prepared again.
 - Standby is not kept. After `START`, the first task runs without `RESUME`.
+- The time of the last unsafe report is kept. If the server stopped during unsafe conditions, `START` waits until the conditions have been safe for `SAFE_DELAY` after the restart.
 
 See also: [Starting, stopping and restarting](#starting-stopping-and-restarting).
 
@@ -1438,7 +1520,8 @@ See also: [Starting, stopping and restarting](#starting-stopping-and-restarting)
 | A task shows `SCRIPT ERROR` | The message names the JavaScript error. Fix the body with an edit. Or `RESET` the task after fixing an agent the body needed |
 | A task shows `1h00 default` | The duration cannot be estimated from the sequence. Set `@duration`. See [Task duration](#task-duration) |
 | `another sequence is running` | A sequence started by hand occupies the Scripting Agent. Stop it, or submit an urgent task, which aborts it |
-| The scheduler stopped with Alert | Check the messages. Causes are `ABORT`, a failed `STARTUP`, `NIGHT_START`, `RESUME` or `SHUTDOWN` hook, or a sequence that did not stop within `STOP_TIMEOUT` |
+| The scheduler stopped with Alert | Check the messages. Causes are `ABORT`, a failed `STARTUP`, `NIGHT_START`, `RESUME`, `UNSAFE`, `SAFE` or `SHUTDOWN` hook, or a sequence that did not stop within `STOP_TIMEOUT` |
+| Nothing runs and `REASON` is `unsafe conditions` or `no safety information, treated as unsafe` | The Auxiliary Agent reports unsafe conditions, or there is no safety information and `AGENT_SCHEDULER_SAFETY_MISSING` is `UNSAFE`. See [Unsafe conditions](#unsafe-conditions) |
 | The night start hook does not run | No task can run that night, the hook names no task, there is no night at the night limit, or the site is unknown. It runs later if a task becomes able to run. See [Hooks and the night](#hooks-and-the-night) |
 | The night start hook runs too late for the camera to cool | Set a negative `NIGHT_START_OFFSET`, for example −30 |
 | The night end hook runs long after dawn | A task was still running. Night hooks never interrupt a task. Give the tasks `@twilight`, or end them with `break_if_solar_altitude_above()` |
@@ -1472,9 +1555,10 @@ All properties belong to the device "Scheduler Agent".
 | `AGENT_SCHEDULER_SETTINGS` | number | see [Settings](#settings) | Settings |
 | `AGENT_SCHEDULER_DATA` | switch | `OBJECT`, `FITS`, `FOLDER` | What the scheduler sets on the Imager Agent for a run |
 | `AGENT_SCHEDULER_DATA_DIR` | text | `BASE` | Parent folder of the task folders, empty for the folder of the Imager Agent |
-| `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `NIGHT_START`, `NIGHT_END`, `IDLE`, `RESUME` | Hook task names |
+| `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `NIGHT_START`, `NIGHT_END`, `IDLE`, `RESUME`, `UNSAFE`, `SAFE` | Hook task names |
 | `AGENT_SCHEDULER_NIGHT` | switch | `CIVIL`, `NAUTICAL`, `ASTRONOMICAL` | The night limit of the scheduler night |
 | `AGENT_SCHEDULER_STRATEGY` | switch | `COMPACT`, `VISIBILITY` | How the next task is chosen |
+| `AGENT_SCHEDULER_SAFETY_MISSING` | switch | `SAFE`, `UNSAFE` | How missing safety information counts |
 
 `AGENT_SCHEDULER_ADD_TASK.STATUS` and `AGENT_SCHEDULER_RESTORE_HISTORY` only restore the configuration. Leave them alone.
 

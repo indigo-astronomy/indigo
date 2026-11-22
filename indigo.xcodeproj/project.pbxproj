@@ -2640,6 +2640,7 @@
 		59910A803052E5E400FB1C2F /* app.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = app.js; sourceTree = "<group>"; };
 		59910A813052E5E400FB1C2F /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		59910A823052E5E400FB1C2F /* style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = style.css; sourceTree = "<group>"; };
+		A4C1E0B52F0A6D3E00AA51F7 /* test_agent_auxiliary.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_auxiliary.c; sourceTree = "<group>"; };
 		59910AA23054836E00FB1C2F /* test_agent_config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_config.c; sourceTree = "<group>"; };
 		59910AA33054836E00FB1C2F /* test_agent_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_mount.c; sourceTree = "<group>"; };
 		C0DE20261119A00100000001 /* test_agent_mount_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_mount_simulator.c; sourceTree = "<group>"; };
@@ -14424,6 +14425,7 @@
 				C0DE20261101204146000001 /* test_agent_platesolver.c */,
 				C0DE20261027A00100000002 /* test_agent_platesolver_simulator.c */,
 				59609683178A3025966FEEB9 /* test_indigo_solver_tool.c */,
+				A4C1E0B52F0A6D3E00AA51F7 /* test_agent_auxiliary.c */,
 				59910AA23054836E00FB1C2F /* test_agent_config.c */,
 				59910A763052B3A100FB1C2F /* test_agent_guider.c */,
 				61D0437E0DBADA8CCC6CCAAF /* test_agent_imager_numerics.py */,

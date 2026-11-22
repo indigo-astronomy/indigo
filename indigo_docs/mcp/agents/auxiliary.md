@@ -2,7 +2,7 @@
 
 **DRAFT — source-inspected; not runtime-validated in this documentation task; included in compiled MCP help.**
 
-Module `indigo_agent_auxiliary`; default device `Auxiliary Agent`. This is a shared-filter facade for up to four auxiliary-device selections. It provides their published controls under one agent and related Imager links. It does not implement an auxiliary acquisition/start/abort process of its own.
+Module `indigo_agent_auxiliary`; default device `Auxiliary Agent`. This is a shared-filter facade for up to four auxiliary-device selections. It provides their published controls under one agent, related Imager links and a read-only safety light that is not computed yet. It does not implement an auxiliary acquisition/start/abort process of its own.
 
 Use [server/device preparation](../server-and-devices.md) to load the agent and required auxiliary drivers through server `DRIVERS`. Configure physical connection details such as serial port, network endpoint and model at the actual device during setup, before selecting it here. Read the device-specific manual for voltages, heater ranges, safety conditions and units; the generic AUX interface does not make all auxiliary devices interchangeable.
 
@@ -18,6 +18,7 @@ Use [server/device preparation](../server-and-devices.md) to load the agent and 
 | `auxiliary.relate-imager` | `FILTER_RELATED_AGENT_LIST.<exact-Imager-Agent-name>` | Any-of-many related links; candidate validation accepts Imager Agent names. This is a relation, not another AUX device slot. |
 | `auxiliary.relation-symmetry` | `FILTER_FORCE_SYMMETRIC_RELATIONS.ENABLED` / `DISABLED` | Default enabled; control reciprocal related-agent selection through the shared filter. |
 | `auxiliary.instances` | `ADDITIONAL_INSTANCES.COUNT` when published on the base instance | Create extra filter-agent instances with separate selectors; discover actual instance names and limits. |
+| `auxiliary.safety` | `AGENT_AUX_SAFETY.SAFE` (read-only light) | Defined by the agent: `Idle` no safety information, `Ok` conditions are safe, `Alert` conditions are unsafe. Reserved for the agent's later safety decision; not computed yet, so it currently stays `Idle`. Do not treat it as a safety source yet. |
 
 ## Select, operate and release a device
 
@@ -43,6 +44,6 @@ For selection `Alert`, inspect the device's connection state and ownership, fix 
 
 ## Coverage and sources
 
-All agent-specific behavior is the four visible selectors, Imager relation validation and shared-filter operation above. Device-specific outlet/heater/environment functions are intentionally not guessed: use the selected device's complete property schema and hardware manual. No per-device auxiliary recipe has been runtime-validated here.
+All agent-specific behavior is the four visible selectors, Imager relation validation, shared-filter operation and the not yet computed `AGENT_AUX_SAFETY` light above. Device-specific outlet/heater/environment functions are intentionally not guessed: use the selected device's complete property schema and hardware manual. No per-device auxiliary recipe has been runtime-validated here.
 
 Sources: [agent implementation](../../../indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c), [header](../../../indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h), [shared filter](../../../indigo_libs/indigo_filter.c), [standard property names](../../../indigo_libs/indigo/indigo_names.h), [property reference](../../PROPERTIES.md).

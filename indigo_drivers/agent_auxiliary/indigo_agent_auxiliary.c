@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -24,7 +24,7 @@
  \file indigo_agent_auxiliary.c
  */
 
-#define DRIVER_VERSION 0x03000005
+#define DRIVER_VERSION 0x03000006
 #define DRIVER_NAME	"indigo_agent_auxiliary"
 
 #include <stdlib.h>
@@ -40,6 +40,15 @@
 
 #include "indigo_agent_auxiliary.h"
 
+#define DEVICE_PRIVATE_DATA										((auxiliary_agent_private_data *)device->private_data)
+
+#define AGENT_AUX_SAFETY_PROPERTY							(DEVICE_PRIVATE_DATA->agent_safety_property)
+#define AGENT_AUX_SAFETY_SAFE_ITEM						(AGENT_AUX_SAFETY_PROPERTY->items + 0)
+
+typedef struct {
+	indigo_property *agent_safety_property;
+} auxiliary_agent_private_data;
+
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
 static bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
@@ -49,10 +58,11 @@ static bool validate_related_agent(indigo_device *device, indigo_property *info_
 	return false;
 }
 
-
+static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
+	assert(DEVICE_PRIVATE_DATA != NULL);
 	if (indigo_filter_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Device properties
 		FILTER_AUX_1_LIST_PROPERTY->hidden = false;
@@ -61,27 +71,41 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_AUX_4_LIST_PROPERTY->hidden = false;
 		FILTER_DEVICE_CONTEXT->validate_related_agent = validate_related_agent;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- Safety, not computed yet
+		AGENT_AUX_SAFETY_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_AUX_SAFETY_PROPERTY_NAME, AGENT_MAIN_GROUP, "Safety", INDIGO_IDLE_STATE, 1);
+		indigo_init_light_item(AGENT_AUX_SAFETY_SAFE_ITEM, AGENT_AUX_SAFETY_SAFE_ITEM_NAME, "Safe", INDIGO_IDLE_STATE);
 		// --------------------------------------------------------------------------------
 		CONFIG_PROPERTY->hidden = true;
 		PROFILE_PROPERTY->hidden = true;
 		CONNECTION_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_filter_enumerate_properties(device, NULL, NULL);
+		return agent_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
+}
+
+static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client) {
+		return INDIGO_OK;
+	}
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_AUX_SAFETY_PROPERTY);
+	return indigo_filter_enumerate_properties(device, client, property);
 }
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_cancel_pending_handlers(device);
 	indigo_cancel_all_timers(device);
+	indigo_release_property(AGENT_AUX_SAFETY_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_filter_device_detach(device);
 }
 
 
 // -------------------------------------------------------------------------------- Initialization
+
+static auxiliary_agent_private_data *private_data = NULL;
 
 static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
@@ -90,7 +114,7 @@ indigo_result indigo_agent_auxiliary(indigo_driver_action action, indigo_driver_
 	static indigo_device agent_device_template = INDIGO_DEVICE_INITIALIZER(
 		AUX_AGENT_NAME,
 		agent_device_attach,
-		indigo_filter_enumerate_properties,
+		agent_enumerate_properties,
 		indigo_filter_change_property,
 		NULL,
 		agent_device_detach
@@ -117,7 +141,9 @@ indigo_result indigo_agent_auxiliary(indigo_driver_action action, indigo_driver_
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+			private_data = indigo_safe_malloc(sizeof(auxiliary_agent_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
+			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
 			agent_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);
 			agent_client->client_context = agent_device->device_context;
@@ -135,6 +161,10 @@ indigo_result indigo_agent_auxiliary(indigo_driver_action action, indigo_driver_
 				indigo_detach_device(agent_device);
 				free(agent_device);
 				agent_device = NULL;
+			}
+			if (private_data != NULL) {
+				free(private_data);
+				private_data = NULL;
 			}
 			break;
 

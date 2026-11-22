@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -44,7 +44,12 @@ extern "C" {
 #endif
 
 #define AUX_AGENT_NAME	"Auxiliary Agent"
-	
+
+/** Safety of the observing conditions (light, read-only): SAFE is IDLE without safety information, OK if conditions are safe and ALERT if they are unsafe
+ */
+#define AGENT_AUX_SAFETY_PROPERTY_NAME		"AGENT_AUX_SAFETY"
+#define AGENT_AUX_SAFETY_SAFE_ITEM_NAME		"SAFE"
+
 /** Create Auxiliary devices control agent instance
  */
 
