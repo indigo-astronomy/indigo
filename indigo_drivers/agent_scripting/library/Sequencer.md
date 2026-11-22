@@ -1,5 +1,5 @@
 #  INDIGO Script based Sequencer
-Revision: 13.07.2026 (draft)
+Revision: 22.11.2026 (draft)
 
 Authors: **Peter Polakovic** & **Rumen G. Bogdanovski**
 
@@ -315,6 +315,21 @@ Configure the selected backend using the [solver operating manual](../../../indi
 | `enable_meridian_flip(use_solver, time)` | Enable automatic meridian flip. `use_solver` selects whether plate solving is used to recenter after the flip: a number greater than zero is the solver exposure in seconds, which the flip sets on the solver agent's `AGENT_PLATESOLVER_EXPOSURE.EXPOSURE` before it recenters, `true` recenters with the exposure the solver agent has at that time, and `false` or `0` does not recenter; `time` is the pause after transit in hours (for example, `0.25` for 15 minutes; a negative value pauses before transit), passed unchanged to Imager Agent `AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT`. The flip stays enabled after the sequence finishes and recenters with the solver agent loaded at the time of the flip, see `start()`; with no solver agent loaded the flip fails. A failed flip (slew, recentering or guiding) restores the HA limit it disabled and follows the failure policy: the step during which it ran fails, a capture paused by the flip is aborted first, and `continue_on_failure()` or `recover_on_failure()` continue the sequence; under `abort_on_failure()` the sequence and the agents are aborted. After the sequence ended only the agents are aborted, and `SEQUENCE_STATE` and `SEQUENCE_STEP_STATE` keep the result of the sequence, the failure is reported by its message and by `FLIPPER_STATE`. Guiding stopped by the flip is not restarted after a failure, so the steps after a recovery point should start it again. The settings are published by `MERIDIAN_FLIP` when the step executes. |
 | `disable_meridian_flip()` | Disable automatic meridian flip. `MERIDIAN_FLIP.ENABLED` becomes `0`, `USE_SOLVER` and `OFFSET` keep the values of the last `enable_meridian_flip()`. |
 
+#### How the meridian flip works
+
+`enable_meridian_flip()` turns on the Imager Agent `AGENT_PROCESS_FEATURES.PAUSE_AFTER_TRANSIT` feature and sets the pause time in `AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT`. The flip itself is then driven by the agents selected for the sequence (see `start()` and the `select_*_agent()` steps), whether a sequence is running or not:
+
+1. The Imager Agent pauses a capture batch before an exposure that would end after the transit shifted by `time`, and reports it by `AGENT_PAUSE_PROCESS` in the **Busy** state with `PAUSE_AFTER_TRANSIT` on. The flip starts: "Meridian flip waits for transit" is sent and `FLIPPER_STATE` becomes **Busy** with `WAITING_FOR_TRANSIT` on.
+2. The flip waits until the Mount Agent reports `FLIP_REQUIRED` in `AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY`. Then "Meridian flip started" is sent.
+3. It remembers whether the Guider Agent was guiding (`AGENT_START_PROCESS.CALIBRATION_AND_GUIDING` or `GUIDING` on), which is shown by `FLIPPER_STATE.RESUME_GUIDING`.
+4. If the Mount Agent hour-angle limit (`AGENT_PROCESS_FEATURES.ENABLE_HA_LIMIT`) is on, it is turned off for the flip.
+5. The mount slews with Mount Agent `AGENT_START_PROCESS.SLEW` (`WAITING_FOR_SLEW`).
+6. When recentering with the solver is enabled (`FLIPPER_STATE.USE_SOLVER`), the solver agent loaded at that time is used (see `start()`): when the solver exposure is greater than zero, it is set in `AGENT_PLATESOLVER_EXPOSURE.EXPOSURE`, and the solver agent's `AGENT_START_PROCESS.CENTER` recenters the target (`WAITING_FOR_SYNC_AND_CENTER`).
+7. Only when guiding ran before the flip, it is started again with Guider Agent `AGENT_START_PROCESS.GUIDING` (`WAITING_FOR_GUIDING`). When the guider process becomes **Busy**, "Settling down..." is sent, and the flip waits until `AGENT_GUIDER_STATS.FRAME` is greater than 3 (`WAITING_FOR_SETTLE_DOWN`).
+8. The HA limit is turned on again if the flip turned it off, the Imager Agent pause is released (`AGENT_PAUSE_PROCESS.PAUSE_AFTER_TRANSIT` off), so the paused batch continues, `FLIPPER_STATE` becomes **Ok** and "Meridian flip finished" is sent.
+
+A failed slew, recentering or guiding start, or a missing solver agent, ends the flip with `FLIPPER_STATE` in the **Alert** state and a "Meridian flip failed (...)" message (see [Meridian flip messages](#meridian-flip-messages)); what happens to the sequence and the agents then is described for `enable_meridian_flip()` above.
+
 ### Rotator
 
 | Method | Description |
@@ -337,7 +352,7 @@ Once `start()` is called, the sequencer defines the following properties on the 
 | `AGENT_ABORT_PROCESS` | Switch, RW | `ABORT` | Setting `ABORT` aborts the running sequence. |
 | `AGENT_PAUSE_PROCESS` | Switch, RW | `PAUSE_WAIT` | Pause the sequence before the next operation. |
 | `SEQUENCE_RESET` | Switch, RW | `RESET` | Reset the state of `SEQUENCE_STATE` (e.g. while the sequence is being edited in the GUI). |
-| `FLIPPER_STATE` | Switch, RO | `WAITING_FOR_TRANSIT`, `WAITING_FOR_SLEW`, `WAITING_FOR_SYNC_AND_CENTER`, `WAITING_FOR_GUIDING`, `WAITING_FOR_SETTLE_DOWN`, `RESUME_GUIDING`, `USE_SOLVER` | Progress of an in-progress automatic meridian flip. |
+| `FLIPPER_STATE` | Switch, RO | `WAITING_FOR_TRANSIT`, `WAITING_FOR_SLEW`, `WAITING_FOR_SYNC_AND_CENTER`, `WAITING_FOR_GUIDING`, `WAITING_FOR_SETTLE_DOWN`, `RESUME_GUIDING`, `USE_SOLVER` | Progress of the automatic meridian flip, see [How the meridian flip works](#how-the-meridian-flip-works). `WAITING_FOR_TRANSIT`, `WAITING_FOR_SLEW`, `WAITING_FOR_SYNC_AND_CENTER`, `WAITING_FOR_GUIDING` and `WAITING_FOR_SETTLE_DOWN` show the phase the flip is waiting in: for `FLIP_REQUIRED` from the Mount Agent, for the slew, for recentering with the solver, for the guider process to start and for guiding to settle down. `RESUME_GUIDING` is set when the flip starts the slew ("Meridian flip started"): on when guiding ran then and will be restarted after the flip; before that, also while waiting for transit, it keeps the value of the previous flip. `USE_SOLVER` is on when the flip recenters with the solver. The state is **Busy** during the flip, including the wait for transit, **Ok** when it finished, and **Alert** after a failure; then the `WAITING_FOR_*` item still on shows the phase that failed (slew, recentering or guiding), none is on when no solver agent was loaded. |
 | `MERIDIAN_FLIP` | Number, RO | `ENABLED`, `USE_SOLVER`, `OFFSET` | Meridian flip settings, changed only when the steps of `enable_meridian_flip()` and `disable_meridian_flip()` execute. `ENABLED` is `1` when the flip is enabled, `0` otherwise (also before the first of these steps). `USE_SOLVER` is `0` when the flip does not recenter with the solver, otherwise the solver exposure in seconds: the given number, or for `true` the exposure the loaded solver agent had when the step executed, `1` when no solver agent was loaded or its exposure was not positive; it is limited to 0..60 s like the solver agents' `AGENT_PLATESOLVER_EXPOSURE.EXPOSURE`, and a larger number is also set as 60 s by the flip. `OFFSET` is the `time` in hours relative to the meridian (transit): negative before the meridian, positive after it, `0` at the meridian; it is limited to -2..2 h like Imager Agent `AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT`, which uses it. `disable_meridian_flip()` keeps `USE_SOLVER` and `OFFSET` of the last `enable_meridian_flip()`. The settings, including those used by the flip, are kept when clients send the library again, and the property disappears with the Scripting Agent like `FLIPPER_STATE`. |
 
 ### Interpreting `SEQUENCE_STATE`
@@ -349,12 +364,88 @@ Once `start()` is called, the sequencer defines the following properties on the 
 
 A GUI can use `STEP` together with the property state to flag steps: those with index `< STEP` as done, those with index `> STEP` as idle, and the one equal to `STEP` as either executing (Busy) or failed (Alert). `SEQUENCE_STEP_STATE` provides the same information per step directly.
 
+## Messages
+
+The sequencer reports its progress by messages sent to all clients. In the tables, `<...>` stands for a value filled in when the message is sent.
+
+### Sequence messages
+
+| Message | When |
+|---|---|
+| `Sequencer installed` | [Sequencer.js](Sequencer.js) is executed for the first time in the Scripting Agent. |
+| `Sequencer reloaded, the running sequence continues` | [Sequencer.js](Sequencer.js) is executed again while a sequence runs, see [Use](#use). |
+| `Sequence started` | `start()` starts a sequence. |
+| `Other sequence is executed` | `start()` is called while another sequence runs; the new sequence is not started. |
+| `Sequence finished` | The last step of the sequence completed. |
+| `Sequence paused` / `Sequence resumed` | `AGENT_PAUSE_PROCESS.PAUSE_WAIT` of the Scripting Agent is turned on / off while a sequence runs. |
+| `<message>` | A `send_message(message)` step executes. |
+| `'<device> -> <property> -> <item>' is already selected` / `... is already unselected` | A step selects or deselects a switch item that already has that value; sent only while verbose logging is on (the default, see `enable_verbose()` / `disable_verbose()`), and the step succeeds. |
+
+### Break and wait messages
+
+| Message | When |
+|---|---|
+| `Possible error - 'wait_until' will block for more than 12 hours!` | Building the sequence, the first `wait_until()` whose time is more than 12 hours ahead. |
+| `Possible error - 'break_at' will fire in more than 12 hours!` | Building the sequence, the first `break_at()` whose time is more than 12 hours ahead. |
+| `Suspended for <delay>s` | A `wait()` step starts waiting. |
+| `Suspended until <time> UTC` | A `wait_until()` step starts waiting. |
+| `Target time has passed` | A `wait_until()` step executes after its time; it does not wait. |
+| `Waiting for GPS` | A `wait_for_gps()` step finds the GPS coordinates busy and waits for them. |
+| `Waiting for solar altitude to drop below <limit>° (currently <altitude>°)` | A `wait_until_solar_altitude_below()` step starts waiting. |
+| `Solar altitude <altitude>°, waiting for < <limit>°` | Every 60 s while that step waits. |
+| `Solar altitude <altitude>° is already below <limit>°` | That step executes with the Sun already below the limit; it does not wait. |
+| `Waiting for target altitude to rise above <limit>° (currently <altitude>°)` | A `wait_until_target_altitude_above()` step starts waiting. |
+| `Target altitude <altitude>°, waiting for > <limit>°` | Every 60 s while that step waits. |
+| `Target altitude <altitude>° is already above <limit>°` | That step executes with the target already above the limit; it does not wait. |
+| `Break executed` | A `break_at()` step executes after its time. |
+| `Break executed: HA <ha> past limit <limit>` | A `break_at_ha()` step finds the hour angle past the limit. |
+| `Break executed: solar altitude <altitude>° above <limit>°` | A `break_if_solar_altitude_above()` step breaks. |
+| `Break executed: target altitude <altitude>° below <limit>°` | A `break_if_target_altitude_below()` step breaks. |
+| `Resumed from break at resume point #<index>` | After a break, execution continues at a `resume_point()`. |
+| `Sequence finished, no resume point found` | After a break, no `resume_point()` followed; the sequence ends in the **Ok** state. |
+
+### Failure and recovery messages
+
+Each failure sends its reason as a message, whatever the failure policy, see [Failure handling & recovery](#failure-handling--recovery):
+
+| Message | When |
+|---|---|
+| `<property> reports alert` | A property the step waits for turns to the **Alert** state. |
+| `Step failed: <error>` | Executing the step throws an error. |
+| `Failed to set '<property>' on '<device>'` | A switch step names a property the device does not have. |
+| `There is no <property> on <device>` | A text or number step names a property the device does not have. |
+| `Failed to set '<property>', '<device>' is busy` | The property to change is busy and the step does not allow that. |
+| `Failed to set non-existent option '<item>' for '<device> -> <property>'` | A switch step names an item which is neither an item name nor an item label of the property. |
+| `There is no AGENT_START_PROCESS on <agent>` | `stop_preview()` or `stop_guiding()` finds no `AGENT_START_PROCESS` on the agent. |
+| `Can't wait for GPS` | `wait_for_gps()` finds no `GPS_GEOGRAPHIC_COORDINATES` on the Mount Agent. |
+| `Can't save batch` | The Imager Agent has no `AGENT_IMAGER_BATCH` to save. |
+| `Can't schedule timer in <delay>s` / `Can't schedule timer at <time> UTC` | The timer of a `wait()` / `wait_until()` step can't be scheduled. |
+| `Recovered from failure at recovery point #<index>` | Under `recover_on_failure()`, execution continues at a `recovery_point()` after a failure. |
+| `Sequence failed, no recovery point found` | Under `recover_on_failure()`, no `recovery_point()` followed the failure; the sequence ends in the **Alert** state. |
+
+Two `SEQUENCE_STATE` updates to the **Alert** state also carry a message: `Sequence failed` when a step fails under `abort_on_failure()`, and `Sequence aborted` when a running sequence is aborted by `AGENT_ABORT_PROCESS` or by a failed meridian flip under `abort_on_failure()`. The **Alert** update after `recover_on_failure()` finds no recovery point carries none.
+
+### Meridian flip messages
+
+| Message | When |
+|---|---|
+| `Meridian flip waits for transit` | The Imager Agent paused the batch for transit and the flip starts waiting for `FLIP_REQUIRED`. |
+| `Meridian flip started` | The Mount Agent reports `FLIP_REQUIRED`; the flip slews. |
+| `Settling down...` | Guiding restarted after the flip; the flip waits for it to settle down. |
+| `Meridian flip finished` | The flip completed and the Imager Agent pause is released. |
+| `Meridian flip failed (due to slew failure)` | The Mount Agent slew ends in the **Alert** state. |
+| `Meridian flip failed (no solver agent is loaded)` | Recentering is enabled but no solver agent is loaded after the slew. |
+| `Meridian flip failed (due to sync & center failure)` | Recentering with the solver ends in the **Alert** state. |
+| `Meridian flip failed (due to guiding failure)` | Restarting guiding ends in the **Alert** state. |
+
+A `Meridian flip failed (...)` message is also the failure reason handled by the failure policy, see `enable_meridian_flip()` in [Meridian flip](#meridian-flip). Under `continue_on_failure()` or `recover_on_failure()` with a running sequence, it is sent when the step during which the flip ran ends, or at once when that step is a `wait()`, `wait_until()` or altitude wait.
+
 ## Internal implementation
 
 Besides the public `Sequence` class, [Sequencer.js](Sequencer.js) contains two internal singletons that users normally do not call directly:
 
 - `indigo_sequencer` - the execution engine. It interprets the recorded microsteps one by one, waits for the relevant agent properties to reach the expected state, updates the progress properties, and handles abort/pause/failure logic.
-- `indigo_flipper` - the meridian-flip state machine driven by `enable_meridian_flip()`. It waits for transit, performs the slew, optionally syncs & centers with the solver agent, resumes guiding, waits for settle-down, and reports progress via `FLIPPER_STATE`.
+- `indigo_flipper` - the meridian-flip state machine. `indigo_sequencer` starts it when the Imager Agent pauses for transit; it performs the steps described in [How the meridian flip works](#how-the-meridian-flip-works), reports progress via `FLIPPER_STATE`, and hands a failure to `indigo_sequencer`, which applies the failure policy.
 
 These are wired into the agent through `indigo_event_handlers` and respond to `on_update` / `on_enumerate_properties` events. Refer to [Sequencer.js](Sequencer.js) for the details.
 
