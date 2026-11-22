@@ -1,0 +1,516 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1078b2c4-480e-4555-93ad-9b512c258b12",
+  "revision": 27,
+  "title": "indigo_mount_synscan: MOUNT_STATE slew light shows IDLE while the coordinates hold a kept ALERT",
+  "description": "Found on 2026-11-21 while working on ticket 3beb3554-f847-4155-b5e7-5bed700096f0. The MOUNT_STATE slew light is computed before indigo_update_coordinates() turns the poll's OK into the kept ALERT, so polls show the light IDLE while MOUNT_EQUATORIAL_COORDINATES stays ALERT; an existing simulator case asserts IDLE there. Decide with the owner what the light should show in that state (and whether other generated mount drivers do the same), then fix and adjust the test.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-21T12:32:13.546516Z",
+  "status": "closed",
+  "branch": "ticket/1078b2c4-480e-4555-93ad-9b512c258b12",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c56ba67e-9867-4c22-95af-47b6899da6ce",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T18:35:47.586490Z",
+          "last_activity_at": "2026-11-22T20:42:43.023976Z",
+          "ended_at": "2026-11-22T20:42:43.023976Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 7615437.486,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T18:35:47.586490Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/1078b2c4-480e-4555-93ad-9b512c258b12"
+        },
+        {
+          "at": "2026-11-22T20:42:43.023976Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 7615437.486,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "6d2cbc4d-f81d-46bd-8b7b-452e5c7a86cd",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "47caf729-a1cb-415b-8140-13239e1241b5",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T20:42:43.024136Z",
+          "last_activity_at": "2026-11-22T21:08:59.197741Z",
+          "ended_at": "2026-11-22T21:08:59.197741Z",
+          "outcome": {
+            "summary": "Reviewed master...HEAD (260d33a1f, merge base f211bfacb). The fix meets the owner's rule (coordinates ALERT, the kept ALERT included => SLEW light ALERT) on every driver-owned path; no blocking finding.\n\nDriver: the cause is fixed in synscan_update_mount_coordinates(), where synscan_update_mount_state() now runs after indigo_update_coordinates() (indigo_mount_synscan.driver:1167-1169). I checked all 22 call sites of synscan_update_mount_state(). Each one follows a publication through indigo_update_coordinates(), synscan_set_coordinate_state() or indigo_reject_coordinates_change(), or reads a state that is already final:\n- 'Mount is moving' refusal: :2355-2356.\n- Sync: :2350-2352. indigo_mount_sync() leaves OK or ALERT after the request's BUSY, which the generated indigo_update_coordinates() publishes unchanged.\n- GoTo start: :2363, BUSY with SLEWING.\n- Finalizers, auto home, failed poll, abort.\nmount_motion_failed() publishes IDLE once while the coordinates are still BUSY, and the ALERT follows in the same handler. synscan_configure() defines the SLEW light from the defined coordinates state (:1587-1588). The library resets the coordinates to OK and clears the keep flag on disconnect (indigo_mount_driver.c:628-633), so a reconnect starts IDLE unless the first reading fails.\n\nReverse direction: no path leaves the light ALERT once the coordinates are OK or BUSY beyond the handler of the request that cleared it. An accepted sync is IDLE at once; a new GoTo turns BUSY in its handler; park and home turn IDLE with the first BUSY poll, which clears the keep flag. An unpark keeps ALERT only while the coordinates keep it.\n\nAdmitted gaps, NOT blocking:\n(a) The generated refusals in change_property ('Mount is parked!' and 'Mount is homing' through INDIGO_REJECT_COORDINATES_CHANGE_IF, .c:3013-3014) and the parked guard at the top of the generated handler (.c:2494-2497) publish the ALERT without recomputing the light. The next poll sets it within 1 s idle or 0.5 s busy; on_timer",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1576173.605,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T20:42:43.024136Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T21:08:59.197741Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Reviewed master...HEAD (260d33a1f, merge base f211bfacb). The fix meets the owner's rule (coordinates ALERT, the kept ALERT included => SLEW light ALERT) on every driver-owned path; no blocking finding.\n\nDriver: the cause is fixed in synscan_update_mount_coordinates(), where synscan_update_mount_state() now runs after indigo_update_coordinates() (indigo_mount_synscan.driver:1167-1169). I checked all 22 call sites of synscan_update_mount_state(). Each one follows a publication through indigo_update_coordinates(), synscan_set_coordinate_state() or indigo_reject_coordinates_change(), or reads a state that is already final:\n- 'Mount is moving' refusal: :2355-2356.\n- Sync: :2350-2352. indigo_mount_sync() leaves OK or ALERT after the request's BUSY, which the generated indigo_update_coordinates() publishes unchanged.\n- GoTo start: :2363, BUSY with SLEWING.\n- Finalizers, auto home, failed poll, abort.\nmount_motion_failed() publishes IDLE once while the coordinates are still BUSY, and the ALERT follows in the same handler. synscan_configure() defines the SLEW light from the defined coordinates state (:1587-1588). The library resets the coordinates to OK and clears the keep flag on disconnect (indigo_mount_driver.c:628-633), so a reconnect starts IDLE unless the first reading fails.\n\nReverse direction: no path leaves the light ALERT once the coordinates are OK or BUSY beyond the handler of the request that cleared it. An accepted sync is IDLE at once; a new GoTo turns BUSY in its handler; park and home turn IDLE with the first BUSY poll, which clears the keep flag. An unpark keeps ALERT only while the coordinates keep it.\n\nAdmitted gaps, NOT blocking:\n(a) The generated refusals in change_property ('Mount is parked!' and 'Mount is homing' through INDIGO_REJECT_COORDINATES_CHANGE_IF, .c:3013-3014) and the parked guard at the top of the generated handler (.c:2494-2497) publish the ALERT without recomputing the light. The next poll sets it within 1 s idle or 0.5 s busy; on_timer"
+        }
+      ],
+      "result": {
+        "summary": "Reviewed master...HEAD (260d33a1f, merge base f211bfacb). The fix meets the owner's rule (coordinates ALERT, the kept ALERT included => SLEW light ALERT) on every driver-owned path; no blocking finding.\n\nDriver: the cause is fixed in synscan_update_mount_coordinates(), where synscan_update_mount_state() now runs after indigo_update_coordinates() (indigo_mount_synscan.driver:1167-1169). I checked all 22 call sites of synscan_update_mount_state(). Each one follows a publication through indigo_update_coordinates(), synscan_set_coordinate_state() or indigo_reject_coordinates_change(), or reads a state that is already final:\n- 'Mount is moving' refusal: :2355-2356.\n- Sync: :2350-2352. indigo_mount_sync() leaves OK or ALERT after the request's BUSY, which the generated indigo_update_coordinates() publishes unchanged.\n- GoTo start: :2363, BUSY with SLEWING.\n- Finalizers, auto home, failed poll, abort.\nmount_motion_failed() publishes IDLE once while the coordinates are still BUSY, and the ALERT follows in the same handler. synscan_configure() defines the SLEW light from the defined coordinates state (:1587-1588). The library resets the coordinates to OK and clears the keep flag on disconnect (indigo_mount_driver.c:628-633), so a reconnect starts IDLE unless the first reading fails.\n\nReverse direction: no path leaves the light ALERT once the coordinates are OK or BUSY beyond the handler of the request that cleared it. An accepted sync is IDLE at once; a new GoTo turns BUSY in its handler; park and home turn IDLE with the first BUSY poll, which clears the keep flag. An unpark keeps ALERT only while the coordinates keep it.\n\nAdmitted gaps, NOT blocking:\n(a) The generated refusals in change_property ('Mount is parked!' and 'Mount is homing' through INDIGO_REJECT_COORDINATES_CHANGE_IF, .c:3013-3014) and the parked guard at the top of the generated handler (.c:2494-2497) publish the ALERT without recomputing the light. The next poll sets it within 1 s idle or 0.5 s busy; on_timer",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1576173.605,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "768da447-c0df-409d-abd0-1034cbe7b7f4",
+      "event": "ticket/created",
+      "at": "2026-11-21T12:32:13.547208Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "34540905-ced3-401c-95c5-63273c23610b",
+      "event": "ticket/confirmed",
+      "at": "2026-11-21T12:33:10.973123Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "b588d158-9721-469a-8af2-16451aae5647",
+      "event": "ticket/note",
+      "at": "2026-11-22T18:35:41.833481Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner decision 2026-11-22: 'ok, oprav to. ak je MOUNT_EQUATORIAL_COORDINATES ALERT, ma byt aj SLEW ALERT' - whenever MOUNT_EQUATORIAL_COORDINATES is ALERT (the kept ALERT included) the MOUNT_STATE SLEW light is ALERT. Cause: synscan_update_mount_coordinates() calls synscan_update_mount_state() (driver line ~1160) after writing the poll's OK and before indigo_update_coordinates() (line ~1165) turns it back into the kept ALERT. Ticket 57087ffc (rename of X_ENCODER_POSITION, version 33) is in progress in the same driver and lands first; this ticket takes version 34.",
+      "tokens": null
+    },
+    {
+      "event_id": "1c74fe1e-f5f8-4aae-af0b-948ab2c055ad",
+      "event": "task/progress",
+      "at": "2026-11-22T18:35:47.587040Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Implementation started on branch ticket/1078b2c4-480e-4555-93ad-9b512c258b12"
+    },
+    {
+      "event_id": "668d8663-63b5-47bd-85ba-22aa275a9ed2",
+      "event": "ticket/started",
+      "at": "2026-11-22T18:35:47.589088Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/1078b2c4-480e-4555-93ad-9b512c258b12",
+      "base": "master"
+    },
+    {
+      "event_id": "64a007fd-7988-4c21-b5b7-faea86fef66b",
+      "event": "task/progress",
+      "at": "2026-11-22T18:36:25.892075Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Implementer started: reading driver and tests",
+      "attempt_id": "c56ba67e-9867-4c22-95af-47b6899da6ce",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "31a2273d-79c5-443f-b09c-37b1686c1b61",
+      "event": "task/progress",
+      "at": "2026-11-22T18:43:51.441742Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Tests written; building library and synscan test to reproduce on unfixed driver"
+    },
+    {
+      "event_id": "529dbb83-b530-4649-b221-c05f7b6b9fbe",
+      "event": "task/progress",
+      "at": "2026-11-22T18:44:48.294254Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Running new/changed light cases against the unfixed driver (expected failures)"
+    },
+    {
+      "event_id": "b643d913-c6a7-4df8-a3d8-dd08627dba6d",
+      "event": "task/progress",
+      "at": "2026-11-22T18:48:01.351011Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Driver fixed (v34) and regenerated; running affected cases on the fixed driver"
+    },
+    {
+      "event_id": "40d5402b-190e-4629-b28e-3c8a3a9fbc1e",
+      "event": "task/progress",
+      "at": "2026-11-22T18:52:01.849219Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "57054a9b-5dcd-465b-93bc-151fa21f19a0",
+      "event": "task/progress",
+      "at": "2026-11-22T18:52:01.872484Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "d8a6369a-57e5-4d97-8e31-948957288aef",
+      "event": "check/passed",
+      "at": "2026-11-22T18:52:01.874431Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "e1d7355a7afb28a4dbda4565e564358686626f23",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "22dba2fc-6851-4b86-812b-170edc88cd60",
+      "event": "task/progress",
+      "at": "2026-11-22T18:53:00.486934Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Repeating 6 affected cases 10x in one process (scratch build, merged tree)"
+    },
+    {
+      "event_id": "e4a1ec37-9639-4ccc-82f4-9cf36da982e2",
+      "event": "task/progress",
+      "at": "2026-11-22T19:19:16.375220Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Repetition 10x6 cases 60/60 PASS; starting recorded run tools/run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "03b91c51-a35b-402a-9fce-cc0ade851663",
+      "event": "task/progress",
+      "at": "2026-11-22T19:42:15.337866Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Recorded run 144/143: aborts_goto_mid_slew asserted IDLE in kept ALERT; updated, rerunning that case"
+    },
+    {
+      "event_id": "1a8b9179-6a47-4d88-9ff6-2af53ae3d624",
+      "event": "task/progress",
+      "at": "2026-11-22T20:10:42.246410Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Abort case 3/3 PASS; repeating full recorded run tools/run_driver_test.py mount_synscan"
+    },
+    {
+      "event_id": "57db340c-45cb-4039-86b0-5177bcea9178",
+      "event": "task/progress",
+      "at": "2026-11-22T20:42:04.936385Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "728f8588-c123-40a0-90d7-44d54af436cf",
+      "event": "task/progress",
+      "at": "2026-11-22T20:42:04.979927Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6578fa4f-59fa-4831-9715-7b57c142c796",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "82e824c7-fa0a-4e32-a5fb-85f8397d5226",
+      "event": "check/passed",
+      "at": "2026-11-22T20:42:04.981612Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "260d33a1ff77c4c23f54d32f3cac008e4c23d015",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "c32e5fe9-b9cc-483f-a2e5-d4a42bf87217",
+      "event": "ticket/note",
+      "at": "2026-11-22T20:42:12.415400Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementation (driver version 34, merged master with 57087ffc, X_MOUNT_ENCODER_POSITION).\n\nCause: synscan_update_mount_coordinates() (poll, also called by the finalizers, synscan_wait_axis_stopped and X_MOUNT_USE_ENCODERS) wrote the reading's OK into MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state, called synscan_update_mount_state() (SLEW light derived from that state) and only then indigo_update_coordinates(), which turned the OK into the kept ALERT. The first poll after a refused/failed/aborted request therefore published the SLEW light IDLE while the coordinates stayed ALERT.\n\nFix (indigo_drivers/mount_synscan/indigo_mount_synscan.driver, regenerated .c; .h/_main.c unchanged by the generator):\n- synscan_update_mount_coordinates(): synscan_update_mount_state() moved after indigo_update_coordinates().\n- MOUNT_EQUATORIAL_COORDINATES on_change, \"Mount is moving\" refusal: synscan_update_mount_state() after indigo_reject_coordinates_change() (the lights were not recomputed there).\n- Sync branch: synscan_update_mount_state() after indigo_mount_sync(); the state is already final there (OK or ALERT after the request's BUSY, which indigo_update_coordinates() publishes unchanged), so a refused sync shows ALERT and an accepted sync after a kept ALERT shows IDLE at once instead of one poll later.\n- synscan_configure(): MOUNT_STATE is defined after on_connect with the SLEW light of the coordinates it is defined with (ALERT after a bad first reading, otherwise IDLE; before, the light kept its value of the previous session or IDLE).\n- Comment on synscan_update_mount_state() stating the contract (call it after indigo_update_coordinates()/indigo_reject_coordinates_change()).\nOther call sites checked (synscan_update_mount_state, about 25): the finalizers (GoTo, park, home), mount_autohome_finish, the failed-poll path of on_timer, MOUNT_ABORT_MOTION and the auto home start all write the state through synscan_set_coordinate_state() (indigo_update_coordinates()) before recomputing the ",
+      "tokens": null
+    },
+    {
+      "event_id": "0f781b76-a8cd-4306-9eac-ec7fce925ae7",
+      "event": "task/progress",
+      "at": "2026-11-22T20:42:43.024197Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d2cbc4d-f81d-46bd-8b7b-452e5c7a86cd",
+      "text": "Review started"
+    },
+    {
+      "event_id": "5d4d38c2-518f-4531-93a9-1d300e54600b",
+      "event": "review/started",
+      "at": "2026-11-22T20:42:43.025423Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "3b506abd-834f-409d-9d39-75ffc5dc928c",
+      "event": "task/progress",
+      "at": "2026-11-22T20:43:15.127682Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d2cbc4d-f81d-46bd-8b7b-452e5c7a86cd",
+      "text": "Review started",
+      "attempt_id": "47caf729-a1cb-415b-8140-13239e1241b5",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "022ee7aa-05f1-49fb-baf5-e030cc8d2283",
+      "event": "task/progress",
+      "at": "2026-11-22T20:44:59.750716Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d2cbc4d-f81d-46bd-8b7b-452e5c7a86cd",
+      "text": "Regenerating the driver and building a scratch copy for a spot-check"
+    },
+    {
+      "event_id": "578fe67b-6e74-48d8-bb03-c42712a9567b",
+      "event": "task/progress",
+      "at": "2026-11-22T20:45:33.086271Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d2cbc4d-f81d-46bd-8b7b-452e5c7a86cd",
+      "text": "Spot-check: keeps_state_when_parked and refused_goto_ends_alert on fixed and master driver"
+    },
+    {
+      "event_id": "cd661700-1f14-4772-9c0e-8f25e77fe539",
+      "event": "task/progress",
+      "at": "2026-11-22T21:08:59.197838Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d2cbc4d-f81d-46bd-8b7b-452e5c7a86cd",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "0856619d-46db-4f33-82c4-17675b98eb10",
+      "event": "review/passed",
+      "at": "2026-11-22T21:08:59.199188Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "6d2cbc4d-f81d-46bd-8b7b-452e5c7a86cd",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "260d33a1ff77c4c23f54d32f3cac008e4c23d015"
+    },
+    {
+      "event_id": "1b82531e-cf14-4115-a2e6-0fbb0cb0ff6d",
+      "event": "ticket/note",
+      "at": "2026-11-22T21:09:20.355588Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review passed at 260d33a1f. Known, not fixed: refusals emitted by generator-owned code ('Mount is parked!', 'Mount is homing', the generated parked guard) do not recompute the lights, so the SLEW light turns ALERT at the next poll (at most 1 s); closing it would need a generator hook. Audit result, not fixed here: mount_lx200 (same order defect), mount_ioptron and mount_simulator (light never ALERT), mount_nexstaraux (ALERT only on slew failure) can show a SLEW light other than ALERT while the coordinates are ALERT.",
+      "tokens": null
+    },
+    {
+      "event_id": "821c0a07-9193-48cd-8bdb-a8e364680a30",
+      "event": "ticket/closed",
+      "at": "2026-11-22T21:09:20.630748Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-22T21:09:20.630726Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "5f794cc15584de6282fec4358a1839827c5261cb"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-21T12:32:13.546516Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-21T12:33:10.972984Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 9191611.091,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 33,
+    "sha256": "3b86a3b19790954c063d7b51b312aaf7ccb635d552231d125e1ce827b498a3ea"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e1d7355a7afb28a4dbda4565e564358686626f23",
+        "tree": "33e2f3659d91f26fa0cd3e3bc54c7b3d1012226a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T18:52:01.871708Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/1078b2c4-480e-4555-93ad-9b512c258b12/33e2f3659d91-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "260d33a1ff77c4c23f54d32f3cac008e4c23d015",
+        "tree": "127c2d43619dd77b34c1fd9e54106f0fb928c30d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T20:42:04.979176Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/1078b2c4-480e-4555-93ad-9b512c258b12/127c2d43619d-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed master...HEAD (260d33a1f, merge base f211bfacb). The fix meets the owner's rule (coordinates ALERT, the kept ALERT included => SLEW light ALERT) on every driver-owned path; no blocking finding.\n\nDriver: the cause is fixed in synscan_update_mount_coordinates(), where synscan_update_mount_state() now runs after indigo_update_coordinates() (indigo_mount_synscan.driver:1167-1169). I checked all 22 call sites of synscan_update_mount_state(). Each one follows a publication through indigo_update_coordinates(), synscan_set_coordinate_state() or indigo_reject_coordinates_change(), or reads a state that is already final:\n- 'Mount is moving' refusal: :2355-2356.\n- Sync: :2350-2352. indigo_mount_sync() leaves OK or ALERT after the request's BUSY, which the generated indigo_update_coordinates() publishes unchanged.\n- GoTo start: :2363, BUSY with SLEWING.\n- Finalizers, auto home, failed poll, abort.\nmount_motion_failed() publishes IDLE once while the coordinates are still BUSY, and the ALERT follows in the same handler. synscan_configure() defines the SLEW light from the defined coordinates state (:1587-1588). The library resets the coordinates to OK and clears the keep flag on disconnect (indigo_mount_driver.c:628-633), so a reconnect starts IDLE unless the first reading fails.\n\nReverse direction: no path leaves the light ALERT once the coordinates are OK or BUSY beyond the handler of the request that cleared it. An accepted sync is IDLE at once; a new GoTo turns BUSY in its handler; park and home turn IDLE with the first BUSY poll, which clears the keep flag. An unpark keeps ALERT only while the coordinates keep it.\n\nAdmitted gaps, NOT blocking:\n(a) The generated refusals in change_property ('Mount is parked!' and 'Mount is homing' through INDIGO_REJECT_COORDINATES_CHANGE_IF, .c:3013-3014) and the parked guard at the top of the generated handler (.c:2494-2497) publish the ALERT without recomputing the light. The next poll sets it within 1 s idle or 0.5 s busy; on_timer polls a parked mount too. Closing this inside the driver would mean duplicating the generator's parked guard (forbidden by AGENTS.md) or publishing MOUNT_STATE from the bus thread in on_change_request, racing the queue's publications. That is worse than the transient. During homing the refusal's ALERT is itself replaced by the next BUSY poll, which clears the keep flag, so the light never needs to turn ALERT there.\n(b) Between the BUSY a new request publishes from change_property and its handler, the light can stay ALERT for the queue latency only.\nMOUNT_STATE is a separate property, so a transient of at most one poll is inherent. I consider both acceptable under the owner's rule, but they should be named to the owner.\n\nTests:\n- The two changed expectations (refused_goto_ends_alert :3244 and aborts_goto_mid_slew :3075-3077, IDLE -> ALERT) encoded the defect. Both now also require the light to return to IDLE after the next GoTo, so nothing was weakened.\n- The helpers wait for polls by MOUNT_RAW_COORDINATES revisions and check after a complete poll, so they are event-driven.\n- Spot-check in a scratch copy under the lock: keeps_state_when_parked_request_is_refused and refused_goto_ends_alert PASS on this driver. Compiled against master's driver, both FAIL ('parked GOTO: after poll 0 the coordinates are 3 and the SLEW light 0').\n\nProject rules:\n- The unchanged generator (worktree build/bin/indigo_generator) reproduces .c/.h/_main.c byte for byte, and the .c diff equals the .driver diff plus DRIVER_VERSION 0x03000022 (33 -> 34).\n- No new property and no platform code. Calls stay on a single line and no blank lines were added inside function bodies; git diff --check is clean.\n- README and TEST_SUMMARY change only the record line. 144 cases are registered, matching MIGRATION_STATUS 144 / 21, which is unchanged.\n\nAudit spot-check: mount_lx200.driver:3769 (poll sets the light IDLE and the state OK, later kept as ALERT) and mount_simulator.driver:433/452 (abort sets the coordinates ALERT, the light IDLE) are as described, and ioptron:1639/1650 too.\n\nMinor, not blocking:\n- synscan_configure() sets only the SLEW light at connect; the PARK, HOME and TRACKING lights keep their values until the first update, as before.\n- After an accepted sync the test asserts IDLE only after 3 polls, so it does not show the 'at once' claim.\n- In the sync branch MOUNT_STATE is published just before the coordinates' result (generated epilogue), a harmless ordering.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "260d33a1ff77c4c23f54d32f3cac008e4c23d015",
+        "tree": "127c2d43619dd77b34c1fd9e54106f0fb928c30d",
+        "at": "2026-11-22T21:08:59.197584Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-22T18:35:41.831596Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Owner decision 2026-11-22: 'ok, oprav to. ak je MOUNT_EQUATORIAL_COORDINATES ALERT, ma byt aj SLEW ALERT' - whenever MOUNT_EQUATORIAL_COORDINATES is ALERT (the kept ALERT included) the MOUNT_STATE SLEW light is ALERT. Cause: synscan_update_mount_coordinates() calls synscan_update_mount_state() (driver line ~1160) after writing the poll's OK and before indigo_update_coordinates() (line ~1165) turns it back into the kept ALERT. Ticket 57087ffc (rename of X_ENCODER_POSITION, version 33) is in progress in the same driver and lands first; this ticket takes version 34.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T20:42:12.414209Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementation (driver version 34, merged master with 57087ffc, X_MOUNT_ENCODER_POSITION).\n\nCause: synscan_update_mount_coordinates() (poll, also called by the finalizers, synscan_wait_axis_stopped and X_MOUNT_USE_ENCODERS) wrote the reading's OK into MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state, called synscan_update_mount_state() (SLEW light derived from that state) and only then indigo_update_coordinates(), which turned the OK into the kept ALERT. The first poll after a refused/failed/aborted request therefore published the SLEW light IDLE while the coordinates stayed ALERT.\n\nFix (indigo_drivers/mount_synscan/indigo_mount_synscan.driver, regenerated .c; .h/_main.c unchanged by the generator):\n- synscan_update_mount_coordinates(): synscan_update_mount_state() moved after indigo_update_coordinates().\n- MOUNT_EQUATORIAL_COORDINATES on_change, \"Mount is moving\" refusal: synscan_update_mount_state() after indigo_reject_coordinates_change() (the lights were not recomputed there).\n- Sync branch: synscan_update_mount_state() after indigo_mount_sync(); the state is already final there (OK or ALERT after the request's BUSY, which indigo_update_coordinates() publishes unchanged), so a refused sync shows ALERT and an accepted sync after a kept ALERT shows IDLE at once instead of one poll later.\n- synscan_configure(): MOUNT_STATE is defined after on_connect with the SLEW light of the coordinates it is defined with (ALERT after a bad first reading, otherwise IDLE; before, the light kept its value of the previous session or IDLE).\n- Comment on synscan_update_mount_state() stating the contract (call it after indigo_update_coordinates()/indigo_reject_coordinates_change()).\nOther call sites checked (synscan_update_mount_state, about 25): the finalizers (GoTo, park, home), mount_autohome_finish, the failed-poll path of on_timer, MOUNT_ABORT_MOTION and the auto home start all write the state through synscan_set_coordinate_state() (indigo_update_coordinates()) before recomputing the lights - correct. The slew-failure path calls indigo_reject_coordinates_change() then synscan_update_mount_state() - correct (mount_motion_failed() publishes the light IDLE once before, while the coordinates are still BUSY). Tracking, track rate, manual motion, park and home handlers read the last published state - correct now that the poll no longer leaves a stale state.\nLimitation (generator-owned, not changed): refusals emitted by generated code - INDIGO_REJECT_COORDINATES_CHANGE_IF for \"Mount is parked!\" and the reject_change \"Mount is homing\" in change_property, and the parked guard at the top of the generated handler - publish the kept ALERT without recomputing the lights; the next poll (1 s idle, 0.5 s busy) sets the SLEW light ALERT. Making it immediate would need a generator hook; not done. In the same way, after the next GoTo's BUSY clears a kept ALERT, the light turns BUSY when the GoTo handler runs (immediately unless the queue is busy).\n\nTests (indigo_test/integration/test_mount_synscan_simulator.c; no new cases, so the hardware-free count stays 144 and MIGRATION_STATUS.md is unchanged). New helpers synscan_slew_light_alert_across_polls() (after a full poll and after each of N more polls: coordinates ALERT and SLEW light ALERT), synscan_slew_light_returned_to_idle() (a SLEW BUSY publication was seen, then light IDLE with coordinates OK); the observer counts SLEW BUSY publications and records the SLEW light MOUNT_STATE was defined with.\nBefore (unfixed driver, version 32 tree) -> after (fixed):\n- synscan_mount_keeps_state_when_parked_request_is_refused (refused GoTo/sync via the generated parked refusal, 2 polls; unpark; GoTo BUSY then IDLE): FAIL \"parked GOTO: after poll 0 coordinates 3, SLEW light 0\" -> PASS\n- synscan_mount_refused_goto_ends_alert (controller-refused GoTo, :G1/:J1/:H2; the IDLE assertion is now ALERT, 2 more polls, next GoTo BUSY then IDLE): FAIL at the ALERT assertion (light 0) -> PASS\n- synscan_mount_failed_goto_keeps_alert (+ failed park/home/autohome share it; 2 polls, GoTo after the failed GoTo BUSY then IDLE): FAIL -> PASS (park/home/autohome PASS)\n- synscan_mount_aborted_goto_keeps_alert (+ aborted park/autohome; same checks): FAIL -> PASS\n- synscan_mount_sync_publishes_busy_and_keeps_a_refusal (refused sync ALERT across polls, IDLE after the accepted sync): FAIL -> PASS\n- synscan_mount_publishes_failed_poll_and_recovers (SLEW light defined ALERT with coordinates defined ALERT after a malformed first reading): FAIL (defined 0) -> PASS\n- synscan_mount_aborts_goto_mid_slew: existing assertion of the SLEW light IDLE after an aborted GoTo, while the coordinates hold the kept ALERT; changed to coordinates ALERT + light ALERT, and light IDLE after the next GoTo. It passed on the unfixed driver only because of the defect (found by the first recorded run 144/143); the fixed driver: 3/3 PASS.\nRepetition: the 6 cases keeps_state_when_parked, refused_goto_ends_alert, failed_goto_keeps_alert, aborted_goto_keeps_alert, sync_publishes_busy_and_keeps_a_refusal, publishes_failed_poll_and_recovers 10x in one process (scratch build of the merged tree): 60/60 PASS. All 12 light-related cases once after the fix: PASS. aborts_goto_mid_slew 3/3 PASS.\nHardware suite indigo_test/hardware/test_mount_synscan_hw.c asserts only the TRACKING and HOME lights: unchanged, not run. indigo_docs/PROPERTIES.md does not describe the light behaviour: unchanged.\n\nAudit of the other drivers that set MOUNT_STATE_SLEW_ITEM (read only, no edits):\n- mount_ioptron: yes. The poll sets the light only BUSY (indigo_mount_ioptron.driver:1639) or IDLE (:1650), never ALERT; with the coordinates ALERT after a slew short of the target (:1663), a failed readback (:1634, :1658) or a refused/aborted GoTo kept by indigo_update_coordinates(), the light is IDLE; during the deceleration after an abort it is BUSY while the coordinates are ALERT.\n- mount_lx200: yes. The poll's final branch sets the light IDLE and the state OK (indigo_mount_lx200.driver:3769), which indigo_update_coordinates() turns into the kept ALERT of a refused/aborted GoTo - the same defect; the abort sets IDLE (:4765) right before publishing the coordinates ALERT (\"Goto aborted\"); the decelerating branch sets BUSY (:3757) while the coordinates keep the ALERT; the GoTo refusals (\"Classic guiding is active\" :4691, \"Slew failed\" :4709) leave the light unchanged. Only a failed readback (:3743) and a stall (:3748) set ALERT.\n- mount_nexstaraux: yes, partly. The slew failures set the light ALERT (indigo_mount_nexstaraux.driver:880, :914, :943) and the poll does not recompute it, so those stay ALERT. But a GoTo the controller refuses (:1072), a refused sync (:1085), an abort of a queued GoTo (:1150), a failed position readback (:861) and the generated refusals set the coordinates ALERT without touching the light (typically IDLE). Conversely an ALERT light is not cleared by a successful sync.\n- mount_simulator: yes. The light is never ALERT: the abort sets the coordinates ALERT (indigo_mount_simulator.driver:433) and the light IDLE (:452); the generated reject_change (:413) and parked refusals leave it IDLE.\n\nRecorded run (tools/run_driver_test.py mount_synscan, merged tree, final): 2026-11-22 21:18 3.0.0.34 mac arm64 simulator 144/144 OK. The first recorded run of the merged tree (2026-11-22 20:19 3.0.0.34 144/143 Failed) found the obsolete IDLE assertion in synscan_mount_aborts_goto_mid_slew; it was replaced by the second run. flow check (whitespace) passed on 260d33a1f. Not verified: hardware (not run, not contacted), Linux/Windows.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T21:09:20.354240Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review passed at 260d33a1f. Known, not fixed: refusals emitted by generator-owned code ('Mount is parked!', 'Mount is homing', the generated parked guard) do not recompute the lights, so the SLEW light turns ALERT at the next poll (at most 1 s); closing it would need a generator hook. Audit result, not fixed here: mount_lx200 (same order defect), mount_ioptron and mount_simulator (light never ALERT), mount_nexstaraux (ALERT only on slew failure) can show a SLEW light other than ALERT while the coordinates are ALERT.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "5f794cc15584de6282fec4358a1839827c5261cb",
+      "tree": "127c2d43619dd77b34c1fd9e54106f0fb928c30d",
+      "base": "master",
+      "at": "2026-11-22T21:09:20.559549Z"
+    }
+  }
+}
