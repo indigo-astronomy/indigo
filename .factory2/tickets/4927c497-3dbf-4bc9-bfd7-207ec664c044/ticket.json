@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4927c497-3dbf-4bc9-bfd7-207ec664c044",
+  "revision": 1,
+  "title": "indigo_mount_synscan: README describes X_MOUNT_USE_ENCODERS",
+  "description": "Add the owner-approved sentence about X_MOUNT_USE_ENCODERS to indigo_drivers/mount_synscan/README.md (approved by the owner on 2026-11-22: 'ok, pridaj ju tam'). Text, verbatim: 'X_MOUNT_USE_ENCODERS switches the dual (axis) encoders of the motor controller on or off; the coordinates always come from the motor step counters. When an encoder is switched on, the controller corrects the step counter of that axis from the encoder (an AZ-GTi does it at once and only to the encoder's coarse grid of about 0.34°), so sync or plate-solve again after switching it on.' Documentation only: no driver change, no version bump, no test run. Follows ticket 9fbd00e2, which changed the property's behaviour.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-22T18:20:49.252493Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "766736df-46a5-4386-9a77-dda528a31da5",
+      "event": "ticket/created",
+      "at": "2026-11-22T18:20:49.254165Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-22T18:20:49.252493Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "25dd7cc3b5c03c02a2c543e2ec89122193aef3b33983c2278e977a0a31f1ccf9"
+  }
+}
