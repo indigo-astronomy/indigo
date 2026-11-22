@@ -44,14 +44,6 @@
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h>
 #include <indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h>
 
-// the names of the safety of the Auxiliary Agent, until its header provides them
-#ifndef AGENT_AUX_SAFETY_PROPERTY_NAME
-#define AGENT_AUX_SAFETY_PROPERTY_NAME		"AGENT_AUX_SAFETY"
-#endif
-#ifndef AGENT_AUX_SAFETY_SAFE_ITEM_NAME
-#define AGENT_AUX_SAFETY_SAFE_ITEM_NAME		"SAFE"
-#endif
-
 #if defined(__SANITIZE_ADDRESS__)
 #include <sanitizer/lsan_interface.h>
 #endif
