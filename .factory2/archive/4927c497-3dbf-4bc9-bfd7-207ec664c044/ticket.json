@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4927c497-3dbf-4bc9-bfd7-207ec664c044",
+  "revision": 12,
+  "title": "indigo_mount_synscan: README describes X_MOUNT_USE_ENCODERS",
+  "description": "Add the owner-approved sentence about X_MOUNT_USE_ENCODERS to indigo_drivers/mount_synscan/README.md (approved by the owner on 2026-11-22: 'ok, pridaj ju tam'). Text, verbatim: 'X_MOUNT_USE_ENCODERS switches the dual (axis) encoders of the motor controller on or off; the coordinates always come from the motor step counters. When an encoder is switched on, the controller corrects the step counter of that axis from the encoder (an AZ-GTi does it at once and only to the encoder's coarse grid of about 0.34°), so sync or plate-solve again after switching it on.' Documentation only: no driver change, no version bump, no test run. Follows ticket 9fbd00e2, which changed the property's behaviour.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-22T18:20:49.252493Z",
+  "status": "closed",
+  "branch": "ticket/4927c497-3dbf-4bc9-bfd7-207ec664c044",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "e8c01ce3-b205-44de-bd8e-bb67748611ae",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "5f2aa51b-4f12-4392-96fc-14657e73407e",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-fable-5-2",
+            "reasoning": null
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T18:21:05.595051Z",
+          "last_activity_at": "2026-11-22T18:21:06.588666Z",
+          "ended_at": "2026-11-22T18:21:06.588666Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 993.615,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T18:21:05.595051Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/4927c497-3dbf-4bc9-bfd7-207ec664c044"
+        },
+        {
+          "at": "2026-11-22T18:21:06.588666Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 993.615,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "78546231-7c00-40ca-8776-0fe7d3908fa2",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "bbc2496f-757f-45c6-9d2f-74e6a8781b35",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T18:21:06.588848Z",
+          "last_activity_at": "2026-11-22T18:21:47.260090Z",
+          "ended_at": "2026-11-22T18:21:47.260090Z",
+          "outcome": {
+            "summary": "Diff master...HEAD touches only indigo_drivers/mount_synscan/README.md (+2 lines): the added line equals the owner-approved sentence byte for byte (programmatic comparison with the ticket text; UTF-8 degree sign C2 B0, LF, no CR, no trailing whitespace, git diff --check clean), followed by one blank line, placed as the last paragraph of '## Comments' before '## Testing'; the Testing records are unchanged. Content checked against indigo_mount_synscan.driver and PROPERTIES.md: synscan_set_encoders only sends :W..04/:W..05 (on/off per axis); synscan_update_axis_positions always reads the step counters with :j, with the comment that the firmware corrects them from the encoders when on; synscan_read_encoder_position only feeds X_ENCODER_POSITION. 'about 0.34 deg' matches 360/1068 = 0.337 deg (AZ-GTi encoder count per revolution in code and PROPERTIES.md); 'at once' and the advice to sync again match the synscan_set_encoders comment and PROPERTIES.md ('re-bases the counter at once ... can shift the pointing until the next sync'). No contradiction found. README-only documentation change: no behaviour change, so no driver version bump, test run, PROPERTIES.md or Xcode project change is required (no file added). No defects.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 40671.242,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T18:21:06.588848Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T18:21:47.260090Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Diff master...HEAD touches only indigo_drivers/mount_synscan/README.md (+2 lines): the added line equals the owner-approved sentence byte for byte (programmatic comparison with the ticket text; UTF-8 degree sign C2 B0, LF, no CR, no trailing whitespace, git diff --check clean), followed by one blank line, placed as the last paragraph of '## Comments' before '## Testing'; the Testing records are unchanged. Content checked against indigo_mount_synscan.driver and PROPERTIES.md: synscan_set_encoders only sends :W..04/:W..05 (on/off per axis); synscan_update_axis_positions always reads the step counters with :j, with the comment that the firmware corrects them from the encoders when on; synscan_read_encoder_position only feeds X_ENCODER_POSITION. 'about 0.34 deg' matches 360/1068 = 0.337 deg (AZ-GTi encoder count per revolution in code and PROPERTIES.md); 'at once' and the advice to sync again match the synscan_set_encoders comment and PROPERTIES.md ('re-bases the counter at once ... can shift the pointing until the next sync'). No contradiction found. README-only documentation change: no behaviour change, so no driver version bump, test run, PROPERTIES.md or Xcode project change is required (no file added). No defects."
+        }
+      ],
+      "result": {
+        "summary": "Diff master...HEAD touches only indigo_drivers/mount_synscan/README.md (+2 lines): the added line equals the owner-approved sentence byte for byte (programmatic comparison with the ticket text; UTF-8 degree sign C2 B0, LF, no CR, no trailing whitespace, git diff --check clean), followed by one blank line, placed as the last paragraph of '## Comments' before '## Testing'; the Testing records are unchanged. Content checked against indigo_mount_synscan.driver and PROPERTIES.md: synscan_set_encoders only sends :W..04/:W..05 (on/off per axis); synscan_update_axis_positions always reads the step counters with :j, with the comment that the firmware corrects them from the encoders when on; synscan_read_encoder_position only feeds X_ENCODER_POSITION. 'about 0.34 deg' matches 360/1068 = 0.337 deg (AZ-GTi encoder count per revolution in code and PROPERTIES.md); 'at once' and the advice to sync again match the synscan_set_encoders comment and PROPERTIES.md ('re-bases the counter at once ... can shift the pointing until the next sync'). No contradiction found. README-only documentation change: no behaviour change, so no driver version bump, test run, PROPERTIES.md or Xcode project change is required (no file added). No defects.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 40671.242,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "766736df-46a5-4386-9a77-dda528a31da5",
+      "event": "ticket/created",
+      "at": "2026-11-22T18:20:49.254165Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "e129e889-26af-4e31-b17d-11a9a42e11bb",
+      "event": "ticket/confirmed",
+      "at": "2026-11-22T18:20:59.898241Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "e6ca0b03-b728-44eb-9bbb-9001e753d29e",
+      "event": "task/progress",
+      "at": "2026-11-22T18:21:05.595426Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e8c01ce3-b205-44de-bd8e-bb67748611ae",
+      "text": "Implementation started on branch ticket/4927c497-3dbf-4bc9-bfd7-207ec664c044"
+    },
+    {
+      "event_id": "5ec90e8d-e743-48a4-93e2-6974f7ec3ad9",
+      "event": "ticket/started",
+      "at": "2026-11-22T18:21:05.597341Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/4927c497-3dbf-4bc9-bfd7-207ec664c044",
+      "base": "master"
+    },
+    {
+      "event_id": "e32a64c3-7100-4833-bd08-ecf500d9e2e3",
+      "event": "task/progress",
+      "at": "2026-11-22T18:21:05.981560Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e8c01ce3-b205-44de-bd8e-bb67748611ae",
+      "text": "Added the approved sentence to the Comments section",
+      "attempt_id": "5f2aa51b-4f12-4392-96fc-14657e73407e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-fable-5-2",
+        "reasoning": null
+      }
+    },
+    {
+      "event_id": "6da0fc83-d44e-4805-a345-ce8c180b3645",
+      "event": "task/progress",
+      "at": "2026-11-22T18:21:06.471194Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e8c01ce3-b205-44de-bd8e-bb67748611ae",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "04f1ac36-7ec0-4420-8d6f-72227ba69b8b",
+      "event": "task/progress",
+      "at": "2026-11-22T18:21:06.494975Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e8c01ce3-b205-44de-bd8e-bb67748611ae",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6cd82eec-ceca-4e19-8521-03df1af7ff22",
+      "event": "check/passed",
+      "at": "2026-11-22T18:21:06.496473Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "d86dceb8c15eadcfa3f5d0f7412ab3096b2226c8",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "da3e1f37-ada3-4161-a015-a330149bdd14",
+      "event": "task/progress",
+      "at": "2026-11-22T18:21:06.588911Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "78546231-7c00-40ca-8776-0fe7d3908fa2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e6c04885-b082-49f5-b8f9-9eaa25a7bb94",
+      "event": "review/started",
+      "at": "2026-11-22T18:21:06.590037Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "5d12912a-dc71-4fb6-a2c8-aaf482e23786",
+      "event": "task/progress",
+      "at": "2026-11-22T18:21:25.403130Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "78546231-7c00-40ca-8776-0fe7d3908fa2",
+      "text": "Review started",
+      "attempt_id": "bbc2496f-757f-45c6-9d2f-74e6a8781b35",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "54125b14-fb2c-4bdc-afc8-09a61739d988",
+      "event": "task/progress",
+      "at": "2026-11-22T18:21:47.260191Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "78546231-7c00-40ca-8776-0fe7d3908fa2",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "163ecc4d-d65d-47c9-95a8-8397e1e8ebce",
+      "event": "review/passed",
+      "at": "2026-11-22T18:21:47.261632Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "78546231-7c00-40ca-8776-0fe7d3908fa2",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "d86dceb8c15eadcfa3f5d0f7412ab3096b2226c8"
+    },
+    {
+      "event_id": "55ac2e4c-0e7e-49cf-a9bb-5c054eb2347b",
+      "event": "ticket/closed",
+      "at": "2026-11-22T18:22:02.875098Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-22T18:22:02.875070Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "18aa302de257e46d6d0d9237f2efac2aab830010"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-22T18:20:49.252493Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-22T18:20:59.898017Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 41664.857,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 18,
+    "sha256": "87a795558af31d14cb044fc4852886d013c372c8af28e90414c7acd512c5484a"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d86dceb8c15eadcfa3f5d0f7412ab3096b2226c8",
+        "tree": "5f762387e5f3fcd01b56df035237b2a3ef24f4fe",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T18:21:06.494369Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4927c497-3dbf-4bc9-bfd7-207ec664c044/5f762387e5f3-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Diff master...HEAD touches only indigo_drivers/mount_synscan/README.md (+2 lines): the added line equals the owner-approved sentence byte for byte (programmatic comparison with the ticket text; UTF-8 degree sign C2 B0, LF, no CR, no trailing whitespace, git diff --check clean), followed by one blank line, placed as the last paragraph of '## Comments' before '## Testing'; the Testing records are unchanged. Content checked against indigo_mount_synscan.driver and PROPERTIES.md: synscan_set_encoders only sends :W..04/:W..05 (on/off per axis); synscan_update_axis_positions always reads the step counters with :j, with the comment that the firmware corrects them from the encoders when on; synscan_read_encoder_position only feeds X_ENCODER_POSITION. 'about 0.34 deg' matches 360/1068 = 0.337 deg (AZ-GTi encoder count per revolution in code and PROPERTIES.md); 'at once' and the advice to sync again match the synscan_set_encoders comment and PROPERTIES.md ('re-bases the counter at once ... can shift the pointing until the next sync'). No contradiction found. README-only documentation change: no behaviour change, so no driver version bump, test run, PROPERTIES.md or Xcode project change is required (no file added). No defects.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "d86dceb8c15eadcfa3f5d0f7412ab3096b2226c8",
+        "tree": "5f762387e5f3fcd01b56df035237b2a3ef24f4fe",
+        "at": "2026-11-22T18:21:47.259907Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "18aa302de257e46d6d0d9237f2efac2aab830010",
+      "tree": "5f762387e5f3fcd01b56df035237b2a3ef24f4fe",
+      "base": "master",
+      "at": "2026-11-22T18:22:02.802178Z"
+    }
+  }
+}
