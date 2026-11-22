@@ -2072,6 +2072,70 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// From its first BUSY publication on, a request is published BUSY until its result, which is OK, and every publication
+// up to the result carries the request (ra, dec) as targets.
+static bool lx_request_published_busy_until_ok(const char *label, const coordinates_publication *events, int count, double ra, double dec) {
+	int busy = find_coordinates_publication(events, count, 0, 'E', INDIGO_BUSY_STATE);
+	int result = -1;
+	bool ok = busy >= 0;
+	for (int i = busy + 1; ok && i < count && result < 0; i++) {
+		if (events[i].kind != 'E') {
+			continue;
+		}
+		ok = fabs(events[i].target[0] - ra) < 1e-6 && fabs(events[i].target[1] - dec) < 1e-6;
+		if (events[i].state != INDIGO_BUSY_STATE) {
+			result = i;
+			ok = ok && events[i].state == INDIGO_OK_STATE;
+		}
+	}
+	if (!ok || result < 0) {
+		fprintf(stderr, "    %s: expected BUSY publications with the request as targets until one OK result\n", label);
+		print_coordinates_publications(label, events, count);
+		return false;
+	}
+	return true;
+}
+
+// The coordinates stay BUSY from the admission of a request until its handler sets the result: a request sent while
+// the handler of a GoTo waits for the slew to start (:MS# has reached the controller) is refused with the BUSY message
+// and never sent, the GoTo ends OK at its own target, and a sync after it ends OK. Neither request is published OK
+// before its result.
+static void lx200_request_during_coordinates_handler_is_refused(void) {
+	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "onstep", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	int slews = event_count(&simulator, "MS", NULL);
+	int syncs = event_count(&simulator, "CM", NULL);
+	int messages = context.busy_message_count;
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	start_coordinates_publications(lx200_mount.device_name);
+	SERIAL_CHECK_TRUE(request_mount_coordinates(6.5, 25));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", slews));
+	SERIAL_CHECK_TRUE(request_mount_coordinates(7.5, 30));
+	SERIAL_CHECK_TRUE(wait_for_busy_message_after(messages));
+	SERIAL_CHECK_TRUE(!strcmp(context.busy_message, "Mount is busy, the new coordinates are ignored"));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	int count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(lx_request_published_busy_until_ok("GoTo with a request during its handler", events, count, 6.5, 25));
+	SERIAL_CHECK_EQ_INT(slews + 1, event_count(&simulator, "MS", NULL));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	start_coordinates_publications(lx200_mount.device_name);
+	SERIAL_CHECK_TRUE(request_mount_coordinates(6.6, 25.5));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	count = stop_coordinates_publications(events);
+	SERIAL_CHECK_TRUE(lx_request_published_busy_until_ok("sync", events, count, 6.6, 25.5));
+	SERIAL_CHECK_EQ_INT(syncs + 1, event_count(&simulator, "CM", NULL));
+	SERIAL_CHECK_EQ_INT(slews + 1, event_count(&simulator, "MS", NULL));
+cleanup:
+	stop_coordinates_publications(NULL);
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void lx200_park_rejects_motion_and_unpark_recovers(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -5772,6 +5836,7 @@ int main(int argc, char **argv) {
 		{ "lx200_location_and_utc_translation", lx200_location_and_utc_translation },
 		{ "lx200_onstep_options_and_partial_failures", lx200_onstep_options_and_partial_failures },
 		{ "lx200_park_rejects_motion_and_unpark_recovers", lx200_park_rejects_motion_and_unpark_recovers },
+		{ "lx200_request_during_coordinates_handler_is_refused", lx200_request_during_coordinates_handler_is_refused },
 		{ "lx200_meade_profile", lx200_meade_profile },
 		{ "lx200_meade_tracking_rate_has_one_decimal", lx200_meade_tracking_rate_has_one_decimal },
 		{ "lx200_meade_products_are_detected", lx200_meade_products_are_detected },

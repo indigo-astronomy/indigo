@@ -360,7 +360,7 @@
 |  | 2026-10-07 02:01 | 3.0.0.80 | linux arm64 | simulator | 150 / 150 | ✅ OK |
 |  | 2026-10-07 02:19 | 3.0.0.80 | linux arm64 | aGotino | 35 / 35 | ✅ OK |
 |  | 2026-11-06 08:43 | 3.0.0.83 | linux x64 | simulator | 163 / 163 | ✅ OK |
-|  | 2026-11-21 11:10 | 3.0.0.87 | mac arm64 | simulator | 168 / 168 | ✅ OK |
+|  | 2026-11-22 21:41 | 3.0.0.88 | mac arm64 | simulator | 169 / 169 | ✅ OK |
 | mount_nexstar | 2026-09-23 23:55 | 3.0.0.35 | mac arm64 | MountSim 2.3 (SE wedge EQ) | 20 / 20 | ✅ OK |
 |  | 2026-09-24 06:25 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGEM) | 21 / 21 | ✅ OK |
 |  | 2026-09-24 06:32 | 3.0.0.35 | mac arm64 | MountSim 2.3 (CGE) | 20 / 20 | ✅ OK |
@@ -372,7 +372,7 @@
 |  | 2026-09-24 21:57 | 3.0.0.42 | mac arm64 | Celestron NexStar 4/5 SE (StarSense 1.20, EQ wedge, GPS 11.1) | 12 / 12 | ✅ OK |
 |  | 2026-09-27 00:04 | 3.0.0.46 | linux x64 | simulator | 23 / 23 | ✅ OK |
 |  | 2026-10-11 10:18 | 3.0.0.49 | linux arm64 | NexStar 4/5 SE | 12 / 12 | ✅ OK |
-|  | 2026-11-21 09:16 | 3.0.0.54 | mac arm64 | simulator | 43 / 43 | ✅ OK |
+|  | 2026-11-22 21:14 | 3.0.0.55 | mac arm64 | simulator | 44 / 44 | ✅ OK |
 | mount_nexstaraux | 2026-09-24 00:12 | 3.0.0.18 | linux arm64 | simulator | 40 / 40 | ✅ OK |
 |  | 2026-09-24 05:44 | 3.0.0.18 | linux arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
 |  | 2026-09-24 11:00 | 3.0.0.18 | mac arm64 | NexStar SE & NexStar+ HC | 36 / 36 | ✅ OK |
@@ -390,7 +390,7 @@
 |  | 2026-11-21 08:41 | 3.0.0.28 | mac arm64 | simulator | 42 / 42 | ✅ OK |
 | mount_simulator | 2026-09-26 22:40 | 3.0.0.23 | linux x64 | simulator | 19 / 19 | ✅ OK |
 |  | 2026-10-04 11:19 | 3.0.0.24 | linux arm64 | simulator | 20 / 20 | ✅ OK |
-|  | 2026-11-21 16:19 | 3.0.0.28 | mac arm64 | simulator | 31 / 31 | ✅ OK |
+|  | 2026-11-22 21:06 | 3.0.0.29 | mac arm64 | simulator | 32 / 32 | ✅ OK |
 | mount_starbook | 2026-09-27 12:08 | 3.0.0.11 | linux x64 | simulator | 13 / 13 | ✅ OK |
 |  | 2026-11-21 08:44 | 3.0.0.15 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | mount_synscan | 2026-09-24 09:35 | 3.0.0.7 | mac arm64 | MountSim 2.3 (EQMOD) | 15 / 15 | ✅ OK |

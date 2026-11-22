@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_mount_simulator"
 #define DRIVER_LABEL         "Mount Simulator"
 #define MOUNT_DEVICE_NAME    DRIVER_LABEL
@@ -430,7 +430,6 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		indigo_reject_coordinates_change(device, "Mount is parked!");
 		return;
 	}
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
 		// a sync of the INDIGO alignment model adds an alignment point, the raw coordinates stay

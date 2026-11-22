@@ -122,13 +122,13 @@
 | guider_gpusb            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 10 | |
 | mount_asi               | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ✅ Sim | 30 / 0 | |
 | mount_ioptron           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 144 / 0 | |
-| mount_lx200             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 171 / 35 | |
+| mount_lx200             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 172 / 35 | |
 | mount_mxhd              | 3️⃣ | ✅ Yes | ❌ No  | ✅ Yes | ❌ No  | 0 / 0 | |
-| mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 43 / 12 | ⏰ TODO - make libnexstar for Windows |
+| mount_nexstar           | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 44 / 12 | ⏰ TODO - make libnexstar for Windows |
 | mount_nexstaraux        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 70 / 37 | |
 | mount_pmc8              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 38 / 38 | |
 | mount_rainbow           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 42 / 0 | |
-| mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 31 / 0 | |
+| mount_simulator         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 32 / 0 | |
 | mount_starbook          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 29 / 0 | |
 | mount_synscan           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 144 / 21 | |
 | mount_temma             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 33 / 0 | |

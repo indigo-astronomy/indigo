@@ -1901,7 +1901,9 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		write_line("\t}");
 	}
 	bool has_finalizer = property->on_change != NULL && memmem(property->on_change->text, property->on_change->size, "_finalizer", sizeof "_finalizer" - 1);
-	if (!has_finalizer && !c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
+	// The coordinates stay BUSY from the admission of the request until on_change sets its result: the admission refuses
+	// a request while they are BUSY, so an OK written here would let a second request in while this one is handled.
+	if (!has_finalizer && !c_code_starts_with(property->on_change, "%s->state = ", property->handle) && strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES")) {
 		write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
 	}
 	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->id, property->id);

@@ -547,7 +547,7 @@ static void mount_alignment_model_is_frozen_during_slew(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(target_ra, target_dec));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	// BUSY is published when the request is accepted, before the queued handler starts the slew; the first reported
-	// motion proves the handler is past its start, where the state is briefly not BUSY inside the driver
+	// motion proves the handler has started it
 	SERIAL_CHECK_TRUE(wait_for_mount_coordinate_change(fmod(ra + 0.1, 24), dec - 1));
 	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME));
 	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, "0"));
@@ -1741,6 +1741,65 @@ cleanup:
 	stop_serial_driver(&mount_simulator);
 }
 
+// The second request of mount_request_during_sync_handler_is_refused, made from the client callback that receives the
+// alignment point the first sync adds: that callback runs on the device queue inside the handler of the first sync,
+// after it started and before it set its result, and the bus mutex is recursive, so the request is admitted or refused
+// there exactly as one from another client arriving at that moment.
+static atomic_bool inner_request_armed;
+static double inner_request_ra, inner_request_dec;
+
+static indigo_result inner_request_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, mount_simulator.device_name) && !strcmp(property->name, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME) && atomic_exchange(&inner_request_armed, false)) {
+		change_mount_coordinates(inner_request_ra, inner_request_dec);
+	}
+	return simulator_client_define_property(client, device, property, message);
+}
+
+// The coordinates stay BUSY from the admission of a request until its handler sets the result, so a request that
+// arrives while the handler of a sync still runs is refused with the BUSY message. Before, the generated handler set the
+// coordinates OK when it started: the second request was admitted, published BUSY again after the first one had begun
+// and added a second alignment point once the first sync ended.
+static void mount_request_during_sync_handler_is_refused(void) {
+	static coordinates_event events[COORDINATES_LOG_SIZE];
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	// the unparked simulator rests at the pole, where a sync is refused anyway, so it slews away first
+	SERIAL_CHECK_TRUE(goto_hour_angle(2, 40));
+	SERIAL_CHECK_TRUE(set_mount_switch(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, alignment_point_count());
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	inner_request_ra = fmod(ra + 0.2, 24);
+	inner_request_dec = dec + 0.5;
+	int messages = context.busy_message_count;
+	simulator_test_client.define_property = inner_request_define;
+	atomic_store(&inner_request_armed, true);
+	start_coordinates_log();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(fmod(ra + 0.01, 24), dec + 0.05));
+	// the polls run on the device queue behind the handler, and behind a second one had it been admitted
+	SERIAL_CHECK_TRUE(wait_for_polls(3));
+	int count = stop_coordinates_log(events);
+	// the second request was made inside the handler and refused there
+	SERIAL_CHECK_TRUE(!atomic_load(&inner_request_armed));
+	SERIAL_CHECK_TRUE(context.busy_message_count > messages);
+	SERIAL_CHECK_TRUE(!strcmp(context.busy_message, "Sync refused, the mount is busy"));
+	// the first sync is published as BUSY and one OK result, nothing BUSY after it, and only it added a point
+	SERIAL_CHECK_TRUE(check_coordinates_request("sync with a request during its handler", events, count, INDIGO_OK_STATE, 2));
+	SERIAL_CHECK_EQ_INT(1, alignment_point_count());
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - (dec + 0.05)) < 0.01);
+cleanup:
+	atomic_store(&inner_request_armed, false);
+	simulator_test_client.define_property = simulator_client_define_property;
+	stop_coordinates_log(events);
+	if (context.connected && alignment_point_count() > 0) {
+		indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, true);
+		wait_for_alignment_point_count(0);
+	}
+	stop_serial_driver(&mount_simulator);
+}
+
 // Disconnecting during a GOTO, park or homing stops it: nothing is published after the disconnect, and the next
 // session shows the mount not BUSY, not parked or at home, and the interrupted operation not as failed
 static void mount_disconnect_during_slew_park_and_home(void) {
@@ -2150,6 +2209,7 @@ int main(void) {
 		{ "mount_reconnect_publishes_device_state", mount_reconnect_publishes_device_state },
 		{ "mount_sync_publishes_busy_and_keeps_a_refusal", mount_sync_publishes_busy_and_keeps_a_refusal },
 		{ "mount_sync_during_goto_is_refused_with_busy_message", mount_sync_during_goto_is_refused_with_busy_message },
+		{ "mount_request_during_sync_handler_is_refused", mount_request_during_sync_handler_is_refused },
 		{ "mount_azimuth_at_the_pole_is_zero", mount_azimuth_at_the_pole_is_zero },
 		{ "mount_disconnect_during_slew_park_and_home", mount_disconnect_during_slew_park_and_home },
 		{ "mount_state_lights_follow_slew_completion", mount_state_lights_follow_slew_completion },

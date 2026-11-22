@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000036
+#define DRIVER_VERSION       0x03000037
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -1128,22 +1128,25 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		indigo_reject_coordinates_change(device, "Mount is parked!");
 		return;
 	}
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	PRIVATE_DATA->goto_active = PRIVATE_DATA->coordinates_busy = false;
 	if (nexstar_set_coordinates(device)) {
 		if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		} else if (!PRIVATE_DATA->guiding_in_progress) {
-			// The result of an accepted sync carries the position the controller reports now, a failed readback
-			// leaves it to the next poll.
-			double ra = 0, dec = 0, device_ra = 0, device_dec = 0;
-			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-			bool read = nexstar_read_position(device, &ra, &dec, &device_ra, &device_dec);
-			pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-			if (read) {
-				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+		} else {
+			// The coordinates stay BUSY until this point, the accepted sync is complete.
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			if (!PRIVATE_DATA->guiding_in_progress) {
+				// The result of an accepted sync carries the position the controller reports now, a failed readback
+				// leaves it to the next poll.
+				double ra = 0, dec = 0, device_ra = 0, device_dec = 0;
+				pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+				bool read = nexstar_read_position(device, &ra, &dec, &device_ra, &device_dec);
+				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+				if (read) {
+					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+				}
 			}
 		}
 	} else {

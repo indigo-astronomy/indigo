@@ -451,6 +451,10 @@ The park switch flips as soon as the park request is copied in its own change br
 In the MOUNT_EQUATORIAL_COORDINATES handler this check refuses the admitted request with indigo_reject_coordinates_change(device, "Mount is parked!").
 This ensures that slewing, tracking, or motion commands are rejected while the mount is parked, without requiring the driver author to replicate either check manually.
 
+The MOUNT_EQUATORIAL_COORDINATES handler also has no INDIGO_OK_STATE prologue, whatever its on_change contains.
+The change branch refuses a request while the coordinates are BUSY, so they stay BUSY from the admission of the request until on_change sets its result; an OK written when the handler starts would let a second request in while the first one is still handled.
+Every path of the on_change sets the state itself: INDIGO_OK_STATE where the request is complete (an accepted sync, see mount_nexstar), BUSY where a finalizer or the position poll completes it, INDIGO_ALERT_STATE or indigo_reject_coordinates_change() on failure.
+
 MOUNT_EQUATORIAL_COORDINATES has an additional distinction in how the handler is finalised.
 For every other property the generator appends a call to indigo_update_property() at the end of the handler (unless a custom _finalizer is detected in the on_change block).
 For MOUNT_EQUATORIAL_COORDINATES this call is replaced by indigo_update_coordinates(), which performs the standard INDIGO coordinate update and notification sequence appropriate for equatorial position reporting.

@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000057
+#define DRIVER_VERSION       0x03000058
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -4832,7 +4832,6 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		indigo_reject_coordinates_change(device, "Mount is parked!");
 		return;
 	}
-	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	if (meade_host_timed_guiding(device) && (PRIVATE_DATA->classicGuideNS || PRIVATE_DATA->classicGuideWE)) {
 		indigo_reject_coordinates_change(device, "Classic guiding is active");
