@@ -106,7 +106,16 @@ The examples in this guide use `indigo_prop_tool`, which can do everything:
   ```
 
 - **Set short values** with `set`. It splits values at `;`, so it cannot send a task. `ITEM=` or `ITEM=""` sends an empty value. This clears a text item, such as a hook.
-- **Read values** with `get`. It prints light items only as `ON` or `OFF`, without their text. Read the task list, the night plan and the history in an INDIGO client.
+- **Read values** with `get`. It prints light items as `ON` or `OFF`, or with `-e` as their state, but never their text.
+- **Read the task list, the night plan and the history** with `list -e`. It prints the label of each item after `  # `, and the state of each light as `IDLE`, `OK`, `BUSY` or `ALERT`:
+
+  ```
+  indigo_prop_tool list -e "Scheduler Agent.AGENT_SCHEDULER_HISTORY"
+  ```
+
+  ```
+  Scheduler Agent.AGENT_SCHEDULER_HISTORY.RUN_1 = OK  # 2026-11-20 20:02-20:02 | Test | run 1 | task | SUCCEEDED | -
+  ```
 - **Reach a remote server** with `-r host` after the command word, for example `indigo_prop_tool get -r host ...`. Options before the command word are not recognised.
 - **See the result** with `-s`. It prints the state of the property you change: `[OK]` for an accepted upload, `[ALERT]` for a rejected one.
 
@@ -135,7 +144,7 @@ This walk-through needs only the Scheduler and Scripting Agents. The test task w
 
    An accepted upload ends with `[OK]`. A rejected one ends with `[ALERT]` and a message that names the problem, for example `Scheduler Agent: Task rejected: line 2: @bogus: unknown key`.
 
-   The task appears in the task list `AGENT_SCHEDULER_TASK_STATE` as `Test | QUEUED | normal 50 | run 0/1 | retries left 0 | 0h01 set`. The last column is the duration and where it comes from. `set` means that it comes from `@duration`. The task also gets its own property, `AGENT_SCHEDULER_TASK_0`.
+   The task appears in the task list `AGENT_SCHEDULER_TASK_STATE` as `Test | QUEUED | normal 50 | run 0/1 | retries left 0 | 0h01 set`. `indigo_prop_tool list -e "Scheduler Agent.AGENT_SCHEDULER_TASK_STATE"` shows it. The last column is the duration and where it comes from. `set` means that it comes from `@duration`. The task also gets its own property, `AGENT_SCHEDULER_TASK_0`.
 
 3. Start the scheduler:
 
@@ -149,7 +158,19 @@ This walk-through needs only the Scheduler and Scripting Agents. The test task w
    indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_CURRENT.CURRENT;REASON"
    ```
 
-   While the task runs, `CURRENT` is `Test`. Ten seconds later the task is `DONE`. The history `AGENT_SCHEDULER_HISTORY` shows a line such as `2026-11-20 20:02-20:02 | Test | run 1 | task | SUCCEEDED | -`. Nothing is left to do, so the scheduler stops by itself with the message `All tasks finished, the scheduler stopped`.
+   While the task runs, `CURRENT` is `Test`. Ten seconds later the task is `DONE`. Nothing is left to do, so the scheduler stops by itself with the message `All tasks finished, the scheduler stopped`.
+
+   The history `AGENT_SCHEDULER_HISTORY` now has the run. Show it with:
+
+   ```
+   indigo_prop_tool list -e "Scheduler Agent.AGENT_SCHEDULER_HISTORY"
+   ```
+
+   The run is its last item, for example:
+
+   ```
+   Scheduler Agent.AGENT_SCHEDULER_HISTORY.RUN_1 = OK  # 2026-11-20 20:02-20:02 | Test | run 1 | task | SUCCEEDED | -
+   ```
 
 5. Remove the task:
 
