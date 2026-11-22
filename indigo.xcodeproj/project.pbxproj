@@ -1603,6 +1603,7 @@
 		593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_atik.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		593CFE421DFC8A12003B63D4 /* indigo_wheel_atik.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_atik.h; sourceTree = "<group>"; };
 		593EC62D30A9D7BC00E972EF /* SCHEDULER.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SCHEDULER.md; sourceTree = "<group>"; };
+		5952C0A130B1E00100A1B2C3 /* SCHEDULER_COMPARISON.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SCHEDULER_COMPARISON.md; sourceTree = "<group>"; };
 		593EC62F30A9D7BC00E972EF /* indigo_agent_scheduler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler.h; sourceTree = "<group>"; };
 		593EC63030A9D7BC00E972EF /* indigo_agent_scheduler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_scheduler.c; sourceTree = "<group>"; };
 		593EC63330A9D7BC00E972EF /* indigo_agent_scheduler_header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler_header.h; sourceTree = "<group>"; };
@@ -7443,6 +7444,7 @@
 			isa = PBXGroup;
 			children = (
 				593EC62D30A9D7BC00E972EF /* SCHEDULER.md */,
+				5952C0A130B1E00100A1B2C3 /* SCHEDULER_COMPARISON.md */,
 			);
 			path = doc;
 			sourceTree = "<group>";
