@@ -1,0 +1,923 @@
+{
+  "schema_version": 1,
+  "ticket_id": "edf38e12-685f-4848-be72-3489f0871c19",
+  "revision": 46,
+  "title": "indigo_agent_auxiliary, indigo_agent_scheduler: add the AGENT_AUX_SAFETY light and the scheduler unsafe hold with UNSAFE and SAFE hooks",
+  "description": "Requested by the owner on 2026-11-21 as the first part of weather and safety handling.\n\nDefine in the Auxiliary Agent (indigo_drivers/agent_auxiliary) one read-only light property AGENT_AUX_SAFETY with the single item SAFE, in the shape already used by X_ALPACA_SAFETY (system_alpaca) and X_CONDITIONS_SAFETY (dome_beaver):\n- IDLE: no safety information,\n- OK: conditions are safe,\n- ALERT: conditions are unsafe.\nPublish the property and item names in indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h so that other agents (the Scheduler Agent) can use them. In this ticket the property is only defined and stays IDLE; the agent does not compute it yet.\n\nOut of scope, to be implemented later on the owner's decision: the safety decision itself (which AUX device properties such as AUX_RAIN, AUX_WIND, AUX_CLOUD, X_ALPACA_SAFETY or X_CONDITIONS_SAFETY count, in their switch or light encodings, and which of their values are unsafe) and a configurable treatment of a lost safety source (safe or unsafe).\n\nAcceptance: the property is defined on attach with state IDLE and item SAFE IDLE, is enumerated and deleted with the agent, is documented in indigo_docs/PROPERTIES.md (Auxiliary agent section), DRIVER_VERSION of the agent is bumped, and a test checks that the property is defined with the documented shape. Do not change the agent README.md without owner approval.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-21T21:52:19.919097Z",
+  "status": "closed",
+  "branch": "ticket/edf38e12-685f-4848-be72-3489f0871c19",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "4d820efe-a526-4d28-abed-10ae8b4b2df8",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T21:54:30.690185Z",
+          "last_activity_at": "2026-11-21T22:06:40.511128Z",
+          "ended_at": "2026-11-21T22:06:40.511128Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 729820.943,
+          "tokens": null
+        },
+        {
+          "attempt_id": "01f50d3a-cba8-4171-acc4-89163f645f63",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-21T23:58:22.885209Z",
+          "last_activity_at": "2026-11-22T00:01:43.438815Z",
+          "ended_at": "2026-11-22T00:01:43.438815Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 200553.606,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T21:54:30.690185Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/edf38e12-685f-4848-be72-3489f0871c19"
+        },
+        {
+          "at": "2026-11-21T22:06:40.511128Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-21T23:58:22.885209Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-22T00:01:43.438815Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 930374.549,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "087c1111-ef07-4a44-8bd0-f383dbb38c24",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-21T22:06:40.511163Z",
+          "last_activity_at": "2026-11-21T22:09:21.863931Z",
+          "ended_at": "2026-11-21T22:09:21.863931Z",
+          "outcome": {
+            "summary": "No defects found. Agent: AGENT_AUX_SAFETY (light, RO, AGENT_MAIN_GROUP, item SAFE, property+item IDLE) created after successful indigo_filter_device_attach, defined through agent_enumerate_properties that matches the agent_mount pattern (own-filter-client guard, INDIGO_DEFINE_MATCHING_PROPERTY, delegate to indigo_filter_enumerate_properties); released in detach before indigo_filter_device_detach; private data allocated at INIT and freed after detach at SHUTDOWN, same as agent_mount; additional instances get their own zeroed private data via update_additional_instances and their own property. The guard only skips the agent's own filter client, whose define callback ignores its own device anyway, so filter behaviour is unchanged (test_aux_simulator 13/13 incl. auxiliary_agent_mirrors_all_devices). DRIVER_VERSION 0x03000005->0x03000006, names in the header, PROPERTIES.md row correct, Makefile target + INTEGRATION_TESTS entry and Xcode file ref + integration group membership correct; git diff --check clean. Test checks type/perm/state/group/count/item name/value on attach, name-selected (count 1) and full enumeration, one delete on shutdown and identical shape after re-init; deterministic (3/3 runs pass). generate_help.py --check reports the bundle current; decoding old/new header shows only mcp_help_text_11 (auxiliary.md) changed, metadata identical. Tests: test-agent-auxiliary 3/3 x3 runs, test_aux_simulator 13/13; test-clean run afterwards.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 161352.768,
+          "tokens": null
+        },
+        {
+          "attempt_id": "55ab911b-b4f4-4cc5-aad5-b90ae0bbee85",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-21T23:57:36.685520Z",
+          "last_activity_at": "2026-11-21T23:58:22.885124Z",
+          "ended_at": "2026-11-21T23:58:22.885124Z",
+          "outcome": {
+            "summary": "Integration is clean: scheduler-local names AUX_AGENT/AUX_SAFETY_PROPERTY/AUX_SAFETY_SAFE_ITEM (indigo_agent_scheduler.c:61-63) equal indigo_agent_auxiliary.h:50-51; test_agent_scheduler.c includes that header (line 45) so the #ifndef fallbacks (47-53) are inactive and identical; PROPERTIES.md Auxiliary row/source list and Scheduler section coexist without lost hunks; merge-tree vs master clean (master only adds factory close f626a7cf6); generate_help.py --check current; no conflict markers; pbxproj only adds test_agent_auxiliary.c. Code: Idle light counts as missing (evaluate_safety, indigo_agent_scheduler.c:2057-2060), so default SAFE keeps existing setups unchanged and UNSAFE holds indefinitely. DEFECT (docs, user-misleading): the scheduler docs never say that the current Auxiliary Agent defines AGENT_AUX_SAFETY but does not compute it and it always stays Idle. INDIGO_SCHEDULER_GUIDE.md:620 says 'Set up the safety in the Auxiliary Agent; the scheduler only reads it' although nothing can be set up there yet, and :636 says UNSAFE 'holds the scheduler until a safe signal arrives' which with the current agent never happens; SCHEDULER.md:605 (Unsafe hold, Safety) likewise. Fix: in both docs add one sentence that the Auxiliary Agent does not compute the light yet, so it stays Idle, AGENT_SCHEDULER_SAFETY_MISSING decides, and UNSAFE then holds the scheduler permanently (keep SAFE until the agent computes safety); drop or reword 'Set up the safety in the Auxiliary Agent'. Optional nit: the comment 'until its header provides them' at test_agent_scheduler.c:47 is stale; the fallback block can be removed.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 46199.604,
+          "tokens": null
+        },
+        {
+          "attempt_id": "91b7fafd-61c5-46da-9418-7bff1023a688",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-22T00:01:43.438842Z",
+          "last_activity_at": "2026-11-22T00:01:43.438899Z",
+          "ended_at": "2026-11-22T00:01:43.438899Z",
+          "outcome": {
+            "summary": "Re-review of tree b79804a58f33 (commit 62a33fcfd). The fix is docs only (+5 -3) in indigo_docs/INDIGO_SCHEDULER_GUIDE.md and indigo_drivers/agent_scheduler/doc/SCHEDULER.md; nothing else changed since 23e814c31 and the worktree is clean. GUIDE:620 now ends 'The scheduler only reads the light.' (the misleading 'Set up the safety in the Auxiliary Agent' is gone); a new note at :622 says the current Auxiliary Agent defines AGENT_AUX_SAFETY but does not compute it, the light stays Idle, SAFETY_MISSING decides, keep SAFE; :638 adds that UNSAFE then holds permanently. SCHEDULER.md:605 Safety paragraph states the same. This matches the code (Idle counts as missing, evaluate_safety indigo_agent_scheduler.c:2057-2060) and the AUX docs (PROPERTIES.md row, mcp/agents/auxiliary.md). generate_help.py --check is current (the scheduler docs are not in the bundle). Earlier integration findings still hold. Optional nit not fixed: the stale fallback comment at test_agent_scheduler.c:47.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.057,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-21T22:06:40.511163Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T22:09:21.863931Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "No defects found. Agent: AGENT_AUX_SAFETY (light, RO, AGENT_MAIN_GROUP, item SAFE, property+item IDLE) created after successful indigo_filter_device_attach, defined through agent_enumerate_properties that matches the agent_mount pattern (own-filter-client guard, INDIGO_DEFINE_MATCHING_PROPERTY, delegate to indigo_filter_enumerate_properties); released in detach before indigo_filter_device_detach; private data allocated at INIT and freed after detach at SHUTDOWN, same as agent_mount; additional instances get their own zeroed private data via update_additional_instances and their own property. The guard only skips the agent's own filter client, whose define callback ignores its own device anyway, so filter behaviour is unchanged (test_aux_simulator 13/13 incl. auxiliary_agent_mirrors_all_devices). DRIVER_VERSION 0x03000005->0x03000006, names in the header, PROPERTIES.md row correct, Makefile target + INTEGRATION_TESTS entry and Xcode file ref + integration group membership correct; git diff --check clean. Test checks type/perm/state/group/count/item name/value on attach, name-selected (count 1) and full enumeration, one delete on shutdown and identical shape after re-init; deterministic (3/3 runs pass). generate_help.py --check reports the bundle current; decoding old/new header shows only mcp_help_text_11 (auxiliary.md) changed, metadata identical. Tests: test-agent-auxiliary 3/3 x3 runs, test_aux_simulator 13/13; test-clean run afterwards."
+        },
+        {
+          "at": "2026-11-21T23:57:36.685520Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-21T23:58:22.885124Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Integration is clean: scheduler-local names AUX_AGENT/AUX_SAFETY_PROPERTY/AUX_SAFETY_SAFE_ITEM (indigo_agent_scheduler.c:61-63) equal indigo_agent_auxiliary.h:50-51; test_agent_scheduler.c includes that header (line 45) so the #ifndef fallbacks (47-53) are inactive and identical; PROPERTIES.md Auxiliary row/source list and Scheduler section coexist without lost hunks; merge-tree vs master clean (master only adds factory close f626a7cf6); generate_help.py --check current; no conflict markers; pbxproj only adds test_agent_auxiliary.c. Code: Idle light counts as missing (evaluate_safety, indigo_agent_scheduler.c:2057-2060), so default SAFE keeps existing setups unchanged and UNSAFE holds indefinitely. DEFECT (docs, user-misleading): the scheduler docs never say that the current Auxiliary Agent defines AGENT_AUX_SAFETY but does not compute it and it always stays Idle. INDIGO_SCHEDULER_GUIDE.md:620 says 'Set up the safety in the Auxiliary Agent; the scheduler only reads it' although nothing can be set up there yet, and :636 says UNSAFE 'holds the scheduler until a safe signal arrives' which with the current agent never happens; SCHEDULER.md:605 (Unsafe hold, Safety) likewise. Fix: in both docs add one sentence that the Auxiliary Agent does not compute the light yet, so it stays Idle, AGENT_SCHEDULER_SAFETY_MISSING decides, and UNSAFE then holds the scheduler permanently (keep SAFE until the agent computes safety); drop or reword 'Set up the safety in the Auxiliary Agent'. Optional nit: the comment 'until its header provides them' at test_agent_scheduler.c:47 is stale; the fallback block can be removed."
+        },
+        {
+          "at": "2026-11-22T00:01:43.438842Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T00:01:43.438899Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review of tree b79804a58f33 (commit 62a33fcfd). The fix is docs only (+5 -3) in indigo_docs/INDIGO_SCHEDULER_GUIDE.md and indigo_drivers/agent_scheduler/doc/SCHEDULER.md; nothing else changed since 23e814c31 and the worktree is clean. GUIDE:620 now ends 'The scheduler only reads the light.' (the misleading 'Set up the safety in the Auxiliary Agent' is gone); a new note at :622 says the current Auxiliary Agent defines AGENT_AUX_SAFETY but does not compute it, the light stays Idle, SAFETY_MISSING decides, keep SAFE; :638 adds that UNSAFE then holds permanently. SCHEDULER.md:605 Safety paragraph states the same. This matches the code (Idle counts as missing, evaluate_safety indigo_agent_scheduler.c:2057-2060) and the AUX docs (PROPERTIES.md row, mcp/agents/auxiliary.md). generate_help.py --check is current (the scheduler docs are not in the bundle). Earlier integration findings still hold. Optional nit not fixed: the stale fallback comment at test_agent_scheduler.c:47."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of tree b79804a58f33 (commit 62a33fcfd). The fix is docs only (+5 -3) in indigo_docs/INDIGO_SCHEDULER_GUIDE.md and indigo_drivers/agent_scheduler/doc/SCHEDULER.md; nothing else changed since 23e814c31 and the worktree is clean. GUIDE:620 now ends 'The scheduler only reads the light.' (the misleading 'Set up the safety in the Auxiliary Agent' is gone); a new note at :622 says the current Auxiliary Agent defines AGENT_AUX_SAFETY but does not compute it, the light stays Idle, SAFETY_MISSING decides, keep SAFE; :638 adds that UNSAFE then holds permanently. SCHEDULER.md:605 Safety paragraph states the same. This matches the code (Idle counts as missing, evaluate_safety indigo_agent_scheduler.c:2057-2060) and the AUX docs (PROPERTIES.md row, mcp/agents/auxiliary.md). generate_help.py --check is current (the scheduler docs are not in the bundle). Earlier integration findings still hold. Optional nit not fixed: the stale fallback comment at test_agent_scheduler.c:47.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 207552.429,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "a7e783c9-f509-47ec-bdf1-346ddef19246",
+      "event": "ticket/created",
+      "at": "2026-11-21T21:52:19.919970Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "unknown",
+      "profile": "simple"
+    },
+    {
+      "event_id": "b7b80891-1295-4f6d-9a91-6c0722b58dde",
+      "event": "ticket/confirmed",
+      "at": "2026-11-21T21:54:21.385525Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "unknown",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "2c9dcec9-bb7a-4e89-b7ef-01a94d012ab4",
+      "event": "task/progress",
+      "at": "2026-11-21T21:54:30.690343Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Implementation started on branch ticket/edf38e12-685f-4848-be72-3489f0871c19"
+    },
+    {
+      "event_id": "7170bebf-1bdd-4f25-b995-ebde3714b26b",
+      "event": "ticket/started",
+      "at": "2026-11-21T21:54:30.691159Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/edf38e12-685f-4848-be72-3489f0871c19",
+      "base": "master"
+    },
+    {
+      "event_id": "39b2ac39-572b-4a5e-b03d-cfe394d8e602",
+      "event": "task/progress",
+      "at": "2026-11-21T21:54:51.359380Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Implementer launched",
+      "attempt_id": "4d820efe-a526-4d28-abed-10ae8b4b2df8",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e6304ea8-b025-4a39-8680-6f612b54ea38",
+      "event": "task/progress",
+      "at": "2026-11-21T21:56:00.599695Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Adding AGENT_AUX_SAFETY to the Auxiliary Agent"
+    },
+    {
+      "event_id": "5324b7ad-1eef-403e-b362-f37d6f03a2ef",
+      "event": "task/progress",
+      "at": "2026-11-21T21:57:35.312448Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Building libindigo and agent_auxiliary, running test_agent_auxiliary"
+    },
+    {
+      "event_id": "fb6ab261-ddf6-4aa5-a3df-feefd636ed38",
+      "event": "task/progress",
+      "at": "2026-11-21T22:00:14.892063Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "69e8b889-4274-416d-b5e8-6eb23a1d3f1a",
+      "event": "task/progress",
+      "at": "2026-11-21T22:00:14.929066Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a6a79239-05c3-4be8-9891-470c09c249cd",
+      "event": "task/progress",
+      "at": "2026-11-21T22:00:14.933510Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "8e1cc5bb-3e9b-465c-88f9-aac58db3fc04",
+      "event": "task/progress",
+      "at": "2026-11-21T22:02:18.533386Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "91d88f99-e330-4ad0-aa9b-a14870bb32d3",
+      "event": "check/passed",
+      "at": "2026-11-21T22:02:18.538268Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "bca50104d8ed5e3444c10f9a7820d427c78d0faf",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "e46e5bad-e8de-4292-bfc7-44eb715aecef",
+      "event": "task/progress",
+      "at": "2026-11-21T22:02:24.838757Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check command-1 started: make -C indigo_drivers/agent_auxiliary -f ../../Makefile.drv all && make -C indigo_test test-agent-auxiliary"
+    },
+    {
+      "event_id": "37fc2895-681b-4bd6-bfef-ff5b72df228c",
+      "event": "task/progress",
+      "at": "2026-11-21T22:02:24.913461Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "545d9324-5b9e-4775-be7d-aee5a31209cf",
+      "event": "check/passed",
+      "at": "2026-11-21T22:02:24.929549Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "bca50104d8ed5e3444c10f9a7820d427c78d0faf",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "5d3d367b-6d7f-45aa-8c6b-a57243c47f6a",
+      "event": "ticket/note",
+      "at": "2026-11-21T22:02:33.252441Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementation: AGENT_AUX_SAFETY (light, RO, group Agent, item SAFE) is created on attach in new agent private data with property and item IDLE, defined through a new agent_enumerate_properties that delegates to indigo_filter_enumerate_properties, deleted by the bus wildcard delete on detach and released in agent_device_detach. Names AGENT_AUX_SAFETY_PROPERTY_NAME / AGENT_AUX_SAFETY_SAFE_ITEM_NAME are in indigo_agent_auxiliary.h. DRIVER_VERSION 0x03000005 -> 0x03000006. Tests: new indigo_test/integration/test_agent_auxiliary.c (target test-agent-auxiliary, in INTEGRATION_TESTS, Xcode group integration): safety_defined_on_attach, safety_enumerated_on_request (name-selected and full enumeration), safety_deleted_with_agent (one delete on shutdown, redefined with same shape on restart): 3/3 passed. Regression: test_aux_simulator 13/13 passed (includes auxiliary_agent_mirrors_all_devices). flow check whitespace+unit passed; --command agent build + test-agent-auxiliary passed. Not done: indigo_docs/mcp/agents/auxiliary.md (says the four selectors are all agent-specific behavior) and the compiled MCP help were not updated, left for owner decision. tools/run_driver_test.py agent_auxiliary not run (no test-run mode was requested; it would also write the README test record).",
+      "tokens": null
+    },
+    {
+      "event_id": "a64d3bee-a66d-46be-86de-3127d5c93d68",
+      "event": "task/progress",
+      "at": "2026-11-21T22:03:24.378771Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Regenerating MCP help and running test_agent_mcp"
+    },
+    {
+      "event_id": "bb9eca76-d456-4589-b3e6-60d533fe3b98",
+      "event": "task/progress",
+      "at": "2026-11-21T22:04:13.044491Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f6ae303c-b463-48cb-b2de-527513f38b9a",
+      "event": "task/progress",
+      "at": "2026-11-21T22:04:13.122122Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6106c398-851c-43d7-a602-484a72747fb8",
+      "event": "task/progress",
+      "at": "2026-11-21T22:04:13.129540Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "c1d2c1a9-e402-4407-8b6a-582e4d9fe30a",
+      "event": "task/progress",
+      "at": "2026-11-21T22:06:13.852286Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "73413157-348f-4540-a7a5-9fd71d1a6473",
+      "event": "check/passed",
+      "at": "2026-11-21T22:06:13.858085Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "73a1dc9393337ba250c20a14788185327ea28953",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "5c529f04-7285-4ac4-89be-0907c74c1858",
+      "event": "ticket/note",
+      "at": "2026-11-21T22:06:23.425443Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "MCP doc follow-up: indigo_docs/mcp/agents/auxiliary.md gained the auxiliary.safety inventory row (AGENT_AUX_SAFETY.SAFE, reserved, stays Idle) and two sentences were adjusted (intro and Coverage). indigo_drivers/agent_mcp/indigo_agent_mcp_help.h regenerated with generate_help.py; decoding old and new byte arrays shows only mcp_help_text_11 (auxiliary.md) changed, matching the doc diff, rest of the header identical. test-agent-mcp: embedded help cases (discovery, all resources and aliases, argument boundaries, reload) pass; 'idempotent automatic lifecycle' fails deterministically because the test expects version 0x03000003 while master's agent_mcp DRIVER_VERSION is 0x03000004 (neither file touched here, baseline); 'admission and unload draining' failed in 2 of 4 runs (timing-dependent, unrelated to help text). flow check whitespace+unit passed on the final tree.",
+      "tokens": null
+    },
+    {
+      "event_id": "43dcee46-d8c5-4542-8463-a2fabcdda420",
+      "event": "task/progress",
+      "at": "2026-11-21T22:06:40.511229Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "text": "Review started"
+    },
+    {
+      "event_id": "4bad2eec-2b55-455a-bf4d-8297a7b9ef05",
+      "event": "review/started",
+      "at": "2026-11-21T22:06:40.511817Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "bd91125d-fd13-4afe-8dee-8451380c8794",
+      "event": "task/progress",
+      "at": "2026-11-21T22:06:58.719778Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "text": "Reviewer launched",
+      "attempt_id": "087c1111-ef07-4a44-8bd0-f383dbb38c24",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "36ef8cce-e383-46b0-a9f0-d8671d3e812b",
+      "event": "task/progress",
+      "at": "2026-11-21T22:07:38.460616Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "text": "Building and running test-agent-auxiliary and test-aux-simulator in worktree"
+    },
+    {
+      "event_id": "1210babe-99c4-4871-818b-05e2504bf11d",
+      "event": "task/progress",
+      "at": "2026-11-21T22:09:21.864032Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "3d232ca3-f6f4-42c7-9afc-9393cab36a62",
+      "event": "review/passed",
+      "at": "2026-11-21T22:09:21.864676Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "73a1dc9393337ba250c20a14788185327ea28953"
+    },
+    {
+      "event_id": "3cf282fa-66a1-4377-9770-3350cbdb2386",
+      "event": "ticket/title_changed",
+      "at": "2026-11-21T23:37:01.746418Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "Auxiliary Agent: define the AGENT_AUX_SAFETY light property",
+      "title": "indigo_agent_auxiliary, indigo_agent_scheduler: add the AGENT_AUX_SAFETY light and the scheduler unsafe hold with UNSAFE and SAFE hooks"
+    },
+    {
+      "event_id": "cbd87232-d970-4cc5-a35e-2dcb3c71d51a",
+      "event": "sub_ticket/merged",
+      "at": "2026-11-21T23:37:09.416776Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "sub_ticket_id": "a4c962a2-adfd-4b6a-aa99-fe53ea870579",
+      "commit": "23e814c31dd2f90c0290ae408b886148c3800466"
+    },
+    {
+      "event_id": "de213d5c-3773-4d5d-9a71-c97cb71710e1",
+      "event": "task/progress",
+      "at": "2026-11-21T23:37:31.056098Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Coordinator: flow check and integration suites on the combined AUX+scheduler tree"
+    },
+    {
+      "event_id": "eb4c967f-8b5f-41df-991a-3234f47aa4b4",
+      "event": "task/progress",
+      "at": "2026-11-21T23:37:31.223294Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "edb7a5dd-c663-4863-8783-9e5951b13cc3",
+      "event": "task/progress",
+      "at": "2026-11-21T23:37:31.294270Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "0a98d531-295a-4d51-b8f0-4fd7f42fbee1",
+      "event": "task/progress",
+      "at": "2026-11-21T23:37:31.299490Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "54f0fe84-5144-403e-b97f-efa5c658772d",
+      "event": "task/progress",
+      "at": "2026-11-21T23:39:38.171965Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "c327639c-84dc-42c4-a1d3-430610994406",
+      "event": "check/passed",
+      "at": "2026-11-21T23:39:38.178703Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "23e814c31dd2f90c0290ae408b886148c3800466",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "41e347b7-2409-4a3f-aed2-7540d230f9a8",
+      "event": "task/progress",
+      "at": "2026-11-21T23:57:36.685602Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "text": "Review started"
+    },
+    {
+      "event_id": "14c2a87d-2a09-455e-ab0c-51dc7bf7c8eb",
+      "event": "review/started",
+      "at": "2026-11-21T23:57:36.686263Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "93c1987a-5a3e-4c33-b63d-e5b97cb76841",
+      "event": "task/progress",
+      "at": "2026-11-21T23:57:41.624445Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "text": "Reviewer of combined tree launched",
+      "attempt_id": "55ab911b-b4f4-4cc5-aad5-b90ae0bbee85",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ecf2d903-e8d9-4866-8209-f599a35918e8",
+      "event": "task/progress",
+      "at": "2026-11-21T23:58:22.885200Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "ff0346a4-9275-44cc-9f4a-65c63932be47",
+      "event": "task/progress",
+      "at": "2026-11-21T23:58:22.885236Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "79734a79-189a-40c1-b519-788a63ca0308",
+      "event": "review/changes_requested",
+      "at": "2026-11-21T23:58:22.885928Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "23e814c31dd2f90c0290ae408b886148c3800466"
+    },
+    {
+      "event_id": "716fa4c4-61dd-4581-a9e4-893d081256b4",
+      "event": "task/progress",
+      "at": "2026-11-21T23:59:00.060169Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Fixing scheduler safety docs after combined review"
+    },
+    {
+      "event_id": "bbd35e35-b0a9-491e-9e2c-3316155c0527",
+      "event": "task/progress",
+      "at": "2026-11-21T23:59:16.366097Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5622ec79-efd7-4122-8573-3c11822e4e40",
+      "event": "task/progress",
+      "at": "2026-11-21T23:59:16.437429Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "3cd2bb67-2e17-46d1-a0eb-5be20473b6f9",
+      "event": "task/progress",
+      "at": "2026-11-21T23:59:16.446429Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "c87f94e2-8b5f-4ea3-af3e-ecb0aa59842c",
+      "event": "task/progress",
+      "at": "2026-11-22T00:00:56.668312Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22237002-daa7-4d36-9e0f-f9f2896af2d6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "b6674adf-b434-45de-9a2d-4143327401f7",
+      "event": "check/passed",
+      "at": "2026-11-22T00:00:56.674631Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "62a33fcfd34550cffcb4aed77897a7b7edc72443",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "954e2a34-4d74-43f0-a3b2-6c5af7615377",
+      "event": "task/progress",
+      "at": "2026-11-22T00:01:43.439028Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d634edf5-e5c0-4610-bf89-a6d87b0d6dbb",
+      "event": "review/passed",
+      "at": "2026-11-22T00:01:43.440032Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "53c61518-2585-46fe-b837-993f26ae9baa",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "62a33fcfd34550cffcb4aed77897a7b7edc72443"
+    },
+    {
+      "event_id": "c9e75570-e07e-4e84-88ee-6dc8fffe65a4",
+      "event": "ticket/closed",
+      "at": "2026-11-22T00:02:01.899514Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-22T00:02:01.899485Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "0ee7bddca4a55e9b4299c269201392e051eaa09b"
+  },
+  "priority": "medium",
+  "severity": "unknown",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "bca50104d8ed5e3444c10f9a7820d427c78d0faf",
+        "tree": "e26f9a2f881d3130431e406070d21340301f021e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T22:00:14.928376Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/edf38e12-685f-4848-be72-3489f0871c19/e26f9a2f881d-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "bca50104d8ed5e3444c10f9a7820d427c78d0faf",
+        "tree": "e26f9a2f881d3130431e406070d21340301f021e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T22:02:18.532553Z",
+        "duration_s": 123.6,
+        "log": "/tmp/factory-flow/edf38e12-685f-4848-be72-3489f0871c19/e26f9a2f881d-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_drivers/agent_auxiliary -f ../../Makefile.drv all && make -C indigo_test test-agent-auxiliary",
+        "commit": "bca50104d8ed5e3444c10f9a7820d427c78d0faf",
+        "tree": "e26f9a2f881d3130431e406070d21340301f021e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T22:02:24.910082Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/edf38e12-685f-4848-be72-3489f0871c19/e26f9a2f881d-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "73a1dc9393337ba250c20a14788185327ea28953",
+        "tree": "4ae49cf70247d2666efd88fcb0793f8ec02664a3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T22:04:13.121254Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/edf38e12-685f-4848-be72-3489f0871c19/4ae49cf70247-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "73a1dc9393337ba250c20a14788185327ea28953",
+        "tree": "4ae49cf70247d2666efd88fcb0793f8ec02664a3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T22:06:13.851424Z",
+        "duration_s": 120.7,
+        "log": "/tmp/factory-flow/edf38e12-685f-4848-be72-3489f0871c19/4ae49cf70247-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "23e814c31dd2f90c0290ae408b886148c3800466",
+        "tree": "b27135b70baecd72e440bd216b670fe01e8d8272",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T23:37:31.293294Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/edf38e12-685f-4848-be72-3489f0871c19/b27135b70bae-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "23e814c31dd2f90c0290ae408b886148c3800466",
+        "tree": "b27135b70baecd72e440bd216b670fe01e8d8272",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T23:39:38.170840Z",
+        "duration_s": 126.9,
+        "log": "/tmp/factory-flow/edf38e12-685f-4848-be72-3489f0871c19/b27135b70bae-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "62a33fcfd34550cffcb4aed77897a7b7edc72443",
+        "tree": "b79804a58f3373d682c18c2e9fec5ff74db89734",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-21T23:59:16.436280Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/edf38e12-685f-4848-be72-3489f0871c19/b79804a58f33-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "62a33fcfd34550cffcb4aed77897a7b7edc72443",
+        "tree": "b79804a58f3373d682c18c2e9fec5ff74db89734",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T00:00:56.667207Z",
+        "duration_s": 100.2,
+        "log": "/tmp/factory-flow/edf38e12-685f-4848-be72-3489f0871c19/b79804a58f33-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "No defects found. Agent: AGENT_AUX_SAFETY (light, RO, AGENT_MAIN_GROUP, item SAFE, property+item IDLE) created after successful indigo_filter_device_attach, defined through agent_enumerate_properties that matches the agent_mount pattern (own-filter-client guard, INDIGO_DEFINE_MATCHING_PROPERTY, delegate to indigo_filter_enumerate_properties); released in detach before indigo_filter_device_detach; private data allocated at INIT and freed after detach at SHUTDOWN, same as agent_mount; additional instances get their own zeroed private data via update_additional_instances and their own property. The guard only skips the agent's own filter client, whose define callback ignores its own device anyway, so filter behaviour is unchanged (test_aux_simulator 13/13 incl. auxiliary_agent_mirrors_all_devices). DRIVER_VERSION 0x03000005->0x03000006, names in the header, PROPERTIES.md row correct, Makefile target + INTEGRATION_TESTS entry and Xcode file ref + integration group membership correct; git diff --check clean. Test checks type/perm/state/group/count/item name/value on attach, name-selected (count 1) and full enumeration, one delete on shutdown and identical shape after re-init; deterministic (3/3 runs pass). generate_help.py --check reports the bundle current; decoding old/new header shows only mcp_help_text_11 (auxiliary.md) changed, metadata identical. Tests: test-agent-auxiliary 3/3 x3 runs, test_aux_simulator 13/13; test-clean run afterwards.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "73a1dc9393337ba250c20a14788185327ea28953",
+        "tree": "4ae49cf70247d2666efd88fcb0793f8ec02664a3",
+        "at": "2026-11-21T22:09:21.863908Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Integration is clean: scheduler-local names AUX_AGENT/AUX_SAFETY_PROPERTY/AUX_SAFETY_SAFE_ITEM (indigo_agent_scheduler.c:61-63) equal indigo_agent_auxiliary.h:50-51; test_agent_scheduler.c includes that header (line 45) so the #ifndef fallbacks (47-53) are inactive and identical; PROPERTIES.md Auxiliary row/source list and Scheduler section coexist without lost hunks; merge-tree vs master clean (master only adds factory close f626a7cf6); generate_help.py --check current; no conflict markers; pbxproj only adds test_agent_auxiliary.c. Code: Idle light counts as missing (evaluate_safety, indigo_agent_scheduler.c:2057-2060), so default SAFE keeps existing setups unchanged and UNSAFE holds indefinitely. DEFECT (docs, user-misleading): the scheduler docs never say that the current Auxiliary Agent defines AGENT_AUX_SAFETY but does not compute it and it always stays Idle. INDIGO_SCHEDULER_GUIDE.md:620 says 'Set up the safety in the Auxiliary Agent; the scheduler only reads it' although nothing can be set up there yet, and :636 says UNSAFE 'holds the scheduler until a safe signal arrives' which with the current agent never happens; SCHEDULER.md:605 (Unsafe hold, Safety) likewise. Fix: in both docs add one sentence that the Auxiliary Agent does not compute the light yet, so it stays Idle, AGENT_SCHEDULER_SAFETY_MISSING decides, and UNSAFE then holds the scheduler permanently (keep SAFE until the agent computes safety); drop or reword 'Set up the safety in the Auxiliary Agent'. Optional nit: the comment 'until its header provides them' at test_agent_scheduler.c:47 is stale; the fallback block can be removed.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "23e814c31dd2f90c0290ae408b886148c3800466",
+        "tree": "b27135b70baecd72e440bd216b670fe01e8d8272",
+        "at": "2026-11-21T23:58:22.885098Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of tree b79804a58f33 (commit 62a33fcfd). The fix is docs only (+5 -3) in indigo_docs/INDIGO_SCHEDULER_GUIDE.md and indigo_drivers/agent_scheduler/doc/SCHEDULER.md; nothing else changed since 23e814c31 and the worktree is clean. GUIDE:620 now ends 'The scheduler only reads the light.' (the misleading 'Set up the safety in the Auxiliary Agent' is gone); a new note at :622 says the current Auxiliary Agent defines AGENT_AUX_SAFETY but does not compute it, the light stays Idle, SAFETY_MISSING decides, keep SAFE; :638 adds that UNSAFE then holds permanently. SCHEDULER.md:605 Safety paragraph states the same. This matches the code (Idle counts as missing, evaluate_safety indigo_agent_scheduler.c:2057-2060) and the AUX docs (PROPERTIES.md row, mcp/agents/auxiliary.md). generate_help.py --check is current (the scheduler docs are not in the bundle). Earlier integration findings still hold. Optional nit not fixed: the stale fallback comment at test_agent_scheduler.c:47.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "62a33fcfd34550cffcb4aed77897a7b7edc72443",
+        "tree": "b79804a58f3373d682c18c2e9fec5ff74db89734",
+        "at": "2026-11-22T00:01:43.438757Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-21T22:02:33.251873Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementation: AGENT_AUX_SAFETY (light, RO, group Agent, item SAFE) is created on attach in new agent private data with property and item IDLE, defined through a new agent_enumerate_properties that delegates to indigo_filter_enumerate_properties, deleted by the bus wildcard delete on detach and released in agent_device_detach. Names AGENT_AUX_SAFETY_PROPERTY_NAME / AGENT_AUX_SAFETY_SAFE_ITEM_NAME are in indigo_agent_auxiliary.h. DRIVER_VERSION 0x03000005 -> 0x03000006. Tests: new indigo_test/integration/test_agent_auxiliary.c (target test-agent-auxiliary, in INTEGRATION_TESTS, Xcode group integration): safety_defined_on_attach, safety_enumerated_on_request (name-selected and full enumeration), safety_deleted_with_agent (one delete on shutdown, redefined with same shape on restart): 3/3 passed. Regression: test_aux_simulator 13/13 passed (includes auxiliary_agent_mirrors_all_devices). flow check whitespace+unit passed; --command agent build + test-agent-auxiliary passed. Not done: indigo_docs/mcp/agents/auxiliary.md (says the four selectors are all agent-specific behavior) and the compiled MCP help were not updated, left for owner decision. tools/run_driver_test.py agent_auxiliary not run (no test-run mode was requested; it would also write the README test record).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-21T22:06:23.424855Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "MCP doc follow-up: indigo_docs/mcp/agents/auxiliary.md gained the auxiliary.safety inventory row (AGENT_AUX_SAFETY.SAFE, reserved, stays Idle) and two sentences were adjusted (intro and Coverage). indigo_drivers/agent_mcp/indigo_agent_mcp_help.h regenerated with generate_help.py; decoding old and new byte arrays shows only mcp_help_text_11 (auxiliary.md) changed, matching the doc diff, rest of the header identical. test-agent-mcp: embedded help cases (discovery, all resources and aliases, argument boundaries, reload) pass; 'idempotent automatic lifecycle' fails deterministically because the test expects version 0x03000003 while master's agent_mcp DRIVER_VERSION is 0x03000004 (neither file touched here, baseline); 'admission and unload draining' failed in 2 of 4 runs (timing-dependent, unrelated to help text). flow check whitespace+unit passed on the final tree.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "sub_ticket_merged_at": "2026-11-21T23:37:09.416149Z",
+    "landing": {
+      "commit": "0ee7bddca4a55e9b4299c269201392e051eaa09b",
+      "tree": "b79804a58f3373d682c18c2e9fec5ff74db89734",
+      "base": "master",
+      "at": "2026-11-22T00:02:01.809871Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "unknown",
+    "profile": "simple",
+    "at": "2026-11-21T21:52:19.919097Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-21T21:54:21.385464Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1137926.978,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 61,
+    "sha256": "160ba09100a9d651b0f07a6fb347c98be9c8115875958a0e316816e670442145"
+  }
+}
