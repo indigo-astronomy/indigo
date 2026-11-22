@@ -282,11 +282,11 @@ def assert_pointing(path, ra, dec):
 
 def sexagesimal(value, sign):
 	negative = value < 0
-	value = abs(value)
-	degrees = int(value)
-	minutes = int((value - degrees) * 60)
-	seconds = (value - degrees - minutes / 60) * 3600
-	return ("-" if negative else ("+" if sign else "")) + "%02d:%02d:%04.1f" % (degrees, minutes, seconds)
+	# round to the printed tenth of a second first, so that 59.95 s carries into the minute instead of printing 60.0
+	tenths = round(abs(value) * 36000)
+	degrees, tenths = divmod(tenths, 36000)
+	minutes, tenths = divmod(tenths, 600)
+	return ("-" if negative else ("+" if sign else "")) + "%02d:%02d:%04.1f" % (degrees, minutes, tenths / 10)
 
 
 def main():
@@ -342,6 +342,10 @@ def main():
 			run = Run(client, images, records)
 			client.send("getProperties", {"version": 0x300})
 			client.wait(lambda: client.property("Server", "DRIVERS") is not None, 20, "server drivers")
+			# indigo_server offers the dynamic drivers listed in build/share/indigo/indigo_drivers, which only the top-level build writes
+			missing = sorted(set("indigo_" + d for d in drivers) - {i["name"] for i in client.property("Server", "DRIVERS")["items"]})
+			if missing:
+				raise RuntimeError("Server.DRIVERS does not offer " + ", ".join(missing) + "; build them with 'make all' so that build/share/indigo/indigo_drivers lists them")
 			client.change_switch("Server", "DRIVERS", {"indigo_" + d: True for d in drivers})
 			client.wait(lambda: client.property(AGENT, "AGENT_SCHEDULER_SETTINGS") is not None and client.property("Mount Agent", "GEOGRAPHIC_COORDINATES") is not None and client.property("Guider Agent", "AGENT_START_PROCESS") is not None, 30, "agents")
 			client.change_number(AGENT, "AGENT_SCHEDULER_SETTINGS", {"IDLE_CHECK_INTERVAL": 1, "STOP_TIMEOUT": 60, "START_TIMEOUT": 10})
