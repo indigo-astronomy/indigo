@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000021
+#define DRIVER_VERSION       0x03000022
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -967,6 +967,9 @@ static bool synscan_slew_axis_to_steps(indigo_device *device, synscan_axis axis,
 		&& synscan_axis_command(device, 'J', axis);
 }
 
+// The SLEW light is ALERT whenever MOUNT_EQUATORIAL_COORDINATES is, the ALERT that indigo_update_coordinates() keeps after
+// a refused or failed request included, so it is derived from the state that function published: call it after
+// indigo_update_coordinates() or indigo_reject_coordinates_change(), never between writing the state and publishing it.
 static void synscan_update_mount_state(indigo_device *device) {
 	MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 	MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -1226,12 +1229,13 @@ static bool synscan_update_mount_coordinates(indigo_device *device) {
 	indigo_property_state coordinates_state = PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE && !PRIVATE_DATA->sync_pending ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 	MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = coordinates_state;
-	synscan_update_mount_state(device);
 	indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 	// the mount base driver derives MOUNT_HORIZONTAL_COORDINATES and MOUNT_LST_TIME from the equatorial
 	// coordinates and publishes them with them
 	indigo_update_coordinates(device, NULL);
+	// after the publication, which turns the OK of the reading into a kept ALERT
+	synscan_update_mount_state(device);
 	return true;
 }
 
@@ -1649,6 +1653,8 @@ static bool synscan_configure(indigo_device *device) {
 		}
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	// MOUNT_STATE is defined after this, with the SLEW light of the coordinates it is defined with
+	MOUNT_STATE_SLEW_ITEM->light.value = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE ? INDIGO_ALERT_STATE : INDIGO_IDLE_STATE;
 	// The encoder position is defined OK only with a reading of this session, otherwise with ALERT
 	if (!MOUNT_ENCODER_POSITION_PROPERTY->hidden) {
 		MOUNT_ENCODER_POSITION_PROPERTY->state = coordinates_read && synscan_read_encoder_position(device) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -2495,9 +2501,12 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	if (PRIVATE_DATA->sync_pending) {
 		PRIVATE_DATA->sync_pending = false;
 		indigo_mount_sync(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
+		// the result follows the BUSY of the request, indigo_update_coordinates() publishes it unchanged
+		synscan_update_mount_state(device);
 	} else {
 		if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_SLEWING) {
 			indigo_reject_coordinates_change(device, "Mount is moving");
+			synscan_update_mount_state(device);
 		} else {
 			long ra_target = 0;
 			long dec_target = 0;

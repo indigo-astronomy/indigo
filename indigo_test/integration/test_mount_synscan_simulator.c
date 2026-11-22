@@ -384,9 +384,16 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void install_observer(void);
+static void remove_observer(void);
+static unsigned int synscan_slew_busy_publications(void);
+static bool synscan_slew_light_alert_across_polls(const char *label, int polls);
+static bool synscan_slew_light_returned_to_idle(const char *label, unsigned int busy);
+
 // A parked mount refuses motion, tracking and goto requests. The refusal must not leave the
 // requested values in the property: the driver has to keep publishing the state the hardware is
-// actually in, so a client cannot read a parked mount as tracking.
+// actually in, so a client cannot read a parked mount as tracking. The SLEW light of MOUNT_STATE is
+// ALERT as long as the coordinates keep the ALERT of the refused GOTO, BUSY during the accepted one.
 static void synscan_mount_keeps_state_when_parked_request_is_refused(void) {
 	const char *park_position_items[] = {
 		MOUNT_PARK_POSITION_HA_ITEM_NAME,
@@ -397,6 +404,7 @@ static void synscan_mount_keeps_state_when_parked_request_is_refused(void) {
 		0
 	};
 	external_serial_simulator simulator = { 0 };
+	install_observer();
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
 	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
@@ -423,19 +431,25 @@ static void synscan_mount_keeps_state_when_parked_request_is_refused(void) {
 	// a refused GOTO and sync stay ALERT over the following polls, through the unpark, until an accepted GOTO
 	double parked_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", synscan_mount.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, fmod(parked_ra + 1, 24), 10, 2, 0.1));
+	SERIAL_CHECK_TRUE(synscan_slew_light_alert_across_polls("parked GOTO", 2));
 	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", synscan_mount.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, fmod(parked_ra + 1, 24), 10, 2, 0.1));
+	SERIAL_CHECK_TRUE(synscan_slew_light_alert_across_polls("parked sync", 2));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, synscan_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(synscan_slew_light_alert_across_polls("unparked after a refused sync", 1));
 	const char *goto_items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	double goto_values[] = { cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), 5 };
+	unsigned int busy = synscan_slew_busy_publications();
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, ARRAY_SIZE(goto_items), goto_items, goto_values));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(synscan_slew_light_returned_to_idle("GOTO after the refusals", busy));
 cleanup:
+	remove_observer();
 	if (context.connected) {
 		stop_serial_driver(&synscan_mount);
 	}
@@ -2265,6 +2279,10 @@ static _Atomic double observed_encoder_previous_ra, observed_encoder_previous_de
 static _Atomic double observed_raw_ra, observed_raw_dec, observed_encoders_raw_ra, observed_encoders_raw_dec, observed_encoders_lst, observed_longitude;
 static atomic_bool observed_encoders_ok;
 
+// The SLEW light of MOUNT_STATE when the property was defined, and the number of its publications with that light BUSY.
+static atomic_int observed_slew_define_light;
+static atomic_uint observed_slew_busy;
+
 static double observed_item_value(indigo_property *property, const char *name) {
 	for (int i = 0; i < property->count; i++) {
 		if (!strcmp(property->items[i].name, name)) {
@@ -2274,9 +2292,21 @@ static double observed_item_value(indigo_property *property, const char *name) {
 	return NAN;
 }
 
+static int observed_slew_light(indigo_property *property) {
+	for (int i = 0; i < property->count; i++) {
+		if (!strcmp(property->items[i].name, MOUNT_STATE_SLEW_ITEM_NAME)) {
+			return property->items[i].light.value;
+		}
+	}
+	return -1;
+}
+
 static indigo_result observe_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, synscan_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 		atomic_store(&observed_coordinates_define_state, property->state);
+	}
+	if (!strcmp(property->device, synscan_mount.device_name) && !strcmp(property->name, MOUNT_STATE_PROPERTY_NAME)) {
+		atomic_store(&observed_slew_define_light, observed_slew_light(property));
 	}
 	if (!strcmp(property->device, synscan_mount.device_name) && !strcmp(property->name, MOUNT_ENCODER_POSITION_PROPERTY_NAME)) {
 		atomic_store(&observed_encoder_define_state, property->state);
@@ -2346,6 +2376,9 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 			atomic_store(&observed_previous_ra, ra);
 			atomic_store(&observed_previous_dec, dec);
 		}
+		if (!strcmp(property->name, MOUNT_STATE_PROPERTY_NAME) && observed_slew_light(property) == INDIGO_BUSY_STATE) {
+			atomic_fetch_add(&observed_slew_busy, 1);
+		}
 		if (!strcmp(property->name, MOUNT_RAW_COORDINATES_PROPERTY_NAME)) {
 			atomic_store(&observed_raw_ra, observed_item_value(property, MOUNT_RAW_COORDINATES_RA_ITEM_NAME));
 			atomic_store(&observed_raw_dec, observed_item_value(property, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME));
@@ -2390,6 +2423,7 @@ static indigo_result observe_message(indigo_client *client, indigo_device *devic
 
 static void install_observer(void) {
 	atomic_store(&observed_coordinates_define_state, -1);
+	atomic_store(&observed_slew_define_light, -1);
 	atomic_store(&observed_coordinates_alert, false);
 	atomic_store(&observed_encoder_define_state, -1);
 	atomic_store(&observed_encoder_alert, false);
@@ -3000,7 +3034,8 @@ cleanup:
 }
 
 // An abort that lands mid-slew stops both axes once, short of the target, ends the GOTO ALERT and puts RA back on
-// the tracking rate; the next GOTO is accepted.
+// the tracking rate; the SLEW light of MOUNT_STATE is ALERT with the coordinates until the next GOTO, which is accepted
+// and ends with the light IDLE.
 static void synscan_mount_aborts_goto_mid_slew(void) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
@@ -3037,7 +3072,9 @@ static void synscan_mount_aborts_goto_mid_slew(void) {
 	SERIAL_CHECK_TRUE(wait_for_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_TRACKING_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(synscan_ra_runs_at(&simulator, tracking));
-	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	// the coordinates keep the ALERT of the aborted GOTO until the next one, the SLEW light with them
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_TRACKING_ITEM_NAME, INDIGO_OK_STATE));
 	// the next GOTO is accepted and arrives. What is left of the RA move depends on where the abort landed; below the
 	// low-speed margin (6400 steps) it is a low-speed GOTO, which the simulator steps on its 5 ms tick and which can
@@ -3045,6 +3082,7 @@ static void synscan_mount_aborts_goto_mid_slew(void) {
 	SERIAL_CHECK_TRUE(synscan_start_goto(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, target_ra, target_dec));
 	SERIAL_CHECK_TRUE(wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE) || wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE) || wait_for_property_state_long(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fabs(synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME) - target_dec) < 0.05);
+	SERIAL_CHECK_TRUE(wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
 
 cleanup:
 	if (driver_started) {
@@ -3165,7 +3203,9 @@ static void synscan_mount_stops_park_on_disconnect(void) {
 }
 
 // A command of the GOTO sequence the controller refuses ends the GOTO ALERT with the controller's reason, sends no
-// later command of the sequence, keeps the real position, and the next GOTO is accepted.
+// later command of the sequence, keeps the real position, and the next GOTO is accepted. The SLEW light of MOUNT_STATE
+// stays ALERT with the coordinates across the polls; it used to be computed from the OK of the poll before
+// indigo_update_coordinates() turned it into the kept ALERT, and showed IDLE.
 static void synscan_mount_refused_goto_ends_alert(void) {
 	static const struct {
 		const char *prefix;
@@ -3201,8 +3241,12 @@ static void synscan_mount_refused_goto_ends_alert(void) {
 		SERIAL_CHECK_TRUE(observed_message_contains(observed_coordinates_message, faults[i].reason));
 		SERIAL_CHECK_TRUE(fabs(after - dec) < 0.01);
 		SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
-		SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value);
+		// the coordinates keep the ALERT until the next GOTO, and the SLEW light with them
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value);
+		SERIAL_CHECK_TRUE(synscan_slew_light_alert_across_polls(faults[i].prefix, 2));
+		unsigned int busy = synscan_slew_busy_publications();
 		SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, target_ra, target_dec));
+		SERIAL_CHECK_TRUE(synscan_slew_light_returned_to_idle(faults[i].prefix, busy));
 		SERIAL_CHECK_TRUE(fabs(synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME) - target_dec) < 0.05);
 	}
 
@@ -3349,7 +3393,8 @@ cleanup:
 }
 
 // A failed or malformed position reply makes the poll publish the coordinates ALERT with the last valid values, the
-// next good poll restores OK; at connect, a bad first reading marks only the coordinates and the connection completes.
+// next good poll restores OK; at connect, a bad first reading marks only the coordinates, and the SLEW light of
+// MOUNT_STATE defined with them, and the connection completes.
 static void synscan_mount_publishes_failed_poll_and_recovers(void) {
 	static const char *replies[] = { "!0", "=1" };
 	external_serial_simulator simulator = { 0 };
@@ -3361,8 +3406,9 @@ static void synscan_mount_publishes_failed_poll_and_recovers(void) {
 	driver_started = true;
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(!synscan_fault_pending(&simulator));
-	printf("    coordinates defined with state %d after a malformed first reading\n", atomic_load(&observed_coordinates_define_state));
+	printf("    coordinates defined with state %d, the SLEW light with %d after a malformed first reading\n", atomic_load(&observed_coordinates_define_state), atomic_load(&observed_slew_define_light));
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, atomic_load(&observed_coordinates_define_state));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, atomic_load(&observed_slew_define_light));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	for (int i = 0; i < ARRAY_SIZE(replies); i++) {
 		synscan_fresh_raw(MOUNT_RAW_COORDINATES_DEC_ITEM_NAME);
@@ -4082,6 +4128,44 @@ static bool wait_for_synscan_polls(int count) {
 	return false;
 }
 
+static unsigned int synscan_slew_busy_publications(void) {
+	return atomic_load(&observed_slew_busy);
+}
+
+// The SLEW light of MOUNT_STATE is ALERT whenever the coordinates are, the ALERT that indigo_update_coordinates() keeps
+// after a refused or failed request included. Checked once a whole poll ran after the call and again after each of
+// `polls` more polls: a poll publishes the raw coordinates first, so when the next one has published them, the poll
+// before it has published the coordinates and the lights.
+static bool synscan_slew_light_alert_across_polls(const char *label, int polls) {
+	if (!wait_for_synscan_polls(2)) {
+		fprintf(stderr, "    %s: no polls\n", label);
+		return false;
+	}
+	for (int i = 0; i <= polls; i++) {
+		if (i > 0 && !wait_for_synscan_polls(1)) {
+			fprintf(stderr, "    %s: no polls\n", label);
+			return false;
+		}
+		indigo_property_state coordinates = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state;
+		indigo_property_state light = find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value;
+		if (coordinates != INDIGO_ALERT_STATE || light != INDIGO_ALERT_STATE) {
+			fprintf(stderr, "    %s: after poll %d the coordinates are %d and the SLEW light %d, both expected ALERT (%d)\n", label, i, coordinates, light, INDIGO_ALERT_STATE);
+			return false;
+		}
+	}
+	return true;
+}
+
+// The request that cleared a kept ALERT ended OK: the SLEW light was published BUSY since `busy` was taken from
+// synscan_slew_busy_publications() and is IDLE with the coordinates OK now.
+static bool synscan_slew_light_returned_to_idle(const char *label, unsigned int busy) {
+	bool ok = synscan_slew_busy_publications() > busy && wait_for_light_item_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE) && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_OK_STATE;
+	if (!ok) {
+		fprintf(stderr, "    %s: %u SLEW light BUSY publications, the light is %d and the coordinates %d, expected BUSY, then IDLE and OK\n", label, synscan_slew_busy_publications() - busy, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	}
+	return ok;
+}
+
 // The publications of one request: the first is its BUSY, the result follows BUSY publications only, then nothing but
 // polls until the end of the log, all in the state of the result, at least `polls` of them; the result is published
 // once, the next publication of the coordinates is a poll's. A poll that ran between the start of the log and the
@@ -4134,7 +4218,8 @@ static bool synscan_request_coordinates(double ra, double dec) {
 // A sync of the alignment model publishes BUSY, and its result once; a refusal stays ALERT across the following polls,
 // also across a failed position readback, until the next request: an accepted sync ends OK, and so does a GoTo after a
 // refused sync. An ALERT of a failed readback that follows OK is replaced by the next good poll, and a reconnection
-// starts without the ALERT of the previous session.
+// starts without the ALERT of the previous session. The SLEW light of MOUNT_STATE is ALERT while the refusal is kept and
+// IDLE after the accepted sync.
 static void synscan_mount_sync_publishes_busy_and_keeps_a_refusal(void) {
 	static coordinates_event events[COORDINATES_LOG_SIZE];
 	external_serial_simulator simulator = { 0 };
@@ -4159,6 +4244,7 @@ static void synscan_mount_sync_publishes_busy_and_keeps_a_refusal(void) {
 	int count = stop_coordinates_log(events);
 	SERIAL_CHECK_TRUE(check_coordinates_request("refused sync", events, count, INDIGO_ALERT_STATE, 3));
 	SERIAL_CHECK_TRUE(observed_message_contains(observed_coordinates_message, "celestial pole"));
+	SERIAL_CHECK_TRUE(synscan_slew_light_alert_across_polls("refused sync", 1));
 	SERIAL_CHECK_EQ_INT(0, synscan_alignment_point_count());
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 0.01);
 	// a failed position readback publishes ALERT by itself, the next good poll keeps the ALERT of the refusal
@@ -4185,6 +4271,7 @@ static void synscan_mount_sync_publishes_busy_and_keeps_a_refusal(void) {
 	SERIAL_CHECK_TRUE(wait_for_synscan_polls(3));
 	count = stop_coordinates_log(events);
 	SERIAL_CHECK_TRUE(check_coordinates_request("accepted sync after a refused one", events, count, INDIGO_OK_STATE, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - (dec + 0.05)) < 0.01);
 	// a GoTo after a refused sync: BUSY until it arrives, then OK
 	start_coordinates_log();
@@ -4391,7 +4478,8 @@ static int synscan_skip_partial_poll(const coordinates_event *events, int count)
 }
 
 // The motion is started, then its finalizer reads a refused axis status; both axes are stopped and the motion ends in
-// ALERT, which the following polls keep. The auto home queries the status of the axis it moves, either one.
+// ALERT, which the following polls keep, and the SLEW light of MOUNT_STATE with it; the next GoTo after a failed GoTo
+// turns the light BUSY, then IDLE. The auto home queries the status of the axis it moves, either one.
 static void motion_failure_keeps_alert(synscan_motion motion) {
 	static coordinates_event events[COORDINATES_LOG_SIZE];
 	external_serial_simulator simulator = { 0 };
@@ -4425,6 +4513,12 @@ static void motion_failure_keeps_alert(synscan_motion motion) {
 	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L1", NULL, 0, NULL) > 0);
 	SERIAL_CHECK_TRUE(count_synscan_commands(&simulator, mark, ":L2", NULL, 0, NULL) > 0);
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(synscan_slew_light_alert_across_polls(name, 2));
+	if (motion == SYNSCAN_MOTION_GOTO) {
+		unsigned int busy = synscan_slew_busy_publications();
+		SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 2 + 24, 24), 40));
+		SERIAL_CHECK_TRUE(synscan_slew_light_returned_to_idle("GoTo after the failed GoTo", busy));
+	}
 	if (motion == SYNSCAN_MOTION_PARK) {
 		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
 		SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
@@ -4492,7 +4586,8 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// The motion is started and aborted; the abort ends it in ALERT, which the following polls keep.
+// The motion is started and aborted; the abort ends it in ALERT, which the following polls keep, and the SLEW light of
+// MOUNT_STATE with it; the next GoTo after an aborted GoTo turns the light BUSY, then IDLE.
 static void abort_keeps_alert(synscan_motion motion) {
 	static coordinates_event events[COORDINATES_LOG_SIZE];
 	external_serial_simulator simulator = { 0 };
@@ -4514,6 +4609,12 @@ static void abort_keeps_alert(synscan_motion motion) {
 	printf("    aborted %s: %d publications logged\n", name, count);
 	SERIAL_CHECK_TRUE(check_coordinates_request(name, events + start, count - start, INDIGO_ALERT_STATE, 3));
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(synscan_slew_light_alert_across_polls(name, 2));
+	if (motion == SYNSCAN_MOTION_GOTO) {
+		unsigned int busy = synscan_slew_busy_publications();
+		SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 2 + 24, 24), 40));
+		SERIAL_CHECK_TRUE(synscan_slew_light_returned_to_idle("GoTo after the aborted GoTo", busy));
+	}
 cleanup:
 	atomic_store(&coordinates_logging, false);
 	simulator_test_client.force_property_updates = false;
