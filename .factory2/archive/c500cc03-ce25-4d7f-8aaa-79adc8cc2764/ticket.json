@@ -1,0 +1,430 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c500cc03-ce25-4d7f-8aaa-79adc8cc2764",
+  "revision": 18,
+  "title": "indigo_test: test_aux_skyalert_transport fails, the fake serial port is never used",
+  "description": "Found on 2026-11-23 while working on ticket b7a94271-41ea-4e5e-b341-5970a0ba7798 and reproduced with master's driver source: test_aux_skyalert_transport fails 0/2. Since commit 48e5adb5d the aux_skyalert driver opens the port with indigo_uni_open_serial_with_speed2(), but the build rule for aux_skyalert_transport.o (indigo_test/Makefile around line 2352) only redirects -Dindigo_uni_open_serial_with_speed=skyalert_test_open, so the fake transport is never used. Proposed fix: redirect indigo_uni_open_serial_with_speed2 and give skyalert_test_open the extra 'const char **error_message' parameter. Check other *_transport tests for the same stale redirect.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-23T12:19:04.255452Z",
+  "status": "closed",
+  "branch": "ticket/c500cc03-ce25-4d7f-8aaa-79adc8cc2764",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a75164b0-281b-4799-a356-0baf40a42e4b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T13:02:27.481076Z",
+          "last_activity_at": "2026-11-23T13:15:31.715193Z",
+          "ended_at": "2026-11-23T13:15:31.715193Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 784234.117,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:02:27.481076Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/c500cc03-ce25-4d7f-8aaa-79adc8cc2764"
+        },
+        {
+          "at": "2026-11-23T13:15:31.715193Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 784234.117,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "506f56a4-d08c-47d7-8597-1c9667d690cb",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "feb6c5f2-7837-4b86-ab5e-ee3fa02d3b75",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T13:15:31.715231Z",
+          "last_activity_at": "2026-11-23T13:20:47.965709Z",
+          "ended_at": "2026-11-23T13:20:47.965709Z",
+          "outcome": {
+            "summary": "Diff (504434108 vs master) touches only indigo_test/Makefile:2352 (redirect now -Dindigo_uni_open_serial_with_speed2=skyalert_test_open) and indigo_test/integration/test_aux_skyalert_transport.c:32 (fake takes const char **error_message). Root cause confirmed: indigo_drivers/aux_skyalert/indigo_aux_skyalert.c:233 calls indigo_uni_open_serial_with_speed2 and is its only open call; the old redirect did not match. Fake signature indigo_uni_handle *(const char *, int, int, const char **) matches indigo_libs/indigo/indigo_uni_io.h:176 and indigo_uni_io.c:908; compiled without warnings (header prototype is renamed by the same macro, so any mismatch would be a conflicting-types error). The other redirected calls (close, discard, printf, read_section) are all the driver uses. nm on the rebuilt aux_skyalert_transport.o shows only skyalert_test_* undefined, no indigo_uni_* references, so the fake is really used; the test asserts fake-specific record values and opens==closes. Rebuilt the object and test from scratch: test_aux_skyalert_transport 2/2 PASS; test_aux_skyalert_simulator 14/14 PASS (run from indigo_test/). No other changes, no driver change. No findings.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 316250.478,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:15:31.715231Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T13:20:47.965709Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Diff (504434108 vs master) touches only indigo_test/Makefile:2352 (redirect now -Dindigo_uni_open_serial_with_speed2=skyalert_test_open) and indigo_test/integration/test_aux_skyalert_transport.c:32 (fake takes const char **error_message). Root cause confirmed: indigo_drivers/aux_skyalert/indigo_aux_skyalert.c:233 calls indigo_uni_open_serial_with_speed2 and is its only open call; the old redirect did not match. Fake signature indigo_uni_handle *(const char *, int, int, const char **) matches indigo_libs/indigo/indigo_uni_io.h:176 and indigo_uni_io.c:908; compiled without warnings (header prototype is renamed by the same macro, so any mismatch would be a conflicting-types error). The other redirected calls (close, discard, printf, read_section) are all the driver uses. nm on the rebuilt aux_skyalert_transport.o shows only skyalert_test_* undefined, no indigo_uni_* references, so the fake is really used; the test asserts fake-specific record values and opens==closes. Rebuilt the object and test from scratch: test_aux_skyalert_transport 2/2 PASS; test_aux_skyalert_simulator 14/14 PASS (run from indigo_test/). No other changes, no driver change. No findings."
+        }
+      ],
+      "result": {
+        "summary": "Diff (504434108 vs master) touches only indigo_test/Makefile:2352 (redirect now -Dindigo_uni_open_serial_with_speed2=skyalert_test_open) and indigo_test/integration/test_aux_skyalert_transport.c:32 (fake takes const char **error_message). Root cause confirmed: indigo_drivers/aux_skyalert/indigo_aux_skyalert.c:233 calls indigo_uni_open_serial_with_speed2 and is its only open call; the old redirect did not match. Fake signature indigo_uni_handle *(const char *, int, int, const char **) matches indigo_libs/indigo/indigo_uni_io.h:176 and indigo_uni_io.c:908; compiled without warnings (header prototype is renamed by the same macro, so any mismatch would be a conflicting-types error). The other redirected calls (close, discard, printf, read_section) are all the driver uses. nm on the rebuilt aux_skyalert_transport.o shows only skyalert_test_* undefined, no indigo_uni_* references, so the fake is really used; the test asserts fake-specific record values and opens==closes. Rebuilt the object and test from scratch: test_aux_skyalert_transport 2/2 PASS; test_aux_skyalert_simulator 14/14 PASS (run from indigo_test/). No other changes, no driver change. No findings.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 316250.478,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9f68f76b-07cb-4ca0-a92f-ece93781bee1",
+      "event": "ticket/created",
+      "at": "2026-11-23T12:19:04.255775Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "354bda55-07af-49e2-859e-4974772559dc",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T12:23:10.139991Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "d2abfe06-a245-4351-a841-cf1989135d57",
+      "event": "task/progress",
+      "at": "2026-11-23T13:02:27.482355Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "text": "Implementation started on branch ticket/c500cc03-ce25-4d7f-8aaa-79adc8cc2764"
+    },
+    {
+      "event_id": "ee10b52c-b662-4f8a-989f-5e04a0322d6c",
+      "event": "ticket/started",
+      "at": "2026-11-23T13:02:27.493173Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/c500cc03-ce25-4d7f-8aaa-79adc8cc2764",
+      "base": "master"
+    },
+    {
+      "event_id": "1cabd5b5-c30d-446f-b7f8-56cd8a580948",
+      "event": "task/progress",
+      "at": "2026-11-23T13:02:41.065720Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "text": "Implementer launched",
+      "attempt_id": "a75164b0-281b-4799-a356-0baf40a42e4b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "96ab6250-484d-4262-8e2c-7f7a638a26af",
+      "event": "task/progress",
+      "at": "2026-11-23T13:02:49.566926Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "text": "Reproducing test_aux_skyalert_transport failure before the fix"
+    },
+    {
+      "event_id": "658d2224-c444-4338-b3a8-4eb3f5ee5112",
+      "event": "task/progress",
+      "at": "2026-11-23T13:04:26.143270Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "text": "Running test_aux_skyalert_transport and test_aux_skyalert_simulator after the fix"
+    },
+    {
+      "event_id": "4d2f6d91-7d4c-4b41-8b40-fc2dffcf3139",
+      "event": "task/progress",
+      "at": "2026-11-23T13:07:53.826883Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "97696748-35fc-452d-9482-da9ceaad2f91",
+      "event": "task/progress",
+      "at": "2026-11-23T13:07:53.842596Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "bc34771c-9489-4494-b614-ef0d90ba5c02",
+      "event": "task/progress",
+      "at": "2026-11-23T13:07:53.846788Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "bde6bdd9-368e-43ba-8e68-31346bf055dd",
+      "event": "task/progress",
+      "at": "2026-11-23T13:09:14.730154Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "431c428f-1694-442c-bcc2-29bfbcbf70f5",
+      "event": "check/passed",
+      "at": "2026-11-23T13:09:14.737774Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "504434108a33ff84aac61a0a01bbc4197fa18e17",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "12caf5ef-4ae6-48e3-88d6-2cc28bee1c03",
+      "event": "ticket/note",
+      "at": "2026-11-23T13:12:31.426282Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction (worktree at 4f07d6d93, before the fix): build/integration/test_aux_skyalert_transport 0/2 (both FAIL; log shows 'Failed to open fake (No such file or directory)' because the driver calls indigo_uni_open_serial_with_speed2(), which the Makefile rule did not redirect, so the real open ran). Fix: indigo_test/Makefile aux_skyalert_transport.o now redirects -Dindigo_uni_open_serial_with_speed2=skyalert_test_open; skyalert_test_open() in integration/test_aux_skyalert_transport.c takes the extra 'const char **error_message' parameter. Driver unchanged. After the fix: test_aux_skyalert_transport 2/2 PASS; test_aux_skyalert_simulator 14/14 PASS; plain flow check (whitespace, unit) passed on tree ba6fa15bb48c.",
+      "tokens": null
+    },
+    {
+      "event_id": "c73b9880-cbee-40d8-ad47-ba5c0da8c219",
+      "event": "task/progress",
+      "at": "2026-11-23T13:15:31.613955Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "605666a0-e68a-4619-a347-2ac46d2be6e6",
+      "text": "Reviewer launched",
+      "attempt_id": "a75164b0-281b-4799-a356-0baf40a42e4b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "aa85d79c-8f83-4682-b43b-d6aa0f157eeb",
+      "event": "task/progress",
+      "at": "2026-11-23T13:15:31.715284Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "506f56a4-d08c-47d7-8597-1c9667d690cb",
+      "text": "Review started"
+    },
+    {
+      "event_id": "19235ad5-79e6-4de3-8b67-53625661b679",
+      "event": "review/started",
+      "at": "2026-11-23T13:15:31.715581Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "f2abb8f1-f09b-493d-9e19-7ff5d9ace05d",
+      "event": "task/progress",
+      "at": "2026-11-23T13:15:45.708296Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "506f56a4-d08c-47d7-8597-1c9667d690cb",
+      "text": "Building and running skyalert transport and simulator tests"
+    },
+    {
+      "event_id": "cba06560-6402-4e45-9f89-c884dc74ec72",
+      "event": "task/progress",
+      "at": "2026-11-23T13:20:47.965779Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "506f56a4-d08c-47d7-8597-1c9667d690cb",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "34d9b852-9cb5-494e-80f0-e2d75d9bbf09",
+      "event": "review/passed",
+      "at": "2026-11-23T13:20:47.966121Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "506f56a4-d08c-47d7-8597-1c9667d690cb",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "504434108a33ff84aac61a0a01bbc4197fa18e17"
+    },
+    {
+      "event_id": "3e33e612-d038-4eb1-a3ee-c194b10eff01",
+      "event": "ticket/closed",
+      "at": "2026-11-23T13:21:54.079718Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-23T13:21:54.079674Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "bfa4cffd2779bc7174de78b35b5f63b9887c7ccc"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "504434108a33ff84aac61a0a01bbc4197fa18e17",
+        "tree": "ba6fa15bb48cbd10b97e2d970eac85775fef1eae",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T13:07:53.842220Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/c500cc03-ce25-4d7f-8aaa-79adc8cc2764/ba6fa15bb48c-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "504434108a33ff84aac61a0a01bbc4197fa18e17",
+        "tree": "ba6fa15bb48cbd10b97e2d970eac85775fef1eae",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T13:09:14.725714Z",
+        "duration_s": 80.9,
+        "log": "/tmp/factory-flow/c500cc03-ce25-4d7f-8aaa-79adc8cc2764/ba6fa15bb48c-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Diff (504434108 vs master) touches only indigo_test/Makefile:2352 (redirect now -Dindigo_uni_open_serial_with_speed2=skyalert_test_open) and indigo_test/integration/test_aux_skyalert_transport.c:32 (fake takes const char **error_message). Root cause confirmed: indigo_drivers/aux_skyalert/indigo_aux_skyalert.c:233 calls indigo_uni_open_serial_with_speed2 and is its only open call; the old redirect did not match. Fake signature indigo_uni_handle *(const char *, int, int, const char **) matches indigo_libs/indigo/indigo_uni_io.h:176 and indigo_uni_io.c:908; compiled without warnings (header prototype is renamed by the same macro, so any mismatch would be a conflicting-types error). The other redirected calls (close, discard, printf, read_section) are all the driver uses. nm on the rebuilt aux_skyalert_transport.o shows only skyalert_test_* undefined, no indigo_uni_* references, so the fake is really used; the test asserts fake-specific record values and opens==closes. Rebuilt the object and test from scratch: test_aux_skyalert_transport 2/2 PASS; test_aux_skyalert_simulator 14/14 PASS (run from indigo_test/). No other changes, no driver change. No findings.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "504434108a33ff84aac61a0a01bbc4197fa18e17",
+        "tree": "ba6fa15bb48cbd10b97e2d970eac85775fef1eae",
+        "at": "2026-11-23T13:20:47.965647Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T13:12:31.426002Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction (worktree at 4f07d6d93, before the fix): build/integration/test_aux_skyalert_transport 0/2 (both FAIL; log shows 'Failed to open fake (No such file or directory)' because the driver calls indigo_uni_open_serial_with_speed2(), which the Makefile rule did not redirect, so the real open ran). Fix: indigo_test/Makefile aux_skyalert_transport.o now redirects -Dindigo_uni_open_serial_with_speed2=skyalert_test_open; skyalert_test_open() in integration/test_aux_skyalert_transport.c takes the extra 'const char **error_message' parameter. Driver unchanged. After the fix: test_aux_skyalert_transport 2/2 PASS; test_aux_skyalert_simulator 14/14 PASS; plain flow check (whitespace, unit) passed on tree ba6fa15bb48c.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "bfa4cffd2779bc7174de78b35b5f63b9887c7ccc",
+      "tree": "ba6fa15bb48cbd10b97e2d970eac85775fef1eae",
+      "base": "master",
+      "at": "2026-11-23T13:21:53.967830Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-23T12:19:04.255452Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-23T12:23:10.139937Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1100484.595,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 24,
+    "sha256": "7f9240e2e36269b2988329ebbab5561e76246ae6acd0aab013fe7672fccbdab5"
+  }
+}
