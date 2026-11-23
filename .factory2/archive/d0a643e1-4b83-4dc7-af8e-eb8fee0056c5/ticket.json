@@ -1,0 +1,825 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d0a643e1-4b83-4dc7-af8e-eb8fee0056c5",
+  "revision": 45,
+  "title": "Mount drivers: MOUNT_ON_COORDINATES_SET is read when the handler runs, so a GoTo admitted before a mode change becomes a sync",
+  "description": "Found on 2026-11-21 while investigating ticket c3aeb19f-08e7-4d4b-a897-d9cf2002d6cf; reproduced in the mount_simulator and mount_synscan simulator suites with scratch cases. MOUNT_ON_COORDINATES_SET has no BUSY guard (indigo_mount_driver.c about lines 696-700) and the queued coordinates handler reads the mode when it runs, not at admission: if SYNC is selected after a GoTo is admitted but before its handler runs, the handler syncs to the GoTo target, publishes OK at once and the mount never moves. In mount_synscan the GoTo finalizer also reads MOUNT_ON_COORDINATES_SET_TRACK_ITEM at the end of the slew (indigo_mount_synscan.driver about line 1818), so a 'slew and track' GoTo can end with tracking off when the mode was changed meanwhile. Establish which drivers are affected, then decide with the owner where the mode is latched (at admission of the coordinates request, in the library or in each driver) or whether the mode change is refused while the coordinates are BUSY. Library or generator changes need the owner's approval of the concrete diff.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-21T12:32:13.683745Z",
+  "status": "closed",
+  "branch": "ticket/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c4191a15-f7d8-47b7-bf77-c3b2ed5beac1",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T18:32:55.043261Z",
+          "last_activity_at": "2026-11-23T02:31:23.200969Z",
+          "ended_at": "2026-11-23T02:31:23.200969Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 28708157.708,
+          "tokens": null
+        },
+        {
+          "attempt_id": "0090a587-2573-496c-a1b1-965f2492e356",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T02:47:15.480523Z",
+          "last_activity_at": "2026-11-23T03:50:02.444042Z",
+          "ended_at": "2026-11-23T03:50:02.444042Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 3766963.519,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T18:32:55.043261Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5"
+        },
+        {
+          "at": "2026-11-23T02:31:23.200969Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-23T02:47:15.480523Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-23T03:50:02.444042Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 32475121.227,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "b0c2cd6d-6f45-443f-8fc8-7347939d3d99",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "e81dc89d-6c29-41aa-b187-c6d84d54c94a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-23T02:31:23.201121Z",
+          "last_activity_at": "2026-11-23T02:47:15.480423Z",
+          "ended_at": "2026-11-23T02:47:15.480423Z",
+          "outcome": {
+            "summary": "Library line, docs and other tests correct. Required: test_mount_lx200_simulator.c check_lx200_sync_result (lx200_sync_result_carries_the_reported_position): the remaining flake is a test weakness. generic/classic/stargo2 profiles publish a phantom slew on the first poll after connect (lastRA/lastDec start at 0, meade_update_generic_state), coordinates BUSY ~0.07-0.7 s; the cached not-BUSY wait cannot see a BUSY set in memory but not yet published. Fix: retry the mode selection when it comes back ALERT (wait for not-BUSY, resend, at most 3 times) or select SYNC only after the first poll published (then wait_for_fresh_coordinates must be restructured). Non-blocking: pre-existing lx200 phantom slew after connect (driver, not fixed here); same cached-state weakness in classic_pulse_refuses; no-op mode re-selection while BUSY also answered with ALERT; sync during GoTo now reports 'Mount is busy, the new coordinates are ignored'; pmc8 and lx200 test files changed without recorded runs.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 952279.302,
+          "tokens": null
+        },
+        {
+          "attempt_id": "03534d3a-e681-4df1-a6b6-d0814de7727f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T03:50:02.444175Z",
+          "last_activity_at": "2026-11-23T03:53:18.604174Z",
+          "ended_at": "2026-11-23T03:53:18.604174Z",
+          "outcome": {
+            "summary": "Round 2 (delta 4bc508705..73b3c042c, test_mount_lx200_simulator.c): lx_select_mode closes the window (the refusal depends only on the in-memory gap between setting BUSY and publishing it, no serial I/O there; 200 ms sleep then cached not-BUSY wait); the revision-based wait cannot pass on a stale publication and is bounded at 10 s; cases still prove what they are named for; formatting clean. Reviewer ran classic-guiding case 1x and sync-result case 2x, PASS; retry branch verified by reading. Non-blocking: find_cached_property(...)->state without NULL check matches existing style.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 196159.999,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T02:31:23.201121Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T02:47:15.480423Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "Library line, docs and other tests correct. Required: test_mount_lx200_simulator.c check_lx200_sync_result (lx200_sync_result_carries_the_reported_position): the remaining flake is a test weakness. generic/classic/stargo2 profiles publish a phantom slew on the first poll after connect (lastRA/lastDec start at 0, meade_update_generic_state), coordinates BUSY ~0.07-0.7 s; the cached not-BUSY wait cannot see a BUSY set in memory but not yet published. Fix: retry the mode selection when it comes back ALERT (wait for not-BUSY, resend, at most 3 times) or select SYNC only after the first poll published (then wait_for_fresh_coordinates must be restructured). Non-blocking: pre-existing lx200 phantom slew after connect (driver, not fixed here); same cached-state weakness in classic_pulse_refuses; no-op mode re-selection while BUSY also answered with ALERT; sync during GoTo now reports 'Mount is busy, the new coordinates are ignored'; pmc8 and lx200 test files changed without recorded runs."
+        },
+        {
+          "at": "2026-11-23T03:50:02.444175Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T03:53:18.604174Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Round 2 (delta 4bc508705..73b3c042c, test_mount_lx200_simulator.c): lx_select_mode closes the window (the refusal depends only on the in-memory gap between setting BUSY and publishing it, no serial I/O there; 200 ms sleep then cached not-BUSY wait); the revision-based wait cannot pass on a stale publication and is bounded at 10 s; cases still prove what they are named for; formatting clean. Reviewer ran classic-guiding case 1x and sync-result case 2x, PASS; retry branch verified by reading. Non-blocking: find_cached_property(...)->state without NULL check matches existing style."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 (delta 4bc508705..73b3c042c, test_mount_lx200_simulator.c): lx_select_mode closes the window (the refusal depends only on the in-memory gap between setting BUSY and publishing it, no serial I/O there; 200 ms sleep then cached not-BUSY wait); the revision-based wait cannot pass on a stale publication and is bounded at 10 s; cases still prove what they are named for; formatting clean. Reviewer ran classic-guiding case 1x and sync-result case 2x, PASS; retry branch verified by reading. Non-blocking: find_cached_property(...)->state without NULL check matches existing style.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1148439.301,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "4a915681-7bcb-4f41-bc3b-bfd9f95dd83b",
+      "event": "ticket/created",
+      "at": "2026-11-21T12:32:13.684434Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "ed5e9af8-2e22-4a09-9821-9b4bfb2d69fc",
+      "event": "ticket/confirmed",
+      "at": "2026-11-21T12:33:11.054744Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "b9e5527b-48b3-4482-b739-367cb3df962b",
+      "event": "task/progress",
+      "at": "2026-11-22T18:32:55.043959Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Implementation started on branch ticket/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5"
+    },
+    {
+      "event_id": "c99d620b-27b4-41f8-9d30-a2b49a32a170",
+      "event": "ticket/started",
+      "at": "2026-11-22T18:32:55.046075Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5",
+      "base": "master"
+    },
+    {
+      "event_id": "eed8c701-c912-41bb-bb2d-19e916f47716",
+      "event": "question/asked",
+      "at": "2026-11-22T18:32:55.167421Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Proposed fix, library change needing the owner's approval of the concrete diff: in indigo_mount_change_property() (indigo_libs/indigo_mount_driver.c, MOUNT_ON_COORDINATES_SET branch) add before the copy: INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ON_COORDINATES_SET_PROPERTY, \"Mount is busy, the mode is not changed\"); so the mode cannot change between the admission of a coordinates request (which sets BUSY) and the end of the operation. One place for all drivers, no driver reads change. agent_mount and agent_alpaca set the mode before the request and already refuse to act on a busy mount. Risk: a client that restores the mode right after sending a sync or GoTo, while the coordinates are still BUSY, gets ALERT and the mode stays. Alternative: latch the mode at admission in every driver (about 12 drivers, each with a version bump and a recorded run). Approve the library diff?"
+    },
+    {
+      "event_id": "23771f77-99d6-4a79-bb70-faca209574fe",
+      "event": "question/answered",
+      "at": "2026-11-22T18:43:09.311545Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner 2026-11-22: 'Yes, in the library' - approved the library diff: in the MOUNT_ON_COORDINATES_SET branch of indigo_mount_change_property() add INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ON_COORDINATES_SET_PROPERTY, \"Mount is busy, the mode is not changed\"); before the copy. No per-driver latching."
+    },
+    {
+      "event_id": "8f78e958-dd66-4d93-a489-d094ac928c7b",
+      "event": "task/progress",
+      "at": "2026-11-22T18:43:48.825407Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Implementer launched: library guard, audit, mount_simulator tests",
+      "attempt_id": "c4191a15-f7d8-47b7-bf77-c3b2ed5beac1",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e099cf2d-1505-495c-a314-6daef993cf0f",
+      "event": "task/progress",
+      "at": "2026-11-22T18:51:11.619826Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Building library, mount_simulator and its test in the worktree"
+    },
+    {
+      "event_id": "09359f77-7741-49f5-83e1-36a56c58ea22",
+      "event": "task/progress",
+      "at": "2026-11-22T18:52:24.100308Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Running test_mount_simulator new and adapted cases (filtered)"
+    },
+    {
+      "event_id": "76ba69f5-06b2-439c-b715-b42855d544b8",
+      "event": "task/progress",
+      "at": "2026-11-22T19:19:37.816655Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Before-run: new cases against the library without the guard line"
+    },
+    {
+      "event_id": "6b5f5730-732b-4a4c-98cf-09af7f20efff",
+      "event": "task/progress",
+      "at": "2026-11-22T19:42:43.355222Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Repeating new and adapted mount_simulator cases 10x"
+    },
+    {
+      "event_id": "ea9a66c7-6427-469d-b9e6-aecd34f8d911",
+      "event": "task/progress",
+      "at": "2026-11-22T20:06:13.315174Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Recorded runs: run_driver_test.py mount_simulator, agent_mount, agent_alpaca"
+    },
+    {
+      "event_id": "90fc6d27-34f0-4adb-93ac-8a5d73ff6039",
+      "event": "task/progress",
+      "at": "2026-11-22T21:06:43.406541Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Recorded run: run_driver_test.py agent_mount (after building mount_synscan.a)"
+    },
+    {
+      "event_id": "099860c9-2274-43cd-9c8f-9a188edec2b7",
+      "event": "task/progress",
+      "at": "2026-11-22T21:09:46.501592Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5fb7dc92-40e4-4445-abe4-1d4a8cb596ea",
+      "event": "task/progress",
+      "at": "2026-11-22T21:09:46.529152Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e84f0af4-8b27-4324-ac82-083ff1564482",
+      "event": "task/progress",
+      "at": "2026-11-22T21:09:46.531094Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "8a442db2-29b6-40bf-888e-d5e0235e1255",
+      "event": "task/progress",
+      "at": "2026-11-22T21:11:22.671688Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "639079e7-4059-4c66-8b97-4ad66ba7e24f",
+      "event": "check/passed",
+      "at": "2026-11-22T21:11:22.676315Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "dc6164cb960b9c129d734129d0ad41902b1208a8",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "921c8d1d-e804-4707-b6b1-63efc156ab4b",
+      "event": "ticket/note",
+      "at": "2026-11-22T21:12:11.371235Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementation (base c3c8b8e53, wip dc6164cb9).\n\nLIBRARY (owner-approved line only), indigo_libs/indigo_mount_driver.c, indigo_mount_change_property(), MOUNT_ON_COORDINATES_SET branch, before the copy:\n  INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ON_COORDINATES_SET_PROPERTY, \"Mount is busy, the mode is not changed\");\nMOUNT_ON_COORDINATES_SET is never BUSY, so indigo_reject_change() forces every item and publishes ALERT with the message (the client rolls back to the kept mode); the next accepted change copies and publishes OK (covered by a case). Docs: one sentence each in indigo_mount_driver.h (MOUNT_ON_COORDINATES_SET doc comment), PROPERTIES.md (MOUNT_ON_COORDINATES_SET row) and DRIVER_DEVELOPMENT_BASICS.md (selector paragraph, with the condition that the coordinates stay BUSY until the handler's last read of the mode). No generator change, no driver change, no driver version bump.\n\nAUDIT (handlers and finalizers run on the device queue under the device mutex; change_property runs on the bus thread under the bus mutex, so the guard holds exactly while the in-memory state of MOUNT_EQUATORIAL_COORDINATES is BUSY):\n| driver | BUSY at admission | where the mode is read | guard covers it |\n| mount_ioptron | yes (COPY_TARGETS macro) | handler only, after on_change sets BUSY again, no OK prologue | yes |\n| mount_lx200 | yes | handler: generated OK prologue (c:4835), BUSY again at c:4841 before the reads (c:4845/4859); window of a few instructions, no I/O | yes, except a microsecond window |\n| mount_nexstar | yes | handler: generated OK prologue (c:1131), then nexstar_set_coordinates() does serial I/O (tc_check_align) before reading the mode (c:647), sends goto or sync, reads again (c:650/653) and once more after return (c:1135, driver:895) | NO: the in-memory state is OK during the serial transactions; a mode change in that window is accepted, e.g. a goto sent (TRACK at 647) and then treated as a sync at 1135 (propert",
+      "tokens": null
+    },
+    {
+      "event_id": "c7759b98-ea4d-43fa-9cf9-eb21a4cb4c3d",
+      "event": "task/progress",
+      "at": "2026-11-22T21:13:25.154408Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Regression runs (--no-record): other mount driver suites and system_alpaca after merging master"
+    },
+    {
+      "event_id": "a45c57fb-bc6b-4416-bf4c-4fe66b3d6027",
+      "event": "task/progress",
+      "at": "2026-11-22T22:27:24.273034Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Rerun mount_pmc8 (--no-record) after adapting the second-GoTo case"
+    },
+    {
+      "event_id": "2cede023-879b-4461-9ef3-2c50491498bc",
+      "event": "task/progress",
+      "at": "2026-11-22T22:33:55.572120Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Merged tree: recorded mount_simulator and mount_nexstar, lx200 --no-record, then 10x affected cases"
+    },
+    {
+      "event_id": "66891a69-4dc9-40ab-9656-1980933c6245",
+      "event": "task/progress",
+      "at": "2026-11-22T22:52:27.975941Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "nexstar case before/after the guard, 10x repeat, lx200 --no-record, recorded mount_nexstar"
+    },
+    {
+      "event_id": "bf460e11-32b3-472e-aaaf-63f87545acd4",
+      "event": "task/progress",
+      "at": "2026-11-22T23:30:27.723248Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Rerun mount_lx200 --no-record after adapting the classic guiding case"
+    },
+    {
+      "event_id": "9e464bf2-e1cb-439c-bbb0-3afc3085f03d",
+      "event": "task/progress",
+      "at": "2026-11-23T02:03:36.025078Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Final mount_lx200 --no-record run after test adaptations"
+    },
+    {
+      "event_id": "ddba8665-0135-4068-ad36-9f8250f468c7",
+      "event": "task/progress",
+      "at": "2026-11-23T02:28:44.479797Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "058a791f-698f-4227-8a3a-0be9768350e8",
+      "event": "task/progress",
+      "at": "2026-11-23T02:28:44.507370Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "fad29a32-35b0-481b-a98d-f64500aedd34",
+      "event": "task/progress",
+      "at": "2026-11-23T02:28:44.509040Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a6b60b55-b6e6-41e5-9226-5826fe91514b",
+      "event": "task/progress",
+      "at": "2026-11-23T02:30:18.077541Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "cb173dab-b13a-4f91-82a7-8d664075ed67",
+      "event": "check/passed",
+      "at": "2026-11-23T02:30:18.082151Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "4bc508705ba7fbeef83376f6e9497deabe857ec0",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "080b0ce1-9abd-42ce-9f89-f60029554dde",
+      "event": "ticket/note",
+      "at": "2026-11-23T02:30:56.573063Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Regression evidence and merge with dafe8b2f (wip 4bc508705, after merges 65cc48c15 and af2bf0766 of master; never rebased).\n\nSTEP 1 - other mount suites, run_driver_test.py --no-record after merging master (synscan 34):\nmount_ioptron 141/141 OK; mount_nexstaraux 70/70 OK; mount_rainbow 42/42 OK; mount_starbook 29/29 OK; mount_synscan 144/144 OK; mount_temma 33/33 OK; system_alpaca 320/320 OK; mount_asi (off limits, run like the others, nothing changed) 31/31 OK; mount_mxhd has no hardware-free suite.\nmount_pmc8 38/37: pmc8_mount_keeps_the_first_goto_when_a_second_arrives sent its second GoTo through request_coordinates(), which first selects TRACK and waits for OK - while the first GoTo is BUSY, so the switch is now refused (ALERT). Test encoded the old behaviour; adapted: the second request is sent as plain coordinates with the mode of the first (comment says why). Rerun 38/38 OK. No driver changes the mode internally.\n\nSTEP 2 - merged master with dafe8b2f (generator without the OK prologue for MOUNT_EQUATORIAL_COORDINATES):\nConflicts resolved: test_mount_simulator.c keeps both sets (mount_request_during_sync_handler_is_refused and the three mount_mode_* cases), 35 cases; README/TEST_SUMMARY taken from master, then rewritten by the recorded run; MIGRATION_STATUS mount_simulator 35 / 0.\nAudit rows re-read from the merged generated handlers:\n| mount_simulator | yes | handler reads the mode (c:434-450) before any state assignment; no prologue | yes, fully |\n| mount_lx200 | yes | handler sets BUSY (redundant) and reads the mode (c:4844/4858) before the result; no prologue | yes, fully |\n| mount_nexstar | yes | handler without prologue: nexstar_set_coordinates() reads at c:647/650/653 across its serial transactions, the handler reads again at c:1134 and only then sets OK (sync) or BUSY (goto) | yes, fully |\nRemaining uncovered: mount_asi and mount_mxhd (no BUSY at admission, off limits).\nNew case test_mount_nexstar_simulator.c nexstar_mode_change_during_sync_is_refused:",
+      "tokens": null
+    },
+    {
+      "event_id": "79e01545-bf6e-43fb-bae5-845969c01503",
+      "event": "task/progress",
+      "at": "2026-11-23T02:31:23.201185Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b0c2cd6d-6f45-443f-8fc8-7347939d3d99",
+      "text": "Review started"
+    },
+    {
+      "event_id": "2a8d5b79-960f-4363-9ff8-e18d434544b9",
+      "event": "review/started",
+      "at": "2026-11-23T02:31:23.202364Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "ead19857-8873-43ee-b772-f07f2e3a9f98",
+      "event": "task/progress",
+      "at": "2026-11-23T02:31:56.520553Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b0c2cd6d-6f45-443f-8fc8-7347939d3d99",
+      "text": "Independent reviewer launched on 4bc508705",
+      "attempt_id": "e81dc89d-6c29-41aa-b187-c6d84d54c94a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "70a712b7-500c-43a7-b05a-e096a675ac72",
+      "event": "task/progress",
+      "at": "2026-11-23T02:47:15.480519Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b0c2cd6d-6f45-443f-8fc8-7347939d3d99",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "1bcf24e0-f0e7-4293-a4a6-3b5c2aea20ec",
+      "event": "task/progress",
+      "at": "2026-11-23T02:47:15.480544Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "a15bbb9b-a716-4869-a863-fc3f4f8536e6",
+      "event": "review/changes_requested",
+      "at": "2026-11-23T02:47:15.482951Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b0c2cd6d-6f45-443f-8fc8-7347939d3d99",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "4bc508705ba7fbeef83376f6e9497deabe857ec0"
+    },
+    {
+      "event_id": "162d8358-5a66-413a-827d-7ba08c077346",
+      "event": "task/progress",
+      "at": "2026-11-23T02:49:04.857635Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Repeating lx200 sync-result 40x and classic guiding 15x with a temporary retry counter"
+    },
+    {
+      "event_id": "012717a1-f20b-4eb9-bb48-c30ab82ccc41",
+      "event": "task/progress",
+      "at": "2026-11-23T03:22:48.374185Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Full mount_lx200 --no-record run with the retry helper"
+    },
+    {
+      "event_id": "19399aab-7539-40af-907d-5b632bf3a879",
+      "event": "task/progress",
+      "at": "2026-11-23T03:47:58.128000Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "8b2cabd1-5f01-40e5-98e1-2a4d4e105f6a",
+      "event": "task/progress",
+      "at": "2026-11-23T03:47:58.154923Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "39bffdac-2673-44f8-b7a7-87cf4fe62a3f",
+      "event": "task/progress",
+      "at": "2026-11-23T03:47:58.157001Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "8755fc5f-ab4a-4420-bafb-08a855fc3d2d",
+      "event": "task/progress",
+      "at": "2026-11-23T03:49:26.967489Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "805c33dd-4da9-44eb-98c0-64f285501d63",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "b1304c7b-e1ed-4270-91f6-c0e0e2292259",
+      "event": "check/passed",
+      "at": "2026-11-23T03:49:26.973837Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "73b3c042c9281fc8f223eed03582e3eee8d778a5",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "b48b493b-d341-495b-aebc-57e5097bbbd7",
+      "event": "ticket/note",
+      "at": "2026-11-23T03:49:45.295587Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review changes (lx200 test only), wip 73b3c042c. Cause found by the reviewer: for the generic, classic and stargo2 profiles the first poll after connect reports a phantom slew (meade_update_generic_state(), driver:3494, lastRA/lastDec start at 0 while the simulator starts at RA 6h), so the coordinates go OK -> BUSY (~0.07-0.11 s) -> OK (~0.7 s); the poll sets BUSY in memory (driver:3761) before publishing it at the end of on_timer (driver:3836), so a cached not-BUSY wait cannot see it and the mode selection is refused. Fix in test_mount_lx200_simulator.c: helper lx_select_mode() waits until the cached coordinates are not BUSY, selects the mode and, when the answer is ALERT, waits 200 ms and repeats, at most 3 times; it prints the states only on final failure (the earlier diagnostic line was removed). Used in check_lx200_sync_result(), classic_pulse_refuses() and the accepted-GoTo step of lx200_classic_guiding_refusal_is_published. check_lx200_sync_result() now takes the OK-publication revision before the selection, so the first poll's publication still counts when a retried selection has waited for it (wait_for_fresh_coordinates() taken after the selection would miss it). Verification under the lock: lx200_sync_result_carries_the_reported_position 40/40 (one run went through the retry and passed, counted with a temporary marker since removed), lx200_classic_guiding_refusal_is_published 15/15, then one full run_driver_test.py mount_lx200 --no-record 169/169 OK. flow check passed on 73b3c042c. Reviewer remarks: (1) phantom slew after connect in the generic/classic/stargo2 profiles is pre-existing driver behaviour, not fixed here; (2) a no-op re-selection of the current mode while the coordinates are BUSY is also answered with ALERT (value unchanged); (3) a sync sent during a GoTo now reports 'Mount is busy, the new coordinates are ignored' because the SYNC selection is refused first; (4) the pmc8 and lx200 test files are changed with --no-record runs only (pmc8 38/38,",
+      "tokens": null
+    },
+    {
+      "event_id": "dba3990f-c45f-4433-ae4b-20e0bb13920a",
+      "event": "task/progress",
+      "at": "2026-11-23T03:50:02.444250Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b0c2cd6d-6f45-443f-8fc8-7347939d3d99",
+      "text": "Review started"
+    },
+    {
+      "event_id": "5636dc94-987b-4c3b-85ae-49c56bbb6ec1",
+      "event": "review/started",
+      "at": "2026-11-23T03:50:02.445553Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "debd5d2f-9b82-436f-82f8-62cd95a4da47",
+      "event": "task/progress",
+      "at": "2026-11-23T03:53:18.604267Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b0c2cd6d-6f45-443f-8fc8-7347939d3d99",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "5bb07b28-8c2d-41a8-be3e-07857da12114",
+      "event": "review/passed",
+      "at": "2026-11-23T03:53:18.605661Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "b0c2cd6d-6f45-443f-8fc8-7347939d3d99",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "73b3c042c9281fc8f223eed03582e3eee8d778a5"
+    },
+    {
+      "event_id": "f8d0c8cb-4aaf-4eb4-ba63-4de770b4d370",
+      "event": "ticket/closed",
+      "at": "2026-11-23T03:53:23.326232Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-23T03:53:23.326209Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "7cdf1295e956ac9293de09f4e9900f689533fa34"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-21T12:32:13.683745Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-21T12:33:11.054616Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 33623560.528,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 58,
+    "sha256": "d502ca72ae95bf5cb48925e3f01534871f90f509b9c176c52e3dad746fc17c2d"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "dc6164cb960b9c129d734129d0ad41902b1208a8",
+        "tree": "9de57db765d52d4ed379872823f33b1bbe33de00",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T21:09:46.528399Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5/9de57db765d5-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "dc6164cb960b9c129d734129d0ad41902b1208a8",
+        "tree": "9de57db765d52d4ed379872823f33b1bbe33de00",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T21:11:22.668638Z",
+        "duration_s": 96.1,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5/9de57db765d5-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "4bc508705ba7fbeef83376f6e9497deabe857ec0",
+        "tree": "aa6374fb932dc15e98db7e0ed4dcdbefa2741de0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T02:28:44.506614Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5/aa6374fb932d-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "4bc508705ba7fbeef83376f6e9497deabe857ec0",
+        "tree": "aa6374fb932dc15e98db7e0ed4dcdbefa2741de0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T02:30:18.075157Z",
+        "duration_s": 93.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5/aa6374fb932d-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "73b3c042c9281fc8f223eed03582e3eee8d778a5",
+        "tree": "4ad57d66765b800a25cdb6fc8fca2384fb5353f2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T03:47:58.153992Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5/4ad57d66765b-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "73b3c042c9281fc8f223eed03582e3eee8d778a5",
+        "tree": "4ad57d66765b800a25cdb6fc8fca2384fb5353f2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T03:49:26.964519Z",
+        "duration_s": 88.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d0a643e1-4b83-4dc7-af8e-eb8fee0056c5/4ad57d66765b-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Library line, docs and other tests correct. Required: test_mount_lx200_simulator.c check_lx200_sync_result (lx200_sync_result_carries_the_reported_position): the remaining flake is a test weakness. generic/classic/stargo2 profiles publish a phantom slew on the first poll after connect (lastRA/lastDec start at 0, meade_update_generic_state), coordinates BUSY ~0.07-0.7 s; the cached not-BUSY wait cannot see a BUSY set in memory but not yet published. Fix: retry the mode selection when it comes back ALERT (wait for not-BUSY, resend, at most 3 times) or select SYNC only after the first poll published (then wait_for_fresh_coordinates must be restructured). Non-blocking: pre-existing lx200 phantom slew after connect (driver, not fixed here); same cached-state weakness in classic_pulse_refuses; no-op mode re-selection while BUSY also answered with ALERT; sync during GoTo now reports 'Mount is busy, the new coordinates are ignored'; pmc8 and lx200 test files changed without recorded runs.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "4bc508705ba7fbeef83376f6e9497deabe857ec0",
+        "tree": "aa6374fb932dc15e98db7e0ed4dcdbefa2741de0",
+        "at": "2026-11-23T02:47:15.480265Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 (delta 4bc508705..73b3c042c, test_mount_lx200_simulator.c): lx_select_mode closes the window (the refusal depends only on the in-memory gap between setting BUSY and publishing it, no serial I/O there; 200 ms sleep then cached not-BUSY wait); the revision-based wait cannot pass on a stale publication and is bounded at 10 s; cases still prove what they are named for; formatting clean. Reviewer ran classic-guiding case 1x and sync-result case 2x, PASS; retry branch verified by reading. Non-blocking: find_cached_property(...)->state without NULL check matches existing style.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "73b3c042c9281fc8f223eed03582e3eee8d778a5",
+        "tree": "4ad57d66765b800a25cdb6fc8fca2384fb5353f2",
+        "at": "2026-11-23T03:53:18.604017Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-22T21:12:11.369951Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementation (base c3c8b8e53, wip dc6164cb9).\n\nLIBRARY (owner-approved line only), indigo_libs/indigo_mount_driver.c, indigo_mount_change_property(), MOUNT_ON_COORDINATES_SET branch, before the copy:\n  INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ON_COORDINATES_SET_PROPERTY, \"Mount is busy, the mode is not changed\");\nMOUNT_ON_COORDINATES_SET is never BUSY, so indigo_reject_change() forces every item and publishes ALERT with the message (the client rolls back to the kept mode); the next accepted change copies and publishes OK (covered by a case). Docs: one sentence each in indigo_mount_driver.h (MOUNT_ON_COORDINATES_SET doc comment), PROPERTIES.md (MOUNT_ON_COORDINATES_SET row) and DRIVER_DEVELOPMENT_BASICS.md (selector paragraph, with the condition that the coordinates stay BUSY until the handler's last read of the mode). No generator change, no driver change, no driver version bump.\n\nAUDIT (handlers and finalizers run on the device queue under the device mutex; change_property runs on the bus thread under the bus mutex, so the guard holds exactly while the in-memory state of MOUNT_EQUATORIAL_COORDINATES is BUSY):\n| driver | BUSY at admission | where the mode is read | guard covers it |\n| mount_ioptron | yes (COPY_TARGETS macro) | handler only, after on_change sets BUSY again, no OK prologue | yes |\n| mount_lx200 | yes | handler: generated OK prologue (c:4835), BUSY again at c:4841 before the reads (c:4845/4859); window of a few instructions, no I/O | yes, except a microsecond window |\n| mount_nexstar | yes | handler: generated OK prologue (c:1131), then nexstar_set_coordinates() does serial I/O (tc_check_align) before reading the mode (c:647), sends goto or sync, reads again (c:650/653) and once more after return (c:1135, driver:895) | NO: the in-memory state is OK during the serial transactions; a mode change in that window is accepted, e.g. a goto sent (TRACK at 647) and then treated as a sync at 1135 (property OK, position read back, goto_active set only if TRACK still on at 653) |\n| mount_nexstaraux | yes | handler only, on_change sets BUSY, no prologue; slew finalizer does not read the mode | yes |\n| mount_pmc8 | yes | handler only, no prologue (stop tracking + 200 ms sleep happen while BUSY) | yes |\n| mount_rainbow | yes | handler (no prologue) and change_property guard (sync check on bus thread at admission) | yes |\n| mount_simulator | yes | handler: generated OK prologue (c:433) immediately followed by the reads (c:435-451), no I/O | yes, except a microsecond window between the prologue and the reads |\n| mount_starbook | yes | handler, latched into a local before I/O, no prologue | yes |\n| mount_synscan | yes; sync_pending latched in on_change_request at admission | handler uses the latch; GoTo finalizer reads TRACK at the end of the slew (c:2109, driver:2041) while the coordinates are still BUSY (state published later by synscan_update_mount_coordinates()) | yes |\n| mount_temma | yes | handler only, before and after serial I/O, no prologue; start/stop tracking latched into private data for the poll | yes |\n| system_alpaca mount | yes (system_alpaca_accept() sets BUSY under its lock, ANYTIME accept refuses BUSY via mount_coordinates_refusal) | handler (c:993/1000/1018), also when re-run after a settle/unpark postponement (coordinates stay BUSY meanwhile); MOUNT_ON_COORDINATES_SET falls through to indigo_mount_change_property() | yes |\n| mount_asi (off limits, read only) | NO: copy_targets at admission, BUSY set only in mount_eq_coords_callback (\"Update to busy moved to callback\") | callback, after it sets BUSY | NO for admission -> callback start: the ticket's scenario still turns a GoTo into a sync |\n| mount_mxhd (off limits, read only) | NO: copy_targets at admission | callback reads SYNC/SLEW (c:1075/1088) before it sets BUSY (c:1103), after motor-recovery serial I/O | NO for admission -> c:1103 |\n| system_ascol (off limits, read only) | n/a: handled synchronously in change_property | never reads the mode (only TRACK item, count 1) | not affected |\nAll drivers route MOUNT_ON_COORDINATES_SET to indigo_mount_change_property() (none handles it itself), so the guard applies to all of them whenever the coordinates are BUSY. No linux/mac/optional driver handles MOUNT_EQUATORIAL_COORDINATES. Not covered and not fixed here (driver work, not in scope): mount_nexstar (generated OK prologue before serial I/O; fix in the .driver: keep BUSY until the reads, e.g. read the mode once at the top), mount_asi and mount_mxhd (no BUSY at admission; off limits). mount_simulator and mount_lx200 keep a race window of a few instructions after the generated OK prologue; not reproducible by a test. The approved line is therefore not enough for nexstar, asi and mxhd; the library change was not extended.\nmount_synscan: the GoTo finalizer read of TRACK is covered by the library guard and by this audit, not by a synscan case (the synscan suite is being changed by two other tickets).\n\nCLIENTS\n- agent_mount (mount_dome_control, c:394): sets the mode then the coordinates; every entry point refuses while the cached mount coordinates are BUSY (START_PROCESS guard c:2351, LX200 :MS/:CM c:954/968), never restores the mode afterwards. Not broken. Its simulator case sync_refused_by_a_foreign_slew_is_reported_failed switches to TRACK before the foreign GoTo is admitted, unaffected.\n- agent_alpaca (c:571-739): sets TRACK/SYNC then coordinates; sync paths refuse while its cached slewing flag is set; slew paths do not, so a slew requested during a slew now also gets MOUNT_ON_COORDINATES_SET ALERT (value unchanged), while the coordinates are refused by the existing BUSY guard exactly as before; canslew/cansync come from item presence, not state. Not broken.\n- agent_scripting Sequencer.js writes only DOME_ON_COORDINATES_SET; no other writer in agents, indigo_libs, indigo_tools, indigo_server or *.js. agent_astrometry/platesolver do not write the mode (their test sets it while idle).\n- Residual, by design of the two-request protocol: a client that sends mode + coordinates while a slew is just ending can have the mode refused and the coordinates accepted with the previous mode (before the change the opposite race was the ticket's bug). Clients should check the MOUNT_ON_COORDINATES_SET answer; both agents send only while the mount is not BUSY.\n\nTESTS (indigo_test/integration/test_mount_simulator.c, new self-contained functions after mount_sync_during_goto_is_refused_with_busy_message):\n- mount_mode_change_during_goto_is_refused: (a)+(c) mode change during a BUSY GoTo -> ALERT, message \"Mount is busy, the mode is not changed\", items keep TRACK, GoTo ends OK at its target, no alignment point (NEAREST_POINT), then SYNC and TRACK accepted with OK.\n- mount_mode_switch_behind_queued_goto_keeps_the_goto: (b) gate holds the device queue, GoTo admitted, SYNC requested before the handler runs, gate released -> slew light BUSY, mount moves to the target, no alignment point, mode TRACK, property ALERT with the message.\n- mount_mode_change_while_coordinates_idle_or_alert_is_accepted: (d) coordinates kept ALERT (parked refusal) and idle after a sync -> mode changes accepted with OK, coordinates keep their state, no ALERT.\n- Adapted existing case mount_sync_during_goto_is_refused_with_busy_message (obsolete expectation): it switched to SYNC during the GoTo and waited for OK, then expected \"Sync refused, the mount is busy\"; now the switch is refused (ALERT), the coordinates are refused as a GoTo with \"Mount is busy, the new coordinates are ignored\", and the second GoTo is sent without re-selecting TRACK (re-selecting is refused too). The rest of the case is unchanged.\nBefore/after (same binary, libindigo.dylib built without/with the line):\n- without the line: mount_mode_change_during_goto_is_refused FAIL (line 1819, MOUNT_ON_COORDINATES_SET OK instead of ALERT); mount_mode_switch_behind_queued_goto_keeps_the_goto FAIL (slew light never BUSY: the handler synced, the mount did not move); idle/alert case PASS; adapted case FAIL (switch accepted instead of refused).\n- with the line: all four PASS.\nRepetitions: new + adapted cases 10x each (20 binary runs, 40 case runs), 0 failures.\nMIGRATION_STATUS.md mount_simulator 31 / 0 -> 34 / 0 (Comment untouched).\n\nRECORDED RUNS (tools/run_driver_test.py, under the shared lock, mac arm64):\n- mount_simulator: 2026-11-22 21:10 3.0.0.28 mac arm64 simulator 34/34 OK\n- agent_mount: 2026-11-22 22:08 3.0.0.32 mac arm64 simulator 86/86 OK (first attempt failed to build: test_agent_mount_simulator links build/drivers/indigo_mount_synscan.a, which the script does not build and the fresh worktree lacked; built it with Makefile.drv and reran, no code change)\n- agent_alpaca: 2026-11-22 22:05 3.0.0.20 mac arm64 simulator 6/6 OK\nflow check (whitespace, unit) passed on dc6164cb9.\n\nMerge note for dafe8b2f: edits to test_mount_simulator.c are three new functions plus helpers in one block, three lines in tests[] after mount_sync_during_goto_is_refused_with_busy_message, and the adapted lines of that case; the README record, TEST_SUMMARY and the MIGRATION_STATUS count will conflict and need the counts of the merged suite.\nNot verified: Linux/Windows, hardware, other mount driver suites (ioptron, lx200, nexstar, nexstaraux, pmc8, rainbow, starbook, synscan, temma, system_alpaca, asi, mxhd) were not run; a case there that changes the mode while the coordinates are BUSY would now see ALERT.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T02:30:56.571750Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Regression evidence and merge with dafe8b2f (wip 4bc508705, after merges 65cc48c15 and af2bf0766 of master; never rebased).\n\nSTEP 1 - other mount suites, run_driver_test.py --no-record after merging master (synscan 34):\nmount_ioptron 141/141 OK; mount_nexstaraux 70/70 OK; mount_rainbow 42/42 OK; mount_starbook 29/29 OK; mount_synscan 144/144 OK; mount_temma 33/33 OK; system_alpaca 320/320 OK; mount_asi (off limits, run like the others, nothing changed) 31/31 OK; mount_mxhd has no hardware-free suite.\nmount_pmc8 38/37: pmc8_mount_keeps_the_first_goto_when_a_second_arrives sent its second GoTo through request_coordinates(), which first selects TRACK and waits for OK - while the first GoTo is BUSY, so the switch is now refused (ALERT). Test encoded the old behaviour; adapted: the second request is sent as plain coordinates with the mode of the first (comment says why). Rerun 38/38 OK. No driver changes the mode internally.\n\nSTEP 2 - merged master with dafe8b2f (generator without the OK prologue for MOUNT_EQUATORIAL_COORDINATES):\nConflicts resolved: test_mount_simulator.c keeps both sets (mount_request_during_sync_handler_is_refused and the three mount_mode_* cases), 35 cases; README/TEST_SUMMARY taken from master, then rewritten by the recorded run; MIGRATION_STATUS mount_simulator 35 / 0.\nAudit rows re-read from the merged generated handlers:\n| mount_simulator | yes | handler reads the mode (c:434-450) before any state assignment; no prologue | yes, fully |\n| mount_lx200 | yes | handler sets BUSY (redundant) and reads the mode (c:4844/4858) before the result; no prologue | yes, fully |\n| mount_nexstar | yes | handler without prologue: nexstar_set_coordinates() reads at c:647/650/653 across its serial transactions, the handler reads again at c:1134 and only then sets OK (sync) or BUSY (goto) | yes, fully |\nRemaining uncovered: mount_asi and mount_mxhd (no BUSY at admission, off limits).\nNew case test_mount_nexstar_simulator.c nexstar_mode_change_during_sync_is_refused: the simulator delays the precise sync answer (\"delay s\", as in nexstar_request_during_sync_is_refused); while the handler waits for it, TRACK is requested -> ALERT, SYNC kept, sync ends OK at 3.1/21, one sync command (73) and no GoTo (72), TRACK accepted afterwards. It re-selects SYNC after sync_to() because sync_to() ends with TRACK. Without the library line (merged tree, no prologue) it fails at line 2007 (the switch is accepted); with it it passes; 10x repeated, 0 failures. MIGRATION_STATUS mount_nexstar 44 / 12 -> 45 / 12.\nmount_lx200 (--no-record) needed two test adaptations, both a mode switch while the coordinates were BUSY:\n- lx200_classic_guiding_refusal_is_published: classic (host-timed :Mn#) guiding pulses keep the coordinates BUSY because the poll sees the mount moving (driver poll: PRIVATE_DATA->slewing -> BUSY), and classic_pulse_refuses() / the following GoTo selected the mode right after a pulse. Adapted: wait until the coordinates are not BUSY before selecting the mode (in the helper, and the existing wait before the accepted GoTo moved in front of its TRACK switch). 5x 5 OK.\n- lx200_sync_result_carries_the_reported_position: failed once in a full run (1 of 7 runs) at the SYNC selection right after the profile started; the guard is the only way that selection is not answered OK, so the coordinates were BUSY at that moment; which profile and why is not identified. Adapted: wait until the coordinates are not BUSY before selecting SYNC, plus a diagnostic line (profile, states) if the selection still fails. With the wait: 14/15, then 65/65 with the diagnostic; the one failure after the wait is unexplained (a BUSY appearing right after the check). Residual flake risk stated.\n- lx200_zwo_park_goes_home_first failed 2/5 (hC sent twice, line 2979); the case never touches the mode, and without the library line it fails the same way (2/6): unrelated pre-existing flake, not fixed.\nFinal mount_lx200 --no-record: 169/169 OK.\nBehaviour note: any driver that publishes the coordinates BUSY for motion it did not start (hand controller slews, lx200 classic guiding pulses, system_alpaca external slews) now also refuses mode changes during that motion; the coordinates of such a request were already refused there.\n\nRECORDED RUNS (merged tree):\n- mount_simulator: 2026-11-22 23:33 3.0.0.29 mac arm64 simulator 35/35 OK\n- mount_nexstar: 2026-11-23 00:17 3.0.0.55 mac arm64 simulator 45/45 OK (an earlier recorded attempt at 23:38 was 45/44 because of the missing SYNC re-selection in the new case; overwritten by this run)\n- earlier on this ticket: agent_mount 86/86 OK, agent_alpaca 6/6 OK (before the dafe8b2f merge; neither suite changed since)\nNo recorded run for mount_pmc8 and mount_lx200 (their test files changed here, run --no-record as instructed): pmc8 38/38, lx200 169/169.\nflow check (whitespace, unit) passed on 4bc508705.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T03:49:45.294165Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review changes (lx200 test only), wip 73b3c042c. Cause found by the reviewer: for the generic, classic and stargo2 profiles the first poll after connect reports a phantom slew (meade_update_generic_state(), driver:3494, lastRA/lastDec start at 0 while the simulator starts at RA 6h), so the coordinates go OK -> BUSY (~0.07-0.11 s) -> OK (~0.7 s); the poll sets BUSY in memory (driver:3761) before publishing it at the end of on_timer (driver:3836), so a cached not-BUSY wait cannot see it and the mode selection is refused. Fix in test_mount_lx200_simulator.c: helper lx_select_mode() waits until the cached coordinates are not BUSY, selects the mode and, when the answer is ALERT, waits 200 ms and repeats, at most 3 times; it prints the states only on final failure (the earlier diagnostic line was removed). Used in check_lx200_sync_result(), classic_pulse_refuses() and the accepted-GoTo step of lx200_classic_guiding_refusal_is_published. check_lx200_sync_result() now takes the OK-publication revision before the selection, so the first poll's publication still counts when a retried selection has waited for it (wait_for_fresh_coordinates() taken after the selection would miss it). Verification under the lock: lx200_sync_result_carries_the_reported_position 40/40 (one run went through the retry and passed, counted with a temporary marker since removed), lx200_classic_guiding_refusal_is_published 15/15, then one full run_driver_test.py mount_lx200 --no-record 169/169 OK. flow check passed on 73b3c042c. Reviewer remarks: (1) phantom slew after connect in the generic/classic/stargo2 profiles is pre-existing driver behaviour, not fixed here; (2) a no-op re-selection of the current mode while the coordinates are BUSY is also answered with ALERT (value unchanged); (3) a sync sent during a GoTo now reports 'Mount is busy, the new coordinates are ignored' because the SYNC selection is refused first; (4) the pmc8 and lx200 test files are changed with --no-record runs only (pmc8 38/38, lx200 169/169).",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Proposed fix, library change needing the owner's approval of the concrete diff: in indigo_mount_change_property() (indigo_libs/indigo_mount_driver.c, MOUNT_ON_COORDINATES_SET branch) add before the copy: INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ON_COORDINATES_SET_PROPERTY, \"Mount is busy, the mode is not changed\"); so the mode cannot change between the admission of a coordinates request (which sets BUSY) and the end of the operation. One place for all drivers, no driver reads change. agent_mount and agent_alpaca set the mode before the request and already refuse to act on a busy mount. Risk: a client that restores the mode right after sending a sync or GoTo, while the coordinates are still BUSY, gets ALERT and the mode stays. Alternative: latch the mode at admission in every driver (about 12 drivers, each with a version bump and a recorded run). Approve the library diff?",
+        "at": "2026-11-22T18:32:55.166057Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner 2026-11-22: 'Yes, in the library' - approved the library diff: in the MOUNT_ON_COORDINATES_SET branch of indigo_mount_change_property() add INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ON_COORDINATES_SET_PROPERTY, \"Mount is busy, the mode is not changed\"); before the copy. No per-driver latching.",
+        "answered_at": "2026-11-22T18:43:09.310153Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "7cdf1295e956ac9293de09f4e9900f689533fa34",
+      "tree": "4ad57d66765b800a25cdb6fc8fca2384fb5353f2",
+      "base": "master",
+      "at": "2026-11-23T03:53:23.255691Z"
+    }
+  }
+}
