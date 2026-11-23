@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <time.h>
 #include <math.h>
+#include <stdarg.h>
 #include <sys/stat.h>
 
 #include <indigo/indigo_aux_driver.h>
@@ -75,4 +76,100 @@ float indigo_aux_sky_bortle(double sky_brightness) {
 	else if (sky_brightness > 18.0) return 7;
 	else if (sky_brightness > 17.0) return 8;
 	else return 9;
+}
+
+static const char *weather_safety_item_names[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, AUX_WEATHER_SAFETY_WIND_ITEM_NAME, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME };
+
+static const char *weather_safety_labels[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { "clouds", "rain", "wind", "humidity" };
+
+static void weather_safety_append(char *message, size_t message_size, const char *format, ...) {
+	size_t length = strlen(message);
+	if (length + 1 < message_size) {
+		va_list args;
+		va_start(args, format);
+		vsnprintf(message + length, message_size - length, format, args);
+		va_end(args);
+	}
+}
+
+bool indigo_aux_evaluate_weather_safety(indigo_property *property, const indigo_aux_safety_input *conditions, char *message, size_t message_size) {
+	assert(property != NULL);
+	assert(conditions != NULL);
+	indigo_item *safe_item = indigo_get_item(property, AUX_WEATHER_SAFETY_SAFE_ITEM_NAME);
+	indigo_property_state previous = safe_item != NULL ? safe_item->light.value : INDIGO_IDLE_STATE;
+	indigo_property_state previous_state = property->state;
+	indigo_property_state verdict = INDIGO_IDLE_STATE;
+	bool readings_valid = true;
+	bool reasons_changed = false;
+	for (int i = 0; i < INDIGO_AUX_SAFETY_CONDITION_COUNT; i++) {
+		const indigo_aux_safety_input *condition = conditions + i;
+		indigo_property_state state = INDIGO_IDLE_STATE;
+		if (condition->fitted) {
+			if (!condition->valid) {
+				readings_valid = false;
+				state = INDIGO_ALERT_STATE;
+			} else {
+				state = condition->unsafe ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			}
+		}
+		if (state == INDIGO_ALERT_STATE || (state == INDIGO_OK_STATE && verdict == INDIGO_IDLE_STATE)) {
+			verdict = state;
+		}
+		indigo_item *item = indigo_get_item(property, weather_safety_item_names[i]);
+		if (item != NULL) {
+			reasons_changed = reasons_changed || (item->light.value == INDIGO_ALERT_STATE) != (state == INDIGO_ALERT_STATE);
+			item->light.value = state;
+		}
+	}
+	if (safe_item != NULL) {
+		safe_item->light.value = verdict;
+	}
+	property->state = readings_valid ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	// The previous lights and property state hold the previous reasons: the ALERT conditions and whether any reading was invalid.
+	reasons_changed = reasons_changed || property->state != previous_state;
+	if (verdict == previous && !(verdict == INDIGO_ALERT_STATE && reasons_changed)) {
+		return false;
+	}
+	if (message != NULL && message_size > 0) {
+		message[0] = 0;
+		if (verdict == INDIGO_ALERT_STATE) {
+			weather_safety_append(message, message_size, "Unsafe:");
+			bool first = true;
+			for (int i = 0; i < INDIGO_AUX_SAFETY_CONDITION_COUNT; i++) {
+				const indigo_aux_safety_input *condition = conditions + i;
+				if (!condition->fitted || (condition->valid && !condition->unsafe)) {
+					continue;
+				}
+				const char *separator = first ? " " : ", ";
+				first = false;
+				if (!condition->valid) {
+					weather_safety_append(message, message_size, "%s%s sensor gives no valid reading", separator, weather_safety_labels[i]);
+				} else {
+					const char *unit = condition->unit != NULL && *condition->unit ? condition->unit : NULL;
+					const char *relation = condition->value == condition->limit ? "at" : (condition->reversed ? "below" : "above");
+					if (unit != NULL) {
+						weather_safety_append(message, message_size, "%s%s %.1f %s %s %.1f %s", separator, weather_safety_labels[i], condition->value, unit, relation, condition->limit, unit);
+					} else {
+						weather_safety_append(message, message_size, "%s%s %.1f %s %.1f", separator, weather_safety_labels[i], condition->value, relation, condition->limit);
+					}
+				}
+			}
+		} else if (verdict == INDIGO_OK_STATE) {
+			weather_safety_append(message, message_size, "Safe: all conditions within limits");
+		} else {
+			weather_safety_append(message, message_size, "Unknown: no weather condition is monitored");
+		}
+	}
+	return true;
+}
+
+void indigo_aux_update_weather_safety(indigo_device *device, indigo_property *property, const indigo_aux_safety_input *conditions) {
+	assert(device != NULL);
+	assert(property != NULL);
+	char message[INDIGO_VALUE_SIZE];
+	if (indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message))) {
+		indigo_update_property(device, property, "%s", message);
+	} else {
+		indigo_update_property(device, property, NULL);
+	}
 }

@@ -35,7 +35,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000001
+#define DRIVER_VERSION       0x03000002
 #define DRIVER_NAME          "indigo_aux_simulator"
 #define DRIVER_LABEL         "Auxiliary Simulators"
 #define POWERBOX_DEVICE_NAME "PowerBox Simulator"
@@ -138,6 +138,34 @@
 #define WX_CLOUD_CLOUDY_ITEM           (WX_CLOUD_PROPERTY->items + 1)
 #define WX_CLOUD_OVERCAST_ITEM         (WX_CLOUD_PROPERTY->items + 2)
 
+#define WX_CLOUD_THRESHOLDS_PROPERTY   (PRIVATE_DATA->wx_cloud_thresholds_property)
+#define WX_CLOUD_CLEAR_THRESHOLD_ITEM  (WX_CLOUD_THRESHOLDS_PROPERTY->items + 0)
+#define WX_CLOUD_CLOUDY_THRESHOLD_ITEM (WX_CLOUD_THRESHOLDS_PROPERTY->items + 1)
+
+#define WX_RAIN_THRESHOLDS_PROPERTY    (PRIVATE_DATA->wx_rain_thresholds_property)
+#define WX_RAIN_RAINING_THRESHOLD_ITEM (WX_RAIN_THRESHOLDS_PROPERTY->items + 0)
+#define WX_RAIN_WET_THRESHOLD_ITEM     (WX_RAIN_THRESHOLDS_PROPERTY->items + 1)
+
+#define WX_WIND_THRESHOLDS_PROPERTY     (PRIVATE_DATA->wx_wind_thresholds_property)
+#define WX_WIND_STRONG_THRESHOLD_ITEM   (WX_WIND_THRESHOLDS_PROPERTY->items + 0)
+#define WX_WIND_MODERATE_THRESHOLD_ITEM (WX_WIND_THRESHOLDS_PROPERTY->items + 1)
+
+#define WX_HUMIDITY_THRESHOLDS_PROPERTY   (PRIVATE_DATA->wx_humidity_thresholds_property)
+#define WX_HUMIDITY_HUMID_THRESHOLD_ITEM  (WX_HUMIDITY_THRESHOLDS_PROPERTY->items + 0)
+#define WX_HUMIDITY_NORMAL_THRESHOLD_ITEM (WX_HUMIDITY_THRESHOLDS_PROPERTY->items + 1)
+
+#define WX_HUMIDITY_STATE_PROPERTY     (PRIVATE_DATA->wx_humidity_state_property)
+#define WX_HUMIDITY_STATE_HUMID_ITEM   (WX_HUMIDITY_STATE_PROPERTY->items + 0)
+#define WX_HUMIDITY_STATE_NORMAL_ITEM  (WX_HUMIDITY_STATE_PROPERTY->items + 1)
+#define WX_HUMIDITY_STATE_DRY_ITEM     (WX_HUMIDITY_STATE_PROPERTY->items + 2)
+
+#define WX_SAFETY_PROPERTY             (PRIVATE_DATA->wx_safety_property)
+#define WX_SAFETY_SAFE_ITEM            (WX_SAFETY_PROPERTY->items + 0)
+#define WX_SAFETY_CLOUDS_ITEM          (WX_SAFETY_PROPERTY->items + 1)
+#define WX_SAFETY_RAIN_ITEM            (WX_SAFETY_PROPERTY->items + 2)
+#define WX_SAFETY_WIND_ITEM            (WX_SAFETY_PROPERTY->items + 3)
+#define WX_SAFETY_HUMIDITY_ITEM        (WX_SAFETY_PROPERTY->items + 4)
+
 #define SQM_INPUT_PROPERTY             (PRIVATE_DATA->sqm_input_property)
 #define SQM_INPUT_BRIGHTNESS_ITEM      (SQM_INPUT_PROPERTY->items + 0)
 #define SQM_INPUT_TEMPERATURE_ITEM     (SQM_INPUT_PROPERTY->items + 1)
@@ -180,6 +208,12 @@ typedef struct {
 	indigo_property *wx_wind_property;
 	indigo_property *wx_rain_state_property;
 	indigo_property *wx_cloud_property;
+	indigo_property *wx_cloud_thresholds_property;
+	indigo_property *wx_rain_thresholds_property;
+	indigo_property *wx_wind_thresholds_property;
+	indigo_property *wx_humidity_thresholds_property;
+	indigo_property *wx_humidity_state_property;
+	indigo_property *wx_safety_property;
 	indigo_property *sqm_input_property;
 	indigo_property *sqm_weather_property;
 	indigo_property *flat_light_property;
@@ -218,6 +252,16 @@ static void powerbox_refresh(indigo_device *device, bool publish) {
 		}
 	}
 }
+// Severity of a reading: 2 at or above the unsafe threshold, 1 at or above the middle one, 0 otherwise.
+static int weather_severity(double value, double unsafe, double middle) {
+	if (value >= unsafe) {
+		return 2;
+	}
+	if (value >= middle) {
+		return 1;
+	}
+	return 0;
+}
 static void weather_refresh(indigo_device *device, bool publish) {
 	for (int i = 0; i < WX_INPUT_PROPERTY->count; i++) {
 		WX_WEATHER_PROPERTY->items[i].number.value = WX_INPUT_PROPERTY->items[i].number.value;
@@ -227,23 +271,38 @@ static void weather_refresh(indigo_device *device, bool publish) {
 	// Magnus approximation; clamp zero humidity for a finite dew point.
 	double gamma = log(fmax(humidity, 0.1) / 100) + 17.62 * temperature / (243.12 + temperature);
 	WX_DEWPOINT_ITEM->number.value = 243.12 * gamma / (17.62 - gamma);
-	int wind = WX_WIND_SPEED_ITEM->number.value >= 10 ? 0 : (WX_WIND_SPEED_ITEM->number.value >= 3 ? 1 : 2);
-	int rain = WX_RAIN_ITEM->number.value >= 1 ? 0 : (WX_RAIN_ITEM->number.value > 0 ? 1 : 2);
-	double delta = temperature - WX_SKY_TEMPERATURE_ITEM->number.value;
-	int cloud = delta >= 20 ? 0 : (delta >= 10 ? 1 : 2);
-	indigo_property *conditions[] = { WX_WIND_PROPERTY, WX_RAIN_STATE_PROPERTY, WX_CLOUD_PROPERTY };
-	int selected[] = { wind, rain, cloud };
-	for (int i = 0; i < 3; i++) {
+	double sky_temperature = WX_SKY_TEMPERATURE_ITEM->number.value;
+	int severity[INDIGO_AUX_SAFETY_CONDITION_COUNT];
+	// As in aux_cloudwatcher: CLEAR below the CLEAR threshold, CLOUDY below the CLOUDY one, OVERCAST otherwise.
+	severity[INDIGO_AUX_SAFETY_CLOUDS] = weather_severity(sky_temperature, WX_CLOUD_CLOUDY_THRESHOLD_ITEM->number.value, WX_CLOUD_CLEAR_THRESHOLD_ITEM->number.value);
+	severity[INDIGO_AUX_SAFETY_RAIN] = weather_severity(WX_RAIN_ITEM->number.value, WX_RAIN_RAINING_THRESHOLD_ITEM->number.value, WX_RAIN_WET_THRESHOLD_ITEM->number.value);
+	severity[INDIGO_AUX_SAFETY_WIND] = weather_severity(WX_WIND_SPEED_ITEM->number.value, WX_WIND_STRONG_THRESHOLD_ITEM->number.value, WX_WIND_MODERATE_THRESHOLD_ITEM->number.value);
+	severity[INDIGO_AUX_SAFETY_HUMIDITY] = weather_severity(humidity, WX_HUMIDITY_HUMID_THRESHOLD_ITEM->number.value, WX_HUMIDITY_NORMAL_THRESHOLD_ITEM->number.value);
+	// AUX_CLOUD lists the best level first, the other classifications the worst level first.
+	indigo_property *conditions[] = { WX_CLOUD_PROPERTY, WX_RAIN_STATE_PROPERTY, WX_WIND_PROPERTY, WX_HUMIDITY_STATE_PROPERTY };
+	for (int i = 0; i < INDIGO_AUX_SAFETY_CONDITION_COUNT; i++) {
+		int selected = i == INDIGO_AUX_SAFETY_CLOUDS ? severity[i] : 2 - severity[i];
 		for (int j = 0; j < 3; j++) {
-			conditions[i]->items[j].light.value = j == selected[i] ? (j == (i == 2 ? 0 : 2) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE) : INDIGO_IDLE_STATE;
+			conditions[i]->items[j].light.value = j == selected ? (severity[i] == 0 ? INDIGO_OK_STATE : INDIGO_ALERT_STATE) : INDIGO_IDLE_STATE;
 		}
 	}
-	indigo_property *properties[] = { WX_WEATHER_PROPERTY, WX_WIND_PROPERTY, WX_RAIN_STATE_PROPERTY, WX_CLOUD_PROPERTY };
+	indigo_property *properties[] = { WX_WEATHER_PROPERTY, WX_WIND_PROPERTY, WX_RAIN_STATE_PROPERTY, WX_CLOUD_PROPERTY, WX_HUMIDITY_STATE_PROPERTY };
 	for (unsigned i = 0; i < sizeof(properties) / sizeof(properties[0]); i++) {
 		properties[i]->state = INDIGO_OK_STATE;
 		if (publish) {
 			indigo_update_property(device, properties[i], NULL);
 		}
+	}
+	indigo_aux_safety_input safety[INDIGO_AUX_SAFETY_CONDITION_COUNT] = {
+		{ true, true, severity[INDIGO_AUX_SAFETY_CLOUDS] == 2, false, sky_temperature, WX_CLOUD_CLOUDY_THRESHOLD_ITEM->number.value, "C" },
+		{ true, true, severity[INDIGO_AUX_SAFETY_RAIN] == 2, false, WX_RAIN_ITEM->number.value, WX_RAIN_RAINING_THRESHOLD_ITEM->number.value, "mm/h" },
+		{ true, true, severity[INDIGO_AUX_SAFETY_WIND] == 2, false, WX_WIND_SPEED_ITEM->number.value, WX_WIND_STRONG_THRESHOLD_ITEM->number.value, "m/s" },
+		{ true, true, severity[INDIGO_AUX_SAFETY_HUMIDITY] == 2, false, humidity, WX_HUMIDITY_HUMID_THRESHOLD_ITEM->number.value, "%" }
+	};
+	if (publish) {
+		indigo_aux_update_weather_safety(device, WX_SAFETY_PROPERTY, safety);
+	} else {
+		indigo_aux_evaluate_weather_safety(WX_SAFETY_PROPERTY, safety, NULL, 0);
 	}
 }
 static void sqm_refresh(indigo_device *device, bool publish) {
@@ -527,6 +586,8 @@ static void weather_connection_handler(indigo_device *device) {
 			indigo_define_property(device, WX_WIND_PROPERTY, NULL);
 			indigo_define_property(device, WX_RAIN_STATE_PROPERTY, NULL);
 			indigo_define_property(device, WX_CLOUD_PROPERTY, NULL);
+			indigo_define_property(device, WX_HUMIDITY_STATE_PROPERTY, NULL);
+			indigo_define_property(device, WX_SAFETY_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
@@ -538,17 +599,33 @@ static void weather_connection_handler(indigo_device *device) {
 			WX_WIND_PROPERTY,
 			WX_RAIN_STATE_PROPERTY,
 			WX_CLOUD_PROPERTY,
+			WX_HUMIDITY_STATE_PROPERTY,
+			WX_SAFETY_PROPERTY,
 		};
 		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
 			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
 				cancelled_properties[i]->state = INDIGO_OK_STATE;
 			}
 		}
+		if (WX_CLOUD_THRESHOLDS_PROPERTY != NULL && WX_CLOUD_THRESHOLDS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(WX_CLOUD_THRESHOLDS_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (WX_RAIN_THRESHOLDS_PROPERTY != NULL && WX_RAIN_THRESHOLDS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(WX_RAIN_THRESHOLDS_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (WX_WIND_THRESHOLDS_PROPERTY != NULL && WX_WIND_THRESHOLDS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(WX_WIND_THRESHOLDS_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
+		if (WX_HUMIDITY_THRESHOLDS_PROPERTY != NULL && WX_HUMIDITY_THRESHOLDS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			INDIGO_UPDATE_PROPERTY_STATE(WX_HUMIDITY_THRESHOLDS_PROPERTY, INDIGO_OK_STATE, NULL);
+		}
 		indigo_delete_property(device, WX_INPUT_PROPERTY, NULL);
 		indigo_delete_property(device, WX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, WX_WIND_PROPERTY, NULL);
 		indigo_delete_property(device, WX_RAIN_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, WX_CLOUD_PROPERTY, NULL);
+		indigo_delete_property(device, WX_HUMIDITY_STATE_PROPERTY, NULL);
+		indigo_delete_property(device, WX_SAFETY_PROPERTY, NULL);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -561,6 +638,46 @@ static void weather_wx_input_handler(indigo_device *device) {
 	weather_refresh(device, true);
 	//- weather.WX_INPUT.on_change
 	indigo_update_property(device, WX_INPUT_PROPERTY, NULL);
+}
+
+static void weather_wx_cloud_thresholds_handler(indigo_device *device) {
+	WX_CLOUD_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ weather.WX_CLOUD_THRESHOLDS.on_change
+	if (IS_CONNECTED) {
+		weather_refresh(device, true);
+	}
+	//- weather.WX_CLOUD_THRESHOLDS.on_change
+	indigo_update_property(device, WX_CLOUD_THRESHOLDS_PROPERTY, NULL);
+}
+
+static void weather_wx_rain_thresholds_handler(indigo_device *device) {
+	WX_RAIN_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ weather.WX_RAIN_THRESHOLDS.on_change
+	if (IS_CONNECTED) {
+		weather_refresh(device, true);
+	}
+	//- weather.WX_RAIN_THRESHOLDS.on_change
+	indigo_update_property(device, WX_RAIN_THRESHOLDS_PROPERTY, NULL);
+}
+
+static void weather_wx_wind_thresholds_handler(indigo_device *device) {
+	WX_WIND_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ weather.WX_WIND_THRESHOLDS.on_change
+	if (IS_CONNECTED) {
+		weather_refresh(device, true);
+	}
+	//- weather.WX_WIND_THRESHOLDS.on_change
+	indigo_update_property(device, WX_WIND_THRESHOLDS_PROPERTY, NULL);
+}
+
+static void weather_wx_humidity_thresholds_handler(indigo_device *device) {
+	WX_HUMIDITY_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ weather.WX_HUMIDITY_THRESHOLDS.on_change
+	if (IS_CONNECTED) {
+		weather_refresh(device, true);
+	}
+	//- weather.WX_HUMIDITY_THRESHOLDS.on_change
+	indigo_update_property(device, WX_HUMIDITY_THRESHOLDS_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (weather)
@@ -617,6 +734,46 @@ static indigo_result weather_attach(indigo_device *device) {
 		indigo_init_light_item(WX_CLOUD_CLEAR_ITEM, AUX_CLOUD_CLEAR_ITEM_NAME, "Clear", INDIGO_IDLE_STATE);
 		indigo_init_light_item(WX_CLOUD_CLOUDY_ITEM, AUX_CLOUD_CLOUDY_ITEM_NAME, "Cloudy", INDIGO_IDLE_STATE);
 		indigo_init_light_item(WX_CLOUD_OVERCAST_ITEM, AUX_CLOUD_OVERCAST_ITEM_NAME, "Overcast", INDIGO_IDLE_STATE);
+		WX_CLOUD_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, "Thresholds", "Cloud thresholds (sky temperature) [C]", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (WX_CLOUD_THRESHOLDS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(WX_CLOUD_CLEAR_THRESHOLD_ITEM, AUX_CLOUD_CLEAR_ITEM_NAME, "Clear (below)", -200, 200, 0, -10);
+		indigo_init_number_item(WX_CLOUD_CLOUDY_THRESHOLD_ITEM, AUX_CLOUD_CLOUDY_ITEM_NAME, "Cloudy (below)", -200, 200, 0, 0);
+		WX_RAIN_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_RAIN_THRESHOLDS_PROPERTY_NAME, "Thresholds", "Rain thresholds [mm/h]", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (WX_RAIN_THRESHOLDS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(WX_RAIN_RAINING_THRESHOLD_ITEM, AUX_RAIN_RAINING_ITEM_NAME, "Raining (at least)", 0, 1000, 0, 1);
+		indigo_init_number_item(WX_RAIN_WET_THRESHOLD_ITEM, AUX_RAIN_WET_ITEM_NAME, "Wet (at least)", 0, 1000, 0, 0.1);
+		WX_WIND_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WIND_THRESHOLDS_PROPERTY_NAME, "Thresholds", "Wind thresholds [m/s]", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (WX_WIND_THRESHOLDS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(WX_WIND_STRONG_THRESHOLD_ITEM, AUX_WIND_STRONG_ITEM_NAME, "Strong (at least)", 0, 1000, 0, 10);
+		indigo_init_number_item(WX_WIND_MODERATE_THRESHOLD_ITEM, AUX_WIND_MODERATE_ITEM_NAME, "Moderate (at least)", 0, 1000, 0, 3);
+		WX_HUMIDITY_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, "Thresholds", "Humidity thresholds [%]", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (WX_HUMIDITY_THRESHOLDS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(WX_HUMIDITY_HUMID_THRESHOLD_ITEM, AUX_HUMIDITY_HUMID_ITEM_NAME, "Humid (at least)", 0, 200, 0, 90);
+		indigo_init_number_item(WX_HUMIDITY_NORMAL_THRESHOLD_ITEM, AUX_HUMIDITY_NORMAL_ITEM_NAME, "Normal (at least)", 0, 200, 0, 70);
+		WX_HUMIDITY_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_HUMIDITY_PROPERTY_NAME, "Main", "Humidity", INDIGO_OK_STATE, 3);
+		if (WX_HUMIDITY_STATE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_light_item(WX_HUMIDITY_STATE_HUMID_ITEM, AUX_HUMIDITY_HUMID_ITEM_NAME, "Humid", INDIGO_IDLE_STATE);
+		indigo_init_light_item(WX_HUMIDITY_STATE_NORMAL_ITEM, AUX_HUMIDITY_NORMAL_ITEM_NAME, "Normal", INDIGO_IDLE_STATE);
+		indigo_init_light_item(WX_HUMIDITY_STATE_DRY_ITEM, AUX_HUMIDITY_DRY_ITEM_NAME, "Dry", INDIGO_IDLE_STATE);
+		WX_SAFETY_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_WEATHER_SAFETY_PROPERTY_NAME, "Main", "Weather safety", INDIGO_OK_STATE, 5);
+		if (WX_SAFETY_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_light_item(WX_SAFETY_SAFE_ITEM, AUX_WEATHER_SAFETY_SAFE_ITEM_NAME, "Safe", INDIGO_IDLE_STATE);
+		indigo_init_light_item(WX_SAFETY_CLOUDS_ITEM, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME, "Clouds", INDIGO_IDLE_STATE);
+		indigo_init_light_item(WX_SAFETY_RAIN_ITEM, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, "Rain", INDIGO_IDLE_STATE);
+		indigo_init_light_item(WX_SAFETY_WIND_ITEM, AUX_WEATHER_SAFETY_WIND_ITEM_NAME, "Wind", INDIGO_IDLE_STATE);
+		indigo_init_light_item(WX_SAFETY_HUMIDITY_ITEM, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME, "Humidity", INDIGO_IDLE_STATE);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return weather_enumerate_properties(device, NULL, NULL);
 	}
@@ -630,7 +787,13 @@ static indigo_result weather_enumerate_properties(indigo_device *device, indigo_
 		INDIGO_DEFINE_MATCHING_PROPERTY(WX_WIND_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(WX_RAIN_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(WX_CLOUD_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(WX_HUMIDITY_STATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(WX_SAFETY_PROPERTY);
 	}
+	INDIGO_DEFINE_MATCHING_PROPERTY(WX_CLOUD_THRESHOLDS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(WX_RAIN_THRESHOLDS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(WX_WIND_THRESHOLDS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(WX_HUMIDITY_THRESHOLDS_PROPERTY);
 	return indigo_aux_enumerate_properties(device, client, property);
 }
 
@@ -641,6 +804,25 @@ static indigo_result weather_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(WX_INPUT_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(WX_INPUT_PROPERTY, weather_wx_input_handler);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(WX_CLOUD_THRESHOLDS_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(WX_CLOUD_THRESHOLDS_PROPERTY, weather_wx_cloud_thresholds_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(WX_RAIN_THRESHOLDS_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(WX_RAIN_THRESHOLDS_PROPERTY, weather_wx_rain_thresholds_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(WX_WIND_THRESHOLDS_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(WX_WIND_THRESHOLDS_PROPERTY, weather_wx_wind_thresholds_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(WX_HUMIDITY_THRESHOLDS_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(WX_HUMIDITY_THRESHOLDS_PROPERTY, weather_wx_humidity_thresholds_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, WX_CLOUD_THRESHOLDS_PROPERTY);
+			indigo_save_property(device, NULL, WX_RAIN_THRESHOLDS_PROPERTY);
+			indigo_save_property(device, NULL, WX_WIND_THRESHOLDS_PROPERTY);
+			indigo_save_property(device, NULL, WX_HUMIDITY_THRESHOLDS_PROPERTY);
+		}
 	}
 	return indigo_aux_change_property(device, client, property);
 }
@@ -655,6 +837,12 @@ static indigo_result weather_detach(indigo_device *device) {
 	indigo_release_property(WX_WIND_PROPERTY);
 	indigo_release_property(WX_RAIN_STATE_PROPERTY);
 	indigo_release_property(WX_CLOUD_PROPERTY);
+	indigo_release_property(WX_CLOUD_THRESHOLDS_PROPERTY);
+	indigo_release_property(WX_RAIN_THRESHOLDS_PROPERTY);
+	indigo_release_property(WX_WIND_THRESHOLDS_PROPERTY);
+	indigo_release_property(WX_HUMIDITY_THRESHOLDS_PROPERTY);
+	indigo_release_property(WX_HUMIDITY_STATE_PROPERTY);
+	indigo_release_property(WX_SAFETY_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
 }

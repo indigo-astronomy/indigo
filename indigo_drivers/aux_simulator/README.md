@@ -32,3 +32,4 @@ Use with Auxiliary Agent: Select the devices in AUX #1 through AUX #4. The agent
 ## Testing
 
 - 2026-10-20 11:02 3.0.0.1 mac arm64 simulator 13/13 OK
+- 2026-11-23 01:53 3.0.0.2 linux x64 simulator 18/18 OK
