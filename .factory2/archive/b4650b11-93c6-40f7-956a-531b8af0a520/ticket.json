@@ -1,0 +1,399 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b4650b11-93c6-40f7-956a-531b8af0a520",
+  "revision": 17,
+  "title": "indigo_mount_nexstaraux: MOUNT_STATE slew light shows ALERT only on a slew failure, not for a kept coordinates ALERT",
+  "description": "Audit in 1078b2c4: the light becomes ALERT only when a slew fails. Owner's rule (decided 2026-11-22 for mount_synscan, ticket 1078b2c4, and extended to this driver on 2026-11-23): whenever MOUNT_EQUATORIAL_COORDINATES is in ALERT, the SLEW light of MOUNT_STATE is ALERT too; BUSY while the coordinates are BUSY; otherwise as before. The library keeps a coordinates ALERT until the next BUSY (indigo_update_coordinates() kept-ALERT rule, indigo_reject_coordinates_change()), so the light must be derived from the coordinates state after indigo_update_coordinates() has decided it, at every place the driver publishes the coordinates or MOUNT_STATE (poll, refusals, sync, abort, park/home, connect), not from the driver's own motion flags alone. Reference implementation: synscan_update_mount_state() and its call order in indigo_drivers/mount_synscan/indigo_mount_synscan.driver (commit 5f794cc15). Scope: the .driver source (version bump, regenerate with the unchanged generator), simulator-backed cases proving the light follows the coordinates state through a refused/failed request (ALERT kept while idle), the next accepted request (BUSY, then OK/IDLE) and connect, adaptation of existing cases that asserted IDLE under a kept ALERT, recorded run with tools/run_driver_test.py, MIGRATION_STATUS count. Refusals inserted by the generator (parked/homing guards) cannot call driver code; if the light lags there until the next poll, record it in the ticket note and do not change the generator.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-23T13:54:15.340432Z",
+  "status": "closed",
+  "branch": "ticket/b4650b11-93c6-40f7-956a-531b8af0a520",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "f83c7c47-54a4-4d82-ae41-fe35acae6c72",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T13:54:19.717098Z",
+          "last_activity_at": "2026-11-23T15:19:58.722424Z",
+          "ended_at": "2026-11-23T15:19:58.722424Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 5139005.326,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:54:19.717098Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/b4650b11-93c6-40f7-956a-531b8af0a520"
+        },
+        {
+          "at": "2026-11-23T15:19:58.722424Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 5139005.326,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "ceff3e19-2213-4686-9b3d-cdc20a346f04",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c0e47ce7-924d-4c96-9a39-f737cbd0aa78",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T15:19:58.722579Z",
+          "last_activity_at": "2026-11-23T15:52:22.416081Z",
+          "ended_at": "2026-11-23T15:52:22.416081Z",
+          "outcome": {
+            "summary": "No required changes. Every coordinates publication in the driver is followed by deriving the light; generated files byte-identical to regeneration; abort/parked_guards/reconnect cases rerun by the reviewer, pass; gate in abort_cancels_a_queued_goto deterministic. Non-blocking: header comment of nexstaraux_update_slew_light should mention the on_change exception (called before the generated coordinates publication); MOUNT_STATE is seen just before the coordinates on that path; coordinates published by library code only (geographic coordinates, alignment mode/points) and generator parked guards leave the light out of step until the next poll (<=1 s); suite filters with NEXSTARAUX_TEST_FILTER, not INDIGO_TEST_CASE_FILTER. Not verified: Linux, Windows, hardware.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1943693.502,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T15:19:58.722579Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T15:52:22.416081Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "No required changes. Every coordinates publication in the driver is followed by deriving the light; generated files byte-identical to regeneration; abort/parked_guards/reconnect cases rerun by the reviewer, pass; gate in abort_cancels_a_queued_goto deterministic. Non-blocking: header comment of nexstaraux_update_slew_light should mention the on_change exception (called before the generated coordinates publication); MOUNT_STATE is seen just before the coordinates on that path; coordinates published by library code only (geographic coordinates, alignment mode/points) and generator parked guards leave the light out of step until the next poll (<=1 s); suite filters with NEXSTARAUX_TEST_FILTER, not INDIGO_TEST_CASE_FILTER. Not verified: Linux, Windows, hardware."
+        }
+      ],
+      "result": {
+        "summary": "No required changes. Every coordinates publication in the driver is followed by deriving the light; generated files byte-identical to regeneration; abort/parked_guards/reconnect cases rerun by the reviewer, pass; gate in abort_cancels_a_queued_goto deterministic. Non-blocking: header comment of nexstaraux_update_slew_light should mention the on_change exception (called before the generated coordinates publication); MOUNT_STATE is seen just before the coordinates on that path; coordinates published by library code only (geographic coordinates, alignment mode/points) and generator parked guards leave the light out of step until the next poll (<=1 s); suite filters with NEXSTARAUX_TEST_FILTER, not INDIGO_TEST_CASE_FILTER. Not verified: Linux, Windows, hardware.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1943693.502,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "81cecbeb-c7aa-4836-a5ef-d0ee3d7a4b14",
+      "event": "ticket/created",
+      "at": "2026-11-23T13:54:15.341105Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "5bdc237f-7956-4b1c-be14-d4ddf05cb180",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T13:54:15.507069Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "1f27bdcf-9cb3-4341-b587-1a75218d5d64",
+      "event": "task/progress",
+      "at": "2026-11-23T13:54:19.717378Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "text": "Implementation started on branch ticket/b4650b11-93c6-40f7-956a-531b8af0a520"
+    },
+    {
+      "event_id": "24a819e6-6e5b-4e98-a531-ac07a2e001ef",
+      "event": "ticket/started",
+      "at": "2026-11-23T13:54:19.718899Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/b4650b11-93c6-40f7-956a-531b8af0a520",
+      "base": "master"
+    },
+    {
+      "event_id": "b50226ab-e4cf-45a2-abb4-56e16256f7ff",
+      "event": "task/progress",
+      "at": "2026-11-23T13:55:30.308945Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "text": "Implementer launched",
+      "attempt_id": "f83c7c47-54a4-4d82-ae41-fe35acae6c72",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6888ffea-c2a6-4a18-8bd8-f831e9f6d9de",
+      "event": "task/progress",
+      "at": "2026-11-23T13:58:58.568624Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "text": "Deriving the SLEW light from the coordinates state in the .driver"
+    },
+    {
+      "event_id": "0f3bcfda-4f76-4baf-81cc-a246bbe32aca",
+      "event": "task/progress",
+      "at": "2026-11-23T14:00:49.738632Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "text": "Writing SLEW light cases in test_mount_nexstaraux_simulator.c"
+    },
+    {
+      "event_id": "c1650c32-7e18-49d5-b485-59974121b3bf",
+      "event": "task/progress",
+      "at": "2026-11-23T14:02:57.969113Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "text": "Running filtered nexstaraux cases for the SLEW light"
+    },
+    {
+      "event_id": "d08b70d2-8142-4292-a481-43dd5086e4fd",
+      "event": "task/progress",
+      "at": "2026-11-23T14:19:56.229552Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "text": "Showing the new SLEW light checks fail against the unfixed driver"
+    },
+    {
+      "event_id": "73de4e7f-b0d4-406d-9844-7be99d7e6f9b",
+      "event": "task/progress",
+      "at": "2026-11-23T14:58:30.010157Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "text": "Recorded run: tools/run_driver_test.py mount_nexstaraux"
+    },
+    {
+      "event_id": "7364f630-214f-4c38-8915-df02c4fd9e46",
+      "event": "task/progress",
+      "at": "2026-11-23T15:19:01.152262Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bc51d0c7-550f-44cd-a535-1490f555e8c1",
+      "event": "task/progress",
+      "at": "2026-11-23T15:19:01.179373Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "c4b7b50e-feb7-4b9e-be9e-dd18634be6e6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "059f6252-ab45-4e27-9b8c-245198c4e296",
+      "event": "check/passed",
+      "at": "2026-11-23T15:19:01.180861Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "0d3d309da4190900da777e504f58a334cc0e1ca5",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "92aa06f6-dab8-40a2-a486-e6cb97aacec3",
+      "event": "ticket/note",
+      "at": "2026-11-23T15:19:15.582031Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Cause: the driver set MOUNT_STATE.SLEW only from its own motion flags (BUSY on goto/park start, ALERT on slew failure/stop, IDLE on arrival) and the poll published MOUNT_STATE before indigo_update_coordinates(). A goto or sync the controller refused, a refused parked request, an abort of a queued goto and a failed poll left MOUNT_EQUATORIAL_COORDINATES ALERT (kept by the library) with the light IDLE; a failed goto's ALERT light also survived a reconnect although the coordinates are defined OK.\nFix (indigo_mount_nexstaraux.driver 28 -> 29, regenerated .c with the unchanged generator; .h/_main.c unchanged): new nexstaraux_update_slew_light() derives the light from the coordinates state (ALERT/BUSY as is, otherwise IDLE). Called after indigo_update_coordinates() in the poll (MOUNT_STATE now published after the coordinates) and its failed-read branch, mount_slew_failed(), the finalizer's stop and arrival paths (replacing the hand-set ALERT/IDLE), the abort of a queued request (plus MOUNT_STATE update), on_connect (light defined with the coordinates), and at the end of the MOUNT_EQUATORIAL_COORDINATES on_change for a non-BUSY result: the generator appends indigo_update_coordinates() after on_change, and since the admitted BUSY cleared the kept ALERT that result is published unchanged, so MOUNT_STATE is published just ahead of it. Goto/park start still set BUSY explicitly.\nGenerator-inserted refusals (parked guard in change_property and in the handler) run no driver code: the light follows at the next poll (<= 1 s idle); recorded as accepted lag, generator not changed.\nTests (test_mount_nexstaraux_simulator.c): slew_command_failure (refused goto: coordinates+light ALERT over 3 polls; next goto shows the light BUSY, ends OK/IDLE), sync_command_failure (refused sync ALERT over polls; accepted sync IDLE), parked_guards (parked GOTO and sync refusals ALERT over polls, still ALERT after unpark, BUSY at the accepted goto), reconnect (refused goto, reconnect: MOUNT_STATE defined",
+      "tokens": null
+    },
+    {
+      "event_id": "b2a5927c-2304-445c-933a-79d3a9cf0485",
+      "event": "task/progress",
+      "at": "2026-11-23T15:19:58.722641Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ceff3e19-2213-4686-9b3d-cdc20a346f04",
+      "text": "Review started"
+    },
+    {
+      "event_id": "bc6ef05d-6253-43aa-b8d3-fc412e12dc37",
+      "event": "review/started",
+      "at": "2026-11-23T15:19:58.723757Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "ebf8858e-faa8-4206-b5d9-9da73a8c5965",
+      "event": "task/progress",
+      "at": "2026-11-23T15:52:22.416172Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ceff3e19-2213-4686-9b3d-cdc20a346f04",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "feb807c8-e008-42ac-b952-c440d8e5c38e",
+      "event": "review/passed",
+      "at": "2026-11-23T15:52:22.417409Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "ceff3e19-2213-4686-9b3d-cdc20a346f04",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0d3d309da4190900da777e504f58a334cc0e1ca5"
+    },
+    {
+      "event_id": "2f2e7e71-5e35-4822-a045-6f196df3809b",
+      "event": "ticket/closed",
+      "at": "2026-11-23T15:52:22.688263Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-23T15:52:22.688240Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "5ca2a5f91484be7e131fc2a97033706e0d4de8a7"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0d3d309da4190900da777e504f58a334cc0e1ca5",
+        "tree": "0915e6b130455734667fa966b3c42d2d36d3ad98",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T15:19:01.178731Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/b4650b11-93c6-40f7-956a-531b8af0a520/0915e6b13045-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "No required changes. Every coordinates publication in the driver is followed by deriving the light; generated files byte-identical to regeneration; abort/parked_guards/reconnect cases rerun by the reviewer, pass; gate in abort_cancels_a_queued_goto deterministic. Non-blocking: header comment of nexstaraux_update_slew_light should mention the on_change exception (called before the generated coordinates publication); MOUNT_STATE is seen just before the coordinates on that path; coordinates published by library code only (geographic coordinates, alignment mode/points) and generator parked guards leave the light out of step until the next poll (<=1 s); suite filters with NEXSTARAUX_TEST_FILTER, not INDIGO_TEST_CASE_FILTER. Not verified: Linux, Windows, hardware.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "0d3d309da4190900da777e504f58a334cc0e1ca5",
+        "tree": "0915e6b130455734667fa966b3c42d2d36d3ad98",
+        "at": "2026-11-23T15:52:22.415916Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T15:19:15.580840Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Cause: the driver set MOUNT_STATE.SLEW only from its own motion flags (BUSY on goto/park start, ALERT on slew failure/stop, IDLE on arrival) and the poll published MOUNT_STATE before indigo_update_coordinates(). A goto or sync the controller refused, a refused parked request, an abort of a queued goto and a failed poll left MOUNT_EQUATORIAL_COORDINATES ALERT (kept by the library) with the light IDLE; a failed goto's ALERT light also survived a reconnect although the coordinates are defined OK.\nFix (indigo_mount_nexstaraux.driver 28 -> 29, regenerated .c with the unchanged generator; .h/_main.c unchanged): new nexstaraux_update_slew_light() derives the light from the coordinates state (ALERT/BUSY as is, otherwise IDLE). Called after indigo_update_coordinates() in the poll (MOUNT_STATE now published after the coordinates) and its failed-read branch, mount_slew_failed(), the finalizer's stop and arrival paths (replacing the hand-set ALERT/IDLE), the abort of a queued request (plus MOUNT_STATE update), on_connect (light defined with the coordinates), and at the end of the MOUNT_EQUATORIAL_COORDINATES on_change for a non-BUSY result: the generator appends indigo_update_coordinates() after on_change, and since the admitted BUSY cleared the kept ALERT that result is published unchanged, so MOUNT_STATE is published just ahead of it. Goto/park start still set BUSY explicitly.\nGenerator-inserted refusals (parked guard in change_property and in the handler) run no driver code: the light follows at the next poll (<= 1 s idle); recorded as accepted lag, generator not changed.\nTests (test_mount_nexstaraux_simulator.c): slew_command_failure (refused goto: coordinates+light ALERT over 3 polls; next goto shows the light BUSY, ends OK/IDLE), sync_command_failure (refused sync ALERT over polls; accepted sync IDLE), parked_guards (parked GOTO and sync refusals ALERT over polls, still ALERT after unpark, BUSY at the accepted goto), reconnect (refused goto, reconnect: MOUNT_STATE defined with SLEW IDLE, coordinates OK), new abort_cancels_a_queued_goto (gate holds the queue, goto queued, abort: no goto sent, MOUNT_STATE ALERT published right after the coordinates ALERT and before the next poll, both ALERT over polls). No existing case asserted IDLE under a kept ALERT; mount_state_lights passes unchanged.\nWithout the fix (HEAD driver rebuilt): slew_command_failure, sync_command_failure, parked_guards fail with 'after poll 0 the coordinates are 3 and the SLEW light 0'; abort_cancels_a_queued_goto fails (no SLEW ALERT publication); reconnect fails (light never ALERT). With the fix minus only the on_connect line, reconnect fails with MOUNT_STATE defined with SLEW 3 (expected 0).\nRecorded run: python3 tools/run_driver_test.py mount_nexstaraux -> 2026-11-23 16:01 3.0.0.29 mac arm64 simulator 71/71 OK. MIGRATION_STATUS count 70 -> 71 (HW count unchanged). flow check whitespace passed.\nNot verified: Linux, Windows, hardware (no hardware run).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "5ca2a5f91484be7e131fc2a97033706e0d4de8a7",
+      "tree": "0915e6b130455734667fa966b3c42d2d36d3ad98",
+      "base": "master",
+      "at": "2026-11-23T15:52:22.618767Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-23T13:54:15.340432Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-23T13:54:15.506955Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 7082698.828,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 23,
+    "sha256": "59d0353b44028296c4bf4982ebe3a4e076493cad6c4346ff2cdedd373e82c226"
+  }
+}
