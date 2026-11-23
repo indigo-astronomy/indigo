@@ -22,7 +22,12 @@
 
 The scheduler loads Sequencer.js itself and runs real capture, slew and guiding tasks through the
 Imager, Mount and Guider agents. The client only uploads tasks over the JSON protocol and observes
-properties, messages and the saved frames. No existing server or configuration is used.
+properties, messages and the saved frames. No existing server or configuration is used. The weather
+station of the aux simulator, selected in the Auxiliary Agent, drives the unsafe hold.
+
+SCHEDULER_SIMULATORS_ONLY selects cases by name, several separated by commas, e.g.
+SCHEDULER_SIMULATORS_ONLY="unsafe weather holds the scheduler and the hooks run"; a case that builds on
+an earlier one fails without it.
 """
 
 import argparse
@@ -40,6 +45,8 @@ import time
 AGENT = "Scheduler Agent"
 SUITE = "Scheduler simulators"
 WHEEL = "CCD Imager Simulator (wheel)"
+AUXILIARY = "Auxiliary Agent"
+WEATHER = "Weather Station Simulator"
 
 
 class Client:
@@ -54,6 +61,9 @@ class Client:
 		self.messages = []
 		self.log = log
 		self.heartbeat = time.monotonic()
+		# every update of the watched properties, with the time it arrived, for changes shorter than a poll
+		self.watched = set()
+		self.trace = []
 		import codecs
 		self.utf8 = codecs.getincrementaldecoder("utf-8")()
 
@@ -112,6 +122,8 @@ class Client:
 					merged["items"] = list(items.values())
 					self.properties[key] = merged
 					self.updates[key] = self.updates.get(key, 0) + 1
+					if key in self.watched:
+						self.trace.append((time.monotonic(), key, value.get("state"), {i["name"]: i.get("value") for i in value.get("items", [])}, message))
 				elif operation.startswith("delete"):
 					for key in [k for k in self.properties if k[0] == value.get("device") and (not value.get("name") or k[1] == value["name"])]:
 						del self.properties[key]
@@ -160,13 +172,20 @@ class Client:
 				return i
 		return -1
 
+	def message_indexes(self, text, device=AGENT):
+		return [i for i, (d, m) in enumerate(self.messages) if d == device and text in m]
+
+	def device_messages(self, device):
+		return [m for d, m in self.messages if d == device]
+
 
 class Run:
 
-	def __init__(self, client, images, records):
+	def __init__(self, client, images, records, only):
 		self.client = client
 		self.images = images
 		self.records = records
+		self.only = only
 		self.results = []
 
 	def record(self, line):
@@ -175,6 +194,8 @@ class Run:
 				output.write(line + "\n")
 
 	def case(self, name, function):
+		if self.only and name not in self.only:
+			return
 		started = time.monotonic()
 		try:
 			function()
@@ -311,7 +332,7 @@ def main():
 	with socket.socket() as reservation:
 		reservation.bind(("127.0.0.1", 0))
 		port = reservation.getsockname()[1]
-	drivers = ["agent_scripting", "agent_scheduler", "agent_imager", "agent_mount", "agent_guider", "ccd_simulator", "mount_simulator"]
+	drivers = ["agent_scripting", "agent_scheduler", "agent_imager", "agent_mount", "agent_guider", "agent_auxiliary", "ccd_simulator", "mount_simulator", "aux_simulator"]
 	command = [str(repo / "build/bin/indigo_server"), "--", "-p", str(port), "-b-", "-c-", "-w-"] + ([os.environ.get("INDIGO_TEST_DEBUG")] if os.environ.get("INDIGO_TEST_DEBUG") else [])
 	env = dict(os.environ, HOME=str(home), INDIGO_CACHE_BASE=str(home / ".indigo"))
 	process = None
@@ -319,11 +340,18 @@ def main():
 	run = None
 	error = None
 	records = os.environ.get("INDIGO_TEST_RESULTS")
-	cases = ["library loaded by the scheduler", "guider calibration task", "slew, guiding and capture task", "urgent task preempts a guided capture", "urgent task fails a preempted capture", "target below the horizon waits", "shutdown hook parks the mount", "night hooks prepare and put away the devices", "LRGB filters, frame types and pointing in the frames", "targets run in priority order and point the mount", "failing device steps are retried and the next task runs"]
-	only = os.environ.get("SCHEDULER_SIMULATORS_ONLY")
+	cases = ["library loaded by the scheduler", "guider calibration task", "slew, guiding and capture task", "urgent task preempts a guided capture", "urgent task fails a preempted capture", "target below the horizon waits", "shutdown hook parks the mount", "night hooks prepare and put away the devices", "LRGB filters, frame types and pointing in the frames", "targets run in priority order and point the mount", "failing device steps are retried and the next task runs", "unsafe weather holds the scheduler and the hooks run"]
+	only = [n.strip() for n in os.environ.get("SCHEDULER_SIMULATORS_ONLY", "").split(",") if n.strip()]
+	unknown = [n for n in only if n not in cases]
+	if unknown:
+		print("unknown case: " + ", ".join(unknown), file=sys.stderr)
+		if not args.output:
+			shutil.rmtree(output, ignore_errors=True)
+		return 2
+	selected = [c for c in cases if c in only] if only else cases
 	if records:
 		with open(records, "a") as out:
-			out.write("plan\t" + str(len(cases)) + "\t" + SUITE + "\n")
+			out.write("plan\t" + str(len(selected)) + "\t" + SUITE + "\n")
 	try:
 		with (output / "server.log").open("w") as server_log, (output / "messages.jsonl").open("w") as log:
 			process = subprocess.Popen(command, cwd=repo, env=env, stdout=server_log, stderr=subprocess.STDOUT)
@@ -339,7 +367,7 @@ def main():
 						raise TimeoutError("private indigo_server did not start")
 					time.sleep(0.1)
 			client = Client(connection, log)
-			run = Run(client, images, records)
+			run = Run(client, images, records, only)
 			client.send("getProperties", {"version": 0x300})
 			client.wait(lambda: client.property("Server", "DRIVERS") is not None, 20, "server drivers")
 			# indigo_server offers the dynamic drivers listed in build/share/indigo/indigo_drivers, which only the top-level build writes
@@ -347,7 +375,7 @@ def main():
 			if missing:
 				raise RuntimeError("Server.DRIVERS does not offer " + ", ".join(missing) + "; build them with 'make all' so that build/share/indigo/indigo_drivers lists them")
 			client.change_switch("Server", "DRIVERS", {"indigo_" + d: True for d in drivers})
-			client.wait(lambda: client.property(AGENT, "AGENT_SCHEDULER_SETTINGS") is not None and client.property("Mount Agent", "GEOGRAPHIC_COORDINATES") is not None and client.property("Guider Agent", "AGENT_START_PROCESS") is not None, 30, "agents")
+			client.wait(lambda: client.property(AGENT, "AGENT_SCHEDULER_SETTINGS") is not None and client.property("Mount Agent", "GEOGRAPHIC_COORDINATES") is not None and client.property("Guider Agent", "AGENT_START_PROCESS") is not None and client.property(AUXILIARY, "AGENT_AUX_SAFETY") is not None, 30, "agents")
 			client.change_number(AGENT, "AGENT_SCHEDULER_SETTINGS", {"IDLE_CHECK_INTERVAL": 1, "STOP_TIMEOUT": 60, "START_TIMEOUT": 10})
 			# the site of the sky constraints comes from the Mount Agent
 			client.change_switch("Mount Agent", "FILTER_MOUNT_LIST", {"Mount Simulator": True})
@@ -502,8 +530,10 @@ def main():
 				assert client.message_count("Starting hook 'Evening'") == 1 and client.message_count("Starting hook 'Morning'") == 1
 
 			def fresh_start():
-				# no hooks, no tasks, the original site, and the mount position in the frames of the Imager Agent
-				client.change_text(AGENT, "AGENT_SCHEDULER_HOOKS", {"STARTUP": "", "SHUTDOWN": "", "IDLE": "", "NIGHT_START": "", "NIGHT_END": "", "RESUME": ""})
+				# no hooks, no tasks, no weather station, the original site, and the mount position in the frames of the Imager Agent
+				client.change_text(AGENT, "AGENT_SCHEDULER_HOOKS", {"STARTUP": "", "SHUTDOWN": "", "IDLE": "", "NIGHT_START": "", "NIGHT_END": "", "RESUME": "", "UNSAFE": "", "SAFE": ""})
+				client.change_switch(AUXILIARY, "FILTER_AUX_1_LIST", {"NONE": True})
+				client.wait(lambda: client.value(AUXILIARY, "FILTER_AUX_1_LIST", "NONE") is True, 10, "no weather station")
 				client.wait(lambda: all(not i.get("value") for i in client.property(AGENT, "AGENT_SCHEDULER_HOOKS")["items"]), 10, "hooks cleared")
 				run.control("STOP")
 				client.wait(lambda: client.state(AGENT, "AGENT_SCHEDULER_STATE") in ("Ok", "Idle", "Alert") and not (client.value(AGENT, "AGENT_SCHEDULER_CURRENT", "TASK") or ""), 120, "scheduler stopped")
@@ -608,6 +638,122 @@ def main():
 				assert len(run.frames("after_")) == 1, "the task after the failures did not capture"
 				assert client.message_index("Starting task 'Bad camera'") < client.message_index("Starting task 'Afterwards'")
 
+			def light(device, name, item):
+				return client.value(device, name, item)
+
+			def history(name):
+				# (kind, result, reason) of the runs of one task in the history, oldest first
+				entries = []
+				for i in (client.property(AGENT, "AGENT_SCHEDULER_HISTORY") or {}).get("items", []):
+					columns = i.get("label", "").split(" | ")
+					if len(columns) == 6 and columns[1] == name:
+						entries.append((columns[3], columns[4], columns[5]))
+				return entries
+
+			def set_wind(speed):
+				# the driver ignores a change while the previous one is Busy
+				client.change_number(WEATHER, "X_SIMULATION_PARAMETERS", {"WIND_SPEED": speed})
+				client.wait(lambda: client.value(WEATHER, "X_SIMULATION_PARAMETERS", "WIND_SPEED") == speed and client.state(WEATHER, "X_SIMULATION_PARAMETERS") == "Ok", 10, "wind speed %s" % speed)
+
+			def safety_light_since(since, value):
+				# the time the Auxiliary Agent first published the SAFE light after since, also when it changed back before a poll
+				for when, key, state, items, message in client.trace:
+					if when >= since and key == (AUXILIARY, "AGENT_AUX_SAFETY") and items.get("SAFE") == value:
+						return when
+				return None
+
+			def unsafe_hold():
+				# the weather station of the aux simulator in the Auxiliary Agent, an UNSAFE and a SAFE hook and a capture interrupted by wind
+				safe_delay = 0.2
+				fresh_start()
+				# the safe hook runs only in the scheduler's night with work, the site is moved to midnight
+				site_at(0)
+				client.change_number(AGENT, "AGENT_SCHEDULER_SETTINGS", {"SAFE_DELAY": safe_delay})
+				client.wait(lambda: client.value(AGENT, "AGENT_SCHEDULER_SETTINGS", "SAFE_DELAY") == safe_delay, 10, "SAFE_DELAY")
+				client.watched.add((AUXILIARY, "AGENT_AUX_SAFETY"))
+				client.watched.add((WEATHER, "AUX_WEATHER_SAFETY"))
+				client.change_switch(AUXILIARY, "FILTER_AUX_1_LIST", {WEATHER: True})
+				client.wait(lambda: light(WEATHER, "AUX_WEATHER_SAFETY", "SAFE") == "Ok", 30, "safe weather station (AUX_WEATHER_SAFETY " + str(client.property(WEATHER, "AUX_WEATHER_SAFETY")) + ")")
+				client.wait(lambda: light(AUXILIARY, "AGENT_AUX_SAFETY", "SAFE") == "Ok" and client.state(AUXILIARY, "AGENT_AUX_SAFETY") == "Ok", 30, "AGENT_AUX_SAFETY safe (" + str(client.property(AUXILIARY, "AGENT_AUX_SAFETY")) + ")")
+				hook = "var sequence = new Sequence(scheduler_task.name);\nsequence.send_message(\"SAFETY TEST %s\");\nsequence.wait(1);\nsequence.start();\n"
+				run.upload("// @task Shelter\n// @priority hook\n\n" + hook % "shelter", False)
+				run.upload("// @task Reopen\n// @priority hook\n\n" + hook % "reopen", False)
+				client.change_text(AGENT, "AGENT_SCHEDULER_HOOKS", {"UNSAFE": "Shelter", "SAFE": "Reopen"})
+				client.wait(lambda: "hook unsafe" in client.task_label("Shelter") and "hook safe" in client.task_label("Reopen"), 10, "safety hooks configured")
+				done = client.value(AGENT, "AGENT_SCHEDULER_STATE", "DONE")
+				failed = client.value(AGENT, "AGENT_SCHEDULER_STATE", "FAILED")
+				frames = 15
+				body = "var sequence = new Sequence(scheduler_task.name);\nsequence.select_imager_camera(\"CCD Imager Simulator\");\n"
+				body += "sequence.set_directory(" + json.dumps(str(images) + "/") + ");\nsequence.select_image_format(\"FITS\");\nsequence.select_frame_type(\"Light\");\n"
+				body += "sequence.capture_batch(\"windy_XXX\", " + str(frames) + ", 1);\nsequence.start();\n"
+				run.upload("// @task Windy\n// @retry 1\n\n" + body)
+				run.wait_task("Windy", "RUNNING", 60)
+				client.wait(lambda: len(run.frames("windy")) >= 2, 60, "first frames of the capture")
+				# wind above the STRONG threshold of 10 m/s
+				unsafe_since = time.monotonic()
+				set_wind(20)
+				client.wait(lambda: light(WEATHER, "AUX_WEATHER_SAFETY", "SAFE") == "Alert" and light(WEATHER, "AUX_WEATHER_SAFETY", "WIND") == "Alert", 10, "unsafe weather station")
+				client.wait(lambda: light(AUXILIARY, "AGENT_AUX_SAFETY", "SAFE") == "Alert" and light(AUXILIARY, "AGENT_AUX_SAFETY", "WIND") == "Alert", 10, "AGENT_AUX_SAFETY unsafe")
+				assert any(m.startswith("Unsafe: wind 20") and "above 10" in m for m in client.device_messages(WEATHER)), "no wind reason from the weather station: " + str(client.device_messages(WEATHER)[-3:])
+				assert any(m.startswith("Unsafe: wind") and m.endswith("(" + WEATHER + ")") for m in client.device_messages(AUXILIARY)), "no wind reason from the Auxiliary Agent: " + str(client.device_messages(AUXILIARY)[-3:])
+				client.wait(lambda: client.message_count("Unsafe conditions, the scheduler holds") == 1, 10, "unsafe hold")
+				client.wait(lambda: client.message_count("Task 'Windy' aborted by unsafe conditions, it will be retried") == 1, 60, "capture aborted")
+				client.wait(lambda: client.state("Imager Agent", "AGENT_START_PROCESS") != "Busy", 30, "imager idle after the abort")
+				interrupted = len(run.frames("windy"))
+				assert interrupted < frames, "the capture was not interrupted"
+				client.wait(lambda: ("task", "UNSAFE", "unsafe conditions") in history("Windy"), 10, "unsafe history entry (" + str(history("Windy")) + ")")
+				client.wait(lambda: client.message_count("Hook 'Shelter' completed") == 1, 60, "unsafe hook")
+				client.wait(lambda: client.value(AGENT, "AGENT_SCHEDULER_CURRENT", "REASON") == "unsafe conditions", 10, "hold reason")
+				# the hold keeps everything still while the wind blows
+				hold_until = time.monotonic() + 3
+				client.wait(lambda: time.monotonic() >= hold_until, 10, "unsafe period")
+				assert client.message_count("Starting hook 'Shelter'") == 1, "the unsafe hook ran more than once"
+				assert client.any_message_count("SAFETY TEST shelter") == 1, "the unsafe hook body did not run once"
+				assert client.message_count("Starting task 'Windy'") == 1, "the task started during the hold"
+				assert client.message_count("Starting hook 'Reopen'") == 0, "the safe hook ran while unsafe"
+				assert client.state(AGENT, "AGENT_SCHEDULER_STATE") == "Busy", "the scheduler does not hold"
+				assert len(run.frames("windy")) == interrupted, "frames captured during the hold"
+				# calm again: the hold lasts SAFE_DELAY after the last unsafe report
+				calm_requested = time.monotonic()
+				set_wind(1)
+				client.wait(lambda: light(AUXILIARY, "AGENT_AUX_SAFETY", "SAFE") == "Ok", 10, "AGENT_AUX_SAFETY safe again")
+				assert any(m.startswith("Safe: all conditions within limits") for m in client.device_messages(AUXILIARY)), "no safe reason from the Auxiliary Agent"
+				safe_at = safety_light_since(calm_requested, "Ok")
+				client.wait(lambda: (client.value(AGENT, "AGENT_SCHEDULER_CURRENT", "REASON") or "").startswith("unsafe hold ends in "), 10, "hold countdown")
+				# a gust shorter than the scheduler's evaluation tick of half a second restarts the delay; calm wind follows as soon as
+				# the strong wind is applied, one client round trip later
+				gust_until = safe_at + 4
+				client.wait(lambda: time.monotonic() >= gust_until, 10, "safe period before the gust")
+				assert client.message_count("Safe conditions, the unsafe hold ends") == 0, "the hold ended before SAFE_DELAY"
+				gust = time.monotonic()
+				set_wind(20)
+				set_wind(1)
+				client.wait(lambda: safety_light_since(gust, "Alert") is not None and safety_light_since(safety_light_since(gust, "Alert"), "Ok") is not None, 10, "gust published by the Auxiliary Agent")
+				gust_start = safety_light_since(gust, "Alert")
+				gust_end = safety_light_since(gust_start, "Ok")
+				assert gust_end - gust_start < 0.5, "the gust lasted %.2f s, not shorter than the evaluation tick" % (gust_end - gust_start)
+				client.wait(lambda: client.message_count("Safe conditions, the unsafe hold ends") == 1, safe_delay * 60 + 30, "end of the hold")
+				ended = time.monotonic()
+				assert ended - gust_end >= safe_delay * 60 - 1.5, "the gust did not restart SAFE_DELAY: the hold ended %.1f s after it" % (ended - gust_end)
+				assert client.message_count("Unsafe conditions, the scheduler holds") == 1 and client.message_count("Starting hook 'Shelter'") == 1, "the gust started a new hold"
+				client.wait(lambda: client.message_count("Hook 'Reopen' completed") == 1, 60, "safe hook")
+				assert client.any_message_count("SAFETY TEST reopen") == 1, "the safe hook body did not run once"
+				# the aborted task runs again and completes, without a used retry
+				run.wait_task("Windy", "DONE", 120)
+				assert client.message_count("Starting task 'Windy'") == 2, "the task did not run once more"
+				assert "retries left 1" in client.task_label("Windy"), "the unsafe abort used a retry: " + client.task_label("Windy")
+				assert len(run.frames("windy")) == interrupted + frames, "expected %d frames, found %d" % (interrupted + frames, len(run.frames("windy")))
+				order = [client.message_index("Unsafe conditions, the scheduler holds"), client.message_index("Task 'Windy' aborted by unsafe conditions"), client.message_index("Starting hook 'Shelter'"), client.message_index("Hook 'Shelter' completed"), client.message_index("Safe conditions, the unsafe hold ends"), client.message_index("Starting hook 'Reopen'"), client.message_index("Hook 'Reopen' completed"), client.message_indexes("Starting task 'Windy'")[1], client.message_index("Task 'Windy' completed")]
+				assert -1 not in order and order == sorted(order), "messages out of order: " + str(order)
+				# every task finished, the scheduler stops by itself
+				client.wait(lambda: client.state(AGENT, "AGENT_SCHEDULER_STATE") == "Ok", 60, "scheduler stopped")
+				assert client.value(AGENT, "AGENT_SCHEDULER_STATE", "DONE") == done + 1, "DONE %s, expected %s" % (client.value(AGENT, "AGENT_SCHEDULER_STATE", "DONE"), done + 1)
+				assert client.value(AGENT, "AGENT_SCHEDULER_STATE", "FAILED") == failed, "FAILED changed"
+				assert client.value(AGENT, "AGENT_SCHEDULER_STATE", "TOTAL") == len(client.property(AGENT, "AGENT_SCHEDULER_TASK_STATE")["items"]) == 3, "TOTAL does not match the task list"
+				assert [(k, r) for k, r, _ in history("Windy")] == [("task", "UNSAFE"), ("task", "SUCCEEDED")], "history of Windy: " + str(history("Windy"))
+				assert [(k, r) for k, r, _ in history("Shelter")] == [("hook", "SUCCEEDED")], "history of Shelter: " + str(history("Shelter"))
+				assert [(k, r) for k, r, _ in history("Reopen")] == [("hook", "SUCCEEDED")], "history of Reopen: " + str(history("Reopen"))
+
 			run.case(cases[4], preemption_fails)
 			run.case(cases[5], below_horizon)
 			run.case(cases[6], shutdown_hook)
@@ -615,6 +761,7 @@ def main():
 			run.case(cases[8], lrgb_and_frame_types)
 			run.case(cases[9], targets_in_priority_order)
 			run.case(cases[10], failing_steps_and_recovery)
+			run.case(cases[11], unsafe_hold)
 	except (OSError, RuntimeError, TimeoutError, ValueError, StopIteration) as exception:
 		error = str(exception)
 		print(error, file=sys.stderr)
@@ -632,7 +779,7 @@ def main():
 	report = {"results": results, "error": error, "server_exit": process.returncode if process else None, "output": str(output)}
 	(output / "results.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
 	passed = sum(r["status"] == "pass" for r in results)
-	failed = len(cases) - passed
+	failed = len(selected) - passed
 	print(f"{SUITE}: {passed} passed, {failed} failed; report: {output / 'results.json'}")
 	if not failed and not error and not args.keep and not args.output:
 		shutil.rmtree(output, ignore_errors=True)

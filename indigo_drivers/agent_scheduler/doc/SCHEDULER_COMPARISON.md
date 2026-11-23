@@ -31,7 +31,7 @@ The INDIGO scheduler is the most flexible and the easiest to automate of the gro
 
 It is behind in goal-driven progress: frame counts, image grading and per-filter rules.
 
-Its safety handling is on a par with the best of the group: an unsafe report aborts everything, runs an `UNSAFE` hook, and the scheduler resumes only after the conditions have been safe for a set time. The safety signal itself comes from the Auxiliary Agent, whose safety computation is still under development; that is outside the scheduler and is not scored here.
+Its safety handling is on a par with the best of the group: an unsafe report aborts everything, runs an `UNSAFE` hook, and the scheduler resumes only after the conditions have been safe for a set time. The safety signal itself comes from the Auxiliary Agent, which computes `AGENT_AUX_SAFETY` from `AUX_WEATHER_SAFETY` of the selected aux devices; that is outside the scheduler and is not scored here.
 
 The user interface is not part of this comparison. The agent provides the scheduling and its properties; presenting them is the job of the INDIGO client, and AIN Imager provides the user interface for the scheduler.
 

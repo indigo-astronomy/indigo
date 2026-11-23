@@ -2643,7 +2643,7 @@ $(INTEGRATION_BUILD)/test_agent_scheduler_asan: integration/test_agent_scheduler
 	$(CC) $(TEST_CFLAGS) $(SCHEDULER_TEST_FLAGS) -I../indigo_drivers/agent_scheduler -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.c $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 # Opt-in native server acceptance: the Scheduler Agent runs capture, slew, guiding and urgent tasks
-# against the CCD and mount simulators in a private indigo_server.
+# against the CCD and mount simulators, and the unsafe hold with the Auxiliary Agent and the aux simulator, in a private indigo_server.
 .PHONY: test-scheduler-simulators
 test-scheduler-simulators:
 	python3 integration/run_scheduler_simulators.py $(SCHEDULER_ARGS)
