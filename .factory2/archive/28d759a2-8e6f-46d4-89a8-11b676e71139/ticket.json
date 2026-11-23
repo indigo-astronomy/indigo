@@ -1,0 +1,403 @@
+{
+  "schema_version": 1,
+  "ticket_id": "28d759a2-8e6f-46d4-89a8-11b676e71139",
+  "revision": 16,
+  "title": "MIGRATION_STATUS.md: aux_skyalert lists 0 hardware tests although indigo_test/hardware/test_aux_skyalert_hw.c exists",
+  "description": "Found on 2026-11-23 by the reviewer of ticket b7a94271-41ea-4e5e-b341-5970a0ba7798. The aux_skyalert row of MIGRATION_STATUS.md gives the HW part of 'Automated Tests (Sim / HW)' as 0, but indigo_test/hardware/test_aux_skyalert_hw.c exists. Count its opt-in physical-hardware cases and correct the HW number, changing only that status column (the Comment column is reserved for the owner). Check whether other rows have the same mismatch between the HW count and the files in indigo_test/hardware/, and report them rather than fixing rows outside this ticket's scope without approval.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-23T12:36:50.823268Z",
+  "status": "closed",
+  "branch": "ticket/28d759a2-8e6f-46d4-89a8-11b676e71139",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "6a132a70-0fe6-4a55-a028-88d62bc731be",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "986f0c98-21dc-4662-b143-602e2920d348",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T13:49:22.135169Z",
+          "last_activity_at": "2026-11-23T14:00:18.680456Z",
+          "ended_at": "2026-11-23T14:00:18.680456Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 656545.287,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:49:22.135169Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/28d759a2-8e6f-46d4-89a8-11b676e71139"
+        },
+        {
+          "at": "2026-11-23T14:00:18.680456Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 656545.287,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "8849c208-fcbb-4cb4-a3d2-26d4c6f03f5d",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3b9e4e62-1594-42bd-b3dc-38e93360ad0f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T14:00:18.680483Z",
+          "last_activity_at": "2026-11-23T14:01:12.404213Z",
+          "ended_at": "2026-11-23T14:01:12.404213Z",
+          "outcome": {
+            "summary": "Pass. Diff (MIGRATION_STATUS.md:20,36,37) changes only the 'Automated Tests (Sim / HW)' cell of aux_cloudwatcher, aux_simulator and aux_skyalert; Comment cells stay '| |' byte-identical, no other row is touched, and the column alignment is unchanged (each new value has the same width as the old one). Independent counts: driver_tests() from tools/run_driver_test.py selects only test_aux_cloudwatcher_simulator for aux_cloudwatcher (no transport/sdk binary), which has 31 entries in its tests[] array (integration/test_aux_cloudwatcher_simulator.c:766-796); test_aux_simulator registers 20 (integration/test_aux_simulator.c:566); aux_skyalert = test_aux_skyalert_simulator 14 (:876) + test_aux_skyalert_transport 2 (:155) = 16, and hardware/test_aux_skyalert_hw.c:149-156 registers 6. The rule matches unchanged rows: aux_alto 36/10, aux_giotto 30/8, aux_dsusb 11/11 (sdk 11, hw 11), ao_sx 11/16 (transport 8 + simulator 3, hw 16). Out-of-scope observation for the owner, not a defect of this ticket: other rows give HW 0 although indigo_test/hardware/test_<driver>_hw.c exists, e.g. aux_fbc 13/0 with hardware/test_aux_fbc_hw.c:170 registering 8 cases; a rough scan found the same for many aux, dome, focuser and wheel rows (e.g. aux_ppb, aux_usbdp, dome_baader, focuser_dmfc, wheel_xagyl), and several ccd rows differ too. Those counts come from a quick regex and need confirming before any correction.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 53723.73,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T14:00:18.680483Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T14:01:12.404213Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Diff (MIGRATION_STATUS.md:20,36,37) changes only the 'Automated Tests (Sim / HW)' cell of aux_cloudwatcher, aux_simulator and aux_skyalert; Comment cells stay '| |' byte-identical, no other row is touched, and the column alignment is unchanged (each new value has the same width as the old one). Independent counts: driver_tests() from tools/run_driver_test.py selects only test_aux_cloudwatcher_simulator for aux_cloudwatcher (no transport/sdk binary), which has 31 entries in its tests[] array (integration/test_aux_cloudwatcher_simulator.c:766-796); test_aux_simulator registers 20 (integration/test_aux_simulator.c:566); aux_skyalert = test_aux_skyalert_simulator 14 (:876) + test_aux_skyalert_transport 2 (:155) = 16, and hardware/test_aux_skyalert_hw.c:149-156 registers 6. The rule matches unchanged rows: aux_alto 36/10, aux_giotto 30/8, aux_dsusb 11/11 (sdk 11, hw 11), ao_sx 11/16 (transport 8 + simulator 3, hw 16). Out-of-scope observation for the owner, not a defect of this ticket: other rows give HW 0 although indigo_test/hardware/test_<driver>_hw.c exists, e.g. aux_fbc 13/0 with hardware/test_aux_fbc_hw.c:170 registering 8 cases; a rough scan found the same for many aux, dome, focuser and wheel rows (e.g. aux_ppb, aux_usbdp, dome_baader, focuser_dmfc, wheel_xagyl), and several ccd rows differ too. Those counts come from a quick regex and need confirming before any correction."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Diff (MIGRATION_STATUS.md:20,36,37) changes only the 'Automated Tests (Sim / HW)' cell of aux_cloudwatcher, aux_simulator and aux_skyalert; Comment cells stay '| |' byte-identical, no other row is touched, and the column alignment is unchanged (each new value has the same width as the old one). Independent counts: driver_tests() from tools/run_driver_test.py selects only test_aux_cloudwatcher_simulator for aux_cloudwatcher (no transport/sdk binary), which has 31 entries in its tests[] array (integration/test_aux_cloudwatcher_simulator.c:766-796); test_aux_simulator registers 20 (integration/test_aux_simulator.c:566); aux_skyalert = test_aux_skyalert_simulator 14 (:876) + test_aux_skyalert_transport 2 (:155) = 16, and hardware/test_aux_skyalert_hw.c:149-156 registers 6. The rule matches unchanged rows: aux_alto 36/10, aux_giotto 30/8, aux_dsusb 11/11 (sdk 11, hw 11), ao_sx 11/16 (transport 8 + simulator 3, hw 16). Out-of-scope observation for the owner, not a defect of this ticket: other rows give HW 0 although indigo_test/hardware/test_<driver>_hw.c exists, e.g. aux_fbc 13/0 with hardware/test_aux_fbc_hw.c:170 registering 8 cases; a rough scan found the same for many aux, dome, focuser and wheel rows (e.g. aux_ppb, aux_usbdp, dome_baader, focuser_dmfc, wheel_xagyl), and several ccd rows differ too. Those counts come from a quick regex and need confirming before any correction.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 53723.73,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "a0ea4814-062a-4db9-82e1-f586798fdd20",
+      "event": "ticket/created",
+      "at": "2026-11-23T12:36:50.823736Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "4596f803-7b46-44f6-b2f9-64f5971c7389",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T12:39:22.673958Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "c353ac17-4840-468a-bde2-b0bff4bc5ca8",
+      "event": "ticket/note",
+      "at": "2026-11-23T13:49:04.475486Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner asked on 2026-11-23 to fix the migration status. Besides the aux_skyalert HW count (0 although indigo_test/hardware/test_aux_skyalert_hw.c exists), the reviewer of ticket 010161aa found that the Sim counts of aux_simulator (13) and aux_cloudwatcher (17) no longer match their suites (test_aux_simulator now 20 cases, test_aux_cloudwatcher_simulator 31). Fix these three rows. Determine how the Sim/HW counts are defined (see the header of MIGRATION_STATUS.md and how earlier rows were counted, e.g. aux_skyalert 16 = 14 simulator + 2 transport cases) and count consistently. Change only the 'Automated Tests (Sim / HW)' column; the Comment column is reserved for the owner. Report any other rows found mismatched instead of changing them.",
+      "tokens": null
+    },
+    {
+      "event_id": "5c3e874f-cecf-45e9-9655-60a3c9e813ff",
+      "event": "task/progress",
+      "at": "2026-11-23T13:49:22.136635Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6a132a70-0fe6-4a55-a028-88d62bc731be",
+      "text": "Implementation started on branch ticket/28d759a2-8e6f-46d4-89a8-11b676e71139"
+    },
+    {
+      "event_id": "a477198b-264e-4011-9bee-fa8d6bfbc76f",
+      "event": "ticket/started",
+      "at": "2026-11-23T13:49:22.141274Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/28d759a2-8e6f-46d4-89a8-11b676e71139",
+      "base": "master"
+    },
+    {
+      "event_id": "1a373643-9c06-4c67-a43f-df6e56702350",
+      "event": "task/progress",
+      "at": "2026-11-23T13:49:35.980905Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6a132a70-0fe6-4a55-a028-88d62bc731be",
+      "text": "Implementer launched",
+      "attempt_id": "986f0c98-21dc-4662-b143-602e2920d348",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "c1ddc470-c59b-4988-a97d-044cd3333d50",
+      "event": "task/progress",
+      "at": "2026-11-23T13:51:01.801456Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6a132a70-0fe6-4a55-a028-88d62bc731be",
+      "text": "Editing the three MIGRATION_STATUS.md rows"
+    },
+    {
+      "event_id": "aed3ba00-bcf6-4f29-9a0f-4ceacdc916b9",
+      "event": "task/progress",
+      "at": "2026-11-23T13:51:05.264480Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6a132a70-0fe6-4a55-a028-88d62bc731be",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d42c5a39-204a-4f74-b770-c8cf218c7ee3",
+      "event": "task/progress",
+      "at": "2026-11-23T13:51:05.276611Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6a132a70-0fe6-4a55-a028-88d62bc731be",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c2564ff7-c8d5-4c0b-94cb-722432c27228",
+      "event": "check/passed",
+      "at": "2026-11-23T13:51:05.280147Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "97b8338b4940c054033349e49deebafb18b758f1",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "eba4ff37-3788-4787-920e-7b41eba7e0cf",
+      "event": "task/progress",
+      "at": "2026-11-23T13:51:15.282330Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6a132a70-0fe6-4a55-a028-88d62bc731be",
+      "text": "Building and running aux_simulator, aux_cloudwatcher, aux_skyalert suites to confirm counts"
+    },
+    {
+      "event_id": "5a474cf2-c341-4098-b673-942bd80c2b63",
+      "event": "ticket/note",
+      "at": "2026-11-23T13:59:41.762654Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementer evidence: counting rule = Sim is the sum of registered cases of every binary tools/run_driver_test.py driver_tests() selects (INTEGRATION_TESTS + OPT_IN_DRIVER_TESTS named test_<driver>[_*], transport/sdk/usb/sysfs included, *_asan/*_sanitize excluded); HW is the registered cases of indigo_test/hardware/test_<driver>_hw.c. Before: aux_cloudwatcher 17 / 0, aux_simulator 13 / 0, aux_skyalert 16 / 0. After: 31 / 0, 20 / 0, 16 / 6. Verified by running the worktree builds: test_aux_simulator 20 PASS, test_aux_cloudwatcher_simulator 31 PASS, test_aux_skyalert_simulator 14 PASS, test_aux_skyalert_transport 2 PASS, 0 FAIL; test_aux_skyalert_hw.c registers 6 cases (not run, no hardware).",
+      "tokens": null
+    },
+    {
+      "event_id": "74ed2141-282d-4c5c-b4ee-cc8eb20e906a",
+      "event": "task/progress",
+      "at": "2026-11-23T14:00:18.611462Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6a132a70-0fe6-4a55-a028-88d62bc731be",
+      "text": "Reviewer launched",
+      "attempt_id": "986f0c98-21dc-4662-b143-602e2920d348",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "74c6b6ac-c155-4d56-8fa1-6497762a99d1",
+      "event": "task/progress",
+      "at": "2026-11-23T14:00:18.680522Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8849c208-fcbb-4cb4-a3d2-26d4c6f03f5d",
+      "text": "Review started"
+    },
+    {
+      "event_id": "53e61af0-decd-4a42-9e1b-c64dfc9b5ced",
+      "event": "review/started",
+      "at": "2026-11-23T14:00:18.680813Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "75dc0144-0f0f-4a72-8ff9-406ebf56a8ad",
+      "event": "task/progress",
+      "at": "2026-11-23T14:01:12.404341Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8849c208-fcbb-4cb4-a3d2-26d4c6f03f5d",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "5f0624da-9df9-4188-8967-b8d3600f3ca4",
+      "event": "review/passed",
+      "at": "2026-11-23T14:01:12.404830Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8849c208-fcbb-4cb4-a3d2-26d4c6f03f5d",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "97b8338b4940c054033349e49deebafb18b758f1"
+    },
+    {
+      "event_id": "79362f44-c6a2-4058-a2fa-9b111c7a4772",
+      "event": "ticket/closed",
+      "at": "2026-11-23T14:06:16.767170Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-23T14:06:16.767141Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "5898aaf944ae9d321eb39dd816bc6417f83e666b"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "97b8338b4940c054033349e49deebafb18b758f1",
+        "tree": "610d9d39890b73181c2b82cf5d839c0c0872097a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T13:51:05.276361Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/28d759a2-8e6f-46d4-89a8-11b676e71139/610d9d39890b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Diff (MIGRATION_STATUS.md:20,36,37) changes only the 'Automated Tests (Sim / HW)' cell of aux_cloudwatcher, aux_simulator and aux_skyalert; Comment cells stay '| |' byte-identical, no other row is touched, and the column alignment is unchanged (each new value has the same width as the old one). Independent counts: driver_tests() from tools/run_driver_test.py selects only test_aux_cloudwatcher_simulator for aux_cloudwatcher (no transport/sdk binary), which has 31 entries in its tests[] array (integration/test_aux_cloudwatcher_simulator.c:766-796); test_aux_simulator registers 20 (integration/test_aux_simulator.c:566); aux_skyalert = test_aux_skyalert_simulator 14 (:876) + test_aux_skyalert_transport 2 (:155) = 16, and hardware/test_aux_skyalert_hw.c:149-156 registers 6. The rule matches unchanged rows: aux_alto 36/10, aux_giotto 30/8, aux_dsusb 11/11 (sdk 11, hw 11), ao_sx 11/16 (transport 8 + simulator 3, hw 16). Out-of-scope observation for the owner, not a defect of this ticket: other rows give HW 0 although indigo_test/hardware/test_<driver>_hw.c exists, e.g. aux_fbc 13/0 with hardware/test_aux_fbc_hw.c:170 registering 8 cases; a rough scan found the same for many aux, dome, focuser and wheel rows (e.g. aux_ppb, aux_usbdp, dome_baader, focuser_dmfc, wheel_xagyl), and several ccd rows differ too. Those counts come from a quick regex and need confirming before any correction.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "97b8338b4940c054033349e49deebafb18b758f1",
+        "tree": "610d9d39890b73181c2b82cf5d839c0c0872097a",
+        "at": "2026-11-23T14:01:12.403590Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T13:49:04.475047Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner asked on 2026-11-23 to fix the migration status. Besides the aux_skyalert HW count (0 although indigo_test/hardware/test_aux_skyalert_hw.c exists), the reviewer of ticket 010161aa found that the Sim counts of aux_simulator (13) and aux_cloudwatcher (17) no longer match their suites (test_aux_simulator now 20 cases, test_aux_cloudwatcher_simulator 31). Fix these three rows. Determine how the Sim/HW counts are defined (see the header of MIGRATION_STATUS.md and how earlier rows were counted, e.g. aux_skyalert 16 = 14 simulator + 2 transport cases) and count consistently. Change only the 'Automated Tests (Sim / HW)' column; the Comment column is reserved for the owner. Report any other rows found mismatched instead of changing them.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T13:59:41.762357Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementer evidence: counting rule = Sim is the sum of registered cases of every binary tools/run_driver_test.py driver_tests() selects (INTEGRATION_TESTS + OPT_IN_DRIVER_TESTS named test_<driver>[_*], transport/sdk/usb/sysfs included, *_asan/*_sanitize excluded); HW is the registered cases of indigo_test/hardware/test_<driver>_hw.c. Before: aux_cloudwatcher 17 / 0, aux_simulator 13 / 0, aux_skyalert 16 / 0. After: 31 / 0, 20 / 0, 16 / 6. Verified by running the worktree builds: test_aux_simulator 20 PASS, test_aux_cloudwatcher_simulator 31 PASS, test_aux_skyalert_simulator 14 PASS, test_aux_skyalert_transport 2 PASS, 0 FAIL; test_aux_skyalert_hw.c registers 6 cases (not run, no hardware).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "5898aaf944ae9d321eb39dd816bc6417f83e666b",
+      "tree": "610d9d39890b73181c2b82cf5d839c0c0872097a",
+      "base": "master",
+      "at": "2026-11-23T14:06:16.608118Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-23T12:36:50.823268Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-23T12:39:22.673900Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 710269.017,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 22,
+    "sha256": "00fc24646624994690fcb355c59c778a2a54d82b858f820cecf0f62afd5a2131"
+  }
+}
