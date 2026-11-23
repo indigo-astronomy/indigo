@@ -1,0 +1,510 @@
+{
+  "schema_version": 1,
+  "ticket_id": "23a27b08-fe12-44f8-b843-9b264b0f41cf",
+  "revision": 25,
+  "title": "indigo_test: the opt-in scheduler and sequencer simulator suites cannot load drivers when indigo_server has no dynamic driver list",
+  "description": "Found while implementing ticket 5e7ef4f3 (2026-11-20) for the sequencer suite; confirmed for both suites on master 930aa41ce on 2026-11-22.\n\nindigo_test/integration/run_scheduler_simulators.py and run_sequencer_simulators.py start a private indigo_server and load their drivers through Server.DRIVERS. In a partial build the load never completed: scheduler suite \"timed out waiting for agents\" (0 of 11), sequencer suite \"Timed out waiting for Scripting Agent acceptance results\" (no results).\n\nCause: indigo_server offers only the dynamic drivers listed in build/share/indigo/indigo_drivers (add_drivers()/driver_filter() in indigo_server/indigo_server.c), and only the top-level make all writes that file (Makefile.drvs). Without it Server.DRIVERS has no items to load. Token handling and commit 9f1fc208a, suspected at first, are not involved: the scheduler harness uses no ACL or token, and the sequencer suite's token-authenticated load succeeds at HEAD once the list exists.\n\nFix: both harnesses fail at once with a message naming the missing drivers and pointing to make all. Two latent test defects exposed once the suites ran were fixed too: sexagesimal() in run_scheduler_simulators.py could print 60.0 seconds, which the scheduler rejects in @target (4 cases), and the sequencer case \"meridian flip options readback\" read MERIDIAN_FLIP before the agent's update arrived when PAUSE_AFTER_TRANSIT was already set.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T12:16:50.879349Z",
+  "status": "closed",
+  "branch": "ticket/23a27b08-fe12-44f8-b843-9b264b0f41cf",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "32e3e55c-ef9d-42b6-af47-233f78cf6e8f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T08:30:36.642521Z",
+          "last_activity_at": "2026-11-22T08:54:17.990751Z",
+          "ended_at": "2026-11-22T08:54:17.990751Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1421348.23,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T08:30:36.642521Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/23a27b08-fe12-44f8-b843-9b264b0f41cf"
+        },
+        {
+          "at": "2026-11-22T08:54:17.990751Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1421348.23,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "a19ef507-7d38-49d1-b48c-f891d03ecb62",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a25f3b3e-1e42-431c-98ac-abc7e5f29bcf",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T08:54:17.990787Z",
+          "last_activity_at": "2026-11-22T08:56:12.061186Z",
+          "ended_at": "2026-11-22T08:56:12.061186Z",
+          "outcome": {
+            "summary": "Pass. Root cause verified: indigo_server offers dynamic drivers only from <bin>/../share/indigo/indigo_drivers (indigo_server.c add_drivers/driver_filter, main ~1967-1981), written only under 'make all' (Makefile.drvs:56-58); the ticket worktree build has no build/share/indigo, the primary full build lists all 12 harness drivers; the scheduler harness starts the server without -a, so token handling (9f1fc208a) cannot explain its failure. Early check is correct: Server.DRIVERS items are static + dynamic driver names (indigo_server.c:1083-1092), defined in one defSwitchVector before the wait predicate succeeds, so no false failure on a full build. sexagesimal(): checked 200000 random values in -90..90 plus edge cases (negative, -1e-05, 23.999999 -> 24:00:00.0, -12.999999, carries) - never 60 s/60 min, error <= 0.05 s; 24:00:00.0 is accepted by the scheduler parser (agent_scheduler_header.c:147, max 24 inclusive). Meridian flip: verified the race - set_meridian_flip publishes MERIDIAN_FLIP then set_switch takes the warning path (Sequencer.js:1287-1293, warning() advances with a 0 s timer) when PAUSE_AFTER_TRANSIT is unchanged, so the checkpoint can read the stale indigo_devices copy. Sequence offers no condition-wait step, so a deterministic wait would need new polling machinery in the harness; the fixed 1 s wait follows the 19 existing s.wait() uses in this file and is ample for a local bus round trip - acceptable, non-blocking. Scope limited to 3 test files, no README, whitespace clean, both Python files compile. Did not rerun the simulator suites.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 114070.399,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T08:54:17.990787Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T08:56:12.061186Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Root cause verified: indigo_server offers dynamic drivers only from <bin>/../share/indigo/indigo_drivers (indigo_server.c add_drivers/driver_filter, main ~1967-1981), written only under 'make all' (Makefile.drvs:56-58); the ticket worktree build has no build/share/indigo, the primary full build lists all 12 harness drivers; the scheduler harness starts the server without -a, so token handling (9f1fc208a) cannot explain its failure. Early check is correct: Server.DRIVERS items are static + dynamic driver names (indigo_server.c:1083-1092), defined in one defSwitchVector before the wait predicate succeeds, so no false failure on a full build. sexagesimal(): checked 200000 random values in -90..90 plus edge cases (negative, -1e-05, 23.999999 -> 24:00:00.0, -12.999999, carries) - never 60 s/60 min, error <= 0.05 s; 24:00:00.0 is accepted by the scheduler parser (agent_scheduler_header.c:147, max 24 inclusive). Meridian flip: verified the race - set_meridian_flip publishes MERIDIAN_FLIP then set_switch takes the warning path (Sequencer.js:1287-1293, warning() advances with a 0 s timer) when PAUSE_AFTER_TRANSIT is unchanged, so the checkpoint can read the stale indigo_devices copy. Sequence offers no condition-wait step, so a deterministic wait would need new polling machinery in the harness; the fixed 1 s wait follows the 19 existing s.wait() uses in this file and is ample for a local bus round trip - acceptable, non-blocking. Scope limited to 3 test files, no README, whitespace clean, both Python files compile. Did not rerun the simulator suites."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Root cause verified: indigo_server offers dynamic drivers only from <bin>/../share/indigo/indigo_drivers (indigo_server.c add_drivers/driver_filter, main ~1967-1981), written only under 'make all' (Makefile.drvs:56-58); the ticket worktree build has no build/share/indigo, the primary full build lists all 12 harness drivers; the scheduler harness starts the server without -a, so token handling (9f1fc208a) cannot explain its failure. Early check is correct: Server.DRIVERS items are static + dynamic driver names (indigo_server.c:1083-1092), defined in one defSwitchVector before the wait predicate succeeds, so no false failure on a full build. sexagesimal(): checked 200000 random values in -90..90 plus edge cases (negative, -1e-05, 23.999999 -> 24:00:00.0, -12.999999, carries) - never 60 s/60 min, error <= 0.05 s; 24:00:00.0 is accepted by the scheduler parser (agent_scheduler_header.c:147, max 24 inclusive). Meridian flip: verified the race - set_meridian_flip publishes MERIDIAN_FLIP then set_switch takes the warning path (Sequencer.js:1287-1293, warning() advances with a 0 s timer) when PAUSE_AFTER_TRANSIT is unchanged, so the checkpoint can read the stale indigo_devices copy. Sequence offers no condition-wait step, so a deterministic wait would need new polling machinery in the harness; the fixed 1 s wait follows the 19 existing s.wait() uses in this file and is ample for a local bus round trip - acceptable, non-blocking. Scope limited to 3 test files, no README, whitespace clean, both Python files compile. Did not rerun the simulator suites.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 114070.399,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "0d197619-6d56-4cee-af08-71458fd2ac08",
+      "event": "ticket/created",
+      "at": "2026-11-20T12:16:50.879967Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "0c27fae6-bf40-4d27-abc7-151be9064fbd",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T12:18:36.967724Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "2d9856c8-1637-4f0a-9f43-50be5a96ba67",
+      "event": "ticket/title_changed",
+      "at": "2026-11-22T08:26:42.335327Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_test: the opt-in sequencer simulator suite cannot load drivers, its private indigo_server refuses the token-authenticated Server.DRIVERS change",
+      "title": "indigo_test: the opt-in scheduler and sequencer simulator suites cannot load drivers, their private indigo_server refuses the token-authenticated Server.DRIVERS change"
+    },
+    {
+      "event_id": "d44f4561-3bca-4b29-8b0e-058f48e28464",
+      "event": "ticket/description_changed",
+      "at": "2026-11-22T08:26:42.335366Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_description": "Found while implementing ticket 5e7ef4f3 (2026-11-20). indigo_test/integration/run_sequencer_simulators.py starts a private indigo_server, but the server refuses the suite's token-authenticated change of Server.DRIVERS, so no driver loads and the run stops before Sequencer.js is sent (0 cases run). The failure is independent of Sequencer.js. Suspected cause: commit 9f1fc208a changed token forwarding after the harness was last updated (not investigated). Consequence: the sequencer_simulators.js cases, including the MERIDIAN_FLIP checks added by 5e7ef4f3 (meridian flip options readback, native-solver flip with enable_meridian_flip(0.15, -0.03) checking AGENT_PLATESOLVER_EXPOSURE 0.15), have never run. Expected: reproduce, fix the harness or the token handling so the suite loads its drivers, then run the full suite and fix any failing case.",
+      "description": "Found while implementing ticket 5e7ef4f3 (2026-11-20) for the sequencer suite; confirmed for both suites on master 930aa41ce on 2026-11-22.\n\nindigo_test/integration/run_sequencer_simulators.py and indigo_test/integration/run_scheduler_simulators.py start a private indigo_server with an access list (-a) and a token. The server and the drivers load when started by hand and the deliberate unauthenticated probe is refused as intended (\"Device 'Server' is protected or locked\"), but the suites' token-authenticated loading of drivers through Server.DRIVERS never completes:\n- scheduler suite: \"timed out waiting for agents\", 0 of 11 cases passed;\n- sequencer suite: \"Timed out waiting for Scripting Agent acceptance results\", no results; Sequencer.js is never sent.\nBoth failures are independent of the Scheduler Agent and Sequencer.js code; the native suites pass (370/370).\n\nLast successful runs: scheduler suite 2026-11-14 (82/82), sequencer suite 2026-09-24 (60/60). Suspected cause, not confirmed: commit 9f1fc208a (2026-11-15, \"Locally stamped device or master token may be forwarded to connected remote servers\"), which changed token handling in indigo_libs/indigo_bus.c after the harnesses were last updated. Bisect between 2026-11-14 and 9f1fc208a to confirm.\n\nConsequence: the sequencer_simulators.js cases, including the MERIDIAN_FLIP checks added by 5e7ef4f3 (meridian flip options readback, native-solver flip with enable_meridian_flip(0.15, -0.03) checking AGENT_PLATESOLVER_EXPOSURE 0.15), have never run, and the scheduler simulator cases (including the unsafe hold added by a4c962a2/edf38e12) do not run.\n\nExpected: reproduce, establish whether the harness or the bus token handling is wrong (if the bus, keep the security intent of 9f1fc208a and its test_protocol_security.c cases), fix it so both suites load their drivers, then run both full suites and fix any failing case."
+    },
+    {
+      "event_id": "aee31118-d6d9-41bc-8910-931cb1d7c774",
+      "event": "ticket/note",
+      "at": "2026-11-22T08:26:51.750402Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Correction to the description: run_scheduler_simulators.py has no unsafe-hold cases; the unsafe hold is covered only by the native test_agent_scheduler suite. The simulator suite's own 11 cases simply do not run.",
+      "tokens": null
+    },
+    {
+      "event_id": "f10cbfe6-3b7a-4867-b783-8cc95904256c",
+      "event": "task/progress",
+      "at": "2026-11-22T08:30:36.642631Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Implementation started on branch ticket/23a27b08-fe12-44f8-b843-9b264b0f41cf"
+    },
+    {
+      "event_id": "828ed855-1127-4320-93c8-51cbf37baf95",
+      "event": "ticket/started",
+      "at": "2026-11-22T08:30:36.643223Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/23a27b08-fe12-44f8-b843-9b264b0f41cf",
+      "base": "master"
+    },
+    {
+      "event_id": "ae9c0b0a-7e45-4c79-aa8e-b382c78a869b",
+      "event": "task/progress",
+      "at": "2026-11-22T08:30:41.896426Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Implementer launched",
+      "attempt_id": "32e3e55c-ef9d-42b6-af47-233f78cf6e8f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "cd903c45-0387-42b2-96c9-ee948dd87634",
+      "event": "task/progress",
+      "at": "2026-11-22T08:31:03.582702Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Reproducing the scheduler simulator suite failure"
+    },
+    {
+      "event_id": "e12ded9a-e95d-4101-9a65-b61d53bed243",
+      "event": "task/progress",
+      "at": "2026-11-22T08:33:16.074813Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Running run_scheduler_simulators.py to reproduce"
+    },
+    {
+      "event_id": "1a72423b-4058-4354-b270-906cab61b85d",
+      "event": "task/progress",
+      "at": "2026-11-22T08:38:22.019200Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Running run_sequencer_simulators.py in the worktree build"
+    },
+    {
+      "event_id": "9e6771a1-1f0d-4543-9e96-bcd4aea33a7c",
+      "event": "task/progress",
+      "at": "2026-11-22T08:42:13.865835Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Cause: worktree build lacks build/share/indigo/indigo_drivers; scheduler @target 60.0 s bug fixed"
+    },
+    {
+      "event_id": "81aef652-ae93-4a21-9594-4822b99e76e8",
+      "event": "task/progress",
+      "at": "2026-11-22T08:42:44.725802Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Rerunning sequencer case: meridian flip options readback"
+    },
+    {
+      "event_id": "1f5855f3-98df-4ba1-b683-22eb07cd2c9e",
+      "event": "task/progress",
+      "at": "2026-11-22T08:44:02.650721Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Running both full simulator suites (scheduler, sequencer) after the fixes"
+    },
+    {
+      "event_id": "c74a4ff8-5217-47c8-861e-5b47af483b5e",
+      "event": "task/progress",
+      "at": "2026-11-22T08:51:17.370742Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c4ebeff2-5a27-4d22-9618-679ade0037d9",
+      "event": "task/progress",
+      "at": "2026-11-22T08:51:17.384279Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6c22cecb-eeaa-4b30-976e-67f08a53cee2",
+      "event": "check/passed",
+      "at": "2026-11-22T08:51:17.389329Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "30e53842e83cd797ffac40c130d14687f63d3e1c",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "c970bcfe-882c-45b4-a7b8-ded6c2c2fddf",
+      "event": "task/progress",
+      "at": "2026-11-22T08:51:22.271258Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "f881dd64-6292-4f33-86c1-04fb2364155c",
+      "event": "task/progress",
+      "at": "2026-11-22T08:53:22.836787Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ee04a186-44ad-45a6-9b06-c2366aa6daf3",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "bfae9954-20f3-46cd-9cb7-180b06351836",
+      "event": "check/passed",
+      "at": "2026-11-22T08:53:22.853026Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "30e53842e83cd797ffac40c130d14687f63d3e1c",
+      "checks": "unit passed"
+    },
+    {
+      "event_id": "b4788397-7c57-4131-8868-a2cb95ae9ee8",
+      "event": "ticket/note",
+      "at": "2026-11-22T08:53:48.451756Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction and result (implementer). Before: in the ticket worktree build (libs + agents + simulators + indigo_server, no top-level make all) the scheduler suite failed 0/11 'timed out waiting for agents'; the server trace shows defSwitchVector Server.DRIVERS with an empty item list, because indigo_server only offers dynamic drivers listed in build/share/indigo/indigo_drivers (indigo_server/indigo_server.c add_drivers(), main around line 1967-1981), which only the top-level make all writes (Makefile.drvs line 57). The token is not involved: the scheduler suite uses no ACL at all, and the sequencer suite's token-authenticated Server.DRIVERS load succeeded at HEAD (with 9f1fc208a) once the list existed; unauthenticated probes were still refused (Server, Scripting Agent, Configuration Agent). Against the primary checkout's full build the same unchanged scheduler harness loaded all agents. 9f1fc208a is not the cause; no bus change. Fixes: (1) both harnesses now fail at once with a message naming the drivers Server.DRIVERS does not offer and pointing to make all; (2) run_scheduler_simulators.py sexagesimal() printed '+48:16:60.0' (seconds rounded to 60.0), rejected by the scheduler @target parser, failing cases 2-5; it now rounds to the printed tenth first; (3) sequencer_simulators.js 'meridian flip options readback' read MERIDIAN_FLIP before the agent's own update returned through the bus (set_switch skips an unchanged PAUSE_AFTER_TRANSIT without waiting), each checkpoint now waits 1 s. After: scheduler suite 11/11 passed; sequencer suite 136/136 cases passed, 6/6 artifacts, done, no error (no --index-dir, so the solver-dependent selection ran with solver=false); test_protocol_security 24/24 passed in flow check unit; whitespace passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "c8b50899-1624-4fb2-976d-fd51303bc7b8",
+      "event": "task/progress",
+      "at": "2026-11-22T08:54:17.990854Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19ef507-7d38-49d1-b48c-f891d03ecb62",
+      "text": "Review started"
+    },
+    {
+      "event_id": "2964a690-6f27-4e05-a90f-8e90a0958163",
+      "event": "review/started",
+      "at": "2026-11-22T08:54:17.991444Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "c8aedec6-ac09-4e1a-99b0-8c692d99f411",
+      "event": "task/progress",
+      "at": "2026-11-22T08:54:21.107098Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19ef507-7d38-49d1-b48c-f891d03ecb62",
+      "text": "Reviewer launched",
+      "attempt_id": "a25f3b3e-1e42-431c-98ac-abc7e5f29bcf",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "508a90df-6924-4155-bd6d-815a410603c8",
+      "event": "task/progress",
+      "at": "2026-11-22T08:56:12.061264Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19ef507-7d38-49d1-b48c-f891d03ecb62",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "05b03545-9e78-4d79-879b-fe54360fb444",
+      "event": "review/passed",
+      "at": "2026-11-22T08:56:12.061923Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a19ef507-7d38-49d1-b48c-f891d03ecb62",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "30e53842e83cd797ffac40c130d14687f63d3e1c"
+    },
+    {
+      "event_id": "8162d10a-94c6-467e-8c31-db20483234c7",
+      "event": "ticket/title_changed",
+      "at": "2026-11-22T09:06:26.451939Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_test: the opt-in scheduler and sequencer simulator suites cannot load drivers, their private indigo_server refuses the token-authenticated Server.DRIVERS change",
+      "title": "indigo_test: the opt-in scheduler and sequencer simulator suites cannot load drivers when indigo_server has no dynamic driver list"
+    },
+    {
+      "event_id": "7f7fd49e-6145-47bb-b01c-db352426fc04",
+      "event": "ticket/description_changed",
+      "at": "2026-11-22T09:06:26.451965Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_description": "Found while implementing ticket 5e7ef4f3 (2026-11-20) for the sequencer suite; confirmed for both suites on master 930aa41ce on 2026-11-22.\n\nindigo_test/integration/run_sequencer_simulators.py and indigo_test/integration/run_scheduler_simulators.py start a private indigo_server with an access list (-a) and a token. The server and the drivers load when started by hand and the deliberate unauthenticated probe is refused as intended (\"Device 'Server' is protected or locked\"), but the suites' token-authenticated loading of drivers through Server.DRIVERS never completes:\n- scheduler suite: \"timed out waiting for agents\", 0 of 11 cases passed;\n- sequencer suite: \"Timed out waiting for Scripting Agent acceptance results\", no results; Sequencer.js is never sent.\nBoth failures are independent of the Scheduler Agent and Sequencer.js code; the native suites pass (370/370).\n\nLast successful runs: scheduler suite 2026-11-14 (82/82), sequencer suite 2026-09-24 (60/60). Suspected cause, not confirmed: commit 9f1fc208a (2026-11-15, \"Locally stamped device or master token may be forwarded to connected remote servers\"), which changed token handling in indigo_libs/indigo_bus.c after the harnesses were last updated. Bisect between 2026-11-14 and 9f1fc208a to confirm.\n\nConsequence: the sequencer_simulators.js cases, including the MERIDIAN_FLIP checks added by 5e7ef4f3 (meridian flip options readback, native-solver flip with enable_meridian_flip(0.15, -0.03) checking AGENT_PLATESOLVER_EXPOSURE 0.15), have never run, and the scheduler simulator cases (including the unsafe hold added by a4c962a2/edf38e12) do not run.\n\nExpected: reproduce, establish whether the harness or the bus token handling is wrong (if the bus, keep the security intent of 9f1fc208a and its test_protocol_security.c cases), fix it so both suites load their drivers, then run both full suites and fix any failing case.",
+      "description": "Found while implementing ticket 5e7ef4f3 (2026-11-20) for the sequencer suite; confirmed for both suites on master 930aa41ce on 2026-11-22.\n\nindigo_test/integration/run_scheduler_simulators.py and run_sequencer_simulators.py start a private indigo_server and load their drivers through Server.DRIVERS. In a partial build the load never completed: scheduler suite \"timed out waiting for agents\" (0 of 11), sequencer suite \"Timed out waiting for Scripting Agent acceptance results\" (no results).\n\nCause: indigo_server offers only the dynamic drivers listed in build/share/indigo/indigo_drivers (add_drivers()/driver_filter() in indigo_server/indigo_server.c), and only the top-level make all writes that file (Makefile.drvs). Without it Server.DRIVERS has no items to load. Token handling and commit 9f1fc208a, suspected at first, are not involved: the scheduler harness uses no ACL or token, and the sequencer suite's token-authenticated load succeeds at HEAD once the list exists.\n\nFix: both harnesses fail at once with a message naming the missing drivers and pointing to make all. Two latent test defects exposed once the suites ran were fixed too: sexagesimal() in run_scheduler_simulators.py could print 60.0 seconds, which the scheduler rejects in @target (4 cases), and the sequencer case \"meridian flip options readback\" read MERIDIAN_FLIP before the agent's update arrived when PAUSE_AFTER_TRANSIT was already set."
+    },
+    {
+      "event_id": "ffeab1c0-c050-41c1-b090-c099fb1f3c92",
+      "event": "ticket/closed",
+      "at": "2026-11-22T09:06:26.728703Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-22T09:06:26.728677Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "3365d28184eea4f69efb37aec4348c7295289d02"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "30e53842e83cd797ffac40c130d14687f63d3e1c",
+        "tree": "975511358e41a1505404be11b3ea9308bb85e36e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T08:51:17.383517Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/23a27b08-fe12-44f8-b843-9b264b0f41cf/975511358e41-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "30e53842e83cd797ffac40c130d14687f63d3e1c",
+        "tree": "975511358e41a1505404be11b3ea9308bb85e36e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T08:53:22.833022Z",
+        "duration_s": 120.6,
+        "log": "/tmp/factory-flow/23a27b08-fe12-44f8-b843-9b264b0f41cf/975511358e41-unit.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Root cause verified: indigo_server offers dynamic drivers only from <bin>/../share/indigo/indigo_drivers (indigo_server.c add_drivers/driver_filter, main ~1967-1981), written only under 'make all' (Makefile.drvs:56-58); the ticket worktree build has no build/share/indigo, the primary full build lists all 12 harness drivers; the scheduler harness starts the server without -a, so token handling (9f1fc208a) cannot explain its failure. Early check is correct: Server.DRIVERS items are static + dynamic driver names (indigo_server.c:1083-1092), defined in one defSwitchVector before the wait predicate succeeds, so no false failure on a full build. sexagesimal(): checked 200000 random values in -90..90 plus edge cases (negative, -1e-05, 23.999999 -> 24:00:00.0, -12.999999, carries) - never 60 s/60 min, error <= 0.05 s; 24:00:00.0 is accepted by the scheduler parser (agent_scheduler_header.c:147, max 24 inclusive). Meridian flip: verified the race - set_meridian_flip publishes MERIDIAN_FLIP then set_switch takes the warning path (Sequencer.js:1287-1293, warning() advances with a 0 s timer) when PAUSE_AFTER_TRANSIT is unchanged, so the checkpoint can read the stale indigo_devices copy. Sequence offers no condition-wait step, so a deterministic wait would need new polling machinery in the harness; the fixed 1 s wait follows the 19 existing s.wait() uses in this file and is ample for a local bus round trip - acceptable, non-blocking. Scope limited to 3 test files, no README, whitespace clean, both Python files compile. Did not rerun the simulator suites.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "30e53842e83cd797ffac40c130d14687f63d3e1c",
+        "tree": "975511358e41a1505404be11b3ea9308bb85e36e",
+        "at": "2026-11-22T08:56:12.061160Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-22T08:26:51.749808Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Correction to the description: run_scheduler_simulators.py has no unsafe-hold cases; the unsafe hold is covered only by the native test_agent_scheduler suite. The simulator suite's own 11 cases simply do not run.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T08:53:48.451123Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction and result (implementer). Before: in the ticket worktree build (libs + agents + simulators + indigo_server, no top-level make all) the scheduler suite failed 0/11 'timed out waiting for agents'; the server trace shows defSwitchVector Server.DRIVERS with an empty item list, because indigo_server only offers dynamic drivers listed in build/share/indigo/indigo_drivers (indigo_server/indigo_server.c add_drivers(), main around line 1967-1981), which only the top-level make all writes (Makefile.drvs line 57). The token is not involved: the scheduler suite uses no ACL at all, and the sequencer suite's token-authenticated Server.DRIVERS load succeeded at HEAD (with 9f1fc208a) once the list existed; unauthenticated probes were still refused (Server, Scripting Agent, Configuration Agent). Against the primary checkout's full build the same unchanged scheduler harness loaded all agents. 9f1fc208a is not the cause; no bus change. Fixes: (1) both harnesses now fail at once with a message naming the drivers Server.DRIVERS does not offer and pointing to make all; (2) run_scheduler_simulators.py sexagesimal() printed '+48:16:60.0' (seconds rounded to 60.0), rejected by the scheduler @target parser, failing cases 2-5; it now rounds to the printed tenth first; (3) sequencer_simulators.js 'meridian flip options readback' read MERIDIAN_FLIP before the agent's own update returned through the bus (set_switch skips an unchanged PAUSE_AFTER_TRANSIT without waiting), each checkpoint now waits 1 s. After: scheduler suite 11/11 passed; sequencer suite 136/136 cases passed, 6/6 artifacts, done, no error (no --index-dir, so the solver-dependent selection ran with solver=false); test_protocol_security 24/24 passed in flow check unit; whitespace passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "3365d28184eea4f69efb37aec4348c7295289d02",
+      "tree": "975511358e41a1505404be11b3ea9308bb85e36e",
+      "base": "master",
+      "at": "2026-11-22T09:06:26.660244Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-20T12:16:50.879349Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-20T12:18:36.967608Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1535418.629,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 33,
+    "sha256": "b2c7e54017ef2ffa57c0ebbb7a4828ce4d39e53c6ec1501b3a29563948dff0e7"
+  }
+}

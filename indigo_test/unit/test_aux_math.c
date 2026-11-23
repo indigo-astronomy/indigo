@@ -35,10 +35,214 @@ static void sky_bortle_thresholds_are_stable(void) {
 	ASSERT_NEAR(9, indigo_aux_sky_bortle(16.5), 0.001);
 }
 
+static indigo_property *init_weather_safety_property(void) {
+	indigo_property *property = indigo_init_light_property(NULL, "Weather", AUX_WEATHER_SAFETY_PROPERTY_NAME, "Main", "Weather safety", INDIGO_IDLE_STATE, 5);
+	indigo_init_light_item(property->items + 0, AUX_WEATHER_SAFETY_SAFE_ITEM_NAME, "Safe", INDIGO_IDLE_STATE);
+	indigo_init_light_item(property->items + 1, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME, "Clouds", INDIGO_IDLE_STATE);
+	indigo_init_light_item(property->items + 2, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, "Rain", INDIGO_IDLE_STATE);
+	indigo_init_light_item(property->items + 3, AUX_WEATHER_SAFETY_WIND_ITEM_NAME, "Wind", INDIGO_IDLE_STATE);
+	indigo_init_light_item(property->items + 4, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME, "Humidity", INDIGO_IDLE_STATE);
+	return property;
+}
+
+static indigo_property_state safety_light(indigo_property *property, const char *name) {
+	return indigo_get_item(property, name)->light.value;
+}
+
+static void weather_safety_without_sensors_is_idle(void) {
+	indigo_property *property = init_weather_safety_property();
+	indigo_aux_safety_input conditions[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { { 0 } };
+	char message[INDIGO_VALUE_SIZE] = "untouched";
+	ASSERT_FALSE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("untouched", message);
+	for (int i = 0; i < property->count; i++) {
+		ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[i].light.value);
+	}
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->state);
+	indigo_release_property(property);
+}
+
+static void weather_safety_unfitted_conditions_stay_idle(void) {
+	indigo_property *property = init_weather_safety_property();
+	indigo_aux_safety_input conditions[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { { 0 } };
+	conditions[INDIGO_AUX_SAFETY_WIND] = (indigo_aux_safety_input){ true, true, false, false, 3, 10, "m/s" };
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Safe: all conditions within limits", message);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, safety_light(property, AUX_WEATHER_SAFETY_SAFE_ITEM_NAME));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, safety_light(property, AUX_WEATHER_SAFETY_WIND_ITEM_NAME));
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, safety_light(property, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME));
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, safety_light(property, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME));
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, safety_light(property, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME));
+	// An unchanged verdict gives no new reason.
+	conditions[INDIGO_AUX_SAFETY_WIND].value = 4;
+	ASSERT_FALSE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	// A sensor that disappears leaves no condition to judge.
+	conditions[INDIGO_AUX_SAFETY_WIND].fitted = false;
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unknown: no weather condition is monitored", message);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, safety_light(property, AUX_WEATHER_SAFETY_SAFE_ITEM_NAME));
+	indigo_release_property(property);
+}
+
+static void weather_safety_reversed_sensor_reason(void) {
+	indigo_property *property = init_weather_safety_property();
+	indigo_aux_safety_input conditions[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { { 0 } };
+	conditions[INDIGO_AUX_SAFETY_RAIN] = (indigo_aux_safety_input){ true, true, true, true, 350, 400, "kOhm" };
+	conditions[INDIGO_AUX_SAFETY_CLOUDS] = (indigo_aux_safety_input){ true, true, false, false, -20, 0, "C" };
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain 350.0 kOhm below 400.0 kOhm", message);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, safety_light(property, AUX_WEATHER_SAFETY_SAFE_ITEM_NAME));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, safety_light(property, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, safety_light(property, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->state);
+	// A reading exactly at the level, and one without a unit.
+	conditions[INDIGO_AUX_SAFETY_RAIN].value = 400;
+	conditions[INDIGO_AUX_SAFETY_RAIN].unit = NULL;
+	indigo_property *fresh = init_weather_safety_property();
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(fresh, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain 400.0 at 400.0", message);
+	indigo_release_property(fresh);
+	indigo_release_property(property);
+}
+
+// A condition with omit_values is named without value and limit; an invalid reading keeps its usual reason.
+static void weather_safety_reason_without_values(void) {
+	indigo_property *property = init_weather_safety_property();
+	indigo_aux_safety_input conditions[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { { 0 } };
+	conditions[INDIGO_AUX_SAFETY_RAIN] = (indigo_aux_safety_input){ true, true, true, true, 350, 400, NULL, true };
+	conditions[INDIGO_AUX_SAFETY_WIND] = (indigo_aux_safety_input){ true, true, true, false, 12.4, 10, "m/s" };
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain, wind 12.4 m/s above 10.0 m/s", message);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, safety_light(property, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME));
+	conditions[INDIGO_AUX_SAFETY_WIND].unsafe = false;
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain", message);
+	conditions[INDIGO_AUX_SAFETY_RAIN].valid = false;
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain sensor gives no valid reading", message);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	conditions[INDIGO_AUX_SAFETY_RAIN].valid = true;
+	conditions[INDIGO_AUX_SAFETY_RAIN].unsafe = false;
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Safe: all conditions within limits", message);
+	indigo_release_property(property);
+}
+
+static void weather_safety_invalid_reading_is_alert(void) {
+	indigo_property *property = init_weather_safety_property();
+	indigo_aux_safety_input conditions[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { { 0 } };
+	conditions[INDIGO_AUX_SAFETY_WIND] = (indigo_aux_safety_input){ true, true, true, false, 12.4, 10, "m/s" };
+	conditions[INDIGO_AUX_SAFETY_HUMIDITY] = (indigo_aux_safety_input){ true, false, false, false, 0, 90, "%" };
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: wind 12.4 m/s above 10.0 m/s, humidity sensor gives no valid reading", message);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, safety_light(property, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	// A short buffer truncates the reason without overflowing.
+	char short_message[12];
+	indigo_property *fresh = init_weather_safety_property();
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(fresh, conditions, short_message, sizeof(short_message)));
+	ASSERT_STREQ("Unsafe: win", short_message);
+	indigo_release_property(fresh);
+	indigo_release_property(property);
+}
+
+static void weather_safety_reports_changed_reasons(void) {
+	indigo_property *property = init_weather_safety_property();
+	indigo_aux_safety_input conditions[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { { 0 } };
+	conditions[INDIGO_AUX_SAFETY_RAIN] = (indigo_aux_safety_input){ true, true, false, false, 0, 1, "mm/h" };
+	conditions[INDIGO_AUX_SAFETY_WIND] = (indigo_aux_safety_input){ true, true, true, false, 15, 10, "m/s" };
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: wind 15.0 m/s above 10.0 m/s", message);
+	// Another unsafe condition while the verdict stays unsafe.
+	conditions[INDIGO_AUX_SAFETY_RAIN] = (indigo_aux_safety_input){ true, true, true, false, 3, 1, "mm/h" };
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain 3.0 mm/h above 1.0 mm/h, wind 15.0 m/s above 10.0 m/s", message);
+	// New readings with the same reasons.
+	conditions[INDIGO_AUX_SAFETY_WIND].value = 18;
+	ASSERT_FALSE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	// The wind calms while the rain stays.
+	conditions[INDIGO_AUX_SAFETY_WIND].unsafe = false;
+	conditions[INDIGO_AUX_SAFETY_WIND].value = 2;
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain 3.0 mm/h above 1.0 mm/h", message);
+	// The rain sensor fails: the condition stays ALERT but the reason changes.
+	conditions[INDIGO_AUX_SAFETY_RAIN].valid = false;
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain sensor gives no valid reading", message);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	ASSERT_FALSE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	conditions[INDIGO_AUX_SAFETY_RAIN] = (indigo_aux_safety_input){ true, true, false, false, 0, 1, "mm/h" };
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Safe: all conditions within limits", message);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->state);
+	indigo_release_property(property);
+}
+
+static void weather_safety_ignores_missing_items(void) {
+	indigo_property *property = indigo_init_light_property(NULL, "Weather", AUX_WEATHER_SAFETY_PROPERTY_NAME, "Main", "Weather safety", INDIGO_IDLE_STATE, 2);
+	indigo_init_light_item(property->items + 0, AUX_WEATHER_SAFETY_SAFE_ITEM_NAME, "Safe", INDIGO_IDLE_STATE);
+	indigo_init_light_item(property->items + 1, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, "Rain", INDIGO_IDLE_STATE);
+	indigo_aux_safety_input conditions[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { { 0 } };
+	conditions[INDIGO_AUX_SAFETY_WIND] = (indigo_aux_safety_input){ true, true, true, false, 20, 10, "m/s" };
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, NULL, 0));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, safety_light(property, AUX_WEATHER_SAFETY_SAFE_ITEM_NAME));
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, safety_light(property, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME));
+	indigo_release_property(property);
+}
+
+static indigo_property *init_rain_condition_property(void) {
+	indigo_property *property = indigo_init_light_property(NULL, "Weather", AUX_RAIN_PROPERTY_NAME, "Weather", "Rain condition", INDIGO_IDLE_STATE, 3);
+	indigo_init_light_item(property->items + 0, AUX_RAIN_RAINING_ITEM_NAME, "Raining", INDIGO_ALERT_STATE);
+	indigo_init_light_item(property->items + 1, AUX_RAIN_WET_ITEM_NAME, "Wet", INDIGO_OK_STATE);
+	indigo_init_light_item(property->items + 2, AUX_RAIN_DRY_ITEM_NAME, "Dry", INDIGO_BUSY_STATE);
+	return property;
+}
+
+static void condition_level_is_the_only_ok_light(void) {
+	indigo_property *property = init_rain_condition_property();
+	indigo_aux_set_condition(property, INDIGO_OK_STATE, property->items + 0);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->state);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->items[0].light.value);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[1].light.value);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[2].light.value);
+	indigo_aux_set_condition(property, INDIGO_OK_STATE, property->items + 1);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[0].light.value);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->items[1].light.value);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[2].light.value);
+	indigo_release_property(property);
+}
+
+static void condition_without_reading_or_sensor_has_no_level(void) {
+	indigo_property_state states[] = { INDIGO_ALERT_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE };
+	for (int i = 0; i < (int)(sizeof(states) / sizeof(states[0])); i++) {
+		indigo_property *property = init_rain_condition_property();
+		indigo_aux_set_condition(property, states[i], property->items + 1);
+		ASSERT_EQ_INT(states[i], property->state);
+		for (int j = 0; j < property->count; j++) {
+			ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[j].light.value);
+		}
+		indigo_release_property(property);
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "dewpoint_matches_magnus_reference_values", dewpoint_matches_magnus_reference_values },
-		{ "sky_bortle_thresholds_are_stable", sky_bortle_thresholds_are_stable }
+		{ "sky_bortle_thresholds_are_stable", sky_bortle_thresholds_are_stable },
+		{ "weather_safety_without_sensors_is_idle", weather_safety_without_sensors_is_idle },
+		{ "weather_safety_unfitted_conditions_stay_idle", weather_safety_unfitted_conditions_stay_idle },
+		{ "weather_safety_reversed_sensor_reason", weather_safety_reversed_sensor_reason },
+		{ "weather_safety_reason_without_values", weather_safety_reason_without_values },
+		{ "weather_safety_invalid_reading_is_alert", weather_safety_invalid_reading_is_alert },
+		{ "weather_safety_reports_changed_reasons", weather_safety_reports_changed_reasons },
+		{ "weather_safety_ignores_missing_items", weather_safety_ignores_missing_items },
+		{ "condition_level_is_the_only_ok_light", condition_level_is_the_only_ok_light },
+		{ "condition_without_reading_or_sensor_has_no_level", condition_without_reading_or_sensor_has_no_level }
 	};
 	return indigo_run_tests("aux math unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));
 }

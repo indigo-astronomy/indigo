@@ -29,14 +29,26 @@ static const char *powerbox_properties[] = {
 	AUX_HEATER_OUTLET_STATE_PROPERTY_NAME, AUX_HEATER_OUTLET_CURRENT_PROPERTY_NAME, AUX_DEW_CONTROL_PROPERTY_NAME,
 	AUX_INFO_PROPERTY_NAME, AUX_WEATHER_PROPERTY_NAME
 };
-static const char *weather_properties[] = { "X_SIMULATION_PARAMETERS", AUX_WEATHER_PROPERTY_NAME, AUX_WIND_PROPERTY_NAME, AUX_RAIN_PROPERTY_NAME, AUX_CLOUD_PROPERTY_NAME };
+static const char *weather_properties[] = { "X_SIMULATION_PARAMETERS", AUX_WEATHER_PROPERTY_NAME, AUX_WIND_PROPERTY_NAME, AUX_RAIN_PROPERTY_NAME, AUX_CLOUD_PROPERTY_NAME, AUX_HUMIDITY_PROPERTY_NAME, AUX_WEATHER_SAFETY_PROPERTY_NAME };
+// The thresholds stay defined while the weather station is disconnected.
+static const char *weather_base_properties[] = {
+	INFO_PROPERTY_NAME, SIMULATION_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME, PROFILE_PROPERTY_NAME, CONNECTION_PROPERTY_NAME,
+	AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME
+};
+// The aux base class defines the weather properties hidden; only the devices that support them unhide them.
+static const char *aux_weather_properties[] = {
+	AUX_HUMIDITY_PROPERTY_NAME, AUX_WIND_PROPERTY_NAME, AUX_RAIN_PROPERTY_NAME, AUX_CLOUD_PROPERTY_NAME, AUX_SKY_PROPERTY_NAME,
+	AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_SKY_THRESHOLDS_PROPERTY_NAME,
+	AUX_WEATHER_SAFETY_PROPERTY_NAME
+};
+static const char *weather_hidden_properties[] = { AUX_SKY_PROPERTY_NAME, AUX_SKY_THRESHOLDS_PROPERTY_NAME };
 static const char *sqm_properties[] = { "X_SIMULATION_PARAMETERS", AUX_WEATHER_PROPERTY_NAME };
 static const char *flat_properties[] = { AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_COVER_PROPERTY_NAME };
 
-#define AUX_CASE(name, properties) { "Auxiliary Simulators", "indigo_aux_simulator", name, indigo_aux_simulator, true, base_properties_without_instances, ARRAY_SIZE(base_properties_without_instances), hidden_base_properties_without_instances, ARRAY_SIZE(hidden_base_properties_without_instances), properties, ARRAY_SIZE(properties), NULL, 0 }
+#define AUX_CASE(name, properties) { "Auxiliary Simulators", "indigo_aux_simulator", name, indigo_aux_simulator, true, base_properties_without_instances, ARRAY_SIZE(base_properties_without_instances), hidden_base_properties_without_instances, ARRAY_SIZE(hidden_base_properties_without_instances), properties, ARRAY_SIZE(properties), aux_weather_properties, ARRAY_SIZE(aux_weather_properties) }
 
 static const simulator_driver_case powerbox = AUX_CASE("PowerBox Simulator", powerbox_properties);
-static const simulator_driver_case weather = AUX_CASE("Weather Station Simulator", weather_properties);
+static const simulator_driver_case weather = { "Auxiliary Simulators", "indigo_aux_simulator", "Weather Station Simulator", indigo_aux_simulator, true, weather_base_properties, ARRAY_SIZE(weather_base_properties), hidden_base_properties_without_instances, ARRAY_SIZE(hidden_base_properties_without_instances), weather_properties, ARRAY_SIZE(weather_properties), weather_hidden_properties, ARRAY_SIZE(weather_hidden_properties) };
 static const simulator_driver_case sqm = AUX_CASE("SQM Simulator", sqm_properties);
 static const simulator_driver_case flat = AUX_CASE("Flat Panel Simulator", flat_properties);
 
@@ -48,6 +60,67 @@ static bool change_switch(const char *property, const char *item, bool value) {
 static bool change_number(const char *property, const char *item, double value) {
 	unsigned revision = property_revision(property);
 	return indigo_change_number_property_1(&simulator_test_client, context.driver_case->device_name, property, item, value) == INDIGO_OK && wait_for_property_state_after(property, INDIGO_OK_STATE, revision);
+}
+
+static char safety_message[INDIGO_VALUE_SIZE];
+static atomic_int safety_message_count;
+
+// Records the reason messages of AUX_WEATHER_SAFETY; the bus delivers an update message after the update itself.
+static indigo_result safety_recording_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && !strcmp(property->name, AUX_WEATHER_SAFETY_PROPERTY_NAME) && message != NULL && *message) {
+		INDIGO_COPY_VALUE(safety_message, message);
+		safety_message_count++;
+	}
+	return simulator_client_send_message(client, device, property, message);
+}
+
+static indigo_property_state safety_light(const char *item) {
+	indigo_item *found = find_cached_item(AUX_WEATHER_SAFETY_PROPERTY_NAME, item);
+	return found != NULL ? found->light.value : -1;
+}
+
+// Checks every light of AUX_WEATHER_SAFETY in item order SAFE, CLOUDS, RAIN, WIND, HUMIDITY.
+static bool safety_lights_are(indigo_property_state safe, indigo_property_state clouds, indigo_property_state rain, indigo_property_state wind, indigo_property_state humidity) {
+	const char *items[] = { AUX_WEATHER_SAFETY_SAFE_ITEM_NAME, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, AUX_WEATHER_SAFETY_WIND_ITEM_NAME, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME };
+	indigo_property_state expected[] = { safe, clouds, rain, wind, humidity };
+	bool result = true;
+	for (int i = 0; i < ARRAY_SIZE(items); i++) {
+		if (safety_light(items[i]) != expected[i]) {
+			fprintf(stderr, "    %s.%s is %d, expected %d\n", AUX_WEATHER_SAFETY_PROPERTY_NAME, items[i], safety_light(items[i]), expected[i]);
+			result = false;
+		}
+	}
+	return result;
+}
+
+// A condition property is a light vector with the item of the current level OK, every other item IDLE and the
+// property state OK while the simulated sensor operates.
+static bool condition_is(const char *property_name, const char *level) {
+	indigo_property *property = find_cached_property(property_name);
+	if (property == NULL) {
+		fprintf(stderr, "    %s is not defined\n", property_name);
+		return false;
+	}
+	bool result = property->type == INDIGO_LIGHT_VECTOR && property->state == INDIGO_OK_STATE;
+	if (!result) {
+		fprintf(stderr, "    %s: type %d state %d, expected a light vector in OK state\n", property_name, property->type, property->state);
+	}
+	for (int i = 0; i < property->count; i++) {
+		indigo_property_state expected = !strcmp(property->items[i].name, level) ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+		if (property->items[i].light.value != expected) {
+			fprintf(stderr, "    %s.%s is %d, expected %d\n", property_name, property->items[i].name, property->items[i].light.value, expected);
+			result = false;
+		}
+	}
+	return result;
+}
+
+static bool last_safety_message_is(const char *expected) {
+	if (strcmp(safety_message, expected)) {
+		fprintf(stderr, "    reason message is '%s', expected '%s'\n", safety_message, expected);
+		return false;
+	}
+	return true;
 }
 
 static void metadata(void) {
@@ -119,20 +192,171 @@ cleanup:
 static void weather_readings_and_conditions(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&weather, NULL));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_DEWPOINT_ITEM_NAME, 2.58, 0.03));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_item(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME)->light.value);
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME));
 	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_SPEED_ITEM_NAME, 12));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_WIND_SPEED_ITEM_NAME, 12, 0));
-	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_item(AUX_WIND_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME)->light.value);
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME));
 	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_RAIN_ITEM_NAME, 2));
-	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_item(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME)->light.value);
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME));
 	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, 5));
-	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_item(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_OVERCAST_ITEM_NAME)->light.value);
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_OVERCAST_ITEM_NAME));
 	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_HUMIDITY_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_DEWPOINT_ITEM_NAME, 10, 0.001));
 	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_HUMIDITY_ITEM_NAME, 0));
 	SERIAL_CHECK_TRUE(isfinite(cached_number_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_DEWPOINT_ITEM_NAME)));
 	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_SPEED_ITEM_NAME, 1));
-	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_item(AUX_WIND_PROPERTY_NAME, AUX_WIND_CALM_ITEM_NAME)->light.value);
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_CALM_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+cleanup:
+	stop_serial_driver(&weather);
+}
+
+static void weather_safety_each_condition(void) {
+	struct {
+		const char *input;
+		double unsafe;
+		double safe;
+		const char *safety_item;
+		const char *reason;
+	} cases[] = {
+		{ AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, 5, -15, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME, "Unsafe: clouds 5.0 C above 0.0 C" },
+		{ AUX_WEATHER_RAIN_ITEM_NAME, 1, 0, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, "Unsafe: rain 1.0 mm/h at 1.0 mm/h" },
+		{ AUX_WEATHER_WIND_SPEED_ITEM_NAME, 12.4, 1, AUX_WEATHER_SAFETY_WIND_ITEM_NAME, "Unsafe: wind 12.4 m/s above 10.0 m/s" },
+		{ AUX_WEATHER_HUMIDITY_ITEM_NAME, 95, 60, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME, "Unsafe: humidity 95.0 % above 90.0 %" }
+	};
+	SERIAL_CHECK_TRUE(start_serial_driver(&weather, NULL));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(AUX_WEATHER_SAFETY_PROPERTY_NAME)->state);
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		fprintf(stderr, "    condition %s\n", cases[i].safety_item);
+		SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", cases[i].input, cases[i].unsafe));
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, safety_light(cases[i].safety_item));
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, safety_light(AUX_WEATHER_SAFETY_SAFE_ITEM_NAME));
+		SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(AUX_WEATHER_SAFETY_PROPERTY_NAME)->state);
+		SERIAL_CHECK_TRUE(last_safety_message_is(cases[i].reason));
+		SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", cases[i].input, cases[i].safe));
+		SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+	}
+	// The unsafe level of each classification agrees with the condition light.
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_HUMIDITY_ITEM_NAME, 95));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_HUMIDITY_ITEM_NAME, 75));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_NORMAL_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, safety_light(AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_HUMIDITY_ITEM_NAME, 60));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_DRY_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, -5));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, safety_light(AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, -15));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+cleanup:
+	stop_serial_driver(&weather);
+}
+
+static void weather_safety_reasons(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&weather, NULL));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_SPEED_ITEM_NAME, 15));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: wind 15.0 m/s above 10.0 m/s"));
+	// Every change of the set of unsafe conditions gives a new reason.
+	int messages = safety_message_count;
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_RAIN_ITEM_NAME, 3));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(messages + 1, safety_message_count);
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: rain 3.0 mm/h above 1.0 mm/h, wind 15.0 m/s above 10.0 m/s"));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_SPEED_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(messages + 2, safety_message_count);
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: rain 3.0 mm/h above 1.0 mm/h"));
+	// New readings that leave the verdict and the reasons alone give no message.
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_RAIN_ITEM_NAME, 4));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_DIRECTION_ITEM_NAME, 90));
+	SERIAL_CHECK_EQ_INT(messages + 2, safety_message_count);
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_RAIN_ITEM_NAME, 0));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(messages + 3, safety_message_count);
+	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_SPEED_ITEM_NAME, 2));
+	SERIAL_CHECK_EQ_INT(messages + 3, safety_message_count);
+	// Several conditions crossing together are all named in one reason.
+	unsigned revision = property_revision("X_SIMULATION_PARAMETERS");
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, weather.device_name, "X_SIMULATION_PARAMETERS", 2, (const char *[]){ AUX_WEATHER_WIND_SPEED_ITEM_NAME, AUX_WEATHER_RAIN_ITEM_NAME }, (const double[]){ 20, 5 }));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after("X_SIMULATION_PARAMETERS", INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_EQ_INT(messages + 4, safety_message_count);
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: rain 5.0 mm/h above 1.0 mm/h, wind 20.0 m/s above 10.0 m/s"));
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+cleanup:
+	stop_serial_driver(&weather);
+}
+
+static void weather_safety_follows_connection(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&weather));
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_WEATHER_SAFETY_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&weather, NULL));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_SPEED_ITEM_NAME, 30));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, safety_light(AUX_WEATHER_SAFETY_SAFE_ITEM_NAME));
+	disconnect_serial_device(&weather);
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_WEATHER_SAFETY_PROPERTY_NAME) == NULL);
+	// The simulated wind is kept, so the property is defined unsafe again on reconnect.
+	SERIAL_CHECK_TRUE(connect_serial_device(&weather, NULL));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_SPEED_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+cleanup:
+	stop_serial_driver(&weather);
+}
+
+static void weather_safety_thresholds_take_effect(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&weather));
+	// A threshold changed while disconnected is used on connect.
+	SERIAL_CHECK_TRUE(change_number(AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, 50));
+	SERIAL_CHECK_TRUE(connect_serial_device(&weather, NULL));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_number(AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, 90));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+	// Each threshold change reclassifies the current readings at once.
+	SERIAL_CHECK_TRUE(change_number(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 0.5));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: wind 1.0 m/s above 0.5 m/s"));
+	SERIAL_CHECK_TRUE(change_number(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 10));
+	SERIAL_CHECK_TRUE(change_number(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, 0));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: rain 0.0 mm/h at 0.0 mm/h"));
+	SERIAL_CHECK_TRUE(change_number(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(change_number(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, -20));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_OVERCAST_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: clouds -15.0 C above -20.0 C"));
+	SERIAL_CHECK_TRUE(change_number(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, 0));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_number(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME, -20));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_number(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME, -10));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+cleanup:
+	stop_serial_driver(&weather);
+}
+
+static void weather_safety_condition_switched_off(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&weather, NULL));
+	// An unsafe threshold out of the sensor's reach keeps the condition safe at any reading.
+	SERIAL_CHECK_TRUE(change_number(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 1000));
+	SERIAL_CHECK_TRUE(change_number(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, 200));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_SPEED_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME));
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, 60));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	// The other conditions still guard the verdict.
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_RAIN_ITEM_NAME, 2));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: rain 2.0 mm/h above 1.0 mm/h"));
 	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
 cleanup:
 	stop_serial_driver(&weather);
@@ -196,6 +420,87 @@ cleanup:
 	stop_serial_driver(&flat);
 }
 
+// A threshold saved by CONFIG comes back when the driver is shut down and attached again.
+static void weather_thresholds_saved_by_config(void) {
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_serial_driver(&weather, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(change_number(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 7.5));
+	SERIAL_CHECK_TRUE(save_configuration());
+	stop_serial_driver(&weather);
+	online = false;
+	SERIAL_CHECK_TRUE(start_serial_driver(&weather, NULL));
+	online = true;
+	// The bus loads the configuration when it attaches the device, and the thresholds are defined while disconnected.
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 7.5, 0));
+	// The restored threshold classifies the readings: 7.5 m/s is now STRONG.
+	SERIAL_CHECK_TRUE(change_number("X_SIMULATION_PARAMETERS", AUX_WEATHER_WIND_SPEED_ITEM_NAME, 8));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME));
+	// Leave the saved configuration at the default for the following cases.
+	SERIAL_CHECK_TRUE(change_number(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 10));
+	SERIAL_CHECK_TRUE(save_configuration());
+cleanup:
+	if (online) {
+		stop_serial_driver(&weather);
+	}
+}
+
+static indigo_device *queue_device;
+static atomic_bool queue_entered, queue_released;
+
+static indigo_result capture_weather_device(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, weather.device_name)) {
+		queue_device = device;
+	}
+	return INDIGO_OK;
+}
+
+static void block_queue(indigo_device *device) {
+	atomic_store(&queue_entered, true);
+	while (!atomic_load(&queue_released)) {
+		indigo_usleep(1000);
+	}
+}
+
+// A threshold change queued behind a disconnect is cancelled by it. The thresholds stay defined, so the
+// driver publishes them OK again instead of leaving clients with a BUSY property.
+static void weather_threshold_change_cancelled_by_disconnect(void) {
+	bool online = false;
+	indigo_client observer = { .name = "Weather queue observer", .version = INDIGO_VERSION_CURRENT, .define_property = capture_weather_device };
+	SERIAL_CHECK_TRUE(start_serial_driver(&weather, NULL));
+	online = true;
+	queue_device = NULL;
+	indigo_attach_client(&observer);
+	indigo_enumerate_properties(&observer, &INDIGO_ALL_PROPERTIES);
+	indigo_detach_client(&observer);
+	SERIAL_CHECK_TRUE(queue_device != NULL);
+	atomic_store(&queue_entered, false);
+	atomic_store(&queue_released, false);
+	indigo_execute_handler(queue_device, block_queue);
+	for (int i = 0; i < 5000 && !atomic_load(&queue_entered); i++) {
+		indigo_usleep(1000);
+	}
+	if (!atomic_load(&queue_entered)) {
+		atomic_store(&queue_released, true);
+	}
+	SERIAL_CHECK_TRUE(atomic_load(&queue_entered));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, weather.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, weather.device_name, AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 12));
+	bool busy = wait_for_property_state(AUX_WIND_THRESHOLDS_PROPERTY_NAME, INDIGO_BUSY_STATE);
+	atomic_store(&queue_released, true);
+	SERIAL_CHECK_TRUE(busy);
+	SERIAL_CHECK_TRUE(wait_for_simulator_connection_state(false));
+	online = false;
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WIND_THRESHOLDS_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_WIND_THRESHOLDS_PROPERTY_NAME) != NULL);
+	tear_down_serial_driver(&weather);
+cleanup:
+	atomic_store(&queue_released, true);
+	if (online) {
+		stop_serial_driver(&weather);
+	}
+}
+
 static void siblings_remain_independent(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&flat, NULL));
 	SERIAL_CHECK_TRUE(connect_serial_device(&powerbox, NULL));
@@ -257,6 +562,7 @@ int main(void) {
 	}
 	setvbuf(stdout, NULL, _IONBF, 0);
 	alarm(90);
+	simulator_test_client.send_message = safety_recording_send_message;
 	const indigo_test_case tests[] = {
 		{ "metadata", metadata },
 		{ "powerbox_inventory", powerbox_inventory },
@@ -266,9 +572,16 @@ int main(void) {
 		{ "lifecycle_and_interfaces", lifecycle_and_interfaces },
 		{ "powerbox_outputs_and_telemetry", powerbox_outputs_and_telemetry },
 		{ "weather_readings_and_conditions", weather_readings_and_conditions },
+		{ "weather_safety_each_condition", weather_safety_each_condition },
+		{ "weather_safety_reasons", weather_safety_reasons },
+		{ "weather_safety_follows_connection", weather_safety_follows_connection },
+		{ "weather_safety_thresholds_take_effect", weather_safety_thresholds_take_effect },
+		{ "weather_safety_condition_switched_off", weather_safety_condition_switched_off },
 		{ "sqm_readings_and_bortle", sqm_readings_and_bortle },
 		{ "flat_cover_and_light", flat_cover_and_light },
 		{ "flat_busy_refusal_and_disconnect", flat_busy_refusal_and_disconnect },
+		{ "weather_thresholds_saved_by_config", weather_thresholds_saved_by_config },
+		{ "weather_threshold_change_cancelled_by_disconnect", weather_threshold_change_cancelled_by_disconnect },
 		{ "siblings_remain_independent", siblings_remain_independent },
 		{ "auxiliary_agent_mirrors_all_devices", auxiliary_agent_mirrors_all_devices }
 	};

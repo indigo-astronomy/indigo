@@ -19,14 +19,13 @@
 // version history
 // 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
-// TODO: add weather safety checks, and a way to abort a task if the weather becomes unsafe
 // TODO: make it filter agent and add related agents
 
 /** INDIGO Scheduler agent
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300001E
+#define DRIVER_VERSION 0x03000021
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -57,6 +56,11 @@
 #define GUIDER_AGENT							"Guider Agent"
 #define SCHEDULER_RESULT_PROPERTY	"SCHEDULER_RESULT"
 #define SCHEDULER_ESTIMATE_PROPERTY	"SCHEDULER_ESTIMATE"
+#define MERIDIAN_FLIP_PROPERTY		"MERIDIAN_FLIP"
+// the names of indigo_agent_auxiliary.h, defined here as for the other agents
+#define AUX_AGENT									"Auxiliary Agent"
+#define AUX_SAFETY_PROPERTY				"AGENT_AUX_SAFETY"
+#define AUX_SAFETY_SAFE_ITEM			"SAFE"
 #define MAX_HISTORY								200
 #define MAX_URGENT_COUNT					1000000
 #define ESTIMATE_TIMEOUT					10
@@ -113,11 +117,13 @@
 #define SETTINGS_START_TIMEOUT_ITEM	(SETTINGS_PROPERTY->items + 2)
 #define SETTINGS_SETTING_WEIGHT_ITEM	(SETTINGS_PROPERTY->items + 3)
 #define SETTINGS_ALTITUDE_WEIGHT_ITEM	(SETTINGS_PROPERTY->items + 4)
-#define SETTINGS_IDLE_HOOK_DELAY_ITEM	(SETTINGS_PROPERTY->items + 5)
-#define SETTINGS_FRAME_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 6)
-#define SETTINGS_OPERATION_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 7)
-#define SETTINGS_NIGHT_START_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 8)
-#define SETTINGS_NIGHT_END_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 9)
+#define SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM	(SETTINGS_PROPERTY->items + 5)
+#define SETTINGS_IDLE_HOOK_DELAY_ITEM	(SETTINGS_PROPERTY->items + 6)
+#define SETTINGS_FRAME_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 7)
+#define SETTINGS_OPERATION_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 8)
+#define SETTINGS_NIGHT_START_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 9)
+#define SETTINGS_NIGHT_END_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 10)
+#define SETTINGS_SAFE_DELAY_ITEM	(SETTINGS_PROPERTY->items + 11)
 #define DATA_PROPERTY							(PRIVATE_DATA->data_property)
 #define DATA_OBJECT_ITEM					(DATA_PROPERTY->items + 0)
 #define DATA_FITS_ITEM						(DATA_PROPERTY->items + 1)
@@ -131,6 +137,8 @@
 #define HOOKS_NIGHT_END_ITEM			(HOOKS_PROPERTY->items + 3)
 #define HOOKS_IDLE_ITEM						(HOOKS_PROPERTY->items + 4)
 #define HOOKS_RESUME_ITEM					(HOOKS_PROPERTY->items + 5)
+#define HOOKS_UNSAFE_ITEM					(HOOKS_PROPERTY->items + 6)
+#define HOOKS_SAFE_ITEM						(HOOKS_PROPERTY->items + 7)
 #define NIGHT_PROPERTY						(PRIVATE_DATA->night_property)
 #define NIGHT_CIVIL_ITEM					(NIGHT_PROPERTY->items + 0)
 #define NIGHT_NAUTICAL_ITEM				(NIGHT_PROPERTY->items + 1)
@@ -138,6 +146,9 @@
 #define STRATEGY_PROPERTY					(PRIVATE_DATA->strategy_property)
 #define STRATEGY_COMPACT_ITEM			(STRATEGY_PROPERTY->items + 0)
 #define STRATEGY_VISIBILITY_ITEM	(STRATEGY_PROPERTY->items + 1)
+#define SAFETY_MISSING_PROPERTY		(PRIVATE_DATA->safety_missing_property)
+#define SAFETY_MISSING_SAFE_ITEM	(SAFETY_MISSING_PROPERTY->items + 0)
+#define SAFETY_MISSING_UNSAFE_ITEM	(SAFETY_MISSING_PROPERTY->items + 1)
 #define HISTORY_PROPERTY					(PRIVATE_DATA->history_property)
 #define CLEAR_HISTORY_PROPERTY		(PRIVATE_DATA->clear_history_property)
 #define CLEAR_HISTORY_ITEM				(CLEAR_HISTORY_PROPERTY->items + 0)
@@ -172,7 +183,9 @@ typedef enum {
 	RUN_NIGHT_START_HOOK,
 	RUN_NIGHT_END_HOOK,
 	RUN_IDLE_HOOK,
-	RUN_RESUME_HOOK
+	RUN_RESUME_HOOK,
+	RUN_UNSAFE_HOOK,
+	RUN_SAFE_HOOK
 } run_kind;
 
 typedef enum {
@@ -186,12 +199,13 @@ typedef enum {
 	RESULT_SUCCEEDED = 0,
 	RESULT_FAILED,
 	RESULT_PREEMPTED,
-	RESULT_ABORTED
+	RESULT_ABORTED,
+	RESULT_UNSAFE
 } run_result;
 
-static const char *run_result_names[] = { "succeeded", "failed", "preempted", "aborted" };
+static const char *run_result_names[] = { "succeeded", "failed", "preempted", "aborted", "unsafe" };
 
-static const char *run_result_labels[] = { "SUCCEEDED", "FAILED", "PREEMPTED", "ABORTED" };
+static const char *run_result_labels[] = { "SUCCEEDED", "FAILED", "PREEMPTED", "ABORTED", "UNSAFE" };
 
 typedef struct {
 	char task[SCHEDULER_TASK_NAME_SIZE];
@@ -206,8 +220,16 @@ typedef enum {
 	STOP_PREEMPT = 0,
 	STOP_ABORT,
 	STOP_DELETE,
-	STOP_FAILURE
+	STOP_FAILURE,
+	STOP_UNSAFE
 } stop_reason;
+
+// the unsafe hold: none, a START postponed until the conditions are safe, or entered while the scheduler runs
+typedef enum {
+	HOLD_NONE = 0,
+	HOLD_START,
+	HOLD_RUN
+} hold_kind;
 
 typedef struct {
 	bool used;
@@ -262,6 +284,15 @@ typedef struct {
 	bool imager_known;
 	char imager_dir[INDIGO_VALUE_SIZE];
 	char imager_object[INDIGO_VALUE_SIZE];
+	// MERIDIAN_FLIP of the Scripting Agent (Sequencer.js); disabled until defined and after its deletion
+	bool flip_enabled;
+	double flip_offset;
+	// incremented when flip_enabled or flip_offset changes
+	unsigned flip_generation;
+	// AGENT_AUX_SAFETY of the Auxiliary Agent: whether it is defined, the light of its SAFE item (IDLE when the item is absent) and the count of ALERT reports, which keeps an ALERT shorter than a tick
+	bool safety_defined;
+	indigo_property_state safety_light;
+	unsigned safety_alerts;
 } scheduler_observed;
 
 typedef struct {
@@ -284,6 +315,7 @@ typedef struct {
 	indigo_property *plan_property;
 	indigo_property *night_property;
 	indigo_property *strategy_property;
+	indigo_property *safety_missing_property;
 	char plan_labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
 	indigo_property_state plan_states[MAX_PLAN_ITEMS];
 	int plan_count;
@@ -345,6 +377,9 @@ typedef struct {
 	int visibility_count;
 	// the plan end for which a VISIBILITY plan too large to arrange was told
 	time_t visibility_notice;
+	// the meridian flip the current plan was made with and the generation of MERIDIAN_FLIP it was read from
+	scheduler_flip plan_flip;
+	unsigned plan_flip_generation;
 	run_phase phase;
 	run_kind kind;
 	time_t run_start;
@@ -366,6 +401,15 @@ typedef struct {
 	double save_due;
 	scheduler_sky_grid sky;
 	char reason[INDIGO_VALUE_SIZE];
+	// the safety: the time of the latest unsafe report (0 = never, saved), the last evaluation and the baseline of the ALERT count
+	time_t last_unsafe;
+	bool unsafe_now;
+	bool unsafe_missing;
+	unsigned safety_alerts_seen;
+	// the unsafe hold, whether its UNSAFE hook was handled and whether a sequence started by hand was aborted when it began
+	hold_kind hold;
+	bool unsafe_hook_done;
+	bool hand_abort_done;
 } scheduler_private_data;
 
 typedef struct scheduler_command {
@@ -424,6 +468,12 @@ static run_kind hook_kind(indigo_device *device, scheduler_task *task) {
 	}
 	if (*indigo_get_text_item_value(HOOKS_RESUME_ITEM) && !strcasecmp(indigo_get_text_item_value(HOOKS_RESUME_ITEM), task->header.name)) {
 		return RUN_RESUME_HOOK;
+	}
+	if (*indigo_get_text_item_value(HOOKS_UNSAFE_ITEM) && !strcasecmp(indigo_get_text_item_value(HOOKS_UNSAFE_ITEM), task->header.name)) {
+		return RUN_UNSAFE_HOOK;
+	}
+	if (*indigo_get_text_item_value(HOOKS_SAFE_ITEM) && !strcasecmp(indigo_get_text_item_value(HOOKS_SAFE_ITEM), task->header.name)) {
+		return RUN_SAFE_HOOK;
 	}
 	return RUN_TASK;
 }
@@ -733,13 +783,17 @@ static void add_history(indigo_device *device, scheduler_task *task, run_result 
 }
 
 static char *history_text(indigo_device *device) {
-	size_t size = PRIVATE_DATA->history_count * (INDIGO_VALUE_SIZE + 128) + 64;
+	size_t size = PRIVATE_DATA->history_count * (INDIGO_VALUE_SIZE + 128) + 128;
 	char *text = indigo_safe_malloc(size);
 	char *out = text;
 	*out = 0;
 	// the urgent counters go first; a version without them skips the line, which has too few fields for an entry
 	if (PRIVATE_DATA->urgent_done || PRIVATE_DATA->urgent_failed) {
 		out += snprintf(out, size, "#urgent\t%d\t%d\n", PRIVATE_DATA->urgent_done, PRIVATE_DATA->urgent_failed);
+	}
+	// the safety at the save and the time of the latest unsafe report, so that START waits for SAFE_DELAY after a restart; CLEAR_HISTORY keeps it
+	if (PRIVATE_DATA->last_unsafe != 0) {
+		out += snprintf(out, size - (out - text), "#safety\t%s\t%ld\n", PRIVATE_DATA->unsafe_now ? "unsafe" : "safe", (long)PRIVATE_DATA->last_unsafe);
 	}
 	for (int i = PRIVATE_DATA->history_count - 1; i >= 0; i--) {
 		history_entry *entry = PRIVATE_DATA->history + i;
@@ -777,9 +831,12 @@ static void restore_history(indigo_device *device, const char *text) {
 				int done = atoi(fields[1]), failed = atoi(fields[2]);
 				PRIVATE_DATA->urgent_done = done < 0 ? 0 : done > MAX_URGENT_COUNT ? MAX_URGENT_COUNT : done;
 				PRIVATE_DATA->urgent_failed = failed < 0 ? 0 : failed > MAX_URGENT_COUNT ? MAX_URGENT_COUNT : failed;
+			} else if (count >= 3 && !strcmp(fields[0], "#safety")) {
+				// the conditions while the server was down are unknown, an unsafe save counts as unsafe until now
+				PRIVATE_DATA->last_unsafe = !strcmp(fields[1], "unsafe") ? time(NULL) : (time_t)atol(fields[2]);
 			} else if (count >= 5) {
 				run_result result = RESULT_FAILED;
-				for (int i = 0; i < 4; i++) {
+				for (int i = 0; i < (int)(sizeof(run_result_names) / sizeof(run_result_names[0])); i++) {
 					if (!strcmp(fields[4], run_result_names[i])) {
 						result = (run_result)i;
 					}
@@ -825,6 +882,7 @@ static void save_config(indigo_device *device) {
 	indigo_save_property(device, NULL, HOOKS_PROPERTY);
 	indigo_save_property(device, NULL, NIGHT_PROPERTY);
 	indigo_save_property(device, NULL, STRATEGY_PROPERTY);
+	indigo_save_property(device, NULL, SAFETY_MISSING_PROPERTY);
 	char *entries = history_text(device);
 	indigo_property *history = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_RESTORE_HISTORY_PROPERTY_NAME, SCHEDULER_GROUP, "Restore history", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	indigo_init_text_item_raw(history->items, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME, "Entries", entries);
@@ -856,7 +914,7 @@ static void define_task_property(indigo_device *device, int slot) {
 }
 
 static const char *task_priority_text(indigo_device *device, scheduler_task *task, char *text, size_t size) {
-	static const char *hook_names[] = { "", "hook startup", "hook shutdown", "hook night start", "hook night end", "hook idle", "hook resume" };
+	static const char *hook_names[] = { "", "hook startup", "hook shutdown", "hook night start", "hook night end", "hook idle", "hook resume", "hook unsafe", "hook safe" };
 	run_kind kind = hook_kind(device, task);
 	if (kind != RUN_TASK) {
 		return hook_names[kind];
@@ -1269,6 +1327,8 @@ static void stop_scheduler(indigo_device *device, indigo_property_state state, c
 	PRIVATE_DATA->stop_requested = false;
 	PRIVATE_DATA->startup_pending = false;
 	PRIVATE_DATA->shutdown_ran = false;
+	// last_unsafe stays, a later START waits again if needed
+	PRIVATE_DATA->hold = HOLD_NONE;
 	set_scheduler_state(device, state, message);
 }
 
@@ -1283,15 +1343,20 @@ static void finish_hook(indigo_device *device, run_result result, const char *me
 	PRIVATE_DATA->current = -1;
 	PRIVATE_DATA->kind = RUN_TASK;
 	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
-	if (result != RESULT_SUCCEEDED) {
+	if (result == RESULT_UNSAFE) {
+		indigo_send_message(device, NULL, "Hook '%s' aborted by unsafe conditions", task->header.name);
+	} else if (result != RESULT_SUCCEEDED) {
 		indigo_send_message(device, NULL, "Hook '%s' %s%s%s", task->header.name, run_result_names[result], message && *message ? ": " : "", message ? message : "");
 	} else {
 		indigo_send_message(device, NULL, "Hook '%s' completed", task->header.name);
 	}
 	switch (kind) {
 		case RUN_STARTUP_HOOK:
-			// an ABORT during the startup hook already requested the stop, which runs the shutdown hook
-			if (result != RESULT_SUCCEEDED && !PRIVATE_DATA->stop_requested) {
+			if (result == RESULT_UNSAFE) {
+				// interrupted by the unsafe hold, the startup hook runs again after it
+				PRIVATE_DATA->startup_pending = true;
+			} else if (result != RESULT_SUCCEEDED && !PRIVATE_DATA->stop_requested) {
+				// an ABORT during the startup hook already requested the stop, which runs the shutdown hook
 				stop_scheduler(device, INDIGO_ALERT_STATE, "The startup hook failed, the scheduler stopped");
 			}
 			break;
@@ -1309,18 +1374,25 @@ static void finish_hook(indigo_device *device, run_result result, const char *me
 			break;
 		case RUN_NIGHT_START_HOOK:
 		case RUN_RESUME_HOOK:
+		case RUN_SAFE_HOOK:
 			if (result == RESULT_SUCCEEDED) {
 				PRIVATE_DATA->standby = false;
-			} else if (!PRIVATE_DATA->stop_requested) {
-				// the equipment is half prepared, the shutdown hook puts it away
-				request_stop(device, INDIGO_ALERT_STATE, kind == RUN_NIGHT_START_HOOK ? "The night start hook failed, the scheduler stopped" : "The resume hook failed, the scheduler stopped");
+			} else if (result != RESULT_UNSAFE && !PRIVATE_DATA->stop_requested) {
+				// the equipment is half prepared, the shutdown hook puts it away; an unsafe hold leaves the standby as it is, the safe or resume hook prepares later
+				request_stop(device, INDIGO_ALERT_STATE, kind == RUN_NIGHT_START_HOOK ? "The night start hook failed, the scheduler stopped" : kind == RUN_RESUME_HOOK ? "The resume hook failed, the scheduler stopped" : "The safe hook failed, the scheduler stopped");
+			}
+			break;
+		case RUN_UNSAFE_HOOK:
+			if (result == RESULT_FAILED && !PRIVATE_DATA->stop_requested) {
+				request_stop(device, INDIGO_ALERT_STATE, "The unsafe hook failed, the scheduler stopped");
 			}
 			break;
 		case RUN_NIGHT_END_HOOK:
 		case RUN_TASK:
 			break;
 	}
-	PRIVATE_DATA->chain_slot = slot;
+	// a hook interrupted by the unsafe hold ends no chain, a following hook naming the same task runs again
+	PRIVATE_DATA->chain_slot = result == RESULT_UNSAFE ? -1 : slot;
 	PRIVATE_DATA->chain_ok = result == RESULT_SUCCEEDED;
 	apply_pending_edit(device, task, slot);
 	schedule_save(device);
@@ -1394,6 +1466,10 @@ static void finish_stop(indigo_device *device) {
 		return;
 	}
 	if (PRIVATE_DATA->kind != RUN_TASK) {
+		if (PRIVATE_DATA->stop == STOP_UNSAFE) {
+			finish_hook(device, RESULT_UNSAFE, "unsafe conditions");
+			return;
+		}
 		bool deleted = PRIVATE_DATA->stop == STOP_DELETE;
 		finish_hook(device, RESULT_ABORTED, deleted ? "deleted" : "");
 		if (deleted) {
@@ -1428,11 +1504,27 @@ static void finish_stop(indigo_device *device) {
 			task->delay_until = 0;
 			indigo_send_message(device, NULL, "Task '%s' aborted", task->header.name);
 			break;
+		case STOP_UNSAFE:
+			// @preempted applies as after a preemption, but a retried task uses no retry and waits for no retry delay
+			add_history(device, task, RESULT_UNSAFE, "unsafe conditions");
+			if (task->header.preempted_fail) {
+				task->state = TASK_FAILED;
+				indigo_send_message(device, NULL, "Task '%s' aborted by unsafe conditions and failed", task->header.name);
+			} else {
+				task->state = TASK_RETRY;
+				task->delay_until = 0;
+				indigo_send_message(device, NULL, "Task '%s' aborted by unsafe conditions, it will be retried", task->header.name);
+			}
+			break;
 		case STOP_FAILURE:
 			break;
 	}
 	if (task->used) {
-		if (!task->stored) {
+		// a one-off urgent task retried after the unsafe hold stays in the list and runs after it
+		if (!task->stored && PRIVATE_DATA->stop == STOP_UNSAFE && task->state == TASK_FAILED) {
+			count_urgent(device, false);
+			remove_task(device, slot);
+		} else if (!task->stored && PRIVATE_DATA->stop != STOP_UNSAFE) {
 			remove_task(device, slot);
 		} else {
 			apply_pending_edit(device, task, slot);
@@ -1959,6 +2051,171 @@ static bool process_night(indigo_device *device, time_t now, int slot) {
 	return false;
 }
 
+// -------------------------------------------------------------------------------- Unsafe hold
+
+// reduces AGENT_AUX_SAFETY of the Auxiliary Agent to safe or unsafe and keeps the time of the latest unsafe report; runs at every pass, also while the scheduler is stopped
+static void evaluate_safety(indigo_device *device, time_t now) {
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	pthread_mutex_lock(&observed->mutex);
+	bool defined = observed->safety_defined;
+	indigo_property_state light = observed->safety_light;
+	unsigned alerts = observed->safety_alerts;
+	pthread_mutex_unlock(&observed->mutex);
+	// IDLE is no information, BUSY is no safety value; both count as missing like an absent property
+	bool missing = !defined || light == INDIGO_IDLE_STATE || light == INDIGO_BUSY_STATE;
+	// an ALERT reverted to OK between two passes still counts
+	bool alerted = light == INDIGO_ALERT_STATE || alerts != PRIVATE_DATA->safety_alerts_seen;
+	bool unsafe = alerted || (missing && SAFETY_MISSING_UNSAFE_ITEM->sw.value);
+	PRIVATE_DATA->safety_alerts_seen = alerts;
+	if (unsafe) {
+		PRIVATE_DATA->last_unsafe = now;
+	}
+	bool unsafe_missing = unsafe && !alerted;
+	if (unsafe != PRIVATE_DATA->unsafe_now || unsafe_missing != PRIVATE_DATA->unsafe_missing) {
+		PRIVATE_DATA->unsafe_now = unsafe;
+		PRIVATE_DATA->unsafe_missing = unsafe_missing;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		schedule_save(device);
+	}
+}
+
+// the seconds until the hold may end, SAFE_DELAY after the latest unsafe report
+static double hold_remaining(indigo_device *device, time_t now) {
+	double remaining = (double)(PRIVATE_DATA->last_unsafe - now) + SETTINGS_SAFE_DELAY_ITEM->number.value * 60;
+	return remaining > 0 ? remaining : 0;
+}
+
+// the conditions have been safe for SAFE_DELAY
+static bool hold_safe(indigo_device *device, time_t now) {
+	return !PRIVATE_DATA->unsafe_now && hold_remaining(device, now) <= 0;
+}
+
+// enters the hold while the scheduler runs: everything that runs is aborted except the hooks that put the equipment away
+static void enter_hold(indigo_device *device) {
+	if (PRIVATE_DATA->unsafe_missing) {
+		indigo_send_message(device, NULL, "No safety information, treated as unsafe, the scheduler holds");
+	} else {
+		indigo_send_message(device, NULL, "Unsafe conditions, the scheduler holds");
+	}
+	PRIVATE_DATA->hold = HOLD_RUN;
+	PRIVATE_DATA->unsafe_hook_done = false;
+	// the Scripting Agent runs one sequence, a sequence started by hand can run only while the scheduler runs nothing
+	PRIVATE_DATA->hand_abort_done = PRIVATE_DATA->phase != RUN_IDLE;
+	// the hold is not an idle period
+	PRIVATE_DATA->idle_since = 0;
+	PRIVATE_DATA->idle_hook_done = false;
+	PRIVATE_DATA->idle_hook_reported = false;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	schedule_save(device);
+	if (PRIVATE_DATA->phase == RUN_STARTING || PRIVATE_DATA->phase == RUN_RUNNING) {
+		run_kind kind = PRIVATE_DATA->kind;
+		if (kind != RUN_SHUTDOWN_HOOK && kind != RUN_NIGHT_END_HOOK && kind != RUN_UNSAFE_HOOK) {
+			begin_stop(device, STOP_UNSAFE);
+		}
+	} else if (PRIVATE_DATA->phase == RUN_STOPPING && PRIVATE_DATA->stop == STOP_PREEMPT) {
+		// the preempting urgent task cannot start during the hold, the run counts as unsafe and its @preempted applies
+		PRIVATE_DATA->stop = STOP_UNSAFE;
+	}
+}
+
+// ends the hold at a decision; true when the safe hook was started
+static bool end_hold(indigo_device *device, time_t now) {
+	hold_kind kind = PRIVATE_DATA->hold;
+	PRIVATE_DATA->hold = HOLD_NONE;
+	PRIVATE_DATA->idle_since = 0;
+	PRIVATE_DATA->idle_hook_done = false;
+	PRIVATE_DATA->idle_hook_reported = false;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	schedule_save(device);
+	if (PRIVATE_DATA->startup_pending || kind == HOLD_START) {
+		// a postponed start or a startup hook interrupted by the hold: the startup hook prepares, then the night start hook
+		indigo_send_message(device, NULL, "Safe conditions, the scheduler starts");
+		return false;
+	}
+	// whether the night has work comes from the plan made without the hold
+	update_plan(device, now);
+	PRIVATE_DATA->plan_dirty = false;
+	PRIVATE_DATA->plan_due = indigo_monotonic_time() + SETTINGS_IDLE_CHECK_ITEM->number.value;
+	int slot = select_task(device, now);
+	const scheduler_night *night = PRIVATE_DATA->nights.valid ? indigo_scheduler_night_at(&PRIVATE_DATA->nights, now) : NULL;
+	// without a site there is no night, the whole time counts as night
+	bool in_night = !PRIVATE_DATA->nights.valid || night != NULL;
+	bool has_work = slot >= 0 || (night != NULL && PRIVATE_DATA->plan_first_run > 0 && PRIVATE_DATA->plan_first_run < night->end);
+	if (in_night && has_work) {
+		int safe = hook_slot(device, HOOKS_SAFE_ITEM);
+		if (safe >= 0) {
+			indigo_send_message(device, NULL, "Safe conditions, the unsafe hold ends");
+			start_task(device, safe, RUN_SAFE_HOOK);
+			return true;
+		}
+		if (*indigo_get_text_item_value(HOOKS_SAFE_ITEM)) {
+			send_hook_notice(device, "safe", HOOKS_SAFE_ITEM);
+		}
+	}
+	// the night start or the resume hook prepares the equipment when it is needed
+	PRIVATE_DATA->standby = true;
+	indigo_send_message(device, NULL, "Safe conditions, the unsafe hold ends, the scheduler continues in standby");
+	return false;
+}
+
+// a decision during the hold; true when it is taken, false when the hold ended and the normal decision follows
+static bool process_hold(indigo_device *device, time_t now, bool occupied) {
+	if (occupied) {
+		if (PRIVATE_DATA->hold == HOLD_RUN && !PRIVATE_DATA->hand_abort_done) {
+			PRIVATE_DATA->hand_abort_done = true;
+			PRIVATE_DATA->current = -1;
+			PRIVATE_DATA->kind = RUN_TASK;
+			INDIGO_COPY_VALUE(PRIVATE_DATA->stop_message, "");
+			indigo_send_message(device, NULL, "A sequence started by hand was aborted by unsafe conditions");
+			begin_stop(device, STOP_UNSAFE);
+			return true;
+		}
+		// a sequence started by hand during the hold may be the operator closing the roof, it is left alone
+		set_reason(device, "another sequence is running");
+		return true;
+	}
+	PRIVATE_DATA->hand_abort_done = true;
+	if (PRIVATE_DATA->hold == HOLD_RUN && !PRIVATE_DATA->unsafe_hook_done) {
+		// once per hold; a task that has just run as the previous hook does not run again
+		PRIVATE_DATA->unsafe_hook_done = true;
+		int slot = hook_slot(device, HOOKS_UNSAFE_ITEM);
+		if (slot < 0 && *indigo_get_text_item_value(HOOKS_UNSAFE_ITEM)) {
+			send_hook_notice(device, "unsafe", HOOKS_UNSAFE_ITEM);
+		} else if (slot >= 0 && !(slot == PRIVATE_DATA->chain_slot && PRIVATE_DATA->chain_ok)) {
+			start_task(device, slot, RUN_UNSAFE_HOOK);
+			return true;
+		}
+	}
+	// the night end hook puts the equipment away at its boundary; a night start waits for the end of the hold
+	if (PRIVATE_DATA->nights.valid && PRIVATE_DATA->night_state.handled && PRIVATE_DATA->night_state.started) {
+		if (indigo_scheduler_night_decide(&PRIVATE_DATA->night_state, &PRIVATE_DATA->nights, now, false) == SCHEDULER_NIGHT_END) {
+			PRIVATE_DATA->plan_dirty = true;
+			if (start_night_hook(device, HOOKS_NIGHT_END_ITEM, RUN_NIGHT_END_HOOK)) {
+				return true;
+			}
+		}
+	}
+	if (hold_safe(device, now)) {
+		return end_hold(device, now);
+	}
+	if (PRIVATE_DATA->unsafe_now) {
+		set_reason(device, PRIVATE_DATA->unsafe_missing ? "no safety information, treated as unsafe" : "unsafe conditions");
+	} else {
+		double remaining = hold_remaining(device, now);
+		char reason[INDIGO_VALUE_SIZE];
+		snprintf(reason, sizeof(reason), "unsafe hold ends in %d min", (int)ceil(remaining / 60));
+		set_reason(device, reason);
+		// the next check comes when the delay ends
+		double check = indigo_monotonic_time() + remaining;
+		if (check < PRIVATE_DATA->next_check) {
+			PRIVATE_DATA->next_check = check;
+		}
+	}
+	// a decision without a hook ends a chain of hooks
+	PRIVATE_DATA->chain_slot = -1;
+	return true;
+}
+
 static void process_idle(indigo_device *device, time_t now) {
 	if (!PRIVATE_DATA->started) {
 		return;
@@ -2007,6 +2264,10 @@ static void process_idle(indigo_device *device, time_t now) {
 	if (!sequencer) {
 		set_reason(device, "loading Sequencer.js");
 		PRIVATE_DATA->dirty = true;
+		return;
+	}
+	// during the unsafe hold no task, urgent task or hook other than the unsafe and night end hooks starts
+	if (PRIVATE_DATA->hold != HOLD_NONE && process_hold(device, now, occupied)) {
 		return;
 	}
 	if (PRIVATE_DATA->startup_pending) {
@@ -2186,6 +2447,10 @@ static const char *plan_hook_name(run_kind kind) {
 			return "idle";
 		case RUN_RESUME_HOOK:
 			return "resume";
+		case RUN_UNSAFE_HOOK:
+			return "unsafe";
+		case RUN_SAFE_HOOK:
+			return "safe";
 		default:
 			return "";
 	}
@@ -2233,7 +2498,8 @@ static void plan_run_label(indigo_device *device, scheduler_plan_run *run, char 
 	char when[48], runs[32], priority[48];
 	time_range(run->start, run->end, when, sizeof(when));
 	snprintf(runs, sizeof(runs), "run %d/%d", run->run, task->header.repeat);
-	const char *columns[] = { when, task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), run->running ? "RUNNING" : "PLANNED", "-" };
+	bool flips = indigo_scheduler_run_flips(&PRIVATE_DATA->sky, &task->target, &task->header, run->start, plan_tasks[run->task].duration, &PRIVATE_DATA->plan_flip);
+	const char *columns[] = { when, task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), run->running ? "RUNNING" : "PLANNED", flips ? "meridian flip" : "-" };
 	join_label(label, size, 6, columns);
 }
 
@@ -2317,7 +2583,7 @@ static int plan_visibility(indigo_device *device, int count, int hook_count, tim
 	scheduler_plan_run previous[SCHEDULER_VISIBILITY_MAX_RUNS];
 	int previous_count = visibility_previous(device, count, previous);
 	scheduler_plan_info info;
-	int runs = indigo_scheduler_plan_visibility(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, SETTINGS_SETTING_WEIGHT_ITEM->number.value, SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value, previous, previous_count, plan_runs, MAX_PLAN_RUNS, &info);
+	int runs = indigo_scheduler_plan_visibility(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, SETTINGS_SETTING_WEIGHT_ITEM->number.value, SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value, &PRIVATE_DATA->plan_flip, previous, previous_count, plan_runs, MAX_PLAN_RUNS, &info);
 	static const char *results[] = { "planned", "COMPACT is not worse", "no arrangement, COMPACT", "too large, COMPACT" };
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "VISIBILITY plan: %s, %d runs %.2f (COMPACT %d runs %.2f), work %ld, %.0f ms", results[info.result], info.runs, info.value, info.compact_runs, info.compact_value, info.work, info.seconds * 1000);
 	// told once a night
@@ -2338,6 +2604,19 @@ static int plan_visibility(indigo_device *device, int count, int hook_count, tim
 static void update_plan(indigo_device *device, time_t now) {
 	static char labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
 	static indigo_property_state states[MAX_PLAN_ITEMS];
+	// the meridian flip is assumed not to change during the night, planning reads only this copy
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	pthread_mutex_lock(&observed->mutex);
+	PRIVATE_DATA->plan_flip.enabled = observed->flip_enabled;
+	PRIVATE_DATA->plan_flip.offset = observed->flip_offset;
+	PRIVATE_DATA->plan_flip_generation = observed->flip_generation;
+	pthread_mutex_unlock(&observed->mutex);
+	PRIVATE_DATA->plan_flip.penalty = SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM->number.value / 60.0;
+	// no run is planned inside the unsafe hold, which ends SAFE_DELAY after the latest unsafe report at the earliest
+	time_t hold_end = 0;
+	if (PRIVATE_DATA->started && PRIVATE_DATA->hold != HOLD_NONE) {
+		hold_end = (PRIVATE_DATA->unsafe_now ? now : PRIVATE_DATA->last_unsafe) + (time_t)(SETTINGS_SAFE_DELAY_ITEM->number.value * 60);
+	}
 	int count = 0;
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
 		int slot = PRIVATE_DATA->order[i];
@@ -2355,6 +2634,9 @@ static void update_plan(indigo_device *device, time_t now) {
 		plan_task->duration = task_duration(task, NULL);
 		plan_task->runs_left = task->header.repeat - task->runs;
 		plan_task->available_from = (task->state == TASK_RETRY || task->state == TASK_REPEAT) ? task->delay_until : 0;
+		if (plan_task->available_from < hold_end) {
+			plan_task->available_from = hold_end;
+		}
 		plan_task->urgent_order = task->urgent_order;
 		plan_task->running = running;
 		plan_task->running_start = PRIVATE_DATA->run_start;
@@ -2533,6 +2815,13 @@ static bool visibility_plan_valid(indigo_device *device, time_t now) {
 
 static void process(indigo_device *device) {
 	time_t now = time(NULL);
+	// a changed MERIDIAN_FLIP replans
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	pthread_mutex_lock(&observed->mutex);
+	if (observed->flip_generation != PRIVATE_DATA->plan_flip_generation) {
+		PRIVATE_DATA->plan_dirty = true;
+	}
+	pthread_mutex_unlock(&observed->mutex);
 	bool plan = PRIVATE_DATA->plan_dirty || indigo_monotonic_time() >= PRIVATE_DATA->plan_due;
 	refresh_sky(device, now);
 	refresh_nights(device, now);
@@ -2540,6 +2829,10 @@ static void process(indigo_device *device) {
 	process_estimation(device);
 	if (PRIVATE_DATA->phase == RUN_IDLE || PRIVATE_DATA->dirty || indigo_monotonic_time() >= PRIVATE_DATA->next_check) {
 		update_task_states(device, now);
+	}
+	evaluate_safety(device, now);
+	if (PRIVATE_DATA->started && PRIVATE_DATA->hold == HOLD_NONE && PRIVATE_DATA->unsafe_now) {
+		enter_hold(device);
 	}
 	// a stop finished in this pass lets late updates of the aborted sequence arrive before the next start
 	bool stopped_now = false;
@@ -2833,6 +3126,7 @@ static void control(indigo_device *device, indigo_property *request) {
 	CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CONTROL_PROPERTY, NULL);
 	if (start) {
+		bool postponed = false;
 		if (!PRIVATE_DATA->started) {
 			// the startup hook runs once per start, before the first task
 			PRIVATE_DATA->startup_pending = *indigo_get_text_item_value(HOOKS_STARTUP_ITEM) != 0;
@@ -2849,10 +3143,16 @@ static void control(indigo_device *device, indigo_property *request) {
 			if (PRIVATE_DATA->phase == RUN_IDLE) {
 				capture_original(device);
 			}
+			// the start waits until the conditions have been safe for SAFE_DELAY; it has prepared nothing, so no unsafe hook runs
+			time_t now = time(NULL);
+			evaluate_safety(device, now);
+			PRIVATE_DATA->hold = hold_safe(device, now) ? HOLD_NONE : HOLD_START;
+			PRIVATE_DATA->unsafe_hook_done = PRIVATE_DATA->hand_abort_done = true;
+			postponed = PRIVATE_DATA->hold == HOLD_START;
 		}
 		PRIVATE_DATA->started = true;
 		PRIVATE_DATA->stop_requested = false;
-		set_scheduler_state(device, INDIGO_BUSY_STATE, "Scheduler started");
+		set_scheduler_state(device, INDIGO_BUSY_STATE, postponed ? "Unsafe conditions, the start waits for safe conditions" : "Scheduler started");
 	} else if (stop) {
 		if (PRIVATE_DATA->started) {
 			request_stop(device, INDIGO_OK_STATE, "Scheduler stopped");
@@ -2969,6 +3269,14 @@ static void command_handler(indigo_device *device, void *data) {
 		}
 		PRIVATE_DATA->visibility_count = 0;
 		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	} else if (indigo_property_match_changeable(SAFETY_MISSING_PROPERTY, request)) {
+		indigo_property_copy_values(SAFETY_MISSING_PROPERTY, request, false);
+		SAFETY_MISSING_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, SAFETY_MISSING_PROPERTY, NULL);
+		if (!command->config_reader) {
+			schedule_save(device);
+		}
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	} else if (indigo_property_match_changeable(SETTINGS_PROPERTY, request)) {
 		indigo_property_copy_values(SETTINGS_PROPERTY, request, false);
 		SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
@@ -3084,7 +3392,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_text_item(CURRENT_CURRENT_ITEM, AGENT_SCHEDULER_CURRENT_CURRENT_ITEM_NAME, "Running task", "");
 		indigo_init_text_item(CURRENT_REASON_ITEM, AGENT_SCHEDULER_CURRENT_REASON_ITEM_NAME, "Waiting because", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_SETTINGS
-		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
+		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 12);
 		if (SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -3093,11 +3401,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(SETTINGS_START_TIMEOUT_ITEM, AGENT_SCHEDULER_SETTINGS_START_TIMEOUT_ITEM_NAME, "Start timeout (s)", 1, 600, 1, 10);
 		indigo_init_number_item(SETTINGS_SETTING_WEIGHT_ITEM, AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME, "Setting soonest weight", 0, 4, 0.1, 1);
 		indigo_init_number_item(SETTINGS_ALTITUDE_WEIGHT_ITEM, AGENT_SCHEDULER_SETTINGS_ALTITUDE_WEIGHT_ITEM_NAME, "Altitude weight", 0, 4, 0.1, 1);
+		indigo_init_number_item(SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM, AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME, "Best visibility: meridian flip penalty (min)", 0, 120, 1, 10);
 		indigo_init_number_item(SETTINGS_IDLE_HOOK_DELAY_ITEM, AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, "Idle hook delay (min)", 0, 1440, 1, 30);
 		indigo_init_number_item(SETTINGS_FRAME_OVERHEAD_ITEM, AGENT_SCHEDULER_SETTINGS_FRAME_OVERHEAD_ITEM_NAME, "Estimate overhead per frame (s)", 0, 600, 1, 10);
 		indigo_init_number_item(SETTINGS_OPERATION_OVERHEAD_ITEM, AGENT_SCHEDULER_SETTINGS_OPERATION_OVERHEAD_ITEM_NAME, "Estimate overhead per operation (s)", 0, 3600, 1, 120);
 		indigo_init_number_item(SETTINGS_NIGHT_START_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME, "Night start offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
 		indigo_init_number_item(SETTINGS_NIGHT_END_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, "Night end offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
+		indigo_init_number_item(SETTINGS_SAFE_DELAY_ITEM, AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, "Safe delay (min)", 0, 1440, 0.1, 10);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_DATA
 		DATA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_DATA_PROPERTY_NAME, SCHEDULER_GROUP, "Observation data", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
 		if (DATA_PROPERTY == NULL) {
@@ -3113,7 +3423,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		indigo_init_text_item(DATA_DIR_BASE_ITEM, AGENT_SCHEDULER_DATA_DIR_BASE_ITEM_NAME, "Base folder (empty = Imager Agent folder)", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_HOOKS
-		HOOKS_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, SCHEDULER_GROUP, "Hooks", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
+		HOOKS_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, SCHEDULER_GROUP, "Hooks", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 		if (HOOKS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -3123,6 +3433,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_text_item(HOOKS_NIGHT_END_ITEM, AGENT_SCHEDULER_HOOKS_NIGHT_END_ITEM_NAME, "Night end task", "");
 		indigo_init_text_item(HOOKS_IDLE_ITEM, AGENT_SCHEDULER_HOOKS_IDLE_ITEM_NAME, "Idle task", "");
 		indigo_init_text_item(HOOKS_RESUME_ITEM, AGENT_SCHEDULER_HOOKS_RESUME_ITEM_NAME, "Resume task", "");
+		indigo_init_text_item(HOOKS_UNSAFE_ITEM, AGENT_SCHEDULER_HOOKS_UNSAFE_ITEM_NAME, "Unsafe task", "");
+		indigo_init_text_item(HOOKS_SAFE_ITEM, AGENT_SCHEDULER_HOOKS_SAFE_ITEM_NAME, "Safe task", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_NIGHT
 		NIGHT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_NIGHT_PROPERTY_NAME, SCHEDULER_GROUP, "Night limit", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (NIGHT_PROPERTY == NULL) {
@@ -3138,6 +3450,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		indigo_init_switch_item(STRATEGY_COMPACT_ITEM, AGENT_SCHEDULER_STRATEGY_COMPACT_ITEM_NAME, "Compact (start tasks as soon as they can run)", true);
 		indigo_init_switch_item(STRATEGY_VISIBILITY_ITEM, AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME, "Best visibility (plan runs nearer their culmination)", false);
+		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_SAFETY_MISSING
+		SAFETY_MISSING_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_SAFETY_MISSING_PROPERTY_NAME, SCHEDULER_GROUP, "Missing safety information", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (SAFETY_MISSING_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(SAFETY_MISSING_SAFE_ITEM, AGENT_SCHEDULER_SAFETY_MISSING_SAFE_ITEM_NAME, "Treat as safe", true);
+		indigo_init_switch_item(SAFETY_MISSING_UNSAFE_ITEM, AGENT_SCHEDULER_SAFETY_MISSING_UNSAFE_ITEM_NAME, "Treat as unsafe", false);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_HISTORY
 		HISTORY_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_SCHEDULER_HISTORY_PROPERTY_NAME, SCHEDULER_GROUP, "Run history", INDIGO_OK_STATE, MAX_HISTORY);
 		if (HISTORY_PROPERTY == NULL) {
@@ -3180,6 +3499,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->property_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->command_mutex, NULL);
 		PRIVATE_DATA->observed.sequence_state = INDIGO_IDLE_STATE;
+		PRIVATE_DATA->observed.safety_light = INDIGO_IDLE_STATE;
 		// a result left on the Scripting Agent by an earlier instance never matches a new token
 		PRIVATE_DATA->token = (int)(time(NULL) % 100000) * 1000;
 		PRIVATE_DATA->current = -1;
@@ -3202,6 +3522,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_define_property(device, HOOKS_PROPERTY, NULL);
 		indigo_define_property(device, NIGHT_PROPERTY, NULL);
 		indigo_define_property(device, STRATEGY_PROPERTY, NULL);
+		indigo_define_property(device, SAFETY_MISSING_PROPERTY, NULL);
 		indigo_define_property(device, HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, CLEAR_HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, RESTORE_HISTORY_PROPERTY, NULL);
@@ -3245,6 +3566,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	define_copy(device, client, HOOKS_PROPERTY, property);
 	define_copy(device, client, NIGHT_PROPERTY, property);
 	define_copy(device, client, STRATEGY_PROPERTY, property);
+	define_copy(device, client, SAFETY_MISSING_PROPERTY, property);
 	define_copy(device, client, HISTORY_PROPERTY, property);
 	define_copy(device, client, CLEAR_HISTORY_PROPERTY, property);
 	define_copy(device, client, RESTORE_HISTORY_PROPERTY, property);
@@ -3260,7 +3582,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 
 // returns the property of the agent the request changes, NULL for other properties
 static indigo_property *own_property(indigo_device *device, indigo_property *property) {
-	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, DATA_PROPERTY, DATA_DIR_PROPERTY, HOOKS_PROPERTY, NIGHT_PROPERTY, STRATEGY_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY };
+	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, DATA_PROPERTY, DATA_DIR_PROPERTY, HOOKS_PROPERTY, NIGHT_PROPERTY, STRATEGY_PROPERTY, SAFETY_MISSING_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY };
 	for (int i = 0; i < (int)(sizeof(properties) / sizeof(properties[0])); i++) {
 		if (indigo_property_match_changeable(properties[i], property)) {
 			return properties[i];
@@ -3325,6 +3647,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(HOOKS_PROPERTY);
 	indigo_release_property(NIGHT_PROPERTY);
 	indigo_release_property(STRATEGY_PROPERTY);
+	indigo_release_property(SAFETY_MISSING_PROPERTY);
 	indigo_release_property(HISTORY_PROPERTY);
 	indigo_release_property(CLEAR_HISTORY_PROPERTY);
 	indigo_release_property(RESTORE_HISTORY_PROPERTY);
@@ -3417,6 +3740,27 @@ static void observe_property(indigo_property *property) {
 				}
 				observed->estimate_counts = true;
 			}
+		} else if (!strcmp(property->name, MERIDIAN_FLIP_PROPERTY)) {
+			indigo_item *enabled_item = indigo_get_item(property, "ENABLED");
+			indigo_item *offset_item = indigo_get_item(property, "OFFSET");
+			if (enabled_item && offset_item) {
+				bool enabled = enabled_item->number.value > 0.5;
+				double offset = offset_item->number.value;
+				offset = offset < -2 ? -2 : (offset > 2 ? 2 : offset);
+				if (enabled != observed->flip_enabled || offset != observed->flip_offset) {
+					observed->flip_enabled = enabled;
+					observed->flip_offset = offset;
+					observed->flip_generation++;
+				}
+			}
+		}
+	} else if (!strcmp(property->device, AUX_AGENT) && !strcmp(property->name, AUX_SAFETY_PROPERTY)) {
+		// only the light of the SAFE item counts, not the property state
+		indigo_item *item = property->type == INDIGO_LIGHT_VECTOR ? indigo_get_item(property, AUX_SAFETY_SAFE_ITEM) : NULL;
+		observed->safety_defined = true;
+		observed->safety_light = item ? item->light.value : INDIGO_IDLE_STATE;
+		if (observed->safety_light == INDIGO_ALERT_STATE) {
+			observed->safety_alerts++;
 		}
 	} else if (!strcmp(property->device, MOUNT_AGENT) && !strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		indigo_item *latitude = indigo_get_item(property, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
@@ -3481,8 +3825,16 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 		} else if (!strcmp(property->name, "SEQUENCE_STATE")) {
 			observed->sequencer_present = false;
 		}
+		// the plan then assumes no meridian flip
+		if ((*property->name == 0 || !strcmp(property->name, MERIDIAN_FLIP_PROPERTY)) && observed->flip_enabled) {
+			observed->flip_enabled = false;
+			observed->flip_generation++;
+		}
 	} else if (!strcmp(property->device, MOUNT_AGENT) && (*property->name == 0 || !strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME))) {
 		observed->site_known = false;
+	} else if (!strcmp(property->device, AUX_AGENT) && (*property->name == 0 || !strcmp(property->name, AUX_SAFETY_PROPERTY))) {
+		observed->safety_defined = false;
+		observed->safety_light = INDIGO_IDLE_STATE;
 	}
 	if (!strcmp(property->device, IMAGER_AGENT) && (*property->name == 0 || !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME))) {
 		observed->imager_known = false;

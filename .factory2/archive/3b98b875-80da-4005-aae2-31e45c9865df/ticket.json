@@ -1,0 +1,514 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3b98b875-80da-4005-aae2-31e45c9865df",
+  "revision": 24,
+  "title": "indigo_tools: show item labels and light states in indigo_prop_tool -e",
+  "description": "indigo_prop_tool never prints item labels, and it prints every light item as ON (any state other than Idle) or OFF. Agents that put information in item labels, such as the Scheduler Agent's AGENT_SCHEDULER_HISTORY (RUN_n items whose label names the task, run, kind, result and reason), AGENT_SCHEDULER_TASK_STATE and AGENT_SCHEDULER_PLAN, therefore cannot be read from the command line: \"RUN_16 = ON\" says neither which task ran nor whether it succeeded.\n\nChange: with -e / --extended-info, list (and get where it prints items) shows each item's label, and light items show their state (Idle, Ok, Busy, Alert) instead of ON/OFF. Output without -e stays unchanged so existing scripts keep working. Update the tool's help text and the man/documentation where the -e output is described.\n\nAlso correct indigo_docs/INDIGO_SCHEDULER_GUIDE.md, quick start step 4 (about line 121), which says the history \"shows a line such as ...\" while its examples use indigo_prop_tool, which did not print that line: name the command that shows it (indigo_prop_tool list -e \"Scheduler Agent.AGENT_SCHEDULER_HISTORY\") or a GUI client.\n\nTests: cover the extended output for label and light state, and the unchanged default output, in the existing prop_tool tests if any.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-22T21:03:41.565498Z",
+  "status": "closed",
+  "branch": "ticket/3b98b875-80da-4005-aae2-31e45c9865df",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "63c31433-2c02-4a8d-b96f-dd2b66a903a7",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T21:04:18.911263Z",
+          "last_activity_at": "2026-11-22T21:15:32.621952Z",
+          "ended_at": "2026-11-22T21:15:32.621952Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 673710.689,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T21:04:18.911263Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/3b98b875-80da-4005-aae2-31e45c9865df"
+        },
+        {
+          "at": "2026-11-22T21:15:32.621952Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 673710.689,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "d5a08b79-220c-4221-8db0-fa15aebf3275",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "68f65198-51db-46b7-a44d-cba9c1fa84a9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T21:15:32.622030Z",
+          "last_activity_at": "2026-11-22T21:16:24.797573Z",
+          "ended_at": "2026-11-22T21:16:24.797573Z",
+          "outcome": {
+            "summary": "Pass. Read the full diff of master...HEAD myself.\n\nindigo_tools/indigo_prop_tool.c: without -e the output does not change on any path. In print_property_list each per-type printf lost its trailing \\n, and one common printf(\"\\n\") now ends the line (the new code is at about line 449). That holds for both text branches, number %g, switch, light ON/OFF and all five blob branches. The `[STATE]\\t` prefix of -s still prints only without -e (line 398). print_property_get_filtered changes only under print_verbose. print_property_list_state is untouched. With -e, a light shows light_state_string() and a label is printed with \"%s\" after \"  # \", so a label with % is safe. An empty label prints nothing after the value, and each line still ends with one \\n. The help text matches what the code does. Style is fine: tabs, K&R, braces, calls on one line.\n\nindigo_test/unit/test_prop_tool_parser.c: list_output checks the exact plain output and the exact -e output for light (OK/ALERT/BUSY/IDLE, and an empty label with no suffix), switch, text and number items. It turns on -e through indigo_prop_tool_main with --help, which returns before the bus starts, and it also checks that the help text mentions labels. I built and ran make -C indigo_test test-tool-input-safety in the worktree: \"Property tool input safety\" 7/7 PASS, list_output included. The 3 other failures are RawCropSafety fread1/fread2 and GaiaCatalogSafety join overflow. They test tools this diff does not touch, so they are unrelated.\n\nDocs: the label format in INDIGO_SCHEDULER_GUIDE.md and PROPERTY_MANIPULATION.md matches the code. history_label/join_label build the columns joined by \" | \" with \"-\" for an empty column, and time_range gives \"YYYY-MM-DD HH:MM-HH:MM\". The history is ordered oldest first, so \"the run is its last item\" is right. history_light gives SUCCEEDED -> OK. Group \"Scheduler\", label \"Run history\" and the label of the CCD_EXPOSURE item \"Start exposure\" are also right. The style stays plain with short sentence",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 52175.543,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T21:15:32.622030Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T21:16:24.797573Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Read the full diff of master...HEAD myself.\n\nindigo_tools/indigo_prop_tool.c: without -e the output does not change on any path. In print_property_list each per-type printf lost its trailing \\n, and one common printf(\"\\n\") now ends the line (the new code is at about line 449). That holds for both text branches, number %g, switch, light ON/OFF and all five blob branches. The `[STATE]\\t` prefix of -s still prints only without -e (line 398). print_property_get_filtered changes only under print_verbose. print_property_list_state is untouched. With -e, a light shows light_state_string() and a label is printed with \"%s\" after \"  # \", so a label with % is safe. An empty label prints nothing after the value, and each line still ends with one \\n. The help text matches what the code does. Style is fine: tabs, K&R, braces, calls on one line.\n\nindigo_test/unit/test_prop_tool_parser.c: list_output checks the exact plain output and the exact -e output for light (OK/ALERT/BUSY/IDLE, and an empty label with no suffix), switch, text and number items. It turns on -e through indigo_prop_tool_main with --help, which returns before the bus starts, and it also checks that the help text mentions labels. I built and ran make -C indigo_test test-tool-input-safety in the worktree: \"Property tool input safety\" 7/7 PASS, list_output included. The 3 other failures are RawCropSafety fread1/fread2 and GaiaCatalogSafety join overflow. They test tools this diff does not touch, so they are unrelated.\n\nDocs: the label format in INDIGO_SCHEDULER_GUIDE.md and PROPERTY_MANIPULATION.md matches the code. history_label/join_label build the columns joined by \" | \" with \"-\" for an empty column, and time_range gives \"YYYY-MM-DD HH:MM-HH:MM\". The history is ordered oldest first, so \"the run is its last item\" is right. history_light gives SUCCEEDED -> OK. Group \"Scheduler\", label \"Run history\" and the label of the CCD_EXPOSURE item \"Start exposure\" are also right. The style stays plain with short sentence"
+        }
+      ],
+      "result": {
+        "summary": "Pass. Read the full diff of master...HEAD myself.\n\nindigo_tools/indigo_prop_tool.c: without -e the output does not change on any path. In print_property_list each per-type printf lost its trailing \\n, and one common printf(\"\\n\") now ends the line (the new code is at about line 449). That holds for both text branches, number %g, switch, light ON/OFF and all five blob branches. The `[STATE]\\t` prefix of -s still prints only without -e (line 398). print_property_get_filtered changes only under print_verbose. print_property_list_state is untouched. With -e, a light shows light_state_string() and a label is printed with \"%s\" after \"  # \", so a label with % is safe. An empty label prints nothing after the value, and each line still ends with one \\n. The help text matches what the code does. Style is fine: tabs, K&R, braces, calls on one line.\n\nindigo_test/unit/test_prop_tool_parser.c: list_output checks the exact plain output and the exact -e output for light (OK/ALERT/BUSY/IDLE, and an empty label with no suffix), switch, text and number items. It turns on -e through indigo_prop_tool_main with --help, which returns before the bus starts, and it also checks that the help text mentions labels. I built and ran make -C indigo_test test-tool-input-safety in the worktree: \"Property tool input safety\" 7/7 PASS, list_output included. The 3 other failures are RawCropSafety fread1/fread2 and GaiaCatalogSafety join overflow. They test tools this diff does not touch, so they are unrelated.\n\nDocs: the label format in INDIGO_SCHEDULER_GUIDE.md and PROPERTY_MANIPULATION.md matches the code. history_label/join_label build the columns joined by \" | \" with \"-\" for an empty column, and time_range gives \"YYYY-MM-DD HH:MM-HH:MM\". The history is ordered oldest first, so \"the run is its last item\" is right. history_light gives SUCCEEDED -> OK. Group \"Scheduler\", label \"Run history\" and the label of the CCD_EXPOSURE item \"Start exposure\" are also right. The style stays plain with short sentence",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 52175.543,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "10803aea-9be7-44af-beb1-fdb06f3818f6",
+      "event": "ticket/created",
+      "at": "2026-11-22T21:03:41.566376Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "00fb1ab8-4af7-4b7d-b254-648934494c7f",
+      "event": "ticket/confirmed",
+      "at": "2026-11-22T21:04:06.613520Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "abfcaad9-624e-413c-8d45-a7934f911d85",
+      "event": "task/progress",
+      "at": "2026-11-22T21:04:18.911391Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Implementation started on branch ticket/3b98b875-80da-4005-aae2-31e45c9865df"
+    },
+    {
+      "event_id": "c7e22bca-ccb4-4dde-8409-3d7ab70741a9",
+      "event": "ticket/started",
+      "at": "2026-11-22T21:04:18.912393Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/3b98b875-80da-4005-aae2-31e45c9865df",
+      "base": "master"
+    },
+    {
+      "event_id": "22c317c6-5c38-433a-9832-175f97a72993",
+      "event": "task/progress",
+      "at": "2026-11-22T21:04:37.998982Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Implementer launched",
+      "attempt_id": "63c31433-2c02-4a8d-b96f-dd2b66a903a7",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "402b235d-e09a-4733-84bf-7421d030cee1",
+      "event": "task/progress",
+      "at": "2026-11-22T21:06:29.357357Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Running flow check (whitespace, unit) after prop_tool -e change and list_output test"
+    },
+    {
+      "event_id": "34c9efa7-bb68-43ad-89ea-3fdd47fea1e7",
+      "event": "task/progress",
+      "at": "2026-11-22T21:06:29.582936Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "366559a6-c6fc-4241-872b-1c36c4a12348",
+      "event": "task/progress",
+      "at": "2026-11-22T21:06:29.595696Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b0fc4925-b77f-4f42-b995-12a99f69eb8f",
+      "event": "task/progress",
+      "at": "2026-11-22T21:06:29.600409Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "bdb3a9b6-e9c2-4661-8e0a-aa5d169624eb",
+      "event": "task/progress",
+      "at": "2026-11-22T21:09:33.175031Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "7c7ee6bf-02e9-436c-9969-df3aa18bbd01",
+      "event": "check/passed",
+      "at": "2026-11-22T21:09:33.179984Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "cccfb3b1271e4ce55dbbd1b9b134ca82e4f424de",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "542d4ea2-e8ff-4f5f-bc4c-8c1130fd2507",
+      "event": "task/progress",
+      "at": "2026-11-22T21:09:48.170078Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Running make -C indigo_test test-tool-input-safety"
+    },
+    {
+      "event_id": "a977c2af-8092-4de2-ac82-cc58706c788c",
+      "event": "task/progress",
+      "at": "2026-11-22T21:10:27.181092Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Building indigo_server, prop_tool and agents for a sandbox run"
+    },
+    {
+      "event_id": "a9ab8131-1362-47f0-9c9f-e81adbbc1e07",
+      "event": "task/progress",
+      "at": "2026-11-22T21:13:19.779875Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "70fe6ba8-2e29-4447-b985-b5f21750da3a",
+      "event": "task/progress",
+      "at": "2026-11-22T21:13:19.793309Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "fbdafeac-3750-420b-a66c-c5a151b93ee0",
+      "event": "task/progress",
+      "at": "2026-11-22T21:13:19.798083Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "cf8054b6-6209-45ff-a6e1-fc0c1875faeb",
+      "event": "task/progress",
+      "at": "2026-11-22T21:14:58.751611Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ef99a012-2552-4fba-8533-24d52d05913a",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "1b6ab3ee-7f4d-4910-883c-45af3b427b8c",
+      "event": "check/passed",
+      "at": "2026-11-22T21:14:58.756967Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "0faf73a711d4448191c1f180785217bd78bc03be",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "fb1a30f3-71d0-4eca-b9c6-ef1f6c35e8aa",
+      "event": "ticket/note",
+      "at": "2026-11-22T21:15:05.339141Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementer evidence. Reproduction: the new list_output case in indigo_test/unit/test_prop_tool_parser.c, run against master's indigo_prop_tool.c, passes the default-output part and FAILs the -e part (no labels, lights ON/OFF). After the change it PASSes (make -C indigo_test test-tool-input-safety: Property tool input safety all 7 cases pass). That target is not part of test-unit/flow check; its 3 other failures (RawCropSafety fread1/fread2, GaiaCatalogSafety join overflow) occur identically on master and are unrelated. Sandbox run (tools/scheduler_sandbox.py, port 17656): list -e AGENT_SCHEDULER_HISTORY printed 'Scheduler Agent.AGENT_SCHEDULER_HISTORY.RUN_1 = OK  # 2026-11-22 21:11-21:11 | Test | run 1 | task | SUCCEEDED | -'; list without -e still 'RUN_1 = ON'; get -e RUN_1 -> OK, get -> ON. get -e does not print labels (get prints values only, one per line).",
+      "tokens": null
+    },
+    {
+      "event_id": "0ac1f15c-f9b3-4d73-86c3-368186a8175d",
+      "event": "task/progress",
+      "at": "2026-11-22T21:15:32.622123Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5a08b79-220c-4221-8db0-fa15aebf3275",
+      "text": "Review started"
+    },
+    {
+      "event_id": "55fc220b-04e4-421c-8b1f-245a7358c626",
+      "event": "review/started",
+      "at": "2026-11-22T21:15:32.623023Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "8f48306b-d32c-41d9-97b3-674f172633d7",
+      "event": "task/progress",
+      "at": "2026-11-22T21:15:32.841458Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5a08b79-220c-4221-8db0-fa15aebf3275",
+      "text": "Reviewer launched",
+      "attempt_id": "68f65198-51db-46b7-a44d-cba9c1fa84a9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7dae7c9c-01aa-40f9-85a9-63e9bba495d6",
+      "event": "task/progress",
+      "at": "2026-11-22T21:15:59.654304Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5a08b79-220c-4221-8db0-fa15aebf3275",
+      "text": "Running make -C indigo_test test-tool-input-safety in the worktree"
+    },
+    {
+      "event_id": "a21ae0a7-642b-4da2-beac-0d8bc2aa87c6",
+      "event": "task/progress",
+      "at": "2026-11-22T21:16:24.797651Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5a08b79-220c-4221-8db0-fa15aebf3275",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "ade7a712-75e0-44dd-93de-ae716ca8a18f",
+      "event": "review/passed",
+      "at": "2026-11-22T21:16:24.798307Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5a08b79-220c-4221-8db0-fa15aebf3275",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0faf73a711d4448191c1f180785217bd78bc03be"
+    },
+    {
+      "event_id": "7ff76218-c2f3-4035-a7a5-b4c345c81c25",
+      "event": "ticket/closed",
+      "at": "2026-11-22T21:20:05.838392Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-22T21:20:05.838359Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "cadd2488b9f580d2ceda95d792b6c7003a187bf9"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "cccfb3b1271e4ce55dbbd1b9b134ca82e4f424de",
+        "tree": "5f892a0629cb6a254a945a420a0f2de35a70d046",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T21:06:29.595029Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/3b98b875-80da-4005-aae2-31e45c9865df/5f892a0629cb-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "cccfb3b1271e4ce55dbbd1b9b134ca82e4f424de",
+        "tree": "5f892a0629cb6a254a945a420a0f2de35a70d046",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T21:09:33.174287Z",
+        "duration_s": 183.6,
+        "log": "/tmp/factory-flow/3b98b875-80da-4005-aae2-31e45c9865df/5f892a0629cb-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0faf73a711d4448191c1f180785217bd78bc03be",
+        "tree": "4581f22979a86dd7cee607a400ae236c3ccc0811",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T21:13:19.792579Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/3b98b875-80da-4005-aae2-31e45c9865df/4581f22979a8-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "0faf73a711d4448191c1f180785217bd78bc03be",
+        "tree": "4581f22979a86dd7cee607a400ae236c3ccc0811",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T21:14:58.750804Z",
+        "duration_s": 99.0,
+        "log": "/tmp/factory-flow/3b98b875-80da-4005-aae2-31e45c9865df/4581f22979a8-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Read the full diff of master...HEAD myself.\n\nindigo_tools/indigo_prop_tool.c: without -e the output does not change on any path. In print_property_list each per-type printf lost its trailing \\n, and one common printf(\"\\n\") now ends the line (the new code is at about line 449). That holds for both text branches, number %g, switch, light ON/OFF and all five blob branches. The `[STATE]\\t` prefix of -s still prints only without -e (line 398). print_property_get_filtered changes only under print_verbose. print_property_list_state is untouched. With -e, a light shows light_state_string() and a label is printed with \"%s\" after \"  # \", so a label with % is safe. An empty label prints nothing after the value, and each line still ends with one \\n. The help text matches what the code does. Style is fine: tabs, K&R, braces, calls on one line.\n\nindigo_test/unit/test_prop_tool_parser.c: list_output checks the exact plain output and the exact -e output for light (OK/ALERT/BUSY/IDLE, and an empty label with no suffix), switch, text and number items. It turns on -e through indigo_prop_tool_main with --help, which returns before the bus starts, and it also checks that the help text mentions labels. I built and ran make -C indigo_test test-tool-input-safety in the worktree: \"Property tool input safety\" 7/7 PASS, list_output included. The 3 other failures are RawCropSafety fread1/fread2 and GaiaCatalogSafety join overflow. They test tools this diff does not touch, so they are unrelated.\n\nDocs: the label format in INDIGO_SCHEDULER_GUIDE.md and PROPERTY_MANIPULATION.md matches the code. history_label/join_label build the columns joined by \" | \" with \"-\" for an empty column, and time_range gives \"YYYY-MM-DD HH:MM-HH:MM\". The history is ordered oldest first, so \"the run is its last item\" is right. history_light gives SUCCEEDED -> OK. Group \"Scheduler\", label \"Run history\" and the label of the CCD_EXPOSURE item \"Start exposure\" are also right. The style stays plain with short sentences. No files were added, so the Xcode project does not need a change. No README.md was touched.\n\nMinor notes, none blocking:\n(1) get -e for lights (line ~514) is not covered by a unit test. It was checked by hand in the sandbox note.\n(2) list_output leaves print_verbose set to true. It is harmless now because it is the last case, but a case added after it would inherit -e.\n(3) A label with a line break would split the -e item line. Scheduler labels have no line breaks.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "0faf73a711d4448191c1f180785217bd78bc03be",
+        "tree": "4581f22979a86dd7cee607a400ae236c3ccc0811",
+        "at": "2026-11-22T21:16:24.797546Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-22T21:15:05.338518Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementer evidence. Reproduction: the new list_output case in indigo_test/unit/test_prop_tool_parser.c, run against master's indigo_prop_tool.c, passes the default-output part and FAILs the -e part (no labels, lights ON/OFF). After the change it PASSes (make -C indigo_test test-tool-input-safety: Property tool input safety all 7 cases pass). That target is not part of test-unit/flow check; its 3 other failures (RawCropSafety fread1/fread2, GaiaCatalogSafety join overflow) occur identically on master and are unrelated. Sandbox run (tools/scheduler_sandbox.py, port 17656): list -e AGENT_SCHEDULER_HISTORY printed 'Scheduler Agent.AGENT_SCHEDULER_HISTORY.RUN_1 = OK  # 2026-11-22 21:11-21:11 | Test | run 1 | task | SUCCEEDED | -'; list without -e still 'RUN_1 = ON'; get -e RUN_1 -> OK, get -> ON. get -e does not print labels (get prints values only, one per line).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "cadd2488b9f580d2ceda95d792b6c7003a187bf9",
+      "tree": "4581f22979a86dd7cee607a400ae236c3ccc0811",
+      "base": "master",
+      "at": "2026-11-22T21:20:05.720911Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-22T21:03:41.565498Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-22T21:04:06.613453Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 725886.232,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 30,
+    "sha256": "edd6b2c05aa614a15b1b7f2abed007c82e7bb714c8e4cedf0b993d71fc3b52ea"
+  }
+}

@@ -319,6 +319,20 @@ static void save_blob(char *filename, char *data, size_t length) {
 }
 
 
+static const char *light_state_string(indigo_property_state state) {
+	switch (state) {
+	case INDIGO_IDLE_STATE:
+		return "IDLE";
+	case INDIGO_OK_STATE:
+		return "OK";
+	case INDIGO_BUSY_STATE:
+		return "BUSY";
+	case INDIGO_ALERT_STATE:
+		return "ALERT";
+	}
+	return "UNKNOWN";
+}
+
 void print_property_list(indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
@@ -387,34 +401,34 @@ void print_property_list(indigo_property *property, const char *message) {
 		switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
 			if (item->text.length > TEXT_LEN_TO_PRINT) {
-				printf("%s.%s.%s = \"%.*s\" + %ld characters\n", property->device, property->name, item->name, TEXT_LEN_TO_PRINT, item->text.value, item->text.length - TEXT_LEN_TO_PRINT - 1);
+				printf("%s.%s.%s = \"%.*s\" + %ld characters", property->device, property->name, item->name, TEXT_LEN_TO_PRINT, item->text.value, item->text.length - TEXT_LEN_TO_PRINT - 1);
 			} else {
-				printf("%s.%s.%s = \"%s\"\n", property->device, property->name, item->name, item->text.value);
+				printf("%s.%s.%s = \"%s\"", property->device, property->name, item->name, item->text.value);
 			}
 			break;
 		case INDIGO_NUMBER_VECTOR:
 			if (print_verbose) {
-				printf("%s.%s.%s = %f [%f, %f]\n", property->device, property->name, item->name, item->number.value, item->number.min, item->number.max);
+				printf("%s.%s.%s = %f [%f, %f]", property->device, property->name, item->name, item->number.value, item->number.min, item->number.max);
 			} else {
-				printf("%s.%s.%s = %g\n", property->device, property->name, item->name, item->number.value);
+				printf("%s.%s.%s = %g", property->device, property->name, item->name, item->number.value);
 			}
 			break;
 		case INDIGO_SWITCH_VECTOR:
-			printf("%s.%s.%s = %s\n", property->device, property->name, item->name, item->sw.value ? "ON" : "OFF");
+			printf("%s.%s.%s = %s", property->device, property->name, item->name, item->sw.value ? "ON" : "OFF");
 			break;
 		case INDIGO_LIGHT_VECTOR:
-			printf("%s.%s.%s = %s\n", property->device, property->name, item->name, item->light.value ? "ON" : "OFF");
+			printf("%s.%s.%s = %s", property->device, property->name, item->name, print_verbose ? light_state_string(item->light.value) : (item->light.value ? "ON" : "OFF"));
 			break;
 		case INDIGO_BLOB_VECTOR:
 			if ((save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
 				char filename[PATH_MAX];
 				snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
-				printf("%s.%s.%s = <BLOB => %s>\n", property->device, property->name, item->name, filename);
+				printf("%s.%s.%s = <BLOB => %s>", property->device, property->name, item->name, filename);
 				save_blob(filename, item->blob.value, item->blob.size);
 			} else if ((save_blobs) && (indigo_use_blob_urls) && (item->blob.url[0] != '\0') && (property->state == INDIGO_OK_STATE)) {
 				char filename[PATH_MAX];
 				snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
-				printf("%s.%s.%s = <%s => %s>\n", property->device, property->name, item->name, item->blob.url, filename);
+				printf("%s.%s.%s = <%s => %s>", property->device, property->name, item->name, item->blob.url, filename);
 				if (indigo_populate_http_blob_item(item)) {
 					save_blob(filename, item->blob.value, item->blob.size);
 					free(item->blob.value);
@@ -423,15 +437,19 @@ void print_property_list(indigo_property *property, const char *message) {
 					INDIGO_ERROR(indigo_error("Can not retrieve data from %s", item->blob.url));
 				}
 			} else if ((!save_blobs) && (indigo_use_blob_urls) && (item->blob.url[0] != '\0') && (property->state == INDIGO_OK_STATE)) {
-				printf("%s.%s.%s = <%s>\n", property->device, property->name, item->name, item->blob.url);
+				printf("%s.%s.%s = <%s>", property->device, property->name, item->name, item->blob.url);
 			} else if ((!save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
-				printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
+				printf("%s.%s.%s = <BLOB NOT SHOWN>", property->device, property->name, item->name);
 			} else {
 				// printf("save_blobs = %d, indigo_use_blob_urls = %d, item->blob.size = %d, item->blob.value = %p, property->state = %d\n", save_blobs, indigo_use_blob_urls, item->blob.size, item->blob.value, property->state);
-				printf("%s.%s.%s = <NO BLOB DATA>\n", property->device, property->name, item->name);
+				printf("%s.%s.%s = <NO BLOB DATA>", property->device, property->name, item->name);
 			}
 			break;
 		}
+		if (print_verbose && item->label[0] != '\0') {
+			printf("  # %s", item->label);
+		}
+		printf("\n");
 	}
 	if (print_verbose) printf("\n");
 }
@@ -493,7 +511,9 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 				sprintf(value_string[items_found], item->sw.value ? "ON" : "OFF");
 				break;
 			case INDIGO_LIGHT_VECTOR:
-				if (item->light.value) {
+				if (print_verbose) {
+					sprintf(value_string[items_found], "%s", light_state_string(item->light.value));
+				} else if (item->light.value) {
 					sprintf(value_string[items_found], "ON");
 				} else {
 					sprintf(value_string[items_found], "OFF");
@@ -918,7 +938,8 @@ static void print_help(const char *name) {
 	       "       -h  | --help\n"
 	       "       -b  | --save-blobs\n"
 	       "       -l  | --use_legacy_blobs\n"
-	       "       -e  | --extended-info\n"
+	       "       -e  | --extended-info               print property details, item labels (\"  # label\")\n"
+	       "                                           and light states (IDLE, OK, BUSY, ALERT)\n"
 	       "       -v  | --enable-log\n"
 	       "       -vv | --enable-debug\n"
 	       "       -vvv| --enable-trace\n"

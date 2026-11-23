@@ -1,0 +1,1028 @@
+{
+  "schema_version": 1,
+  "ticket_id": "922ae442-a444-4157-bde8-e3651aafd863",
+  "revision": 55,
+  "title": "indigo_aux_cloudwatcher: add AUX_WEATHER_SAFETY and raise the humid threshold to 95 %",
+  "description": "aux_cloudwatcher: add AUX_WEATHER_SAFETY using the shared helper and the existing thresholds: clouds unsafe at OVERCAST (corrected sky temperature not below the CLOUDY threshold), rain unsafe at RAINING (rain sensor below the RAINING threshold, kΩ, reversed direction), wind unsafe at STRONG, humidity unsafe at HUMID. Wind and humidity are Idle when the anemometer or the humidity sensor is not fitted. Change the AUX_HUMIDITY_THRESHOLDS HUMID default from 60 % to 95 %. Edit the .driver and regenerate, bump the version, update PROPERTIES.md, extend the simulator tests (each condition, the missing optional sensors as Idle, the new default).\n\n\nAgreed design (owner, 2026-11-23):\n\nNew standard light property AUX_WEATHER_SAFETY (read-only) on weather devices, items SAFE, CLOUDS, RAIN, WIND, HUMIDITY. Every weather driver defines all five items.\n- Condition item: Idle = no such sensor in the driver or none fitted on this unit; Ok = reading below its unsafe level; Alert = reading at or past its unsafe level, or a fitted sensor gives no valid reading (a broken sensor is never Idle).\n- SAFE: Alert as soon as any condition is Alert; Ok when every fitted sensor is Ok; Idle when no condition has a sensor or the device is disconnected.\n- The reason is given in the update message when the verdict changes, e.g. \"Unsafe: wind 12.4 m/s above 10.0 m/s\" or \"Safe: all conditions within limits\"; the measured values stay in AUX_WEATHER and the condition lights show which limit was crossed.\n\nUnsafe levels reuse the existing standard two-level classification and threshold properties (as in aux_cloudwatcher): AUX_CLOUD_THRESHOLDS / AUX_CLOUD, AUX_RAIN_THRESHOLDS / AUX_RAIN, AUX_WIND_THRESHOLDS / AUX_WIND, AUX_HUMIDITY_THRESHOLDS / AUX_HUMIDITY. The worst level is unsafe: clouds OVERCAST, rain RAINING, wind STRONG, humidity HUMID. Each driver sets its own threshold defaults in its own units. A condition is switched off by moving its unsafe threshold out of reach; no extra limits or enable property.\n\nPowerboxes (ppb, upb, upb3, usbdp, mgbox, svbpowerbox, wbplusv3, wbprov3) are excluded: they control dew heaters. sqm, astromechanics and mount_lx200 are excluded: they measure none of the four conditions.\n\nTickets: (1) framework + aux_simulator, (2) aux_cloudwatcher, (3) aux_skyalert, (4) system_alpaca, (5) agent_auxiliary aggregation. 2-5 depend on 1.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-22T22:58:52.290545Z",
+  "status": "closed",
+  "branch": "ticket/922ae442-a444-4157-bde8-e3651aafd863",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "27c9ce79-0f37-4598-b575-8567b9aef51d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T00:04:30.040947Z",
+          "last_activity_at": "2026-11-23T00:28:49.141946Z",
+          "ended_at": "2026-11-23T00:28:49.141946Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1459100.999,
+          "tokens": null
+        },
+        {
+          "attempt_id": "a1f31ad6-e7db-4f66-859f-42b6f1ae033c",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T00:34:18.447408Z",
+          "last_activity_at": "2026-11-23T00:41:29.089255Z",
+          "ended_at": "2026-11-23T00:41:29.089255Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 430641.847,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T00:04:30.040947Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/922ae442-a444-4157-bde8-e3651aafd863"
+        },
+        {
+          "at": "2026-11-23T00:28:49.141946Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-23T00:34:18.447408Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-23T00:41:29.089255Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1889742.846,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "9be70244-74d0-4477-81b8-1f0e8f22eb33",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-23T00:28:49.141980Z",
+          "last_activity_at": "2026-11-23T00:34:18.447321Z",
+          "ended_at": "2026-11-23T00:34:18.447321Z",
+          "outcome": {
+            "summary": "Verdict: changes (one defect).\n\nDefect: a fitted RH sensor whose t! request fails is reported as not fitted, so humidity drops to IDLE and SAFE can turn OK.\n- indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.driver:281 sets *fitted = false at entry, and 300 sets it true only after a parseable non-65535 t! reply. A t! timeout or garbled reply (287, 291; cloudwatcher_command returns false in both cases, 97-135) therefore returns fitted == false, and cloudwatcher_get_data does not treat it as a failed poll (430).\n- At 474 cloudwatcher_update_safety() copies that into PRIVATE_DATA->humidity_fitted on every successful poll, so knowledge from earlier polls is overwritten. Example: humidity HUMID (only unsafe condition), the next poll's t! times out -> HUMIDITY goes IDLE, SAFE goes OK, and the reason \"Safe: all conditions within limits\" is sent. This contradicts the owner decision that a fitted sensor without a valid reading is ALERT (condition, SAFE and property state) and never IDLE, and the PROPERTIES.md text \"humidity is fitted when firmware 5.6 or later reports an RH sensor\". The failed-poll path (data == NULL) already keeps the previous fitted state, so the two failure paths now disagree.\n- Fix: change the fitted state only on a definite answer (firmware < 5.6 or t! == 65535 -> not fitted; any other parsed reply -> fitted), and keep the previous value after a transport or parse failure. For example, seed data->rh_fitted from PRIVATE_DATA->humidity_fitted before the call and drop the unconditional *fitted = false. A simulator case would cover it: a profile whose t! reply fails after the first complete poll should give HUMIDITY, SAFE and the property state ALERT.\n\nVerified OK:\n- Owner decisions: AUX_CLOUD/RAIN/WIND/HUMIDITY comparisons are unchanged from master (cloud <=, rain <=, wind >=, humidity >=). Safety reads the OVERCAST/RAINING/STRONG/HUMID switches after they are set in cloudwatcher_process_data. Wind is fitted from ANEMOMETER_STATUS (read once on conn",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 329305.341,
+          "tokens": null
+        },
+        {
+          "attempt_id": "7c558727-26b9-445a-9dec-eb8ed9167915",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T00:41:29.089273Z",
+          "last_activity_at": "2026-11-23T00:46:52.654059Z",
+          "ended_at": "2026-11-23T00:46:52.654059Z",
+          "outcome": {
+            "summary": "Round 2 review (independent, whole diff master...HEAD at 5160b19ba): PASS.\n\nOwner decisions verified:\n- No classification comparison differs from master (AUX_CLOUD <=, AUX_RAIN <=, AUX_WIND >=, AUX_HUMIDITY >= unchanged in cloudwatcher_process_data). Safety lights take unsafe from AUX_CLOUD_OVERCAST / AUX_RAIN_RAINING / AUX_WIND_STRONG / AUX_HUMIDITY_HUMID switches (indigo_aux_cloudwatcher.driver:481-486), so they always agree with the classification.\n- AUX_WEATHER_SAFETY is a connection-dependent light property: generated define on connect after the reset to BUSY/all IDLE (.c:1132, reset .driver:771-776), delete on disconnect (.c:1222), BUSY cleared in the cancelled list. Test weather_safety_safe checks undefined before connect and after disconnect.\n- Wind fitted = ANEMOMETER_STATE >= 1 (same test as process_data); humidity fitted from PRIVATE_DATA->humidity_fitted; both Idle without sensor (weather_safety_absent_sensors).\n- Fitted sensor without valid reading -> condition, SAFE and property state Alert: rh-invalid (out-of-range temperature after a readable t!), rh-garbled, and failed poll (cloudwatcher_update_safety(device, NULL), .driver:853-855; sky-invalid).\n- Rain reason without numbers via omit_values ('Unsafe: rain', 'rain sensor gives no valid reading'); other conditions keep value/limit/unit.\n- Thresholds act at the next poll (back_to_safe, reason_change tests). HUMID default 95, NORMAL 30 (humidity_threshold_defaults).\n\nRound-1 fix: cloudwatcher_get_rh_temperature (.driver:280-321) sets *fitted=false only for firmware < 5.6 or tempi == 65535, *fitted=true after any other readable t! reply, and leaves it unchanged on timeout/unreadable reply; the caller seeds data->rh_fitted from PRIVATE_DATA->humidity_fitted and cloudwatcher_update_safety stores it only for completed polls. weather_safety_humidity_reply_lost with the rh-garbled profile (first t! valid, later '!Z 0') fails if the state reverts to not fitted (no message, lights stay OK) and passes now.\n\nSha",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 323564.786,
+          "tokens": null
+        },
+        {
+          "attempt_id": "0b9dfb39-d61d-429e-96f4-75e67d232807",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T06:39:48.194799Z",
+          "last_activity_at": "2026-11-23T06:45:38.011477Z",
+          "ended_at": "2026-11-23T06:45:38.011477Z",
+          "outcome": {
+            "summary": "Round 3 review pass. Tri-state sensor_presence (unknown/absent/present) for anemometer and RH is correct: reset to unknown in cloudwatcher_reset_properties on every connect before populate_constants; unknown -> fitted=true/valid=false (condition, SAFE, property state ALERT); absent -> IDLE; RH presence changes only on firmware<5.6/65535 (absent) or a readable t! reply (present), timeout/garbled keeps the previous value via data->rh_presence seeded from PRIVATE_DATA->humidity; v! retried once per poll at the start of on_timer only while unknown, no loops; on success ANEMOMETER_STATUS set and X_AAG_CONSTANTS republished OK unless M! failed. AUX_WIND/AUX_WIND_WARNING stay IDLE until present. AUX_WEATHER_SAFETY defined on connect, deleted on disconnect, in the BUSY-cancel list, enumerate and detach. Generated .c/.h/_main.c identical to unchanged build/bin/indigo_generator output. Version 16->17, HUMID default 95, omit_values appended last (positional initializers in other drivers unaffected), PROPERTIES.md matches behaviour. git diff --check clean. Tests: run_driver_test.py --dry-run aux_cloudwatcher 30/30 OK, aux_simulator 18/18 OK; test_aux_math 9/9 PASS. New tests do exercise the claimed paths (rh-first-lost, anemometer-late, anemometer-late-absent profiles; ALERT then recovery). Non-blocking notes: anemometer-late tests do not assert X_AAG_CONSTANTS is ALERT before the retry succeeds; PROPERTIES.md says condition/warning properties are IDLE when the sensor is not installed, they are also IDLE while the anemometer is unknown.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 349816.678,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T00:28:49.141980Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T00:34:18.447321Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Verdict: changes (one defect).\n\nDefect: a fitted RH sensor whose t! request fails is reported as not fitted, so humidity drops to IDLE and SAFE can turn OK.\n- indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.driver:281 sets *fitted = false at entry, and 300 sets it true only after a parseable non-65535 t! reply. A t! timeout or garbled reply (287, 291; cloudwatcher_command returns false in both cases, 97-135) therefore returns fitted == false, and cloudwatcher_get_data does not treat it as a failed poll (430).\n- At 474 cloudwatcher_update_safety() copies that into PRIVATE_DATA->humidity_fitted on every successful poll, so knowledge from earlier polls is overwritten. Example: humidity HUMID (only unsafe condition), the next poll's t! times out -> HUMIDITY goes IDLE, SAFE goes OK, and the reason \"Safe: all conditions within limits\" is sent. This contradicts the owner decision that a fitted sensor without a valid reading is ALERT (condition, SAFE and property state) and never IDLE, and the PROPERTIES.md text \"humidity is fitted when firmware 5.6 or later reports an RH sensor\". The failed-poll path (data == NULL) already keeps the previous fitted state, so the two failure paths now disagree.\n- Fix: change the fitted state only on a definite answer (firmware < 5.6 or t! == 65535 -> not fitted; any other parsed reply -> fitted), and keep the previous value after a transport or parse failure. For example, seed data->rh_fitted from PRIVATE_DATA->humidity_fitted before the call and drop the unconditional *fitted = false. A simulator case would cover it: a profile whose t! reply fails after the first complete poll should give HUMIDITY, SAFE and the property state ALERT.\n\nVerified OK:\n- Owner decisions: AUX_CLOUD/RAIN/WIND/HUMIDITY comparisons are unchanged from master (cloud <=, rain <=, wind >=, humidity >=). Safety reads the OVERCAST/RAINING/STRONG/HUMID switches after they are set in cloudwatcher_process_data. Wind is fitted from ANEMOMETER_STATUS (read once on conn"
+        },
+        {
+          "at": "2026-11-23T00:41:29.089273Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T00:46:52.654059Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2 review (independent, whole diff master...HEAD at 5160b19ba): PASS.\n\nOwner decisions verified:\n- No classification comparison differs from master (AUX_CLOUD <=, AUX_RAIN <=, AUX_WIND >=, AUX_HUMIDITY >= unchanged in cloudwatcher_process_data). Safety lights take unsafe from AUX_CLOUD_OVERCAST / AUX_RAIN_RAINING / AUX_WIND_STRONG / AUX_HUMIDITY_HUMID switches (indigo_aux_cloudwatcher.driver:481-486), so they always agree with the classification.\n- AUX_WEATHER_SAFETY is a connection-dependent light property: generated define on connect after the reset to BUSY/all IDLE (.c:1132, reset .driver:771-776), delete on disconnect (.c:1222), BUSY cleared in the cancelled list. Test weather_safety_safe checks undefined before connect and after disconnect.\n- Wind fitted = ANEMOMETER_STATE >= 1 (same test as process_data); humidity fitted from PRIVATE_DATA->humidity_fitted; both Idle without sensor (weather_safety_absent_sensors).\n- Fitted sensor without valid reading -> condition, SAFE and property state Alert: rh-invalid (out-of-range temperature after a readable t!), rh-garbled, and failed poll (cloudwatcher_update_safety(device, NULL), .driver:853-855; sky-invalid).\n- Rain reason without numbers via omit_values ('Unsafe: rain', 'rain sensor gives no valid reading'); other conditions keep value/limit/unit.\n- Thresholds act at the next poll (back_to_safe, reason_change tests). HUMID default 95, NORMAL 30 (humidity_threshold_defaults).\n\nRound-1 fix: cloudwatcher_get_rh_temperature (.driver:280-321) sets *fitted=false only for firmware < 5.6 or tempi == 65535, *fitted=true after any other readable t! reply, and leaves it unchanged on timeout/unreadable reply; the caller seeds data->rh_fitted from PRIVATE_DATA->humidity_fitted and cloudwatcher_update_safety stores it only for completed polls. weather_safety_humidity_reply_lost with the rh-garbled profile (first t! valid, later '!Z 0') fails if the state reverts to not fitted (no message, lights stay OK) and passes now.\n\nSha"
+        },
+        {
+          "at": "2026-11-23T06:39:48.194799Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T06:45:38.011477Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 3 review pass. Tri-state sensor_presence (unknown/absent/present) for anemometer and RH is correct: reset to unknown in cloudwatcher_reset_properties on every connect before populate_constants; unknown -> fitted=true/valid=false (condition, SAFE, property state ALERT); absent -> IDLE; RH presence changes only on firmware<5.6/65535 (absent) or a readable t! reply (present), timeout/garbled keeps the previous value via data->rh_presence seeded from PRIVATE_DATA->humidity; v! retried once per poll at the start of on_timer only while unknown, no loops; on success ANEMOMETER_STATUS set and X_AAG_CONSTANTS republished OK unless M! failed. AUX_WIND/AUX_WIND_WARNING stay IDLE until present. AUX_WEATHER_SAFETY defined on connect, deleted on disconnect, in the BUSY-cancel list, enumerate and detach. Generated .c/.h/_main.c identical to unchanged build/bin/indigo_generator output. Version 16->17, HUMID default 95, omit_values appended last (positional initializers in other drivers unaffected), PROPERTIES.md matches behaviour. git diff --check clean. Tests: run_driver_test.py --dry-run aux_cloudwatcher 30/30 OK, aux_simulator 18/18 OK; test_aux_math 9/9 PASS. New tests do exercise the claimed paths (rh-first-lost, anemometer-late, anemometer-late-absent profiles; ALERT then recovery). Non-blocking notes: anemometer-late tests do not assert X_AAG_CONSTANTS is ALERT before the retry succeeds; PROPERTIES.md says condition/warning properties are IDLE when the sensor is not installed, they are also IDLE while the anemometer is unknown."
+        }
+      ],
+      "result": {
+        "summary": "Round 3 review pass. Tri-state sensor_presence (unknown/absent/present) for anemometer and RH is correct: reset to unknown in cloudwatcher_reset_properties on every connect before populate_constants; unknown -> fitted=true/valid=false (condition, SAFE, property state ALERT); absent -> IDLE; RH presence changes only on firmware<5.6/65535 (absent) or a readable t! reply (present), timeout/garbled keeps the previous value via data->rh_presence seeded from PRIVATE_DATA->humidity; v! retried once per poll at the start of on_timer only while unknown, no loops; on success ANEMOMETER_STATUS set and X_AAG_CONSTANTS republished OK unless M! failed. AUX_WIND/AUX_WIND_WARNING stay IDLE until present. AUX_WEATHER_SAFETY defined on connect, deleted on disconnect, in the BUSY-cancel list, enumerate and detach. Generated .c/.h/_main.c identical to unchanged build/bin/indigo_generator output. Version 16->17, HUMID default 95, omit_values appended last (positional initializers in other drivers unaffected), PROPERTIES.md matches behaviour. git diff --check clean. Tests: run_driver_test.py --dry-run aux_cloudwatcher 30/30 OK, aux_simulator 18/18 OK; test_aux_math 9/9 PASS. New tests do exercise the claimed paths (rh-first-lost, anemometer-late, anemometer-late-absent profiles; ALERT then recovery). Non-blocking notes: anemometer-late tests do not assert X_AAG_CONSTANTS is ALERT before the retry succeeds; PROPERTIES.md says condition/warning properties are IDLE when the sensor is not installed, they are also IDLE while the anemometer is unknown.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1002686.805,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "fc2b8e3b-b7ac-4c6f-9975-e44dfdba23c8",
+      "event": "ticket/created",
+      "at": "2026-11-22T22:58:52.291118Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "c7ba076b-364e-43c5-874d-5008cd66c70d",
+      "event": "ticket/confirmed",
+      "at": "2026-11-22T23:08:43.647991Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "4bbc3f0f-a4f7-4347-9abb-8f6fd23a4308",
+      "event": "ticket/note",
+      "at": "2026-11-22T23:32:34.609896Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions 2026-11-23 (ticket 21179834): AUX_WEATHER_SAFETY is defined only while connected and deleted on disconnect; a fitted sensor without a valid reading makes its condition, SAFE and the property state Alert; the reason message goes out when the verdict or the set of unsafe conditions changes; AUX_CLOUD_THRESHOLDS means sky temperature in C with OVERCAST when not below CLOUDY. Use the shared helper from 21179834.",
+      "tokens": null
+    },
+    {
+      "event_id": "31c2eea0-3d8e-41a6-bb25-109d094f58aa",
+      "event": "ticket/note",
+      "at": "2026-11-23T00:00:01.025529Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Depends on ticket 21179834 (AUX_WEATHER_SAFETY framework and shared helper): start only after it is merged. The related_ticket_id link to 21179834 was removed on the owner's instruction (2026-11-23) because it made this ticket a sub-ticket that blocked closing 21179834.",
+      "tokens": null
+    },
+    {
+      "event_id": "f982bf3d-b0ce-41c9-887c-5d6bb6c4f726",
+      "event": "task/progress",
+      "at": "2026-11-23T00:04:30.041085Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Implementation started on branch ticket/922ae442-a444-4157-bde8-e3651aafd863"
+    },
+    {
+      "event_id": "813ae194-0b68-44ee-bd73-7f9363deebd9",
+      "event": "ticket/started",
+      "at": "2026-11-23T00:04:30.041938Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/922ae442-a444-4157-bde8-e3651aafd863",
+      "base": "master"
+    },
+    {
+      "event_id": "79fa2097-1940-4c2c-8367-beb78a3bdc07",
+      "event": "task/progress",
+      "at": "2026-11-23T00:04:49.780793Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Implementer launched",
+      "attempt_id": "27c9ce79-0f37-4598-b575-8567b9aef51d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "eb7b9a0e-5fb7-4b1a-960c-4db4fb58ab18",
+      "event": "task/progress",
+      "at": "2026-11-23T00:07:38.815530Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Building library and generator in the worktree"
+    },
+    {
+      "event_id": "cf709526-d16b-49a7-8364-52bbe54ec8ab",
+      "event": "task/progress",
+      "at": "2026-11-23T00:09:42.011481Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Running cloudwatcher simulator tests"
+    },
+    {
+      "event_id": "e728b6a8-09ee-49b3-873e-01068cf7053b",
+      "event": "task/progress",
+      "at": "2026-11-23T00:13:17.511537Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Running tools/run_driver_test.py aux_cloudwatcher --dry-run"
+    },
+    {
+      "event_id": "6f0ba105-216b-4808-b385-c76184fd6404",
+      "event": "task/progress",
+      "at": "2026-11-23T00:15:28.984605Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9ab4f23d-9b4c-49aa-ba0f-19a11a7325e6",
+      "event": "task/progress",
+      "at": "2026-11-23T00:15:29.006196Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c8c65d31-47d2-4eaa-8a6f-80539593ef5b",
+      "event": "check/passed",
+      "at": "2026-11-23T00:15:29.011272Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "4ecc57124045cb07d5104ea50576dbe4415bc221",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "850d240f-9a3d-4ec0-85d6-1f343c68b2d1",
+      "event": "ticket/note",
+      "at": "2026-11-23T00:15:37.623384Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementer: aux_cloudwatcher v17 adds AUX_WEATHER_SAFETY via indigo_aux_update_weather_safety(); HUMID default 95. Tests (test_aux_cloudwatcher_simulator, 26/26 via run_driver_test.py --dry-run, not recorded): safe verdict + defined only while connected (weather_safety_safe, reconnect, wrong_identity), wet-overcast three-condition reason, wind/humidity IDLE without sensors (no-sensors profile), each condition unsafe via thresholds with reason text, back to safe and reason-set change within one connection (15 s poll), fitted RH sensor with invalid reading -> ALERT (new rh-invalid profile), failed poll -> fitted sensors ALERT (new sky-invalid profile), 95 % default. Simulator wet-overcast RH raised from 94 % to 96.5 % to stay HUMID under the new default. Hardware not tested.",
+      "tokens": null
+    },
+    {
+      "event_id": "146fe28b-8d7d-4f50-8a01-80f966fea6f8",
+      "event": "ticket/note",
+      "at": "2026-11-23T00:21:24.570022Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions 2026-11-23 after the first implementation: (1) Safety follows the existing AUX_CLOUD/AUX_RAIN/AUX_WIND/AUX_HUMIDITY switches as they classify today; do not change any comparison (revert the cloud <= to < change). (2) The rain reason must not print numbers (the raw rain sensor values mean nothing to the user): e.g. 'Unsafe: rain' / 'rain sensor gives no valid reading'. A minimal backward-compatible helper option to omit value and limit for a condition is approved; other drivers' messages stay unchanged. (3) A poll that does not complete makes the fitted sensors Alert (as implemented). (4) Threshold changes take effect at the next poll (as implemented).",
+      "tokens": null
+    },
+    {
+      "event_id": "ce4b797a-2e16-48a6-8b1d-2beda0bba617",
+      "event": "task/progress",
+      "at": "2026-11-23T00:21:39.490694Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Rework: revert cloud comparison, add helper option to omit rain numbers"
+    },
+    {
+      "event_id": "cb90f791-6920-4f6f-b738-d37ada76f7ef",
+      "event": "task/progress",
+      "at": "2026-11-23T00:22:26.631100Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Running flow check (whitespace + unit)"
+    },
+    {
+      "event_id": "9d78227f-55c7-4079-bbb5-667bfb4d6d19",
+      "event": "task/progress",
+      "at": "2026-11-23T00:22:26.876854Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "299da1d0-71bd-4f86-91cf-5b9ebfb18ca3",
+      "event": "task/progress",
+      "at": "2026-11-23T00:22:26.898922Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "76b20fee-6e3b-4010-9104-abc77d9453d3",
+      "event": "task/progress",
+      "at": "2026-11-23T00:22:26.904481Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "673cdc7c-0799-462e-ab38-77a5c9ab5f16",
+      "event": "task/progress",
+      "at": "2026-11-23T00:24:31.223724Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "a92a055f-b258-4ecb-b0a0-de25ccc9475f",
+      "event": "check/passed",
+      "at": "2026-11-23T00:24:31.229333Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "154a7dff80a0e29544e91609e957cbc49ec08b5b",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "8ea16444-fc63-4d92-b9a0-355fccc1720e",
+      "event": "task/progress",
+      "at": "2026-11-23T00:24:48.868103Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Running run_driver_test.py --dry-run for aux_cloudwatcher and aux_simulator"
+    },
+    {
+      "event_id": "ddecfb56-640d-4694-a867-7f6ea1be474b",
+      "event": "ticket/note",
+      "at": "2026-11-23T00:28:17.291096Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementer rework per owner answer: AUX_CLOUD comparisons reverted to master (<=), no comparison changed. Shared helper gains indigo_aux_safety_input.omit_values (last field, zero = previous behaviour): the reason names the condition only; cloudwatcher rain uses it ('Unsafe: rain', 'rain sensor gives no valid reading'). Unit test weather_safety_reason_without_values added. flow check (whitespace + unit) passed; run_driver_test.py --dry-run: aux_cloudwatcher 26/26 OK, aux_simulator 18/18 OK (not recorded).",
+      "tokens": null
+    },
+    {
+      "event_id": "dc8c283f-4d54-47c5-b74c-1aad58b02bdc",
+      "event": "task/progress",
+      "at": "2026-11-23T00:28:49.142050Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Review started"
+    },
+    {
+      "event_id": "1f1c421f-1f9f-44ba-98ed-2fee20844951",
+      "event": "review/started",
+      "at": "2026-11-23T00:28:49.142664Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "5e2929cb-9801-4447-a422-c25e1e7bd4d3",
+      "event": "task/progress",
+      "at": "2026-11-23T00:28:49.306460Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Reviewer launched",
+      "attempt_id": "9be70244-74d0-4477-81b8-1f0e8f22eb33",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7c8d4729-41b1-4e04-8e0a-c60388afdf2a",
+      "event": "task/progress",
+      "at": "2026-11-23T00:29:32.377811Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Regenerating driver in scratch dir and diffing"
+    },
+    {
+      "event_id": "71df19cc-fb13-4390-9ba3-5a97f393ec71",
+      "event": "task/progress",
+      "at": "2026-11-23T00:30:11.558882Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Running run_driver_test.py --dry-run aux_cloudwatcher and aux_simulator"
+    },
+    {
+      "event_id": "f0184b07-f35a-4ec6-8eda-c4d434cc6416",
+      "event": "task/progress",
+      "at": "2026-11-23T00:34:18.447399Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "3facb49e-36ce-48d5-bd26-f741714746b2",
+      "event": "task/progress",
+      "at": "2026-11-23T00:34:18.447437Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "786745fd-3814-4883-aada-a55d61dc1f0d",
+      "event": "review/changes_requested",
+      "at": "2026-11-23T00:34:18.448207Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "154a7dff80a0e29544e91609e957cbc49ec08b5b"
+    },
+    {
+      "event_id": "7643bf94-2ae5-4b34-8ec7-fdb0642a0d8b",
+      "event": "task/progress",
+      "at": "2026-11-23T00:34:58.915524Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Review fix: keep humidity fitted state on unreadable t! replies"
+    },
+    {
+      "event_id": "b4021158-846f-4f5a-9582-8d069ad66f8d",
+      "event": "task/progress",
+      "at": "2026-11-23T00:35:50.525840Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Running flow check and both dry runs"
+    },
+    {
+      "event_id": "94354be0-5c17-48df-b2a7-11f895c2d39a",
+      "event": "task/progress",
+      "at": "2026-11-23T00:35:50.774915Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "33053940-0434-48d0-a4c7-d9dd0c19c40e",
+      "event": "task/progress",
+      "at": "2026-11-23T00:35:50.797047Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "3460f3e3-1e5b-4aad-9878-076c2b4d3334",
+      "event": "task/progress",
+      "at": "2026-11-23T00:35:50.803481Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "e79eb035-8dc7-46ad-8186-f3ad6d48671c",
+      "event": "task/progress",
+      "at": "2026-11-23T00:37:28.955270Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "76f3c71e-2c01-4cb0-b6bd-5f2ae5799f37",
+      "event": "check/passed",
+      "at": "2026-11-23T00:37:28.963904Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5160b19bacb8d298c749219096c058e21ff7f054",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "4a4f5826-04ff-45f2-bb15-2bbd1b59ff9e",
+      "event": "ticket/note",
+      "at": "2026-11-23T00:41:02.702927Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementer review fix: the RH fitted state now changes only on a definite answer (firmware < 5.6 or a 65535 reply = not fitted, any other readable reply = fitted); a timeout or unreadable t! reply keeps the previous state and gives an invalid reading, so humidity, SAFE and the property state go ALERT. New simulator profile rh-garbled and test weather_safety_humidity_reply_lost. flow check (whitespace + unit) passed; dry runs aux_cloudwatcher 27/27 OK, aux_simulator 18/18 OK. The anemometer is detected once at connect; if that v! read fails, wind is treated as not fitted (existing behaviour, X_AAG_CONSTANTS goes ALERT with 'Failed reading device constants').",
+      "tokens": null
+    },
+    {
+      "event_id": "a5d11bb5-b66b-4070-9220-7726f2b14c80",
+      "event": "task/progress",
+      "at": "2026-11-23T00:41:29.089343Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Review started"
+    },
+    {
+      "event_id": "c7ed78a7-d0f0-414a-95b4-4c6571598889",
+      "event": "review/started",
+      "at": "2026-11-23T00:41:29.090088Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "932ad2b0-94a0-47cc-8029-b51d932ca0dc",
+      "event": "task/progress",
+      "at": "2026-11-23T00:41:29.246712Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Reviewer round 2 launched",
+      "attempt_id": "7c558727-26b9-445a-9dec-eb8ed9167915",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a385213c-630e-4767-9914-2c7d4bce4684",
+      "event": "task/progress",
+      "at": "2026-11-23T00:42:41.784228Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Running dry runs aux_cloudwatcher, aux_simulator and test_aux_math"
+    },
+    {
+      "event_id": "8e4728c4-31b1-4eb0-9c1f-7e102bb1309a",
+      "event": "task/progress",
+      "at": "2026-11-23T00:46:52.654135Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "7a9d53db-f62c-4e9d-9861-b56bb731b288",
+      "event": "review/passed",
+      "at": "2026-11-23T00:46:52.654942Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5160b19bacb8d298c749219096c058e21ff7f054"
+    },
+    {
+      "event_id": "6cffa1b0-ab25-4ef0-b78c-2931db6a0425",
+      "event": "ticket/note",
+      "at": "2026-11-23T06:30:11.567605Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision after review round 2: (1) Anemometer: when the v! detection at connect fails (timeout or garbled reply), the anemometer is unknown and counts as fitted without a valid reading, so WIND and SAFE are Alert; retry v! on later polls until a definite answer (ANEMOMETER_STATUS 0 = not fitted, >=1 = fitted). (2) Humidity: while the RH sensor's presence is unknown (no definite answer yet, e.g. the first reply of a session lost), it counts as fitted without a valid reading (HUMIDITY and SAFE Alert) instead of Idle; a definite 'not fitted' (firmware below 5.6 or 65535 reply) gives Idle. Add simulator-backed tests for both, including the retry recovering to a definite answer.",
+      "tokens": null
+    },
+    {
+      "event_id": "e8231b54-c30b-4640-b0b9-43f1a9779fc9",
+      "event": "task/progress",
+      "at": "2026-11-23T06:30:47.105685Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e3e6da75-3c67-4aee-89ee-eebeec6d7762",
+      "text": "Implementer launched (round 3: unknown sensor presence)",
+      "attempt_id": "a1f31ad6-e7db-4f66-859f-42b6f1ae033c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0671eb85-190b-4653-a2e3-3b34bd6aac33",
+      "event": "task/progress",
+      "at": "2026-11-23T06:33:00.187297Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Running driver dry runs: aux_cloudwatcher, aux_simulator"
+    },
+    {
+      "event_id": "f45c6c4f-2098-4ff9-b64d-0e88f23b53f4",
+      "event": "task/progress",
+      "at": "2026-11-23T06:37:25.711523Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9963724e-3648-45ec-8058-259205ab7b17",
+      "event": "task/progress",
+      "at": "2026-11-23T06:37:25.736079Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "fd47db6a-cf9e-404c-ae33-e2a0db0ed585",
+      "event": "task/progress",
+      "at": "2026-11-23T06:37:25.742014Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "e5ae174c-1c23-427d-aef2-43d7301f25d7",
+      "event": "task/progress",
+      "at": "2026-11-23T06:39:05.040711Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "6bbe8f92-af9c-41fb-88b1-719842d9abdd",
+      "event": "check/passed",
+      "at": "2026-11-23T06:39:05.046713Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "983874f93d13dfca9a6c6d66e1475547c9b3cf7f",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "b46df9b4-d057-4c29-8be5-a8615493c274",
+      "event": "ticket/note",
+      "at": "2026-11-23T06:39:16.067027Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementer round 3 (owner decision on unknown presence): anemometer and RH sensor presence is a tri-state sensor_presence (unknown/absent/present) in private data, reset to unknown on connect. Unknown counts as fitted without a valid reading (condition, SAFE and property state ALERT); absent gives IDLE; present gives normal evaluation. A failed v! at connect leaves the anemometer unknown and is retried with one v! per poll at the start of the poll handler until a definite answer; on success ANEMOMETER_STATUS is set and X_AAG_CONSTANTS republished (OK unless the M! constants failed). RH presence changes only on a definite answer (firmware < 5.6 / 65535 = absent, readable reply = present). AUX_WIND/AUX_WIND_WARNING stay IDLE until the anemometer is known present. New simulator profiles rh-first-lost, anemometer-late, anemometer-late-absent; new tests weather_safety_humidity_presence_unknown, weather_safety_anemometer_unknown_fitted, weather_safety_anemometer_unknown_absent; weather_safety_read_failure now expects humidity ALERT. Dry runs (not recorded): aux_cloudwatcher 30/30 OK, aux_simulator 18/18 OK; flow check (whitespace + unit, test_aux_math 9/9) passed. Version stays 17. Hardware not tested.",
+      "tokens": null
+    },
+    {
+      "event_id": "ec99ac11-2885-4ecf-8f92-edac10baabbf",
+      "event": "task/progress",
+      "at": "2026-11-23T06:39:48.195035Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Review started"
+    },
+    {
+      "event_id": "dc4d5966-3515-49ff-a09c-cb23238f70e4",
+      "event": "review/started",
+      "at": "2026-11-23T06:39:48.196369Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "97e30bcb-0aff-40c4-9adb-c73d963cc5fb",
+      "event": "task/progress",
+      "at": "2026-11-23T06:40:03.732678Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Reviewer launched (round 3)",
+      "attempt_id": "0b9dfb39-d61d-429e-96f4-75e67d232807",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6ef03e2d-e7c0-4c2b-a13f-e4ca32fb523c",
+      "event": "task/progress",
+      "at": "2026-11-23T06:40:56.789930Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Reviewing test diff and running dry-run tests"
+    },
+    {
+      "event_id": "a237e226-3a3c-4b8f-b439-ea0d99c63c81",
+      "event": "task/progress",
+      "at": "2026-11-23T06:45:38.011556Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b9880bb4-f2ad-4962-be88-85e4a61f59a5",
+      "event": "review/passed",
+      "at": "2026-11-23T06:45:38.012499Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "20663842-c902-41bf-ba0a-458cdd168a09",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "983874f93d13dfca9a6c6d66e1475547c9b3cf7f"
+    },
+    {
+      "event_id": "1b656807-8ca7-44ce-9d57-1f437cc6c580",
+      "event": "ticket/closed",
+      "at": "2026-11-23T07:00:15.848032Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-23T07:00:15.848000Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "7b2c7199e9136b8cba414b47267f6b2f507f3671"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "4ecc57124045cb07d5104ea50576dbe4415bc221",
+        "tree": "c053ae4ba2ed1d522fadac3276743841f9ba7b4d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T00:15:29.005493Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/922ae442-a444-4157-bde8-e3651aafd863/c053ae4ba2ed-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "154a7dff80a0e29544e91609e957cbc49ec08b5b",
+        "tree": "96b5cb1e959453ceda059b3f8eab45ecd376540c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T00:22:26.898061Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/922ae442-a444-4157-bde8-e3651aafd863/96b5cb1e9594-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "154a7dff80a0e29544e91609e957cbc49ec08b5b",
+        "tree": "96b5cb1e959453ceda059b3f8eab45ecd376540c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T00:24:31.222862Z",
+        "duration_s": 124.3,
+        "log": "/tmp/factory-flow/922ae442-a444-4157-bde8-e3651aafd863/96b5cb1e9594-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5160b19bacb8d298c749219096c058e21ff7f054",
+        "tree": "9eec695a45f034d369052d66a1f171cbc49ae6be",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T00:35:50.795901Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/922ae442-a444-4157-bde8-e3651aafd863/9eec695a45f0-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "5160b19bacb8d298c749219096c058e21ff7f054",
+        "tree": "9eec695a45f034d369052d66a1f171cbc49ae6be",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T00:37:28.954035Z",
+        "duration_s": 98.2,
+        "log": "/tmp/factory-flow/922ae442-a444-4157-bde8-e3651aafd863/9eec695a45f0-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "983874f93d13dfca9a6c6d66e1475547c9b3cf7f",
+        "tree": "b1727afa4e064510bc8b18b2a7a5401aa5c54e80",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T06:37:25.734783Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/922ae442-a444-4157-bde8-e3651aafd863/b1727afa4e06-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "983874f93d13dfca9a6c6d66e1475547c9b3cf7f",
+        "tree": "b1727afa4e064510bc8b18b2a7a5401aa5c54e80",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T06:39:05.039405Z",
+        "duration_s": 99.3,
+        "log": "/tmp/factory-flow/922ae442-a444-4157-bde8-e3651aafd863/b1727afa4e06-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Verdict: changes (one defect).\n\nDefect: a fitted RH sensor whose t! request fails is reported as not fitted, so humidity drops to IDLE and SAFE can turn OK.\n- indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.driver:281 sets *fitted = false at entry, and 300 sets it true only after a parseable non-65535 t! reply. A t! timeout or garbled reply (287, 291; cloudwatcher_command returns false in both cases, 97-135) therefore returns fitted == false, and cloudwatcher_get_data does not treat it as a failed poll (430).\n- At 474 cloudwatcher_update_safety() copies that into PRIVATE_DATA->humidity_fitted on every successful poll, so knowledge from earlier polls is overwritten. Example: humidity HUMID (only unsafe condition), the next poll's t! times out -> HUMIDITY goes IDLE, SAFE goes OK, and the reason \"Safe: all conditions within limits\" is sent. This contradicts the owner decision that a fitted sensor without a valid reading is ALERT (condition, SAFE and property state) and never IDLE, and the PROPERTIES.md text \"humidity is fitted when firmware 5.6 or later reports an RH sensor\". The failed-poll path (data == NULL) already keeps the previous fitted state, so the two failure paths now disagree.\n- Fix: change the fitted state only on a definite answer (firmware < 5.6 or t! == 65535 -> not fitted; any other parsed reply -> fitted), and keep the previous value after a transport or parse failure. For example, seed data->rh_fitted from PRIVATE_DATA->humidity_fitted before the call and drop the unconditional *fitted = false. A simulator case would cover it: a profile whose t! reply fails after the first complete poll should give HUMIDITY, SAFE and the property state ALERT.\n\nVerified OK:\n- Owner decisions: AUX_CLOUD/RAIN/WIND/HUMIDITY comparisons are unchanged from master (cloud <=, rain <=, wind >=, humidity >=). Safety reads the OVERCAST/RAINING/STRONG/HUMID switches after they are set in cloudwatcher_process_data. Wind is fitted from ANEMOMETER_STATUS (read once on connect); humidity from firmware >= 5.6 and t! != 65535. A fitted sensor with an invalid reading and a failed poll both give ALERT on the condition, SAFE and the property state. The rain reason has no numbers (omit_values). Thresholds take effect at the next poll. HUMID defaults to 95 and NORMAL to 30.\n- Helper: omit_values is the last field, so the existing positional initializers (aux_simulator, unit tests) zero it and their messages are byte-identical; it uses the same bounded weather_safety_append as before. The unit test weather_safety_reason_without_values covers the omitted reason, the invalid-reading reason and the return to safe; test_aux_math 9/9 PASS.\n- Generated files: regenerating the .driver with the unchanged build/bin/indigo_generator in a scratch directory gives .c, .h and _main.c identical to the checked-in files. Version 16 -> 17 (DRIVER_VERSION 0x03000011). AUX_WEATHER_SAFETY is defined after on_connect and deleted on disconnect by generated code and updated only from the device-queue poll while connected. No MAX_DEVICES override, no return in on_connect/on_disconnect, no finalizer.\n- Simulator profiles: h! 82 -> 96.5 %; rh-invalid t! 100 -> 128.9 C, which the driver rejects because it is above 80; sky-invalid sends a malformed S! reply. All three are consistent with the driver's protocol decoding.\n- Test runs: run_driver_test.py --dry-run gave aux_cloudwatcher 26/26 OK and aux_simulator 18/18 OK, nothing recorded. PROPERTIES.md defaults and wording match the code. git diff --check is clean, and the formatting and license headers are fine.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "154a7dff80a0e29544e91609e957cbc49ec08b5b",
+        "tree": "96b5cb1e959453ceda059b3f8eab45ecd376540c",
+        "at": "2026-11-23T00:34:18.447293Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 review (independent, whole diff master...HEAD at 5160b19ba): PASS.\n\nOwner decisions verified:\n- No classification comparison differs from master (AUX_CLOUD <=, AUX_RAIN <=, AUX_WIND >=, AUX_HUMIDITY >= unchanged in cloudwatcher_process_data). Safety lights take unsafe from AUX_CLOUD_OVERCAST / AUX_RAIN_RAINING / AUX_WIND_STRONG / AUX_HUMIDITY_HUMID switches (indigo_aux_cloudwatcher.driver:481-486), so they always agree with the classification.\n- AUX_WEATHER_SAFETY is a connection-dependent light property: generated define on connect after the reset to BUSY/all IDLE (.c:1132, reset .driver:771-776), delete on disconnect (.c:1222), BUSY cleared in the cancelled list. Test weather_safety_safe checks undefined before connect and after disconnect.\n- Wind fitted = ANEMOMETER_STATE >= 1 (same test as process_data); humidity fitted from PRIVATE_DATA->humidity_fitted; both Idle without sensor (weather_safety_absent_sensors).\n- Fitted sensor without valid reading -> condition, SAFE and property state Alert: rh-invalid (out-of-range temperature after a readable t!), rh-garbled, and failed poll (cloudwatcher_update_safety(device, NULL), .driver:853-855; sky-invalid).\n- Rain reason without numbers via omit_values ('Unsafe: rain', 'rain sensor gives no valid reading'); other conditions keep value/limit/unit.\n- Thresholds act at the next poll (back_to_safe, reason_change tests). HUMID default 95, NORMAL 30 (humidity_threshold_defaults).\n\nRound-1 fix: cloudwatcher_get_rh_temperature (.driver:280-321) sets *fitted=false only for firmware < 5.6 or tempi == 65535, *fitted=true after any other readable t! reply, and leaves it unchanged on timeout/unreadable reply; the caller seeds data->rh_fitted from PRIVATE_DATA->humidity_fitted and cloudwatcher_update_safety stores it only for completed polls. weather_safety_humidity_reply_lost with the rh-garbled profile (first t! valid, later '!Z 0') fails if the state reverts to not fitted (no message, lights stay OK) and passes now.\n\nShared helper: omit_values is the last struct field, zero = previous behaviour; positional initializers in aux_simulator and the existing unit tests are unaffected; aux_simulator dry run 18/18 OK; new unit case weather_safety_reason_without_values covers the omitted, invalid and safe paths.\n\nGenerated output: regenerated .c/.h/_main.c with the unchanged build/bin/indigo_generator in a scratch dir: identical. Generator not modified. Version 16 -> 17 (DRIVER_VERSION 0x03000011); tests assert no exact version.\nSimulator: wet RH raw 82 -> 82*1.25-6 = 96.5 % to stay HUMID under 95; fault profiles documented in the header comment; t! counter per simulator process. PROPERTIES.md matches the defaults, the units, the 15 s poll and the fitted rules. Formatting and git diff --check clean.\n\nTests run (env -u LD_LIBRARY_PATH, worktree libindigo confirmed with ldd): run_driver_test.py aux_cloudwatcher --dry-run 27/27 OK; aux_simulator --dry-run 18/18 OK; test_aux_math 9 PASS / 0 FAIL. Not recorded. No hardware.\n\nNotes for the owner (not defects requiring change in this ticket):\n1. Known pre-existing: if the v! read fails at connect, ANEMOMETER_STATE stays 0 (cloudwatcher_populate_constants, .driver:~455-470), so wind is Idle for the whole session and SAFE can be OK while a fitted anemometer is unmonitored; only X_AAG_CONSTANTS goes Alert with 'Failed reading device constants'. This conflicts in spirit with 'a broken sensor is never Idle'. Options: retry v! on later polls while unknown, or treat an unknown anemometer as fitted-without-reading (Alert) until a definite answer. Owner decision.\n2. Analogous, smaller: the humidity fitted state starts false at each connect, so if the very first t! reply of a session is lost or the first poll fails, humidity is Idle until the next definite answer (one 15 s poll). Inherent to 'keep the previous state'; documented only in the test comment of weather_safety_read_failure.\n3. The HUMID 95 default reaches only users without a saved CONFIG; saved configurations keep their stored value (expected CONFIG behaviour).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "5160b19bacb8d298c749219096c058e21ff7f054",
+        "tree": "9eec695a45f034d369052d66a1f171cbc49ae6be",
+        "at": "2026-11-23T00:46:52.654033Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3 review pass. Tri-state sensor_presence (unknown/absent/present) for anemometer and RH is correct: reset to unknown in cloudwatcher_reset_properties on every connect before populate_constants; unknown -> fitted=true/valid=false (condition, SAFE, property state ALERT); absent -> IDLE; RH presence changes only on firmware<5.6/65535 (absent) or a readable t! reply (present), timeout/garbled keeps the previous value via data->rh_presence seeded from PRIVATE_DATA->humidity; v! retried once per poll at the start of on_timer only while unknown, no loops; on success ANEMOMETER_STATUS set and X_AAG_CONSTANTS republished OK unless M! failed. AUX_WIND/AUX_WIND_WARNING stay IDLE until present. AUX_WEATHER_SAFETY defined on connect, deleted on disconnect, in the BUSY-cancel list, enumerate and detach. Generated .c/.h/_main.c identical to unchanged build/bin/indigo_generator output. Version 16->17, HUMID default 95, omit_values appended last (positional initializers in other drivers unaffected), PROPERTIES.md matches behaviour. git diff --check clean. Tests: run_driver_test.py --dry-run aux_cloudwatcher 30/30 OK, aux_simulator 18/18 OK; test_aux_math 9/9 PASS. New tests do exercise the claimed paths (rh-first-lost, anemometer-late, anemometer-late-absent profiles; ALERT then recovery). Non-blocking notes: anemometer-late tests do not assert X_AAG_CONSTANTS is ALERT before the retry succeeds; PROPERTIES.md says condition/warning properties are IDLE when the sensor is not installed, they are also IDLE while the anemometer is unknown.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "983874f93d13dfca9a6c6d66e1475547c9b3cf7f",
+        "tree": "b1727afa4e064510bc8b18b2a7a5401aa5c54e80",
+        "at": "2026-11-23T06:45:38.011450Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-22T23:32:34.609377Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions 2026-11-23 (ticket 21179834): AUX_WEATHER_SAFETY is defined only while connected and deleted on disconnect; a fitted sensor without a valid reading makes its condition, SAFE and the property state Alert; the reason message goes out when the verdict or the set of unsafe conditions changes; AUX_CLOUD_THRESHOLDS means sky temperature in C with OVERCAST when not below CLOUDY. Use the shared helper from 21179834.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T00:00:01.024985Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Depends on ticket 21179834 (AUX_WEATHER_SAFETY framework and shared helper): start only after it is merged. The related_ticket_id link to 21179834 was removed on the owner's instruction (2026-11-23) because it made this ticket a sub-ticket that blocked closing 21179834.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T00:15:37.622808Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementer: aux_cloudwatcher v17 adds AUX_WEATHER_SAFETY via indigo_aux_update_weather_safety(); HUMID default 95. Tests (test_aux_cloudwatcher_simulator, 26/26 via run_driver_test.py --dry-run, not recorded): safe verdict + defined only while connected (weather_safety_safe, reconnect, wrong_identity), wet-overcast three-condition reason, wind/humidity IDLE without sensors (no-sensors profile), each condition unsafe via thresholds with reason text, back to safe and reason-set change within one connection (15 s poll), fitted RH sensor with invalid reading -> ALERT (new rh-invalid profile), failed poll -> fitted sensors ALERT (new sky-invalid profile), 95 % default. Simulator wet-overcast RH raised from 94 % to 96.5 % to stay HUMID under the new default. Hardware not tested.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T00:21:24.569407Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions 2026-11-23 after the first implementation: (1) Safety follows the existing AUX_CLOUD/AUX_RAIN/AUX_WIND/AUX_HUMIDITY switches as they classify today; do not change any comparison (revert the cloud <= to < change). (2) The rain reason must not print numbers (the raw rain sensor values mean nothing to the user): e.g. 'Unsafe: rain' / 'rain sensor gives no valid reading'. A minimal backward-compatible helper option to omit value and limit for a condition is approved; other drivers' messages stay unchanged. (3) A poll that does not complete makes the fitted sensors Alert (as implemented). (4) Threshold changes take effect at the next poll (as implemented).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T00:28:17.290451Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementer rework per owner answer: AUX_CLOUD comparisons reverted to master (<=), no comparison changed. Shared helper gains indigo_aux_safety_input.omit_values (last field, zero = previous behaviour): the reason names the condition only; cloudwatcher rain uses it ('Unsafe: rain', 'rain sensor gives no valid reading'). Unit test weather_safety_reason_without_values added. flow check (whitespace + unit) passed; run_driver_test.py --dry-run: aux_cloudwatcher 26/26 OK, aux_simulator 18/18 OK (not recorded).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T00:41:02.702183Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementer review fix: the RH fitted state now changes only on a definite answer (firmware < 5.6 or a 65535 reply = not fitted, any other readable reply = fitted); a timeout or unreadable t! reply keeps the previous state and gives an invalid reading, so humidity, SAFE and the property state go ALERT. New simulator profile rh-garbled and test weather_safety_humidity_reply_lost. flow check (whitespace + unit) passed; dry runs aux_cloudwatcher 27/27 OK, aux_simulator 18/18 OK. The anemometer is detected once at connect; if that v! read fails, wind is treated as not fitted (existing behaviour, X_AAG_CONSTANTS goes ALERT with 'Failed reading device constants').",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T06:30:11.566655Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision after review round 2: (1) Anemometer: when the v! detection at connect fails (timeout or garbled reply), the anemometer is unknown and counts as fitted without a valid reading, so WIND and SAFE are Alert; retry v! on later polls until a definite answer (ANEMOMETER_STATUS 0 = not fitted, >=1 = fitted). (2) Humidity: while the RH sensor's presence is unknown (no definite answer yet, e.g. the first reply of a session lost), it counts as fitted without a valid reading (HUMIDITY and SAFE Alert) instead of Idle; a definite 'not fitted' (firmware below 5.6 or 65535 reply) gives Idle. Add simulator-backed tests for both, including the retry recovering to a definite answer.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T06:39:16.066154Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementer round 3 (owner decision on unknown presence): anemometer and RH sensor presence is a tri-state sensor_presence (unknown/absent/present) in private data, reset to unknown on connect. Unknown counts as fitted without a valid reading (condition, SAFE and property state ALERT); absent gives IDLE; present gives normal evaluation. A failed v! at connect leaves the anemometer unknown and is retried with one v! per poll at the start of the poll handler until a definite answer; on success ANEMOMETER_STATUS is set and X_AAG_CONSTANTS republished (OK unless the M! constants failed). RH presence changes only on a definite answer (firmware < 5.6 / 65535 = absent, readable reply = present). AUX_WIND/AUX_WIND_WARNING stay IDLE until the anemometer is known present. New simulator profiles rh-first-lost, anemometer-late, anemometer-late-absent; new tests weather_safety_humidity_presence_unknown, weather_safety_anemometer_unknown_fitted, weather_safety_anemometer_unknown_absent; weather_safety_read_failure now expects humidity ALERT. Dry runs (not recorded): aux_cloudwatcher 30/30 OK, aux_simulator 18/18 OK; flow check (whitespace + unit, test_aux_math 9/9) passed. Version stays 17. Hardware not tested.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "7b2c7199e9136b8cba414b47267f6b2f507f3671",
+      "tree": "b1727afa4e064510bc8b18b2a7a5401aa5c54e80",
+      "base": "master",
+      "at": "2026-11-23T07:00:15.757106Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-22T22:58:52.290545Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-22T23:08:43.647926Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2892429.651,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 72,
+    "sha256": "174cde6eeac2382ee14eb3689e48cefd6d8c4375e85404d63e1207f1331e0112"
+  }
+}

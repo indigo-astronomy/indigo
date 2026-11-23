@@ -1618,6 +1618,7 @@
 		593CFE411DFC8A12003B63D4 /* indigo_wheel_atik.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_atik.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		593CFE421DFC8A12003B63D4 /* indigo_wheel_atik.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_atik.h; sourceTree = "<group>"; };
 		593EC62D30A9D7BC00E972EF /* SCHEDULER.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SCHEDULER.md; sourceTree = "<group>"; };
+		5952C0A130B1E00100A1B2C3 /* SCHEDULER_COMPARISON.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SCHEDULER_COMPARISON.md; sourceTree = "<group>"; };
 		593EC62F30A9D7BC00E972EF /* indigo_agent_scheduler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler.h; sourceTree = "<group>"; };
 		593EC63030A9D7BC00E972EF /* indigo_agent_scheduler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_scheduler.c; sourceTree = "<group>"; };
 		593EC63330A9D7BC00E972EF /* indigo_agent_scheduler_header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler_header.h; sourceTree = "<group>"; };
@@ -2654,6 +2655,8 @@
 		59910A803052E5E400FB1C2F /* app.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = app.js; sourceTree = "<group>"; };
 		59910A813052E5E400FB1C2F /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		59910A823052E5E400FB1C2F /* style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = style.css; sourceTree = "<group>"; };
+		A4C1E0B52F0A6D3E00AA51F7 /* test_agent_auxiliary.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_auxiliary.c; sourceTree = "<group>"; };
+		C0DE20261123A00100000001 /* test_agent_auxiliary_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_auxiliary_simulator.c; sourceTree = "<group>"; };
 		59910AA23054836E00FB1C2F /* test_agent_config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_config.c; sourceTree = "<group>"; };
 		59910AA33054836E00FB1C2F /* test_agent_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_mount.c; sourceTree = "<group>"; };
 		C0DE20261119A00100000001 /* test_agent_mount_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_mount_simulator.c; sourceTree = "<group>"; };
@@ -5627,6 +5630,7 @@
 		9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "DMFC-Serial-Command-Table.pdf"; sourceTree = "<group>"; };
 		9ED98BDCAF6A4B2F9D10CC26 /* test_agent_guider_cleanup.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_guider_cleanup.c; sourceTree = "<group>"; };
 		A057AA8EDAB3B5A82CF2F1B6 /* test_profile_selection.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_profile_selection.c; sourceTree = "<group>"; };
+		A35A660F2A1503A8E338DE01 /* scheduler_plan_charts.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = scheduler_plan_charts.py; sourceTree = "<group>"; };
 		A3C51E7F0B2D49E6812F4D10 /* test_indigo_js_formatting.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = test_indigo_js_formatting.js; sourceTree = "<group>"; };
 		A7C3E1D2301D386600A35CFB /* test_gp_guider_alloc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gp_guider_alloc.c; sourceTree = "<group>"; };
 		A7C9FBDB98F88319F5159670 /* indigo_polaralign_mlastro.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_polaralign_mlastro.driver; sourceTree = "<group>"; };
@@ -7471,6 +7475,7 @@
 			isa = PBXGroup;
 			children = (
 				593EC62D30A9D7BC00E972EF /* SCHEDULER.md */,
+				5952C0A130B1E00100A1B2C3 /* SCHEDULER_COMPARISON.md */,
 			);
 			path = doc;
 			sourceTree = "<group>";
@@ -9631,6 +9636,7 @@
 				1DD24DE680C3E763067271B0 /* build_ftdi_macos.sh */,
 				5995FFEA306832330095A792 /* run_driver_test.py */,
 				812D59FB5C98400505086E26 /* scheduler_sandbox.py */,
+				A35A660F2A1503A8E338DE01 /* scheduler_plan_charts.py */,
 				E4D9A3AFA6BD607D8ABF9354 /* scheduler_sandbox_night.txt */,
 				C0DE20261029A10000000001 /* compare_solvers.py */,
 				59E4ADBC30607CA4002B1629 /* build_windows_installer.sh */,
@@ -14451,6 +14457,8 @@
 				C0DE20261101204146000001 /* test_agent_platesolver.c */,
 				C0DE20261027A00100000002 /* test_agent_platesolver_simulator.c */,
 				59609683178A3025966FEEB9 /* test_indigo_solver_tool.c */,
+				A4C1E0B52F0A6D3E00AA51F7 /* test_agent_auxiliary.c */,
+				C0DE20261123A00100000001 /* test_agent_auxiliary_simulator.c */,
 				59910AA23054836E00FB1C2F /* test_agent_config.c */,
 				59910A763052B3A100FB1C2F /* test_agent_guider.c */,
 				61D0437E0DBADA8CCC6CCAAF /* test_agent_imager_numerics.py */,

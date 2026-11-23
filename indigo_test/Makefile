@@ -159,6 +159,8 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_agent_mount \
 	$(INTEGRATION_BUILD)/test_agent_mount_simulator \
 	$(INTEGRATION_BUILD)/test_agent_config \
+	$(INTEGRATION_BUILD)/test_agent_auxiliary \
+	$(INTEGRATION_BUILD)/test_agent_auxiliary_simulator \
 	$(INTEGRATION_BUILD)/test_agent_mcp \
 	$(INTEGRATION_BUILD)/test_agent_astrometry \
 	$(INTEGRATION_BUILD)/test_agent_platesolver \
@@ -2113,21 +2115,21 @@ $(INTEGRATION_BUILD)/guider_cgusbst4_transport.o: ../indigo_drivers/guider_cgusb
 $(INTEGRATION_BUILD)/test_guider_cgusbst4_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/guider_cgusbst4_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_KIND=1 -DTEST_ENTRY=indigo_guider_cgusbst4 -DTEST_NAME='"CG-USB-ST4 Adapter"' $< $(INTEGRATION_BUILD)/guider_cgusbst4_transport.o -o $@ $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/aux_geoptikflat_transport.o: ../indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(OUTPUT_TRANSPORT_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/aux_geoptikflat_transport.o: ../indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial2=output_open2 $(OUTPUT_TRANSPORT_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_aux_geoptikflat_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_KIND=2 -DTEST_ENTRY=indigo_aux_geoptikflat -DTEST_NAME='"Geoptik Flat Generator"' $< $(INTEGRATION_BUILD)/aux_geoptikflat_transport.o -o $@ $(TEST_LDFLAGS)
 
-RTS_SHUTTER_REPLACEMENTS = -Dindigo_uni_open_serial=rts_test_open -Dindigo_uni_close=rts_test_close -Dindigo_uni_set_rts=rts_test_set_rts
+RTS_SHUTTER_REPLACEMENTS = -Dindigo_uni_open_serial2=rts_test_open -Dindigo_uni_close=rts_test_close -Dindigo_uni_set_rts=rts_test_set_rts
 
-$(INTEGRATION_BUILD)/aux_rts_shutter.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/aux_rts_shutter.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(RTS_SHUTTER_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_aux_rts_shutter: integration/test_aux_rts_shutter.c $(INTEGRATION_BUILD)/aux_rts_shutter.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_rts_shutter.o -o $@ $(TEST_LDFLAGS)
 
-$(INTEGRATION_BUILD)/aux_rts_shutter_asan.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/aux_rts_shutter_asan.o: ../indigo_drivers/aux_rts/indigo_aux_rts.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(RTS_SHUTTER_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_aux_rts_shutter_asan: integration/test_aux_rts_shutter.c $(INTEGRATION_BUILD)/aux_rts_shutter_asan.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
@@ -2323,31 +2325,31 @@ $(INTEGRATION_BUILD)/test_aux_upb_simulator: integration/test_aux_upb_simulator.
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(INTEGRATION_BUILD)/aux_upb_smart_hub_driver.o $(TEST_LDFLAGS) -lusb-1.0
 
 $(INTEGRATION_BUILD)/gps_nmea_transport.o: ../indigo_drivers/gps_nmea/indigo_gps_nmea.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_config=nmea_test_open -Dindigo_uni_read_section=nmea_test_read -Dindigo_uni_close=nmea_test_close -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_config2=nmea_test_open -Dindigo_uni_read_section=nmea_test_read -Dindigo_uni_close=nmea_test_close -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_gps_nmea_transport: integration/test_gps_nmea_transport.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/gps_nmea_transport.o Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/gps_nmea_transport.o -o $@ $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/ao_sx_transport.o: ../indigo_drivers/ao_sx/indigo_ao_sx.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial=ao_test_open -Dindigo_uni_close=ao_test_close -Dindigo_uni_discard=ao_test_discard -Dindigo_uni_vprintf=ao_test_write -Dindigo_uni_read_section=ao_test_read -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial2=ao_test_open -Dindigo_uni_close=ao_test_close -Dindigo_uni_discard=ao_test_discard -Dindigo_uni_vprintf=ao_test_write -Dindigo_uni_read_section=ao_test_read -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ao_sx_transport: integration/test_ao_sx_transport.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ao_sx_transport.o Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/ao_sx_transport.o -o $@ $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/wheel_indigo_transport.o: ../indigo_drivers/wheel_indigo/indigo_wheel_indigo.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_speed=wheel_test_open -Dindigo_uni_close=wheel_test_close -Dindigo_uni_discard=wheel_test_discard -Dindigo_uni_vtprintf=wheel_test_write -Dindigo_uni_read_section=wheel_test_read -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_speed2=wheel_test_open -Dindigo_uni_close=wheel_test_close -Dindigo_uni_discard=wheel_test_discard -Dindigo_uni_vtprintf=wheel_test_write -Dindigo_uni_read_section=wheel_test_read -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_wheel_indigo_transport: integration/test_wheel_indigo_transport.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_indigo_transport.o Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/wheel_indigo_transport.o -o $@ $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/aux_sqm_transport.o: ../indigo_drivers/aux_sqm/indigo_aux_sqm.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_speed=sqm_test_open -Dindigo_uni_close=sqm_test_close -Dindigo_uni_discard=sqm_test_discard -Dindigo_uni_write=sqm_test_write -Dindigo_uni_read_section=sqm_test_read -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_speed2=sqm_test_open -Dindigo_uni_close=sqm_test_close -Dindigo_uni_discard=sqm_test_discard -Dindigo_uni_write=sqm_test_write -Dindigo_uni_read_section=sqm_test_read -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_aux_sqm_transport: integration/test_aux_sqm_transport.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_sqm_transport.o Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_sqm_transport.o -o $@ $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/aux_skyalert_transport.o: ../indigo_drivers/aux_skyalert/indigo_aux_skyalert.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_speed=skyalert_test_open -Dindigo_uni_close=skyalert_test_close -Dindigo_uni_discard=skyalert_test_discard -Dindigo_uni_printf=skyalert_test_printf -Dindigo_uni_read_section=skyalert_test_read -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_speed2=skyalert_test_open -Dindigo_uni_close=skyalert_test_close -Dindigo_uni_discard=skyalert_test_discard -Dindigo_uni_printf=skyalert_test_printf -Dindigo_uni_read_section=skyalert_test_read -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_aux_skyalert_transport: integration/test_aux_skyalert_transport.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_skyalert_transport.o Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_skyalert_transport.o -o $@ $(TEST_LDFLAGS)
@@ -2531,6 +2533,20 @@ $(INTEGRATION_BUILD)/test_agent_config: integration/test_agent_config.c test_run
 test-agent-config: check-lib $(INTEGRATION_BUILD)/test_agent_config
 	$(INTEGRATION_BUILD)/test_agent_config
 
+$(INTEGRATION_BUILD)/test_agent_auxiliary: integration/test_agent_auxiliary.c integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_agent_auxiliary.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_auxiliary.a $(TEST_LDFLAGS)
+
+.PHONY: test-agent-auxiliary
+test-agent-auxiliary: check-lib $(INTEGRATION_BUILD)/test_agent_auxiliary
+	$(INTEGRATION_BUILD)/test_agent_auxiliary
+
+$(INTEGRATION_BUILD)/test_agent_auxiliary_simulator: integration/test_agent_auxiliary_simulator.c integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_agent_auxiliary.a $(BUILD_DRIVERS)/indigo_aux_simulator.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_auxiliary.a $(BUILD_DRIVERS)/indigo_aux_simulator.a $(TEST_LDFLAGS)
+
+.PHONY: test-agent-auxiliary-simulator
+test-agent-auxiliary-simulator: check-lib $(INTEGRATION_BUILD)/test_agent_auxiliary_simulator
+	$(INTEGRATION_BUILD)/test_agent_auxiliary_simulator
+
 # Real Astrometry Agent with controlled local image2xy, solve-field and curl peers.
 ASTROMETRY_TEST_FLAGS = -DINDIGO_ASTROMETRY_TEST
 ASTROMETRY_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
@@ -2631,7 +2647,7 @@ $(INTEGRATION_BUILD)/test_agent_scheduler_asan: integration/test_agent_scheduler
 	$(CC) $(TEST_CFLAGS) $(SCHEDULER_TEST_FLAGS) -I../indigo_drivers/agent_scheduler -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.c $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 # Opt-in native server acceptance: the Scheduler Agent runs capture, slew, guiding and urgent tasks
-# against the CCD and mount simulators in a private indigo_server.
+# against the CCD and mount simulators, and the unsafe hold with the Auxiliary Agent and the aux simulator, in a private indigo_server.
 .PHONY: test-scheduler-simulators
 test-scheduler-simulators:
 	python3 integration/run_scheduler_simulators.py $(SCHEDULER_ARGS)

@@ -1,0 +1,438 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7d7ccf60-9305-4467-b49e-cf7ae9168061",
+  "revision": 19,
+  "title": "indigo_test: six transport tests redirect an old serial open function, so their fakes are never used",
+  "description": "Found on 2026-11-23 while fixing ticket c500cc03-ce25-4d7f-8aaa-79adc8cc2764 (same cause as test_aux_skyalert_transport). Each test below redirects an indigo_uni_open_serial* function that its driver no longer calls (the driver now calls the *2 variant with a 'const char **error_message' parameter), so the real open runs and the test fails. All were built and run unchanged on master's tree and fail:\n1. test_gps_nmea_transport (indigo_test/Makefile ~2328): redirects indigo_uni_open_serial_with_config=nmea_test_open; driver calls indigo_uni_open_serial_with_config2. 0 pass / 4 fail.\n2. test_ao_sx_transport (~2334): redirects indigo_uni_open_serial=ao_test_open; driver calls indigo_uni_open_serial2. 0 pass / 3 fail, ends on SIGALRM (rc 142).\n3. test_wheel_indigo_transport (~2340): redirects indigo_uni_open_serial_with_speed=wheel_test_open; driver calls indigo_uni_open_serial_with_speed2. 0 / 3.\n4. test_aux_sqm_transport (~2346): redirects indigo_uni_open_serial_with_speed=sqm_test_open; driver calls indigo_uni_open_serial_with_speed2. 0 / 2.\n5. test_aux_geoptikflat_transport (~2118-2119): uses only OUTPUT_TRANSPORT_REPLACEMENTS (indigo_uni_open_serial=output_open); driver calls indigo_uni_open_serial2; lacks the -Dindigo_uni_open_serial2=output_open2 that guider_cgusbst4 (~2113) has. 0 / 2.\n6. test_aux_rts_shutter and its asan variant (~2124-2133): RTS_SHUTTER_REPLACEMENTS redirects indigo_uni_open_serial=rts_test_open; driver calls indigo_uni_open_serial2. 0 / 10 (non-asan).\nFix: redirect the *2 function and give each fake the extra 'const char **error_message' parameter, matching the prototypes in indigo_libs; do not change the drivers. Reproduce each failure first and verify each test passes afterwards. Also check whether these were all silently failing in routine runs, and why that went unnoticed (e.g. not part of test-unit/flow check).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-23T13:15:28.293450Z",
+  "status": "closed",
+  "branch": "ticket/7d7ccf60-9305-4467-b49e-cf7ae9168061",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c0a294a9-f710-4816-be82-6a7603455e99",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T13:22:24.273243Z",
+          "last_activity_at": "2026-11-23T13:36:42.765008Z",
+          "ended_at": "2026-11-23T13:36:42.765008Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 858491.765,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:22:24.273243Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/7d7ccf60-9305-4467-b49e-cf7ae9168061"
+        },
+        {
+          "at": "2026-11-23T13:36:42.765008Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 858491.765,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "fd6b7c16-b6c3-4b98-a25b-b652d68edb7e",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "8b8a1664-de31-4737-9882-d2a2fa832382",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T13:36:42.765031Z",
+          "last_activity_at": "2026-11-23T13:40:54.237830Z",
+          "ended_at": "2026-11-23T13:40:54.237830Z",
+          "outcome": {
+            "summary": "Independent review of master...HEAD (indigo_test only; no driver, README or other product file changed). Redirects target exactly the open calls the drivers make: gps_nmea indigo_uni_open_serial_with_config2 (indigo_gps_nmea.c:91), ao_sx indigo_uni_open_serial2 (indigo_ao_sx.c:77), wheel_indigo and aux_sqm indigo_uni_open_serial_with_speed2 (indigo_wheel_indigo.c:77, indigo_aux_sqm.c:97), aux_geoptikflat indigo_uni_open_serial2 -> output_open2 (indigo_aux_geoptikflat.c:83), aux_rts indigo_uni_open_serial2 (indigo_aux_rts.c:75). Every fake signature matches indigo_uni_io.h:167/176/185 (return type and parameter types). The fakes leave *error_message untouched on failure; every caller initialises it to NULL, so the alert path stays safe. Clean build of all nine objects/binaries (fresh indigo_test/build, no warnings): nm shows U nmea_test_open, ao_test_open, wheel_test_open, sqm_test_open, output_open2 (geoptikflat, cgusbst4), rts_test_open (both rts objects), skyalert_test_open; no indigo_uni_open_serial* remains (gps_nmea keeps only the unrelated gps:// TCP path symbol). Runs (rc 0 each): gps_nmea 4/4, ao_sx 8/8, wheel_indigo 3/3, aux_sqm 2/2, aux_geoptikflat 2/2, aux_rts_shutter 10/10, aux_rts_shutter_asan 10/10 with no sanitizer reports, guider_cgusbst4 2/2, aux_skyalert 2/2. (a) The Makefile prerequisite on aux_geoptikflat_transport.o, aux_rts_shutter.o and aux_rts_shutter_asan.o matches the neighbouring rules and is needed so flag changes rebuild existing objects; correct and minimal. (b) Making output_open2 unconditional is harmless for TEST_KIND 1 (identical code) and needed for TEST_KIND 2; no warning, cgusbst4 still passes. No defects found.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 251472.799,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:36:42.765031Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T13:40:54.237830Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of master...HEAD (indigo_test only; no driver, README or other product file changed). Redirects target exactly the open calls the drivers make: gps_nmea indigo_uni_open_serial_with_config2 (indigo_gps_nmea.c:91), ao_sx indigo_uni_open_serial2 (indigo_ao_sx.c:77), wheel_indigo and aux_sqm indigo_uni_open_serial_with_speed2 (indigo_wheel_indigo.c:77, indigo_aux_sqm.c:97), aux_geoptikflat indigo_uni_open_serial2 -> output_open2 (indigo_aux_geoptikflat.c:83), aux_rts indigo_uni_open_serial2 (indigo_aux_rts.c:75). Every fake signature matches indigo_uni_io.h:167/176/185 (return type and parameter types). The fakes leave *error_message untouched on failure; every caller initialises it to NULL, so the alert path stays safe. Clean build of all nine objects/binaries (fresh indigo_test/build, no warnings): nm shows U nmea_test_open, ao_test_open, wheel_test_open, sqm_test_open, output_open2 (geoptikflat, cgusbst4), rts_test_open (both rts objects), skyalert_test_open; no indigo_uni_open_serial* remains (gps_nmea keeps only the unrelated gps:// TCP path symbol). Runs (rc 0 each): gps_nmea 4/4, ao_sx 8/8, wheel_indigo 3/3, aux_sqm 2/2, aux_geoptikflat 2/2, aux_rts_shutter 10/10, aux_rts_shutter_asan 10/10 with no sanitizer reports, guider_cgusbst4 2/2, aux_skyalert 2/2. (a) The Makefile prerequisite on aux_geoptikflat_transport.o, aux_rts_shutter.o and aux_rts_shutter_asan.o matches the neighbouring rules and is needed so flag changes rebuild existing objects; correct and minimal. (b) Making output_open2 unconditional is harmless for TEST_KIND 1 (identical code) and needed for TEST_KIND 2; no warning, cgusbst4 still passes. No defects found."
+        }
+      ],
+      "result": {
+        "summary": "Independent review of master...HEAD (indigo_test only; no driver, README or other product file changed). Redirects target exactly the open calls the drivers make: gps_nmea indigo_uni_open_serial_with_config2 (indigo_gps_nmea.c:91), ao_sx indigo_uni_open_serial2 (indigo_ao_sx.c:77), wheel_indigo and aux_sqm indigo_uni_open_serial_with_speed2 (indigo_wheel_indigo.c:77, indigo_aux_sqm.c:97), aux_geoptikflat indigo_uni_open_serial2 -> output_open2 (indigo_aux_geoptikflat.c:83), aux_rts indigo_uni_open_serial2 (indigo_aux_rts.c:75). Every fake signature matches indigo_uni_io.h:167/176/185 (return type and parameter types). The fakes leave *error_message untouched on failure; every caller initialises it to NULL, so the alert path stays safe. Clean build of all nine objects/binaries (fresh indigo_test/build, no warnings): nm shows U nmea_test_open, ao_test_open, wheel_test_open, sqm_test_open, output_open2 (geoptikflat, cgusbst4), rts_test_open (both rts objects), skyalert_test_open; no indigo_uni_open_serial* remains (gps_nmea keeps only the unrelated gps:// TCP path symbol). Runs (rc 0 each): gps_nmea 4/4, ao_sx 8/8, wheel_indigo 3/3, aux_sqm 2/2, aux_geoptikflat 2/2, aux_rts_shutter 10/10, aux_rts_shutter_asan 10/10 with no sanitizer reports, guider_cgusbst4 2/2, aux_skyalert 2/2. (a) The Makefile prerequisite on aux_geoptikflat_transport.o, aux_rts_shutter.o and aux_rts_shutter_asan.o matches the neighbouring rules and is needed so flag changes rebuild existing objects; correct and minimal. (b) Making output_open2 unconditional is harmless for TEST_KIND 1 (identical code) and needed for TEST_KIND 2; no warning, cgusbst4 still passes. No defects found.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 251472.799,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "5ca6453c-397c-4b2a-b690-f2ac220504d4",
+      "event": "ticket/created",
+      "at": "2026-11-23T13:15:28.293853Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "1adbdd41-551d-411a-bf4f-8e0983526540",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T13:16:57.814900Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "8c070df9-4c80-4d7c-a31f-3f80124f3b5a",
+      "event": "task/progress",
+      "at": "2026-11-23T13:22:24.274243Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "text": "Implementation started on branch ticket/7d7ccf60-9305-4467-b49e-cf7ae9168061"
+    },
+    {
+      "event_id": "0f593b7e-63e2-4d1f-8370-39e7ab463267",
+      "event": "ticket/started",
+      "at": "2026-11-23T13:22:24.280634Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/7d7ccf60-9305-4467-b49e-cf7ae9168061",
+      "base": "master"
+    },
+    {
+      "event_id": "295ea73e-19eb-4a73-b911-54aa87386de7",
+      "event": "task/progress",
+      "at": "2026-11-23T13:22:38.627228Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "text": "Implementer launched",
+      "attempt_id": "c0a294a9-f710-4816-be82-6a7603455e99",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "580dc99b-5a49-4c74-8960-89900986f9cf",
+      "event": "task/progress",
+      "at": "2026-11-23T13:23:00.142726Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "text": "Building libindigo in the worktree to reproduce the six failures"
+    },
+    {
+      "event_id": "7c13c79e-6d49-451e-8021-dfef88af556e",
+      "event": "task/progress",
+      "at": "2026-11-23T13:31:05.064510Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "text": "Running the seven fixed transport test binaries"
+    },
+    {
+      "event_id": "08122176-70ee-4d61-8078-57efda74a0f8",
+      "event": "ticket/note",
+      "at": "2026-11-23T13:34:46.343388Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction (worktree, unchanged tree, Linux arm64): test_gps_nmea_transport 0 pass/4 fail (rc 1); test_ao_sx_transport 0 pass/3 fail then SIGALRM (rc 142, 'Failed to open fake'); test_wheel_indigo_transport 0/3 fail; test_aux_sqm_transport 0/2 fail; test_aux_geoptikflat_transport 0/2 fail; test_aux_rts_shutter 0/10 fail; test_aux_rts_shutter_asan 0/10 fail. nm on each driver object showed 'U indigo_uni_open_serial*2' (real open linked, fake unused).\nFix (indigo_test only, no driver change): Makefile redirects indigo_uni_open_serial_with_config2 (nmea), indigo_uni_open_serial2 (ao_sx, RTS_SHUTTER_REPLACEMENTS), indigo_uni_open_serial_with_speed2 (wheel_indigo, sqm) and adds -Dindigo_uni_open_serial2=output_open2 to aux_geoptikflat; each fake gained 'const char **error_message' to match indigo_uni_io.h; test_serial_outputs.c output_open2 no longer guarded by TEST_KIND == 1. The aux_geoptikflat_transport.o, aux_rts_shutter.o and aux_rts_shutter_asan.o rules gained the Makefile prerequisite their neighbours have: without it an existing build tree kept the stale objects and the new flags had no effect.\nResult: nm now shows U nmea_test_open / ao_test_open / wheel_test_open / sqm_test_open / output_open2 / rts_test_open (both rts objects); no indigo_uni_open_serial* symbol remains. Passes: nmea 4/4, ao_sx 8/8, wheel_indigo 3/3, sqm 2/2, geoptikflat 2/2, rts_shutter 10/10, rts_shutter_asan 10/10 (no sanitizer reports); guider_cgusbst4_transport still 2/2 after the shared fake change.\nWhy unnoticed: all drivers switched to the *2 open functions on 2026-10-21 (commits 15f69b1ff, 781e41466, 94fbe525e, 9fa2772c4, af67934c4, fcc9da52a) without touching indigo_test; every driver README test record predates that (latest 2026-10-14). The tests are in INTEGRATION_TESTS (make test / test-integration), not in test-unit, and flow check 'unit' runs only test-unit. test-integration exits at the first failing suite, and test_aux_skyalert_transport (same cause, listed before all of these",
+      "tokens": null
+    },
+    {
+      "event_id": "ee3aae1c-e3a7-41b1-93f2-573a4f271cdf",
+      "event": "task/progress",
+      "at": "2026-11-23T13:34:53.985745Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "4be6ec51-1d32-4cbb-96c8-1ff1b97a701b",
+      "event": "task/progress",
+      "at": "2026-11-23T13:34:54.002114Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c4391b2f-2b9c-4ceb-bbd4-cbd8874ddd84",
+      "event": "task/progress",
+      "at": "2026-11-23T13:34:54.006227Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "92ba8791-bf75-44da-8085-ae5544aba16d",
+      "event": "task/progress",
+      "at": "2026-11-23T13:36:10.514894Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "151e90dc-245e-44ce-a6d7-54b8a10b6843",
+      "event": "check/passed",
+      "at": "2026-11-23T13:36:10.525279Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "52e9faeaba956a23be1eebc8bb5b5e55cfcafc15",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "81865727-a075-43f6-b152-bf5f6b13dc06",
+      "event": "task/progress",
+      "at": "2026-11-23T13:36:42.692820Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "44b23dcb-2b74-4c49-9ddd-dfe389539490",
+      "text": "Reviewer launched",
+      "attempt_id": "c0a294a9-f710-4816-be82-6a7603455e99",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ddd13055-0450-458a-b32e-676f2cfb23eb",
+      "event": "task/progress",
+      "at": "2026-11-23T13:36:42.765065Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fd6b7c16-b6c3-4b98-a25b-b652d68edb7e",
+      "text": "Review started"
+    },
+    {
+      "event_id": "76b09429-7a50-4ed3-95d5-8a943d1266a4",
+      "event": "review/started",
+      "at": "2026-11-23T13:36:42.765300Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "40e75b44-730b-42f5-a3ee-8146ec6eea31",
+      "event": "task/progress",
+      "at": "2026-11-23T13:36:50.704976Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fd6b7c16-b6c3-4b98-a25b-b652d68edb7e",
+      "text": "Checking prototypes, driver open calls and error_message handling"
+    },
+    {
+      "event_id": "9cee0f3a-bdd4-49c6-b931-4985d86e7866",
+      "event": "task/progress",
+      "at": "2026-11-23T13:37:31.844111Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fd6b7c16-b6c3-4b98-a25b-b652d68edb7e",
+      "text": "Running the nine transport test binaries"
+    },
+    {
+      "event_id": "be063a2b-95c8-42c5-9461-68bf9ca7b5ac",
+      "event": "task/progress",
+      "at": "2026-11-23T13:40:54.237896Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fd6b7c16-b6c3-4b98-a25b-b652d68edb7e",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "606161ce-9fff-4401-84f8-8a6a8b8c20a0",
+      "event": "review/passed",
+      "at": "2026-11-23T13:40:54.238214Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fd6b7c16-b6c3-4b98-a25b-b652d68edb7e",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "52e9faeaba956a23be1eebc8bb5b5e55cfcafc15"
+    },
+    {
+      "event_id": "41599763-86e4-4beb-9cd9-c4e44ff84ede",
+      "event": "ticket/closed",
+      "at": "2026-11-23T13:49:03.513355Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-23T13:49:03.513331Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "7e164da944202f776ba2703aa98e9c3993179839"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "52e9faeaba956a23be1eebc8bb5b5e55cfcafc15",
+        "tree": "181147611d8d6aac3b8b7eada6d30b0f9a378f03",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T13:34:54.001796Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/7d7ccf60-9305-4467-b49e-cf7ae9168061/181147611d8d-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "52e9faeaba956a23be1eebc8bb5b5e55cfcafc15",
+        "tree": "181147611d8d6aac3b8b7eada6d30b0f9a378f03",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T13:36:10.512419Z",
+        "duration_s": 76.5,
+        "log": "/tmp/factory-flow/7d7ccf60-9305-4467-b49e-cf7ae9168061/181147611d8d-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of master...HEAD (indigo_test only; no driver, README or other product file changed). Redirects target exactly the open calls the drivers make: gps_nmea indigo_uni_open_serial_with_config2 (indigo_gps_nmea.c:91), ao_sx indigo_uni_open_serial2 (indigo_ao_sx.c:77), wheel_indigo and aux_sqm indigo_uni_open_serial_with_speed2 (indigo_wheel_indigo.c:77, indigo_aux_sqm.c:97), aux_geoptikflat indigo_uni_open_serial2 -> output_open2 (indigo_aux_geoptikflat.c:83), aux_rts indigo_uni_open_serial2 (indigo_aux_rts.c:75). Every fake signature matches indigo_uni_io.h:167/176/185 (return type and parameter types). The fakes leave *error_message untouched on failure; every caller initialises it to NULL, so the alert path stays safe. Clean build of all nine objects/binaries (fresh indigo_test/build, no warnings): nm shows U nmea_test_open, ao_test_open, wheel_test_open, sqm_test_open, output_open2 (geoptikflat, cgusbst4), rts_test_open (both rts objects), skyalert_test_open; no indigo_uni_open_serial* remains (gps_nmea keeps only the unrelated gps:// TCP path symbol). Runs (rc 0 each): gps_nmea 4/4, ao_sx 8/8, wheel_indigo 3/3, aux_sqm 2/2, aux_geoptikflat 2/2, aux_rts_shutter 10/10, aux_rts_shutter_asan 10/10 with no sanitizer reports, guider_cgusbst4 2/2, aux_skyalert 2/2. (a) The Makefile prerequisite on aux_geoptikflat_transport.o, aux_rts_shutter.o and aux_rts_shutter_asan.o matches the neighbouring rules and is needed so flag changes rebuild existing objects; correct and minimal. (b) Making output_open2 unconditional is harmless for TEST_KIND 1 (identical code) and needed for TEST_KIND 2; no warning, cgusbst4 still passes. No defects found.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "52e9faeaba956a23be1eebc8bb5b5e55cfcafc15",
+        "tree": "181147611d8d6aac3b8b7eada6d30b0f9a378f03",
+        "at": "2026-11-23T13:40:54.237759Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T13:34:46.343065Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction (worktree, unchanged tree, Linux arm64): test_gps_nmea_transport 0 pass/4 fail (rc 1); test_ao_sx_transport 0 pass/3 fail then SIGALRM (rc 142, 'Failed to open fake'); test_wheel_indigo_transport 0/3 fail; test_aux_sqm_transport 0/2 fail; test_aux_geoptikflat_transport 0/2 fail; test_aux_rts_shutter 0/10 fail; test_aux_rts_shutter_asan 0/10 fail. nm on each driver object showed 'U indigo_uni_open_serial*2' (real open linked, fake unused).\nFix (indigo_test only, no driver change): Makefile redirects indigo_uni_open_serial_with_config2 (nmea), indigo_uni_open_serial2 (ao_sx, RTS_SHUTTER_REPLACEMENTS), indigo_uni_open_serial_with_speed2 (wheel_indigo, sqm) and adds -Dindigo_uni_open_serial2=output_open2 to aux_geoptikflat; each fake gained 'const char **error_message' to match indigo_uni_io.h; test_serial_outputs.c output_open2 no longer guarded by TEST_KIND == 1. The aux_geoptikflat_transport.o, aux_rts_shutter.o and aux_rts_shutter_asan.o rules gained the Makefile prerequisite their neighbours have: without it an existing build tree kept the stale objects and the new flags had no effect.\nResult: nm now shows U nmea_test_open / ao_test_open / wheel_test_open / sqm_test_open / output_open2 / rts_test_open (both rts objects); no indigo_uni_open_serial* symbol remains. Passes: nmea 4/4, ao_sx 8/8, wheel_indigo 3/3, sqm 2/2, geoptikflat 2/2, rts_shutter 10/10, rts_shutter_asan 10/10 (no sanitizer reports); guider_cgusbst4_transport still 2/2 after the shared fake change.\nWhy unnoticed: all drivers switched to the *2 open functions on 2026-10-21 (commits 15f69b1ff, 781e41466, 94fbe525e, 9fa2772c4, af67934c4, fcc9da52a) without touching indigo_test; every driver README test record predates that (latest 2026-10-14). The tests are in INTEGRATION_TESTS (make test / test-integration), not in test-unit, and flow check 'unit' runs only test-unit. test-integration exits at the first failing suite, and test_aux_skyalert_transport (same cause, listed before all of these) failed first, hiding the rest. tools/run_driver_test.py would select them (test_<driver>_<kind> from INTEGRATION_TESTS), but no recorded driver run of these drivers happened after 2026-10-21. test_aux_rts_shutter_asan is not in INTEGRATION_TESTS or OPT_IN_DRIVER_TESTS, so nothing runs it automatically.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "7e164da944202f776ba2703aa98e9c3993179839",
+      "tree": "181147611d8d6aac3b8b7eada6d30b0f9a378f03",
+      "base": "master",
+      "at": "2026-11-23T13:49:03.428849Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-23T13:15:28.293450Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-23T13:16:57.814714Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1109964.564,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 25,
+    "sha256": "9e0088b0efed3c069c4bd8a140ec21c21627498777d5ec46570a5c1e093b6d15"
+  }
+}

@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -44,7 +44,17 @@ extern "C" {
 #endif
 
 #define AUX_AGENT_NAME	"Auxiliary Agent"
-	
+
+/** Safety of the observing conditions (light, read-only), combined worst-wins from AUX_WEATHER_SAFETY of the devices selected in FILTER_AUX_1_LIST to FILTER_AUX_4_LIST:
+ SAFE is IDLE without safety information, OK if conditions are safe and ALERT if they are unsafe; CLOUDS, RAIN, WIND and HUMIDITY combine the conditions of the same name
+ */
+#define AGENT_AUX_SAFETY_PROPERTY_NAME		"AGENT_AUX_SAFETY"
+#define AGENT_AUX_SAFETY_SAFE_ITEM_NAME		"SAFE"
+#define AGENT_AUX_SAFETY_CLOUDS_ITEM_NAME	"CLOUDS"
+#define AGENT_AUX_SAFETY_RAIN_ITEM_NAME		"RAIN"
+#define AGENT_AUX_SAFETY_WIND_ITEM_NAME		"WIND"
+#define AGENT_AUX_SAFETY_HUMIDITY_ITEM_NAME	"HUMIDITY"
+
 /** Create Auxiliary devices control agent instance
  */
 

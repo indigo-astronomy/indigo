@@ -23,9 +23,14 @@
 // the firmware string and the pressure in pascal - and has no unsolicited output, so every reading
 // is one request. The contract checked here is the field order and the units the driver derives
 // from it, the refusal of every incomplete or unparseable record, and the ten second poll that
-// keeps AUX_WEATHER and AUX_INFO current after connection.
+// keeps AUX_WEATHER and AUX_INFO current after connection. Each poll also classifies the readings
+// into the aux base class conditions AUX_CLOUD (sky minus ambient temperature), AUX_RAIN (raw
+// dampness, lower is wetter), AUX_SKY (raw brightness), AUX_HUMIDITY and AUX_WIND (raw) and judges
+// AUX_WEATHER_SAFETY from them.
 
 #include <indigo_drivers/aux_skyalert/indigo_aux_skyalert.h>
+
+#include <stdarg.h>
 
 #include "serial_simulator_test_common.h"
 
@@ -46,6 +51,14 @@ static const simulator_driver_case skyalert = {
 	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
+// The record line numbers the simulator control channel uses; line 0 is the "Data" header.
+#define LINE_TEMPERATURE     "1"
+#define LINE_SKY_TEMPERATURE "2"
+#define LINE_RAIN            "3"
+#define LINE_SKY_BRIGHTNESS  "4"
+#define LINE_HUMIDITY        "5"
+#define LINE_WIND_SPEED      "6"
+
 static const char *skyalert_base_properties[] = {
 	INFO_PROPERTY_NAME,
 	CONFIG_PROPERTY_NAME,
@@ -54,7 +67,12 @@ static const char *skyalert_base_properties[] = {
 	DEVICE_PORT_PROPERTY_NAME,
 	DEVICE_PORTS_PROPERTY_NAME,
 	ADDITIONAL_INSTANCES_PROPERTY_NAME,
-	CONNECTION_PROPERTY_NAME
+	CONNECTION_PROPERTY_NAME,
+	AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME,
+	AUX_WIND_THRESHOLDS_PROPERTY_NAME,
+	AUX_RAIN_THRESHOLDS_PROPERTY_NAME,
+	AUX_CLOUD_THRESHOLDS_PROPERTY_NAME,
+	AUX_SKY_THRESHOLDS_PROPERTY_NAME
 };
 
 static const char *skyalert_hidden_properties[] = {
@@ -67,7 +85,13 @@ static const char *skyalert_hidden_properties[] = {
 
 static const char *skyalert_connected_properties[] = {
 	AUX_INFO_PROPERTY_NAME,
-	AUX_WEATHER_PROPERTY_NAME
+	AUX_WEATHER_PROPERTY_NAME,
+	AUX_HUMIDITY_PROPERTY_NAME,
+	AUX_WIND_PROPERTY_NAME,
+	AUX_RAIN_PROPERTY_NAME,
+	AUX_CLOUD_PROPERTY_NAME,
+	AUX_SKY_PROPERTY_NAME,
+	AUX_WEATHER_SAFETY_PROPERTY_NAME
 };
 
 // -------------------------------------------------------------------------------- simulator glue
@@ -84,17 +108,46 @@ static void simulator_path(const external_serial_simulator *simulator, const cha
 	snprintf(path, size, "%s.%s", simulator->ready_file, suffix);
 }
 
-// One fault is armed at a time and consumed by the next record. The argument is the one-based
-// index of the affected record line where the action takes one.
-static bool arm_fault(const external_serial_simulator *simulator, const char *action, const char *argument) {
+// The control file is consumed by the next record. It is written under another name and renamed,
+// so the simulator never reads half of it.
+static bool write_control(const external_serial_simulator *simulator, const char *text) {
 	char path[PATH_MAX];
+	char temporary[PATH_MAX];
 	simulator_path(simulator, "control", path, sizeof(path));
-	FILE *file = fopen(path, "w");
+	simulator_path(simulator, "control.tmp", temporary, sizeof(temporary));
+	FILE *file = fopen(temporary, "w");
 	if (file == NULL) {
 		return false;
 	}
-	fprintf(file, "%s %s\n", action, argument);
-	return fclose(file) == 0;
+	fputs(text, file);
+	if (fclose(file) != 0) {
+		return false;
+	}
+	return rename(temporary, path) == 0;
+}
+
+// One fault is armed at a time and consumed by the next record. The argument is the one-based
+// index of the affected record line where the action takes one.
+static bool arm_fault(const external_serial_simulator *simulator, const char *action, const char *argument) {
+	char text[64];
+	snprintf(text, sizeof(text), "%s %s\n", action, argument);
+	return write_control(simulator, text);
+}
+
+// Replaces record lines in the next and every later record, given as pairs of line number and text,
+// terminated by NULL.
+static bool set_readings(const external_serial_simulator *simulator, ...) {
+	char text[512] = "";
+	va_list args;
+	va_start(args, simulator);
+	const char *line;
+	while ((line = va_arg(args, const char *)) != NULL) {
+		const char *value = va_arg(args, const char *);
+		size_t used = strlen(text);
+		snprintf(text + used, sizeof(text) - used, "set %s %s\n", line, value);
+	}
+	va_end(args);
+	return write_control(simulator, text);
 }
 
 static void clear_events(const external_serial_simulator *simulator) {
@@ -156,6 +209,116 @@ static bool info_is(const char *item_name, double expected) {
 		return false;
 	}
 	return true;
+}
+
+// -------------------------------------------------------------------------------- weather safety helpers
+
+static char safety_message[INDIGO_VALUE_SIZE];
+static atomic_int safety_message_count;
+
+static indigo_result safety_recording_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && !strcmp(property->name, AUX_WEATHER_SAFETY_PROPERTY_NAME) && message != NULL && *message) {
+		INDIGO_COPY_VALUE(safety_message, message);
+		safety_message_count++;
+	}
+	return simulator_client_send_message(client, device, property, message);
+}
+
+// A condition property is a light vector: the item of the current level is OK and the other items are IDLE,
+// the property state reports the sensor. With level NULL every item is IDLE.
+static bool condition_is(const char *property_name, const char *level, indigo_property_state state) {
+	indigo_property *property = find_cached_property(property_name);
+	if (property == NULL) {
+		fprintf(stderr, "%s is not defined\n", property_name);
+		return false;
+	}
+	bool result = property->type == INDIGO_LIGHT_VECTOR && property->perm == INDIGO_RO_PERM;
+	if (!result) {
+		fprintf(stderr, "%s is not a read-only light vector\n", property_name);
+	}
+	if (property->state != state) {
+		fprintf(stderr, "%s: expected state %d, received %d\n", property_name, state, property->state);
+		result = false;
+	}
+	for (int i = 0; i < property->count; i++) {
+		indigo_property_state expected = level != NULL && !strcmp(property->items[i].name, level) ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+		if (property->items[i].light.value != expected) {
+			fprintf(stderr, "%s.%s: expected light %d, received %d\n", property_name, property->items[i].name, expected, property->items[i].light.value);
+			result = false;
+		}
+	}
+	return result;
+}
+
+static indigo_property_state safety_light(const char *item) {
+	indigo_item *found = find_cached_item(AUX_WEATHER_SAFETY_PROPERTY_NAME, item);
+	return found != NULL ? found->light.value : -1;
+}
+
+// Checks the property state and every light of AUX_WEATHER_SAFETY in item order SAFE, CLOUDS, RAIN, WIND, HUMIDITY.
+static bool safety_is(indigo_property_state state, indigo_property_state safe, indigo_property_state clouds, indigo_property_state rain, indigo_property_state wind, indigo_property_state humidity) {
+	const char *items[] = { AUX_WEATHER_SAFETY_SAFE_ITEM_NAME, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, AUX_WEATHER_SAFETY_WIND_ITEM_NAME, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME };
+	indigo_property_state expected[] = { safe, clouds, rain, wind, humidity };
+	indigo_property *property = find_cached_property(AUX_WEATHER_SAFETY_PROPERTY_NAME);
+	if (property == NULL) {
+		fprintf(stderr, "%s is not defined\n", AUX_WEATHER_SAFETY_PROPERTY_NAME);
+		return false;
+	}
+	bool result = true;
+	if (property->state != state) {
+		fprintf(stderr, "%s state is %d, expected %d\n", AUX_WEATHER_SAFETY_PROPERTY_NAME, property->state, state);
+		result = false;
+	}
+	for (int i = 0; i < ARRAY_SIZE(items); i++) {
+		if (safety_light(items[i]) != expected[i]) {
+			fprintf(stderr, "%s.%s is %d, expected %d\n", AUX_WEATHER_SAFETY_PROPERTY_NAME, items[i], safety_light(items[i]), expected[i]);
+			result = false;
+		}
+	}
+	return result;
+}
+
+// Waits for the reason message number count, then compares the last reason.
+static bool safety_message_is(int count, const char *expected) {
+	for (int i = 0; i < (SKYALERT_POLL_SECONDS + 5) * 10 && safety_message_count < count; i++) {
+		indigo_usleep(100000);
+	}
+	if (safety_message_count < count) {
+		fprintf(stderr, "%d reason messages received, expected %d\n", (int)safety_message_count, count);
+		return false;
+	}
+	if (strcmp(safety_message, expected)) {
+		fprintf(stderr, "reason message is '%s', expected '%s'\n", safety_message, expected);
+		return false;
+	}
+	return true;
+}
+
+static bool change_threshold(const char *property, const char *item, double value) {
+	unsigned revision = property_revision(property);
+	return indigo_change_number_property_1(&simulator_test_client, skyalert.device_name, property, item, value) == INDIGO_OK && wait_for_property_state_after(property, INDIGO_OK_STATE, revision);
+}
+
+static bool threshold_is(const char *property_name, const char *item_name, double value, double min, double max) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	if (item == NULL || item->number.value != value || item->number.min != min || item->number.max != max) {
+		fprintf(stderr, "%s.%s is %g [%g, %g], expected %g [%g, %g]\n", property_name, item_name, item ? item->number.value : NAN, item ? item->number.min : NAN, item ? item->number.max : NAN, value, min, max);
+		return false;
+	}
+	return true;
+}
+
+// Waits for one poll that changes the property: the reading of a record is classified into the conditions
+// in the order AUX_CLOUD, AUX_RAIN, AUX_SKY, AUX_HUMIDITY, AUX_WIND, then AUX_WEATHER_SAFETY.
+static bool wait_for_update_after(const char *property_name, unsigned int revision) {
+	for (int i = 0; i < (SKYALERT_POLL_SECONDS + 5) * 10; i++) {
+		if (property_revision(property_name) > revision) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	fprintf(stderr, "%s was not updated by a poll\n", property_name);
+	return false;
 }
 
 static bool connected_properties_published(bool expected) {
@@ -463,6 +626,252 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The thresholds are inherited from the aux base class in the units of the record: the cloud measure is the
+// sky temperature minus the ambient temperature, the rain, wind and sky brightness readings are raw ADC
+// counts. The default wind thresholds are beyond the 10-bit range, so the wind is never unsafe until the
+// thresholds are set for the unit. The record of the simulator is a dry, calm, cloudy and light one.
+static void conditions_and_safety_at_the_default_thresholds(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	safety_message_count = 0;
+	SERIAL_CHECK_TRUE(start_skyalert(&simulator, NULL));
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_TEMPERATURE, "20.3", LINE_SKY_BRIGHTNESS, "800", NULL));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&skyalert));
+	online = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(threshold_is(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME, -20, -200, 200));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, -10, -200, 200));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, 800, 0, 1024));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_WET_ITEM_NAME, 950, 0, 1024));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_SKY_THRESHOLDS_PROPERTY_NAME, AUX_SKY_DARK_ITEM_NAME, 250, 0, 1024));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_SKY_THRESHOLDS_PROPERTY_NAME, AUX_SKY_LIGHT_ITEM_NAME, 750, 0, 1024));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, 90, 0, 100));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_NORMAL_ITEM_NAME, 70, 0, 100));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 1024, 0, 1024));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME, 1024, 0, 1024));
+	SERIAL_CHECK_TRUE(connect_serial_device(&skyalert, simulator.port));
+	SERIAL_CHECK_TRUE(safety_message_is(1, "Safe: all conditions within limits"));
+	// 1 - 20.3 = -19.3 C is above the CLEAR threshold, 1008 is drier than WET, 800 is brighter than LIGHT.
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_DRY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_VERY_LIGHT_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_DRY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_CALM_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+	// The conditions and the verdict exist only while connected, the thresholds stay.
+	disconnect_serial_device(&skyalert);
+	SERIAL_CHECK_TRUE(connected_properties_published(false));
+	assert_defined_properties(skyalert_base_properties, ARRAY_SIZE(skyalert_base_properties));
+cleanup:
+	if (online) {
+		disconnect_serial_device(&skyalert);
+		tear_down_serial_driver(&skyalert);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// Every condition goes through its three levels as the readings change from poll to poll, and the verdict
+// names each unsafe condition: the raw rain and wind readings by name only, the others with value and limit.
+static void condition_levels_follow_the_readings(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	safety_message_count = 0;
+	SERIAL_CHECK_TRUE(start_skyalert(&simulator, NULL));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&skyalert));
+	online = true;
+	enumerate_simulator_device();
+	// A threshold changed while disconnected is only stored.
+	SERIAL_CHECK_TRUE(change_threshold(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 600));
+	SERIAL_CHECK_TRUE(change_threshold(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME, 300));
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_TEMPERATURE, "10", LINE_SKY_TEMPERATURE, "5", LINE_RAIN, "500", LINE_SKY_BRIGHTNESS, "100", LINE_HUMIDITY, "95", LINE_WIND_SPEED, "700", NULL));
+	SERIAL_CHECK_TRUE(connect_serial_device(&skyalert, simulator.port));
+	SERIAL_CHECK_TRUE(safety_message_is(1, "Unsafe: clouds -5.0 C above -10.0 C, rain, wind, humidity 95.0 % above 90.0 %"));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_OVERCAST_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_DARK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+	// The middle levels are all safe.
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_SKY_TEMPERATURE, "-5", LINE_RAIN, "900", LINE_SKY_BRIGHTNESS, "500", LINE_HUMIDITY, "80", LINE_WIND_SPEED, "400", NULL));
+	SERIAL_CHECK_TRUE(safety_message_is(2, "Safe: all conditions within limits"));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_WET_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_LIGHT_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_NORMAL_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	// The best levels; the verdict does not change, so the update carries no reason.
+	unsigned int revision = property_revision(AUX_WIND_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_SKY_TEMPERATURE, "-15", LINE_RAIN, "1000", LINE_SKY_BRIGHTNESS, "900", LINE_HUMIDITY, "50", LINE_WIND_SPEED, "100", NULL));
+	SERIAL_CHECK_TRUE(wait_for_update_after(AUX_WIND_PROPERTY_NAME, revision));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLEAR_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_DRY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_VERY_LIGHT_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_DRY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_CALM_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(2, safety_message_count);
+cleanup:
+	if (online) {
+		disconnect_serial_device(&skyalert);
+		tear_down_serial_driver(&skyalert);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The device prints a missing or failed sensor as "nan". A sensor that has not given a valid reading since
+// the connection was made counts as not fitted: its condition is IDLE with all lights IDLE and the verdict
+// ignores it. Once it has given a valid reading, "nan" or a record that cannot be read is a failure: ALERT and
+// unsafe. The cloud measure needs both temperatures. A new connection forgets which sensors were seen.
+static void sensor_presence_failures_and_reconnect(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	safety_message_count = 0;
+	SERIAL_CHECK_TRUE(start_skyalert(&simulator, NULL));
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_TEMPERATURE, "nan", LINE_SKY_BRIGHTNESS, "nan", LINE_HUMIDITY, "nan", NULL));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&skyalert));
+	online = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(connect_serial_device(&skyalert, simulator.port));
+	// Never valid: not fitted, the device is safe on the sensors it has.
+	SERIAL_CHECK_TRUE(safety_message_is(1, "Safe: all conditions within limits"));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_DRY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_CALM_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_IDLE_STATE));
+	// A record that cannot be read fails the fitted sensors only.
+	SERIAL_CHECK_TRUE(arm_fault(&simulator, "header", "*"));
+	SERIAL_CHECK_TRUE(safety_message_is(2, "Unsafe: rain sensor gives no valid reading, wind sensor gives no valid reading"));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_IDLE_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(safety_message_is(3, "Safe: all conditions within limits"));
+	// The first valid readings make the sensors fitted; the verdict stays safe, so the update has no reason.
+	unsigned int revision = property_revision(AUX_WEATHER_SAFETY_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_TEMPERATURE, "20", LINE_SKY_BRIGHTNESS, "800", LINE_HUMIDITY, "60", NULL));
+	SERIAL_CHECK_TRUE(wait_for_update_after(AUX_WEATHER_SAFETY_PROPERTY_NAME, revision));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_VERY_LIGHT_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_DRY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(3, safety_message_count);
+	// A fitted sensor that reports "nan" has failed.
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_HUMIDITY, "nan", NULL));
+	SERIAL_CHECK_TRUE(safety_message_is(4, "Unsafe: humidity sensor gives no valid reading"));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE));
+	// Now every sensor is fitted, so a record that cannot be read fails them all.
+	SERIAL_CHECK_TRUE(arm_fault(&simulator, "header", "*"));
+	SERIAL_CHECK_TRUE(safety_message_is(5, "Unsafe: clouds sensor gives no valid reading, rain sensor gives no valid reading, wind sensor gives no valid reading, humidity sensor gives no valid reading"));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+	// The next record is read again, the humidity sensor is still failed.
+	SERIAL_CHECK_TRUE(safety_message_is(6, "Unsafe: humidity sensor gives no valid reading"));
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_HUMIDITY, "60", NULL));
+	SERIAL_CHECK_TRUE(safety_message_is(7, "Safe: all conditions within limits"));
+	// A new connection forgets the fitted sensors.
+	disconnect_serial_device(&skyalert);
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_TEMPERATURE, "nan", LINE_HUMIDITY, "nan", NULL));
+	SERIAL_CHECK_TRUE(connect_serial_device(&skyalert, simulator.port));
+	SERIAL_CHECK_TRUE(safety_message_is(8, "Safe: all conditions within limits"));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_VERY_LIGHT_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_IDLE_STATE));
+cleanup:
+	if (online) {
+		disconnect_serial_device(&skyalert);
+		tear_down_serial_driver(&skyalert);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A threshold changed while connected reclassifies the last reading before the change is acknowledged, without
+// waiting for the next poll; every change of the set of unsafe conditions carries its reason.
+static void threshold_changes_reclassify_at_once(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	safety_message_count = 0;
+	SERIAL_CHECK_TRUE(start_skyalert(&simulator, NULL));
+	SERIAL_CHECK_TRUE(set_readings(&simulator, LINE_TEMPERATURE, "20", LINE_SKY_BRIGHTNESS, "800", NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&skyalert, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(safety_message_is(1, "Safe: all conditions within limits"));
+	static const struct {
+		const char *property;
+		const char *item;
+		double value;
+		const char *reason;
+	} steps[] = {
+		{ AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, 60, "Unsafe: humidity 66.3 % above 60.0 %" },
+		{ AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 400, "Unsafe: wind, humidity 66.3 % above 60.0 %" },
+		{ AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, 1010, "Unsafe: rain, wind, humidity 66.3 % above 60.0 %" },
+		{ AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, -25, "Unsafe: clouds -19.0 C above -25.0 C, rain, wind, humidity 66.3 % above 60.0 %" },
+		{ AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, -10, "Unsafe: rain, wind, humidity 66.3 % above 60.0 %" },
+		{ AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, 800, "Unsafe: wind, humidity 66.3 % above 60.0 %" },
+		{ AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 1024, "Unsafe: humidity 66.3 % above 60.0 %" },
+		{ AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, 90, "Safe: all conditions within limits" }
+	};
+	for (int i = 0; i < ARRAY_SIZE(steps); i++) {
+		printf("  %s.%s = %g\n", steps[i].property, steps[i].item, steps[i].value);
+		SERIAL_CHECK_TRUE(change_threshold(steps[i].property, steps[i].item, steps[i].value));
+		// The reason is published before the threshold change is acknowledged.
+		SERIAL_CHECK_EQ_INT(i + 2, safety_message_count);
+		SERIAL_CHECK_TRUE(safety_message_is(i + 2, steps[i].reason));
+		if (i == 3) {
+			SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_OVERCAST_ITEM_NAME, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(safety_is(INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+		}
+	}
+	SERIAL_CHECK_TRUE(safety_is(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	// The sky brightness is not a safety condition: its thresholds change AUX_SKY only.
+	SERIAL_CHECK_TRUE(change_threshold(AUX_SKY_THRESHOLDS_PROPERTY_NAME, AUX_SKY_LIGHT_ITEM_NAME, 900));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_LIGHT_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(change_threshold(AUX_SKY_THRESHOLDS_PROPERTY_NAME, AUX_SKY_DARK_ITEM_NAME, 850));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_DARK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(ARRAY_SIZE(steps) + 1, safety_message_count);
+cleanup:
+	if (online) {
+		stop_serial_driver(&skyalert);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// The thresholds are saved by CONFIG and loaded again when the driver is attached.
+static void thresholds_saved_by_config(void) {
+	bool online = false;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&skyalert));
+	online = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(change_threshold(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_WET_ITEM_NAME, 900));
+	SERIAL_CHECK_TRUE(save_configuration_on(skyalert.device_name));
+	tear_down_serial_driver(&skyalert);
+	online = false;
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&skyalert));
+	online = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_WET_ITEM_NAME, 900, 0));
+	SERIAL_CHECK_TRUE(threshold_is(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, 800, 0, 1024));
+cleanup:
+	if (online) {
+		tear_down_serial_driver(&skyalert);
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "identity_inventory_and_record_contract", identity_inventory_and_record_contract },
@@ -473,7 +882,20 @@ int main(void) {
 		{ "a_failed_poll_is_reported_and_polling_stops_on_disconnect", a_failed_poll_is_reported_and_polling_stops_on_disconnect },
 		{ "failed_open_leaves_the_device_disconnected", failed_open_leaves_the_device_disconnected },
 		{ "transport_loss_is_reported_and_reconnect_recovers", transport_loss_is_reported_and_reconnect_recovers },
-		{ "repeated_disconnect_and_refused_shutdown", repeated_disconnect_and_refused_shutdown }
+		{ "repeated_disconnect_and_refused_shutdown", repeated_disconnect_and_refused_shutdown },
+		{ "conditions_and_safety_at_the_default_thresholds", conditions_and_safety_at_the_default_thresholds },
+		{ "condition_levels_follow_the_readings", condition_levels_follow_the_readings },
+		{ "sensor_presence_failures_and_reconnect", sensor_presence_failures_and_reconnect },
+		{ "threshold_changes_reclassify_at_once", threshold_changes_reclassify_at_once },
+		{ "thresholds_saved_by_config", thresholds_saved_by_config }
 	};
-	return indigo_run_tests("SkyAlert serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	// The thresholds are saved by CONFIG and loaded on attach, so a run uses a private home and neither
+	// reads nor changes the user's configuration.
+	if (!indigo_test_use_private_home()) {
+		return 1;
+	}
+	simulator_test_client.send_message = safety_recording_send_message;
+	int result = indigo_run_tests("SkyAlert serial simulator integration tests", tests, ARRAY_SIZE(tests));
+	indigo_test_remove_private_home();
+	return result;
 }

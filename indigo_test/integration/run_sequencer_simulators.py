@@ -248,6 +248,10 @@ def main():
 			client.utf8 = codecs.getincrementaldecoder("utf-8")()
 			client.send("getProperties", {"version": 0x300})
 			client.wait(lambda: ("Server", "DRIVERS") in client.properties, 20)
+			# indigo_server offers the dynamic drivers listed in build/share/indigo/indigo_drivers, which only the top-level build writes
+			missing = sorted(set("indigo_" + d for d in drivers) - {i["name"] for i in client.properties[("Server", "DRIVERS")]["items"]})
+			if missing:
+				raise RuntimeError("Server.DRIVERS does not offer " + ", ".join(missing) + "; build them with 'make all' so that build/share/indigo/indigo_drivers lists them")
 			# Prove unauthenticated writes are refused before installing executable scripts.
 			client.connection.sendall((json.dumps({"newSwitchVector": {"device": "Server", "name": "DRIVERS", "items": [{"name": "indigo_agent_scripting", "value": True}]}}) + "\n").encode())
 			client.wait(lambda: "Server" in client.rejections, 5)

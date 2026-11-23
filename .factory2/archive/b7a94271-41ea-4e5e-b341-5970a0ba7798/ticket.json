@@ -1,0 +1,523 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b7a94271-41ea-4e5e-b341-5970a0ba7798",
+  "revision": 28,
+  "title": "indigo_aux_skyalert: classify weather conditions and publish AUX_WEATHER_SAFETY using the aux base class properties",
+  "description": "Requested by the owner on 2026-11-23. Depends on ticket 010161aa-b864-46a8-86cd-e0423e524ffd, which moves AUX_HUMIDITY, AUX_WIND, AUX_RAIN, AUX_CLOUD, AUX_SKY, their *_THRESHOLDS and AUX_WEATHER_SAFETY into the aux base class (hidden by default, condition properties as light vectors: current level OK, other items IDLE; property state OK = sensor works, ALERT = no valid reading, IDLE = sensor not present).\n\naux_skyalert today publishes only AUX_WEATHER (SKY_BRIGHTNESS, TEMPERATURE, HUMIDITY, ATMOSPHERIC_PRESSURE, WIND_SPEED, RAIN, SKY_TEMPERATURE) and AUX_INFO. Change it to unhide and drive the inherited condition and threshold properties from its readings: AUX_HUMIDITY from HUMIDITY, AUX_WIND from WIND_SPEED, AUX_RAIN from RAIN, AUX_CLOUD from SKY_TEMPERATURE (or the device's cloud measure, per the protocol documentation), AUX_SKY from SKY_BRIGHTNESS, with threshold defaults and units suited to the device; and publish AUX_WEATHER_SAFETY with indigo_aux_update_weather_safety(). Sensors the unit lacks or that give no valid reading follow the base-class state rules. Edit the .driver file and regenerate; bump the driver version; update PROPERTIES.md and extend the skyalert simulator-backed tests. Check the SkyAlert protocol documentation for what each reading means before choosing defaults.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-23T10:01:16.439885Z",
+  "status": "closed",
+  "branch": "ticket/b7a94271-41ea-4e5e-b341-5970a0ba7798",
+  "related_ticket_id": "010161aa-b864-46a8-86cd-e0423e524ffd",
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "ca7429bd-c8c9-402d-b569-039e5da2ce64",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T11:59:03.641960Z",
+          "last_activity_at": "2026-11-23T12:25:08.068571Z",
+          "ended_at": "2026-11-23T12:25:08.068571Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1564426.611,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T11:59:03.641960Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/b7a94271-41ea-4e5e-b341-5970a0ba7798"
+        },
+        {
+          "at": "2026-11-23T12:25:08.068571Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1564426.611,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "c95086cd-1c01-485f-a710-cb5d8bc78524",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "56fe87d4-bb19-43a7-8d20-dcf617d5d9a3",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T12:25:08.068609Z",
+          "last_activity_at": "2026-11-23T12:31:04.841480Z",
+          "ended_at": "2026-11-23T12:31:04.841480Z",
+          "outcome": {
+            "summary": "Independent review of ticket/010161aa...HEAD (a59184fd7); parent branch is an ancestor. Sensor presence: per-connection *_seen flags are seeded in on_connect from the record skyalert_open() read (a reading taken while the connection is made, so it agrees with the owner's 'since connect' rule). The flags only ever go from false to true and are reset on each connect, so no sensor can get stuck. Never valid gives IDLE with all lights IDLE, fitted=false (ignored by SAFE). Valid and then nan gives ALERT, fitted+!valid (unsafe). A failed whole record clears record_valid, so seen sensors go ALERT and unseen ones stay IDLE; partially parsed field_valid is ignored then and overwritten by the next good record. Clouds need both temperatures from the same record. Light/state semantics use indigo_aux_set_condition (OK level, others IDLE; ALERT/IDLE with all IDLE). Safety inputs pass fitted, valid, unsafe from the OVERCAST/RAINING/STRONG/HUMID lights and omit_values for raw rain/wind. AUX_SKY is not a safety input. Generator: unchanged indigo_tools/indigo_generator.c built in scratch, and regenerating .c/.h/_main.c is byte-identical. version 10->11 (0x0300000B). Inherited blocks use hidden=false plus on_attach/on_change. on_connect/on_disconnect have no return. Thresholds reclassify only while connected and after the first poll, on the device queue. on_disconnect publishes OK for thresholds left BUSY by cancelled handlers, which stay defined; this is needed because the generated reset is silent. Formatting is fine: no blank lines inside functions, calls on one line. Simulator 'set n text' persists overrides, faults are unchanged, and malformed control files are now always removed (harmless). Tests: test_aux_skyalert_simulator 14/14 PASS, test_agent_auxiliary_simulator all PASS. A private home is used and ~/.indigo is unchanged; no leftover processes. PROPERTIES.md and the README Notes match the behaviour. MIGRATION_STATUS changes only the Sim/HW count 10->16 (14 simulator + 2 tra",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 356772.871,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T12:25:08.068609Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T12:31:04.841480Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of ticket/010161aa...HEAD (a59184fd7); parent branch is an ancestor. Sensor presence: per-connection *_seen flags are seeded in on_connect from the record skyalert_open() read (a reading taken while the connection is made, so it agrees with the owner's 'since connect' rule). The flags only ever go from false to true and are reset on each connect, so no sensor can get stuck. Never valid gives IDLE with all lights IDLE, fitted=false (ignored by SAFE). Valid and then nan gives ALERT, fitted+!valid (unsafe). A failed whole record clears record_valid, so seen sensors go ALERT and unseen ones stay IDLE; partially parsed field_valid is ignored then and overwritten by the next good record. Clouds need both temperatures from the same record. Light/state semantics use indigo_aux_set_condition (OK level, others IDLE; ALERT/IDLE with all IDLE). Safety inputs pass fitted, valid, unsafe from the OVERCAST/RAINING/STRONG/HUMID lights and omit_values for raw rain/wind. AUX_SKY is not a safety input. Generator: unchanged indigo_tools/indigo_generator.c built in scratch, and regenerating .c/.h/_main.c is byte-identical. version 10->11 (0x0300000B). Inherited blocks use hidden=false plus on_attach/on_change. on_connect/on_disconnect have no return. Thresholds reclassify only while connected and after the first poll, on the device queue. on_disconnect publishes OK for thresholds left BUSY by cancelled handlers, which stay defined; this is needed because the generated reset is silent. Formatting is fine: no blank lines inside functions, calls on one line. Simulator 'set n text' persists overrides, faults are unchanged, and malformed control files are now always removed (harmless). Tests: test_aux_skyalert_simulator 14/14 PASS, test_agent_auxiliary_simulator all PASS. A private home is used and ~/.indigo is unchanged; no leftover processes. PROPERTIES.md and the README Notes match the behaviour. MIGRATION_STATUS changes only the Sim/HW count 10->16 (14 simulator + 2 tra"
+        }
+      ],
+      "result": {
+        "summary": "Independent review of ticket/010161aa...HEAD (a59184fd7); parent branch is an ancestor. Sensor presence: per-connection *_seen flags are seeded in on_connect from the record skyalert_open() read (a reading taken while the connection is made, so it agrees with the owner's 'since connect' rule). The flags only ever go from false to true and are reset on each connect, so no sensor can get stuck. Never valid gives IDLE with all lights IDLE, fitted=false (ignored by SAFE). Valid and then nan gives ALERT, fitted+!valid (unsafe). A failed whole record clears record_valid, so seen sensors go ALERT and unseen ones stay IDLE; partially parsed field_valid is ignored then and overwritten by the next good record. Clouds need both temperatures from the same record. Light/state semantics use indigo_aux_set_condition (OK level, others IDLE; ALERT/IDLE with all IDLE). Safety inputs pass fitted, valid, unsafe from the OVERCAST/RAINING/STRONG/HUMID lights and omit_values for raw rain/wind. AUX_SKY is not a safety input. Generator: unchanged indigo_tools/indigo_generator.c built in scratch, and regenerating .c/.h/_main.c is byte-identical. version 10->11 (0x0300000B). Inherited blocks use hidden=false plus on_attach/on_change. on_connect/on_disconnect have no return. Thresholds reclassify only while connected and after the first poll, on the device queue. on_disconnect publishes OK for thresholds left BUSY by cancelled handlers, which stay defined; this is needed because the generated reset is silent. Formatting is fine: no blank lines inside functions, calls on one line. Simulator 'set n text' persists overrides, faults are unchanged, and malformed control files are now always removed (harmless). Tests: test_aux_skyalert_simulator 14/14 PASS, test_agent_auxiliary_simulator all PASS. A private home is used and ~/.indigo is unchanged; no leftover processes. PROPERTIES.md and the README Notes match the behaviour. MIGRATION_STATUS changes only the Sim/HW count 10->16 (14 simulator + 2 tra",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 356772.871,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "f02273a5-efb5-4c10-85a2-9ed6c23ec20f",
+      "event": "ticket/created",
+      "at": "2026-11-23T10:01:16.440378Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "946efdc4-99ba-4796-81ad-f051d586244e",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T11:38:45.063551Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "a2b118ec-8de2-4f15-9838-b9a832f28bac",
+      "event": "task/progress",
+      "at": "2026-11-23T11:59:03.649376Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Implementation started on branch ticket/b7a94271-41ea-4e5e-b341-5970a0ba7798"
+    },
+    {
+      "event_id": "966a51cb-a124-43ef-9c26-4288c3305565",
+      "event": "ticket/started",
+      "at": "2026-11-23T11:59:03.675805Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/b7a94271-41ea-4e5e-b341-5970a0ba7798",
+      "base": "ticket/010161aa-b864-46a8-86cd-e0423e524ffd"
+    },
+    {
+      "event_id": "c51b666e-e42e-4265-b523-1f195bce855f",
+      "event": "task/progress",
+      "at": "2026-11-23T11:59:23.694854Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Implementer launched",
+      "attempt_id": "ca7429bd-c8c9-402d-b569-039e5da2ce64",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f1d9ed1b-db2d-4c93-b9b9-ab04df60ac60",
+      "event": "task/progress",
+      "at": "2026-11-23T12:03:15.150741Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Editing aux_skyalert .driver: condition, threshold and safety properties"
+    },
+    {
+      "event_id": "11fc3da4-0065-4505-8505-758ed8f70350",
+      "event": "task/progress",
+      "at": "2026-11-23T12:05:42.743293Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Writing skyalert condition and weather safety tests"
+    },
+    {
+      "event_id": "4548c0a4-344a-4068-9593-ba08fd509ffa",
+      "event": "task/progress",
+      "at": "2026-11-23T12:07:35.732130Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Building library and aux_skyalert driver"
+    },
+    {
+      "event_id": "4e2fe2da-bef3-4b2c-83ae-fd7e0d42f2a6",
+      "event": "task/progress",
+      "at": "2026-11-23T12:08:26.528053Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Running test_aux_skyalert_simulator and transport"
+    },
+    {
+      "event_id": "2c9ed931-e2cb-4da1-9959-cda734df2036",
+      "event": "task/progress",
+      "at": "2026-11-23T12:12:24.395608Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Running test_agent_auxiliary_simulator"
+    },
+    {
+      "event_id": "94019239-7b75-4644-9107-0bb59e4bf4d2",
+      "event": "task/progress",
+      "at": "2026-11-23T12:13:21.546962Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "87490491-3700-4ece-ac59-b0dc61392b80",
+      "event": "task/progress",
+      "at": "2026-11-23T12:13:21.574496Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "13de5085-a934-4eaf-a0a8-a7dfe588c3f9",
+      "event": "check/passed",
+      "at": "2026-11-23T12:13:21.579452Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "c2100c069f14280e5913d1aed77a8d28e42035aa",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "c59203d3-40f4-41b4-8822-635604d5f335",
+      "event": "ticket/note",
+      "at": "2026-11-23T12:19:04.163756Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions 2026-11-23: (1) nan handling: a safety sensor (rain, wind, humidity, clouds) that has not given a valid reading since connect counts as not fitted (condition IDLE, ignored by SAFE); once it has given a valid reading in the session, a later nan is a failure (ALERT, unsafe). Reset with each connection. AUX_SKY follows the same presence rule. (2) Defaults accepted as documented guesses. (3) README: the owner approves replacing the empty '## Comments' section of indigo_drivers/aux_skyalert/README.md with a '## Notes' section; the coordinator makes this edit. (4) The pre-existing test_aux_skyalert_transport failure goes to a separate bug ticket, not this one.",
+      "tokens": null
+    },
+    {
+      "event_id": "c51dc46b-b0e7-4cfd-a348-416b12e7cc8a",
+      "event": "task/progress",
+      "at": "2026-11-23T12:19:17.687943Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Applying owner decision: never-valid sensors are not fitted (IDLE)"
+    },
+    {
+      "event_id": "004612a8-ed0b-4d8b-a0a0-4e734156c3b7",
+      "event": "task/progress",
+      "at": "2026-11-23T12:20:41.093544Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Running test_aux_skyalert_simulator and test_agent_auxiliary_simulator"
+    },
+    {
+      "event_id": "5fb9e362-538c-42e2-bef4-081f6fe3482a",
+      "event": "task/progress",
+      "at": "2026-11-23T12:24:26.132698Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3dad0ce9-96b0-4369-8dad-824ea426020f",
+      "event": "task/progress",
+      "at": "2026-11-23T12:24:26.159332Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7b97ca45-bad8-40ef-a7ef-d8e98ef5109c",
+      "event": "check/passed",
+      "at": "2026-11-23T12:24:26.165021Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "7cc9410360dd8ae48bfe0b2c861fb7bcfea537ad",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "8e9a59e6-1b55-43d9-a23e-91ed8dfffbf4",
+      "event": "task/progress",
+      "at": "2026-11-23T12:24:50.864618Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "18898f25-9ede-4884-91e9-510568b95c91",
+      "event": "task/progress",
+      "at": "2026-11-23T12:24:50.891433Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "644d11e4-1ace-45ea-9662-24db0a4b2ab2",
+      "event": "check/passed",
+      "at": "2026-11-23T12:24:50.895911Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "a59184fd7c9bb685feb4db94df88e73d6baa484b",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "3c04ca03-6a05-4608-9595-c615808393a5",
+      "event": "task/progress",
+      "at": "2026-11-23T12:25:07.949489Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "012d4b69-70d9-4c08-9cf8-d983af313445",
+      "text": "Reviewer launched",
+      "attempt_id": "ca7429bd-c8c9-402d-b569-039e5da2ce64",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "60a92b92-0002-4843-a405-3950adde6e19",
+      "event": "task/progress",
+      "at": "2026-11-23T12:25:08.068658Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c95086cd-1c01-485f-a710-cb5d8bc78524",
+      "text": "Review started"
+    },
+    {
+      "event_id": "efd14b4a-d89f-448f-83e6-20e83b4b74b5",
+      "event": "review/started",
+      "at": "2026-11-23T12:25:08.069006Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "4a525e4b-8d63-4c2d-bf0d-c4f6ffe9e3e6",
+      "event": "task/progress",
+      "at": "2026-11-23T12:25:59.098655Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c95086cd-1c01-485f-a710-cb5d8bc78524",
+      "text": "Regenerating driver with unchanged generator in scratch dir"
+    },
+    {
+      "event_id": "0cbb6a91-b3fc-4588-8358-1d133bfbd130",
+      "event": "task/progress",
+      "at": "2026-11-23T12:26:53.681794Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c95086cd-1c01-485f-a710-cb5d8bc78524",
+      "text": "Running test_aux_skyalert_simulator and test_agent_auxiliary_simulator"
+    },
+    {
+      "event_id": "f8c26d2c-9144-4dbe-b746-15265a2e3d48",
+      "event": "task/progress",
+      "at": "2026-11-23T12:31:04.841563Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c95086cd-1c01-485f-a710-cb5d8bc78524",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "86e92f08-e182-4418-9577-3f7fe6b3bfd8",
+      "event": "review/passed",
+      "at": "2026-11-23T12:31:04.842048Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c95086cd-1c01-485f-a710-cb5d8bc78524",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "a59184fd7c9bb685feb4db94df88e73d6baa484b"
+    },
+    {
+      "event_id": "4db09a43-4f37-4268-b1a3-596722d4aeea",
+      "event": "ticket/closed",
+      "at": "2026-11-23T12:35:34.738012Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-23T12:35:34.737985Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "c894f10435d5df98bc504334526dbabc7efd6bc3"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "ticket/010161aa-b864-46a8-86cd-e0423e524ffd",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c2100c069f14280e5913d1aed77a8d28e42035aa",
+        "tree": "31f0c40bb481a9128aca157b61d088bc3b7b4b45",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T12:13:21.573954Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b7a94271-41ea-4e5e-b341-5970a0ba7798/31f0c40bb481-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7cc9410360dd8ae48bfe0b2c861fb7bcfea537ad",
+        "tree": "05ba71cbace43febfbf8fd2194418ab460078d07",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T12:24:26.158805Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b7a94271-41ea-4e5e-b341-5970a0ba7798/05ba71cbace4-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "a59184fd7c9bb685feb4db94df88e73d6baa484b",
+        "tree": "df860b6e2c5b756f904e2653bcd95ba90689c185",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T12:24:50.891028Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b7a94271-41ea-4e5e-b341-5970a0ba7798/df860b6e2c5b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of ticket/010161aa...HEAD (a59184fd7); parent branch is an ancestor. Sensor presence: per-connection *_seen flags are seeded in on_connect from the record skyalert_open() read (a reading taken while the connection is made, so it agrees with the owner's 'since connect' rule). The flags only ever go from false to true and are reset on each connect, so no sensor can get stuck. Never valid gives IDLE with all lights IDLE, fitted=false (ignored by SAFE). Valid and then nan gives ALERT, fitted+!valid (unsafe). A failed whole record clears record_valid, so seen sensors go ALERT and unseen ones stay IDLE; partially parsed field_valid is ignored then and overwritten by the next good record. Clouds need both temperatures from the same record. Light/state semantics use indigo_aux_set_condition (OK level, others IDLE; ALERT/IDLE with all IDLE). Safety inputs pass fitted, valid, unsafe from the OVERCAST/RAINING/STRONG/HUMID lights and omit_values for raw rain/wind. AUX_SKY is not a safety input. Generator: unchanged indigo_tools/indigo_generator.c built in scratch, and regenerating .c/.h/_main.c is byte-identical. version 10->11 (0x0300000B). Inherited blocks use hidden=false plus on_attach/on_change. on_connect/on_disconnect have no return. Thresholds reclassify only while connected and after the first poll, on the device queue. on_disconnect publishes OK for thresholds left BUSY by cancelled handlers, which stay defined; this is needed because the generated reset is silent. Formatting is fine: no blank lines inside functions, calls on one line. Simulator 'set n text' persists overrides, faults are unchanged, and malformed control files are now always removed (harmless). Tests: test_aux_skyalert_simulator 14/14 PASS, test_agent_auxiliary_simulator all PASS. A private home is used and ~/.indigo is unchanged; no leftover processes. PROPERTIES.md and the README Notes match the behaviour. MIGRATION_STATUS changes only the Sim/HW count 10->16 (14 simulator + 2 transport cases; the old value 10 was already an undercount of 11). The Comment column is untouched. No defects found.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "a59184fd7c9bb685feb4db94df88e73d6baa484b",
+        "tree": "df860b6e2c5b756f904e2653bcd95ba90689c185",
+        "at": "2026-11-23T12:31:04.841203Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T12:19:04.163215Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions 2026-11-23: (1) nan handling: a safety sensor (rain, wind, humidity, clouds) that has not given a valid reading since connect counts as not fitted (condition IDLE, ignored by SAFE); once it has given a valid reading in the session, a later nan is a failure (ALERT, unsafe). Reset with each connection. AUX_SKY follows the same presence rule. (2) Defaults accepted as documented guesses. (3) README: the owner approves replacing the empty '## Comments' section of indigo_drivers/aux_skyalert/README.md with a '## Notes' section; the coordinator makes this edit. (4) The pre-existing test_aux_skyalert_transport failure goes to a separate bug ticket, not this one.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "c894f10435d5df98bc504334526dbabc7efd6bc3",
+      "tree": "df860b6e2c5b756f904e2653bcd95ba90689c185",
+      "base": "ticket/010161aa-b864-46a8-86cd-e0423e524ffd",
+      "at": "2026-11-23T12:35:34.586214Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-23T10:01:16.439885Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-23T11:38:45.063495Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1921199.482,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 34,
+    "sha256": "e846d4bae5b560f0756a4a252e364404932c4a28ebb88b2e6af56c947ea37919"
+  }
+}

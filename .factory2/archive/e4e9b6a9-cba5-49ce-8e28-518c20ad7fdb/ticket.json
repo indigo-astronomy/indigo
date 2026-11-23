@@ -1,0 +1,650 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e4e9b6a9-cba5-49ce-8e28-518c20ad7fdb",
+  "revision": 34,
+  "title": "indigo_test: end-to-end scheduler unsafe-hold scenario with aux_simulator and the Auxiliary Agent",
+  "description": "Requested by the owner on 2026-11-23. Add a permanent automated end-to-end scenario to indigo_test/integration/run_scheduler_simulators.py (target test_agent_scheduler_simulators) and run it as an INTERACTIVE SIMULATOR run: defects found in product code (scheduler, Auxiliary Agent, aux_simulator, aux base class or other drivers/agents) are NOT fixed by the worker; each is reported with a proposed fix and waits for the owner's approval. The test code itself is the deliverable of this ticket.\n\nScenario (private indigo_server, no existing configuration):\n1. Load aux_simulator (Weather Station Simulator) together with the drivers and agents the runner already uses (CCD/mount/guider simulators, Imager, Mount, Guider, Scripting, Scheduler agents) plus the Auxiliary Agent. Select the weather station in an aux slot of the Auxiliary Agent; AGENT_AUX_SAFETY.SAFE must become OK.\n2. Configure the Scheduler with UNSAFE and SAFE hooks (stored tasks whose execution is observable, e.g. via a message or a marker the runner can check) and a short SAFE_DELAY (fraction of a minute) so the run stays short; upload a plan with at least one task long enough to be interrupted, and START.\n3. While a task runs, make the weather unsafe through the aux simulator (e.g. X_SIMULATION_PARAMETERS wind above AUX_WIND_THRESHOLDS STRONG, or lower the threshold). Verify: AUX_WEATHER_SAFETY and AGENT_AUX_SAFETY go ALERT with the reason; the scheduler enters the unsafe hold; the running task is aborted (history entry with result unsafe); the UNSAFE hook runs exactly once.\n4. Restore safe weather. Verify the hold does not end before SAFE_DELAY has elapsed, then ends; the SAFE hook runs; the aborted/pending tasks are scheduled again and complete; AGENT_SCHEDULER_STATE counters and history are consistent.\n5. Optionally check that a brief unsafe flicker shorter than the evaluation tick still counts (documented behaviour), if cheap.\nKeep timings deterministic with generous bounded timeouts; clean up the server and temp dirs.\n\nAlso update the stale sentence in indigo_drivers/agent_scheduler/doc/SCHEDULER.md (Safety paragraph, ~line 606) that says the Auxiliary Agent 'does not compute it yet', since ticket 0061a92c made it compute AGENT_AUX_SAFETY; and any similar stale statement in PROPERTIES.md's scheduler section.",
+  "type": "check",
+  "discovered_at": null,
+  "created_at": "2026-11-23T14:12:38.194246Z",
+  "status": "closed",
+  "branch": "ticket/e4e9b6a9-cba5-49ce-8e28-518c20ad7fdb",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "763b067b-1a21-4e18-8aaf-e3ea7428fe09",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T14:13:42.580489Z",
+          "last_activity_at": "2026-11-23T14:39:57.143837Z",
+          "ended_at": "2026-11-23T14:39:57.143837Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1574563.348,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T14:13:42.580489Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/e4e9b6a9-cba5-49ce-8e28-518c20ad7fdb"
+        },
+        {
+          "at": "2026-11-23T14:39:57.143837Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 1574563.348,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "8869f79f-9f21-45f0-b359-517467fd751f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T14:39:57.143858Z",
+          "last_activity_at": "2026-11-23T14:45:57.408237Z",
+          "ended_at": "2026-11-23T14:45:57.408237Z",
+          "outcome": {
+            "summary": "Pass. Runs (worktree build): the new case alone 2/2 PASS; full run_scheduler_simulators.py 12/12 PASS; SCHEDULER_SIMULATORS_ONLY=nope exits 2 with 'unknown case' and leaves no temp dir; no temp dirs or servers left (only the owner's pre-existing server, untouched). Assertions checked against indigo_agent_scheduler.c evaluate_safety/hold_remaining and aux_simulator: UNSAFE hook counted once (Starting hook count, hook body marker, history single SUCCEEDED, rechecked after the gust); hold proven not to end early by ended-gust_end >= SAFE_DELAY-1.5 s, the 1.5 s tolerance matches time_t flooring of last_unsafe plus the gust length bound; resumption proven by a second Starting task, DONE, frames == interrupted + 15, retries left 1, message order and counters/history. Gust is sound: set_wind waits for Ok between changes, aux_simulator publishes AUX_WEATHER_SAFETY synchronously in the change handler, duration asserted < 0.5 s from the arrival trace, and a missed gust would time out rather than pass. Default selection unchanged (empty list -> all cases, plan count = len(cases)). SCHEDULER.md text matches agent_auxiliary compute_safety and PROPERTIES.md Auxiliary agent; link path and anchor resolve. Non-blocking notes: (1) SCHEDULER.md:938 and indigo_test/Makefile:2645 still describe the server acceptance test as using only the CCD and mount simulators; could add the Auxiliary Agent and aux simulator. (2) run_scheduler_simulators.py unsafe_hold: the assertion ended - safe_at >= SAFE_DELAY is always implied by the later gust assertion, so the no-gust delay is only checked at the 4 s mark; acceptable because the gust assertion is the stronger SAFE_DELAY contract. (3) fresh_start does not clear the UNSAFE/SAFE hooks or deselect the weather station; harmless while this case is last. (4) SCHEDULER.md 'until a weather source is selected its light is Idle' omits the Idle after a source is lost; PROPERTIES.md, which it links, covers that.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 360264.379,
+          "tokens": null
+        },
+        {
+          "attempt_id": "933b5306-031b-4fec-89fe-e16f26a7b5b3",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T14:57:32.987463Z",
+          "last_activity_at": "2026-11-23T15:02:49.704935Z",
+          "ended_at": "2026-11-23T15:02:49.704935Z",
+          "outcome": {
+            "summary": "Round 2: all five owner fixes verified. diff master...HEAD touches only SCHEDULER.md, SCHEDULER_COMPARISON.md, indigo_test/Makefile and run_scheduler_simulators.py. (1) SCHEDULER.md test overview and Makefile comment name the Auxiliary Agent and aux simulator. (2) Dropping 'ended - safe_at' keeps the SAFE_DELAY contract: no hold end at safe_at+4 s, the gust ends after safe_at+4, and 'ended - gust_end >= SAFE_DELAY*60 - 1.5' implies ended - safe_at > SAFE_DELAY*60 and also proves the restart from the last unsafe report. (3) fresh_start clears UNSAFE/SAFE hooks (waited by the all-items-empty check) and selects NONE in FILTER_AUX_1_LIST (NONE is FILTER_DEVICE_LIST_NONE_ITEM_NAME, indigo_filter.c:130) and waits for it; deselection leaves the SAFE light Idle, which counts as safe with the default SAFETY_MISSING. (4) SCHEDULER.md:606 matches compute_safety in indigo_agent_auxiliary.c:155-225 (no source: SAFE light Idle, property Alert on loss). (5) SCHEDULER_COMPARISON.md:34 states the current computation. Runs from the worktree: new case alone 1/1 pass in 47 s; full script 12/12 pass in 231 s. No leftover processes; owner's indigo_server untouched. No findings.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 316717.472,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T14:39:57.143858Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T14:45:57.408237Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Runs (worktree build): the new case alone 2/2 PASS; full run_scheduler_simulators.py 12/12 PASS; SCHEDULER_SIMULATORS_ONLY=nope exits 2 with 'unknown case' and leaves no temp dir; no temp dirs or servers left (only the owner's pre-existing server, untouched). Assertions checked against indigo_agent_scheduler.c evaluate_safety/hold_remaining and aux_simulator: UNSAFE hook counted once (Starting hook count, hook body marker, history single SUCCEEDED, rechecked after the gust); hold proven not to end early by ended-gust_end >= SAFE_DELAY-1.5 s, the 1.5 s tolerance matches time_t flooring of last_unsafe plus the gust length bound; resumption proven by a second Starting task, DONE, frames == interrupted + 15, retries left 1, message order and counters/history. Gust is sound: set_wind waits for Ok between changes, aux_simulator publishes AUX_WEATHER_SAFETY synchronously in the change handler, duration asserted < 0.5 s from the arrival trace, and a missed gust would time out rather than pass. Default selection unchanged (empty list -> all cases, plan count = len(cases)). SCHEDULER.md text matches agent_auxiliary compute_safety and PROPERTIES.md Auxiliary agent; link path and anchor resolve. Non-blocking notes: (1) SCHEDULER.md:938 and indigo_test/Makefile:2645 still describe the server acceptance test as using only the CCD and mount simulators; could add the Auxiliary Agent and aux simulator. (2) run_scheduler_simulators.py unsafe_hold: the assertion ended - safe_at >= SAFE_DELAY is always implied by the later gust assertion, so the no-gust delay is only checked at the 4 s mark; acceptable because the gust assertion is the stronger SAFE_DELAY contract. (3) fresh_start does not clear the UNSAFE/SAFE hooks or deselect the weather station; harmless while this case is last. (4) SCHEDULER.md 'until a weather source is selected its light is Idle' omits the Idle after a source is lost; PROPERTIES.md, which it links, covers that."
+        },
+        {
+          "at": "2026-11-23T14:57:32.987463Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T15:02:49.704935Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2: all five owner fixes verified. diff master...HEAD touches only SCHEDULER.md, SCHEDULER_COMPARISON.md, indigo_test/Makefile and run_scheduler_simulators.py. (1) SCHEDULER.md test overview and Makefile comment name the Auxiliary Agent and aux simulator. (2) Dropping 'ended - safe_at' keeps the SAFE_DELAY contract: no hold end at safe_at+4 s, the gust ends after safe_at+4, and 'ended - gust_end >= SAFE_DELAY*60 - 1.5' implies ended - safe_at > SAFE_DELAY*60 and also proves the restart from the last unsafe report. (3) fresh_start clears UNSAFE/SAFE hooks (waited by the all-items-empty check) and selects NONE in FILTER_AUX_1_LIST (NONE is FILTER_DEVICE_LIST_NONE_ITEM_NAME, indigo_filter.c:130) and waits for it; deselection leaves the SAFE light Idle, which counts as safe with the default SAFETY_MISSING. (4) SCHEDULER.md:606 matches compute_safety in indigo_agent_auxiliary.c:155-225 (no source: SAFE light Idle, property Alert on loss). (5) SCHEDULER_COMPARISON.md:34 states the current computation. Runs from the worktree: new case alone 1/1 pass in 47 s; full script 12/12 pass in 231 s. No leftover processes; owner's indigo_server untouched. No findings."
+        }
+      ],
+      "result": {
+        "summary": "Round 2: all five owner fixes verified. diff master...HEAD touches only SCHEDULER.md, SCHEDULER_COMPARISON.md, indigo_test/Makefile and run_scheduler_simulators.py. (1) SCHEDULER.md test overview and Makefile comment name the Auxiliary Agent and aux simulator. (2) Dropping 'ended - safe_at' keeps the SAFE_DELAY contract: no hold end at safe_at+4 s, the gust ends after safe_at+4, and 'ended - gust_end >= SAFE_DELAY*60 - 1.5' implies ended - safe_at > SAFE_DELAY*60 and also proves the restart from the last unsafe report. (3) fresh_start clears UNSAFE/SAFE hooks (waited by the all-items-empty check) and selects NONE in FILTER_AUX_1_LIST (NONE is FILTER_DEVICE_LIST_NONE_ITEM_NAME, indigo_filter.c:130) and waits for it; deselection leaves the SAFE light Idle, which counts as safe with the default SAFETY_MISSING. (4) SCHEDULER.md:606 matches compute_safety in indigo_agent_auxiliary.c:155-225 (no source: SAFE light Idle, property Alert on loss). (5) SCHEDULER_COMPARISON.md:34 states the current computation. Runs from the worktree: new case alone 1/1 pass in 47 s; full script 12/12 pass in 231 s. No leftover processes; owner's indigo_server untouched. No findings.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 676981.851,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "5c8ef3f7-e5a3-461c-aaa7-0b61a91c6c3c",
+      "event": "ticket/created",
+      "at": "2026-11-23T14:12:38.195001Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "6de50c28-7055-41d5-a58f-5d74bfdeb6e4",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T14:13:20.808535Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "77a992a9-5ee3-451f-b048-89d03589411a",
+      "event": "task/progress",
+      "at": "2026-11-23T14:13:42.581365Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Implementation started on branch ticket/e4e9b6a9-cba5-49ce-8e28-518c20ad7fdb"
+    },
+    {
+      "event_id": "ec036049-a9cb-4de7-9b17-9f3a33566e18",
+      "event": "ticket/started",
+      "at": "2026-11-23T14:13:42.587262Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/e4e9b6a9-cba5-49ce-8e28-518c20ad7fdb",
+      "base": "master"
+    },
+    {
+      "event_id": "c569aa1c-59be-4e80-bc74-aa832dca3421",
+      "event": "task/progress",
+      "at": "2026-11-23T14:13:59.267107Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Implementer launched",
+      "attempt_id": "763b067b-1a21-4e18-8aaf-e3ea7428fe09",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "c59db281-eb0d-4bd4-9ecc-31d70d48aa67",
+      "event": "task/progress",
+      "at": "2026-11-23T14:17:02.205314Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Building library, server and the needed drivers in the worktree"
+    },
+    {
+      "event_id": "fce205cc-56e4-4dbd-9f62-ac5573b7ec25",
+      "event": "task/progress",
+      "at": "2026-11-23T14:20:21.303998Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Writing the unsafe hold scenario in run_scheduler_simulators.py"
+    },
+    {
+      "event_id": "91908c5a-55d9-42ac-b6b4-e10ac3fe1987",
+      "event": "task/progress",
+      "at": "2026-11-23T14:22:04.533897Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Running run_scheduler_simulators.py, unsafe hold case only"
+    },
+    {
+      "event_id": "f76675d2-c108-4dc3-9f91-7962d35db124",
+      "event": "task/progress",
+      "at": "2026-11-23T14:23:03.617261Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Repeating the unsafe hold case 5 times for stability"
+    },
+    {
+      "event_id": "7396f1fa-071a-44a2-91bf-912d74f0a9b1",
+      "event": "task/progress",
+      "at": "2026-11-23T14:27:48.040179Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Fixed gust step (driver drops a change while Busy); repeating the unsafe hold case"
+    },
+    {
+      "event_id": "ef8d5001-ed60-42b5-ac34-bd90bf96ad9e",
+      "event": "task/progress",
+      "at": "2026-11-23T14:34:16.054422Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Running full run_scheduler_simulators.py (12 cases) for regressions"
+    },
+    {
+      "event_id": "b6ea78d7-8386-4c11-a57b-d4f37ae44878",
+      "event": "task/progress",
+      "at": "2026-11-23T14:34:29.721560Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Recording the gust reproduction and fix as a ticket note"
+    },
+    {
+      "event_id": "83bfbd07-7eb1-4803-bae7-f8739721d0c6",
+      "event": "task/progress",
+      "at": "2026-11-23T14:39:08.824172Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "eb70df73-c137-46db-9d92-9f067724a398",
+      "event": "task/progress",
+      "at": "2026-11-23T14:39:08.842935Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "df4df681-671f-49b5-882c-244ec89c09e0",
+      "event": "check/passed",
+      "at": "2026-11-23T14:39:08.846959Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "fb1d77ee929d366895fa8bebce994371807d93d5",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "d9f1978a-766d-48b0-bb9d-40f522b0b209",
+      "event": "ticket/note",
+      "at": "2026-11-23T14:39:16.110977Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementation (interactive simulator run, test only): new case 'unsafe weather holds the scheduler and the hooks run' in indigo_test/integration/run_scheduler_simulators.py; agent_auxiliary and aux_simulator loaded by the runner; SCHEDULER_SIMULATORS_ONLY (previously read but unused) now selects cases. Harness reproduction: the first gust version sent two X_SIMULATION_PARAMETERS changes back to back; 1 of 6 runs timed out because the second change arrived while the property was Busy and INDIGO_COPY_VALUES_PROCESS_CHANGE ignores it by design (framework BUSY guard, not a product defect). Fix: set_wind waits for the value and an Ok state before the next change. After the fix: 8/8 runs of the case alone (46-48 s each), full suite 12/12 in 230 s (baseline before the change 11/11 in 184 s). No product defects found. Environment: worktree built with lib, tools, server and the nine needed drivers; build/share/indigo/indigo_drivers written with indigo_driver_metadata for those drivers only. Not changed, outside the named scope: indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md line 34 still says the Auxiliary Agent's safety computation is under development.",
+      "tokens": null
+    },
+    {
+      "event_id": "4b36b6ac-d3d2-4f15-a7fd-5ec79479ab98",
+      "event": "task/progress",
+      "at": "2026-11-23T14:39:57.079846Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9a6d6a0d-ae75-467d-991d-6779254bbd6a",
+      "text": "Reviewer launched",
+      "attempt_id": "763b067b-1a21-4e18-8aaf-e3ea7428fe09",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "39a67681-cf09-4f61-a869-82be37813514",
+      "event": "task/progress",
+      "at": "2026-11-23T14:39:57.143890Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f9b62776-e7df-4318-9c2e-9ef16a0b4e9b",
+      "event": "review/started",
+      "at": "2026-11-23T14:39:57.144099Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "29d53654-1f6b-480f-a1b6-ccab490b2333",
+      "event": "task/progress",
+      "at": "2026-11-23T14:40:03.528633Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "text": "Running the unsafe hold case twice from the worktree"
+    },
+    {
+      "event_id": "35ffb809-7e77-4c0f-b123-7488d068397f",
+      "event": "task/progress",
+      "at": "2026-11-23T14:41:47.050975Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "text": "Running the full scheduler simulators script once"
+    },
+    {
+      "event_id": "6d0b417d-d3b8-45e9-8d0f-7c77c19a6094",
+      "event": "task/progress",
+      "at": "2026-11-23T14:45:57.408302Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "9528817b-a610-420a-89bc-b4894ed48f20",
+      "event": "review/passed",
+      "at": "2026-11-23T14:45:57.408671Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "fb1d77ee929d366895fa8bebce994371807d93d5"
+    },
+    {
+      "event_id": "3e340f84-e2c1-44b7-ae35-c3bab70b8fdb",
+      "event": "ticket/note",
+      "at": "2026-11-23T14:49:47.818544Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision after the passing review: fix all review notes, then commit. (1) SCHEDULER.md ~938 and indigo_test/Makefile ~2645 comment: mention the Auxiliary Agent and aux_simulator in the server acceptance test description. (2) run_scheduler_simulators.py unsafe_hold: drop or comment the redundant 'ended - safe_at >= safe_delay*60' assertion. (3) fresh_start: clear the UNSAFE/SAFE hooks and deselect the weather station in FILTER_AUX_1_LIST so later cases do not inherit the state. (4) SCHEDULER.md:606: say the light is also Idle after the source is lost. (5) SCHEDULER_COMPARISON.md:34: replace 'still under development' with the current state (the Auxiliary Agent computes AGENT_AUX_SAFETY from AUX_WEATHER_SAFETY of the selected aux devices).",
+      "tokens": null
+    },
+    {
+      "event_id": "9649ad3b-3605-474d-b33b-4dd19547550f",
+      "event": "task/progress",
+      "at": "2026-11-23T14:50:09.966497Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Review fixes applied; running the unsafe hold case twice and the full script once"
+    },
+    {
+      "event_id": "66fdccae-3e4c-4948-853f-8790659220ec",
+      "event": "task/progress",
+      "at": "2026-11-23T14:55:38.605023Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "efe31785-5a0f-41c8-8cf1-a4c7fcd106b6",
+      "event": "task/progress",
+      "at": "2026-11-23T14:55:38.635659Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "93a02973-ac8b-4f0b-a6c5-c626faeb5500",
+      "event": "task/progress",
+      "at": "2026-11-23T14:55:38.640223Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "bd3a1583-c827-4c71-b1c4-866df2ea25e7",
+      "event": "task/progress",
+      "at": "2026-11-23T14:56:58.098042Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "b3cb5bc5-821e-4b37-9ec2-47182c3f1d71",
+      "event": "check/passed",
+      "at": "2026-11-23T14:56:58.114443Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "a2a9bda3c1a21d32c5e9f2c5d2ae786b1e97d104",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "46ce9760-3598-49c6-a856-05b56c52f6d2",
+      "event": "ticket/note",
+      "at": "2026-11-23T14:57:03.223889Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Review notes fixed: SCHEDULER.md test overview and indigo_test/Makefile comment name the Auxiliary Agent and aux simulator; implied 'ended - safe_at' assertion dropped (the gust assertion is stricter: the gust ends more than 4 s after safe_at); fresh_start clears UNSAFE/SAFE hooks and selects NONE in FILTER_AUX_1_LIST; SCHEDULER.md:606 mentions the Idle light after the source is lost; SCHEDULER_COMPARISON.md:34 states the current computation. Runs: new case alone 2/2 (48 s, 47 s), full script 12/12 in 227 s. flow check: whitespace and unit passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "4ae804f9-9584-4115-b3ec-24f591bd46c5",
+      "event": "task/progress",
+      "at": "2026-11-23T14:57:32.987555Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "text": "Review started"
+    },
+    {
+      "event_id": "650a2033-629c-43d3-838f-822ccaa87f50",
+      "event": "review/started",
+      "at": "2026-11-23T14:57:32.987790Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "e89ac3ab-2e52-4339-8056-a6d05c726ca1",
+      "event": "task/progress",
+      "at": "2026-11-23T14:57:36.341533Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "text": "Round 2 reviewer launched",
+      "attempt_id": "933b5306-031b-4fec-89fe-e16f26a7b5b3",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "84f919aa-a4f5-4286-9e92-af2d5d765dcd",
+      "event": "task/progress",
+      "at": "2026-11-23T14:57:57.955047Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "text": "Running run_scheduler_simulators.py: unsafe case alone, then full script"
+    },
+    {
+      "event_id": "fd525e0d-1ea6-43b9-a70e-769d874cfe75",
+      "event": "task/progress",
+      "at": "2026-11-23T15:02:49.705003Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "384d69c3-43de-45a8-a24f-89d350f37a50",
+      "event": "review/passed",
+      "at": "2026-11-23T15:02:49.705381Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "7a1212db-9060-4b9b-be84-a777378fabae",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "a2a9bda3c1a21d32c5e9f2c5d2ae786b1e97d104"
+    },
+    {
+      "event_id": "cc5521ae-8072-44dd-90d0-db08071fc43c",
+      "event": "ticket/closed",
+      "at": "2026-11-23T15:03:05.705307Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-23T15:03:05.705286Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "ddbf195c7846e73c13a9a2540b8d5665f5d94f0e"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "high",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "fb1d77ee929d366895fa8bebce994371807d93d5",
+        "tree": "eaa2c958e069e17eaa4468c0fa8bb12c3013cc33",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T14:39:08.842625Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/e4e9b6a9-cba5-49ce-8e28-518c20ad7fdb/eaa2c958e069-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "a2a9bda3c1a21d32c5e9f2c5d2ae786b1e97d104",
+        "tree": "5a85fada00160d9d51fc97047cb27aae453d38ea",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T14:55:38.635257Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/e4e9b6a9-cba5-49ce-8e28-518c20ad7fdb/5a85fada0016-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "a2a9bda3c1a21d32c5e9f2c5d2ae786b1e97d104",
+        "tree": "5a85fada00160d9d51fc97047cb27aae453d38ea",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T14:56:58.090078Z",
+        "duration_s": 79.5,
+        "log": "/tmp/factory-flow/e4e9b6a9-cba5-49ce-8e28-518c20ad7fdb/5a85fada0016-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Runs (worktree build): the new case alone 2/2 PASS; full run_scheduler_simulators.py 12/12 PASS; SCHEDULER_SIMULATORS_ONLY=nope exits 2 with 'unknown case' and leaves no temp dir; no temp dirs or servers left (only the owner's pre-existing server, untouched). Assertions checked against indigo_agent_scheduler.c evaluate_safety/hold_remaining and aux_simulator: UNSAFE hook counted once (Starting hook count, hook body marker, history single SUCCEEDED, rechecked after the gust); hold proven not to end early by ended-gust_end >= SAFE_DELAY-1.5 s, the 1.5 s tolerance matches time_t flooring of last_unsafe plus the gust length bound; resumption proven by a second Starting task, DONE, frames == interrupted + 15, retries left 1, message order and counters/history. Gust is sound: set_wind waits for Ok between changes, aux_simulator publishes AUX_WEATHER_SAFETY synchronously in the change handler, duration asserted < 0.5 s from the arrival trace, and a missed gust would time out rather than pass. Default selection unchanged (empty list -> all cases, plan count = len(cases)). SCHEDULER.md text matches agent_auxiliary compute_safety and PROPERTIES.md Auxiliary agent; link path and anchor resolve. Non-blocking notes: (1) SCHEDULER.md:938 and indigo_test/Makefile:2645 still describe the server acceptance test as using only the CCD and mount simulators; could add the Auxiliary Agent and aux simulator. (2) run_scheduler_simulators.py unsafe_hold: the assertion ended - safe_at >= SAFE_DELAY is always implied by the later gust assertion, so the no-gust delay is only checked at the 4 s mark; acceptable because the gust assertion is the stronger SAFE_DELAY contract. (3) fresh_start does not clear the UNSAFE/SAFE hooks or deselect the weather station; harmless while this case is last. (4) SCHEDULER.md 'until a weather source is selected its light is Idle' omits the Idle after a source is lost; PROPERTIES.md, which it links, covers that.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "fb1d77ee929d366895fa8bebce994371807d93d5",
+        "tree": "eaa2c958e069e17eaa4468c0fa8bb12c3013cc33",
+        "at": "2026-11-23T14:45:57.408165Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2: all five owner fixes verified. diff master...HEAD touches only SCHEDULER.md, SCHEDULER_COMPARISON.md, indigo_test/Makefile and run_scheduler_simulators.py. (1) SCHEDULER.md test overview and Makefile comment name the Auxiliary Agent and aux simulator. (2) Dropping 'ended - safe_at' keeps the SAFE_DELAY contract: no hold end at safe_at+4 s, the gust ends after safe_at+4, and 'ended - gust_end >= SAFE_DELAY*60 - 1.5' implies ended - safe_at > SAFE_DELAY*60 and also proves the restart from the last unsafe report. (3) fresh_start clears UNSAFE/SAFE hooks (waited by the all-items-empty check) and selects NONE in FILTER_AUX_1_LIST (NONE is FILTER_DEVICE_LIST_NONE_ITEM_NAME, indigo_filter.c:130) and waits for it; deselection leaves the SAFE light Idle, which counts as safe with the default SAFETY_MISSING. (4) SCHEDULER.md:606 matches compute_safety in indigo_agent_auxiliary.c:155-225 (no source: SAFE light Idle, property Alert on loss). (5) SCHEDULER_COMPARISON.md:34 states the current computation. Runs from the worktree: new case alone 1/1 pass in 47 s; full script 12/12 pass in 231 s. No leftover processes; owner's indigo_server untouched. No findings.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "a2a9bda3c1a21d32c5e9f2c5d2ae786b1e97d104",
+        "tree": "5a85fada00160d9d51fc97047cb27aae453d38ea",
+        "at": "2026-11-23T15:02:49.704859Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T14:39:16.110648Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementation (interactive simulator run, test only): new case 'unsafe weather holds the scheduler and the hooks run' in indigo_test/integration/run_scheduler_simulators.py; agent_auxiliary and aux_simulator loaded by the runner; SCHEDULER_SIMULATORS_ONLY (previously read but unused) now selects cases. Harness reproduction: the first gust version sent two X_SIMULATION_PARAMETERS changes back to back; 1 of 6 runs timed out because the second change arrived while the property was Busy and INDIGO_COPY_VALUES_PROCESS_CHANGE ignores it by design (framework BUSY guard, not a product defect). Fix: set_wind waits for the value and an Ok state before the next change. After the fix: 8/8 runs of the case alone (46-48 s each), full suite 12/12 in 230 s (baseline before the change 11/11 in 184 s). No product defects found. Environment: worktree built with lib, tools, server and the nine needed drivers; build/share/indigo/indigo_drivers written with indigo_driver_metadata for those drivers only. Not changed, outside the named scope: indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md line 34 still says the Auxiliary Agent's safety computation is under development.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T14:49:47.817951Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision after the passing review: fix all review notes, then commit. (1) SCHEDULER.md ~938 and indigo_test/Makefile ~2645 comment: mention the Auxiliary Agent and aux_simulator in the server acceptance test description. (2) run_scheduler_simulators.py unsafe_hold: drop or comment the redundant 'ended - safe_at >= safe_delay*60' assertion. (3) fresh_start: clear the UNSAFE/SAFE hooks and deselect the weather station in FILTER_AUX_1_LIST so later cases do not inherit the state. (4) SCHEDULER.md:606: say the light is also Idle after the source is lost. (5) SCHEDULER_COMPARISON.md:34: replace 'still under development' with the current state (the Auxiliary Agent computes AGENT_AUX_SAFETY from AUX_WEATHER_SAFETY of the selected aux devices).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T14:57:03.223588Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Review notes fixed: SCHEDULER.md test overview and indigo_test/Makefile comment name the Auxiliary Agent and aux simulator; implied 'ended - safe_at' assertion dropped (the gust assertion is stricter: the gust ends more than 4 s after safe_at); fresh_start clears UNSAFE/SAFE hooks and selects NONE in FILTER_AUX_1_LIST; SCHEDULER.md:606 mentions the Idle light after the source is lost; SCHEDULER_COMPARISON.md:34 states the current computation. Runs: new case alone 2/2 (48 s, 47 s), full script 12/12 in 227 s. flow check: whitespace and unit passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "ddbf195c7846e73c13a9a2540b8d5665f5d94f0e",
+      "tree": "5a85fada00160d9d51fc97047cb27aae453d38ea",
+      "base": "master",
+      "at": "2026-11-23T15:03:05.603810Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-23T14:12:38.194246Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-23T14:13:20.808389Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2251545.199,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 44,
+    "sha256": "6372125103e601df819031f2d5c20f3cf1f6c25e8b703a01624f9af4bf6cab5a"
+  }
+}

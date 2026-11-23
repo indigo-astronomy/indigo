@@ -21,6 +21,7 @@
 // Scheduler Agent with the real Scripting Agent and Sequencer.js, see indigo_drivers/agent_scheduler/doc/SCHEDULER.md.
 // Task bodies use Sequence.wait() steps, so the scheduling state machine runs without device
 // simulators; stand-ins for the Mount Agent (site) and the Guider Agent (abort) complete the bus.
+// A stand-in for the Auxiliary Agent (AGENT_AUX_SAFETY) is attached only by the cases of the unsafe hold.
 // Every case runs in its own process with a private HOME, so configurations never leak.
 
 #include <stdio.h>
@@ -41,6 +42,7 @@
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler.h>
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h>
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h>
+#include <indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.h>
 
 #if defined(__SANITIZE_ADDRESS__)
 #include <sanitizer/lsan_interface.h>
@@ -87,6 +89,10 @@ static indigo_property *imager_ccd_list_property;
 // the changes the Imager Agent stand-in received, one event per line, each line preceded by a newline
 static char imager_log[65536] = "";
 static pthread_mutex_t imager_mutex = PTHREAD_MUTEX_INITIALIZER;
+// AGENT_AUX_SAFETY of the Auxiliary Agent stand-in, published while safety_published is set
+static indigo_property *safety_property;
+static atomic_bool safety_published;
+static bool aux_attached;
 
 // -------------------------------------------------------------------------------- Observer
 
@@ -587,6 +593,59 @@ static indigo_result imager_change(indigo_device *device, indigo_client *client,
 
 static indigo_device imager_standin = INDIGO_DEVICE_INITIALIZER("Imager Agent", NULL, imager_enumerate, imager_change, NULL, NULL);
 
+static indigo_result aux_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (atomic_load(&safety_published) && indigo_property_match(safety_property, property)) {
+		indigo_define_property(device, safety_property, NULL);
+	}
+	return INDIGO_OK;
+}
+
+static indigo_device aux_standin = INDIGO_DEVICE_INITIALIZER(AUX_AGENT_NAME, NULL, aux_enumerate, NULL, NULL, NULL);
+
+// attaches the Auxiliary Agent stand-in with AGENT_AUX_SAFETY.SAFE in the given state
+static bool aux_attach(indigo_property_state state) {
+	safety_property->items[0].light.value = state;
+	atomic_store(&safety_published, true);
+	CHECK(indigo_attach_device(&aux_standin) == INDIGO_OK);
+	aux_attached = true;
+	indigo_define_property(&aux_standin, safety_property, NULL);
+	// the scheduler evaluates the safety every 0.5 s
+	indigo_usleep(700000);
+	return true;
+}
+
+static void set_safety(indigo_property_state state) {
+	safety_property->items[0].light.value = state;
+	indigo_update_property(&aux_standin, safety_property, NULL);
+}
+
+// an ALERT that reverts to OK at once, faster than the scheduler evaluates the safety
+static void safety_blip(void) {
+	set_safety(INDIGO_ALERT_STATE);
+	set_safety(INDIGO_OK_STATE);
+}
+
+// deletes AGENT_AUX_SAFETY while the stand-in stays attached
+static void delete_safety(void) {
+	atomic_store(&safety_published, false);
+	indigo_delete_property(&aux_standin, safety_property, NULL);
+}
+
+static bool set_safety_hooks(const char *unsafe, const char *safe) {
+	unsigned before = revision(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME);
+	const char *items[] = { AGENT_SCHEDULER_HOOKS_UNSAFE_ITEM_NAME, AGENT_SCHEDULER_HOOKS_SAFE_ITEM_NAME };
+	const char *values[] = { unsafe, safe };
+	indigo_change_text_property(&observer, AGENT, AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, 2, items, values);
+	return wait_property_state(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
+}
+
+// how a missing safety counts: as safe (the default) or as unsafe
+static bool set_missing(bool unsafe) {
+	unsigned before = revision(AGENT_SCHEDULER_SAFETY_MISSING_PROPERTY_NAME);
+	indigo_change_switch_property_1(&observer, AGENT, AGENT_SCHEDULER_SAFETY_MISSING_PROPERTY_NAME, unsafe ? AGENT_SCHEDULER_SAFETY_MISSING_UNSAFE_ITEM_NAME : AGENT_SCHEDULER_SAFETY_MISSING_SAFE_ITEM_NAME, true);
+	return wait_property_state(AGENT_SCHEDULER_SAFETY_MISSING_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
+}
+
 // position of the event, a whole line of the log, at or after the offset; -1 if there is none
 static long imager_position(const char *event, long after) {
 	char line[1100];
@@ -918,6 +977,9 @@ static bool setup(void) {
 	indigo_init_switch_item(imager_ccd_list_property->items + 1, "CCD Imager Simulator", "CCD Imager Simulator", true);
 	CHECK(indigo_attach_device(&imager_standin) == INDIGO_OK);
 	imager_attached = true;
+	// created here, attached only by the cases of the unsafe hold
+	safety_property = indigo_init_light_property(NULL, aux_standin.name, AGENT_AUX_SAFETY_PROPERTY_NAME, "Safety", "Safety", INDIGO_OK_STATE, 1);
+	indigo_init_light_item(safety_property->items + 0, AGENT_AUX_SAFETY_SAFE_ITEM_NAME, "Safe", INDIGO_OK_STATE);
 	CHECK(indigo_agent_scripting(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	scripting_running = true;
 	return start_scheduler();
@@ -931,6 +993,10 @@ static void cleanup(void) {
 	if (imager_attached) {
 		indigo_detach_device(&imager_standin);
 		imager_attached = false;
+	}
+	if (aux_attached) {
+		indigo_detach_device(&aux_standin);
+		aux_attached = false;
 	}
 	if (guider_attached) {
 		indigo_detach_device(&guider_standin);
@@ -950,6 +1016,7 @@ static void cleanup(void) {
 	indigo_release_property(imager_set_fits_property);
 	indigo_release_property(imager_remove_fits_property);
 	indigo_release_property(imager_ccd_list_property);
+	indigo_release_property(safety_property);
 }
 
 // -------------------------------------------------------------------------------- Cases
@@ -2899,11 +2966,19 @@ static void strategy_defaults_to_compact(void) {
 	ASSERT_TRUE(indigo_get_item(strategy, AGENT_SCHEDULER_STRATEGY_COMPACT_ITEM_NAME)->sw.value);
 	ASSERT_FALSE(indigo_get_item(strategy, AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME)->sw.value);
 	indigo_release_property(strategy);
-	// the settings have no DEFER item any more
+	// the settings have no DEFER item any more; SAFE_DELAY is the last item
 	indigo_property *settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
 	REQUIRE(settings != NULL);
-	ASSERT_EQ_INT(10, settings->count);
+	ASSERT_EQ_INT(12, settings->count);
 	ASSERT_TRUE(indigo_get_item(settings, "DEFER") == NULL);
+	// the meridian flip penalty of VISIBILITY follows the altitude weight
+	indigo_item *penalty = indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME);
+	REQUIRE(penalty != NULL);
+	ASSERT_TRUE(penalty == indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_ALTITUDE_WEIGHT_ITEM_NAME) + 1);
+	ASSERT_NEAR(10, penalty->number.value, 1e-9);
+	ASSERT_NEAR(0, penalty->number.min, 1e-9);
+	ASSERT_NEAR(120, penalty->number.max, 1e-9);
+	ASSERT_NEAR(1, penalty->number.step, 1e-9);
 	indigo_release_property(settings);
 	// COMPACT starts a task two hours before its culmination at once
 	REQUIRE(upload_before_culmination("Target"));
@@ -4160,6 +4235,838 @@ static void data_defaults(void) {
 	indigo_release_property(base);
 }
 
+// MERIDIAN_FLIP of the Scripting Agent as the observer sees it: ENABLED, or -1 while it is not defined
+static int observed_flip(double *offset) {
+	pthread_mutex_lock(&cache_mutex);
+	observation *entry = find(SCRIPTING_AGENT_NAME, "MERIDIAN_FLIP");
+	int result = -1;
+	if (entry && entry->property) {
+		indigo_item *enabled = indigo_get_item(entry->property, "ENABLED");
+		indigo_item *item = indigo_get_item(entry->property, "OFFSET");
+		if (enabled && item) {
+			result = enabled->number.value > 0.5;
+			*offset = item->number.value;
+		}
+	}
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
+static bool wait_flip(int enabled, double offset, double timeout) {
+	double observed = 0;
+	for (double t = 0; t < timeout; t += 0.01) {
+		if (observed_flip(&observed) == enabled && (enabled < 0 || fabs(observed - offset) < 1e-9)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for MERIDIAN_FLIP %d %g, observed %d %g\n", enabled, offset, observed_flip(&observed), observed);
+	return false;
+}
+
+static void run_script(const char *script) {
+	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
+	const char *values[] = { script };
+	indigo_change_text_property(&observer, SCRIPTING_AGENT_NAME, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+}
+
+// publishes the meridian flip as set_meridian_flip() of Sequencer.js does, through its global, which a reload of the library keeps
+static bool set_flip(bool enabled, double offset) {
+	char script[512];
+	snprintf(script, sizeof(script), "indigo_meridian_flip.enabled = %s; indigo_meridian_flip.offset = %g; indigo_update_number_property(\"%s\", \"MERIDIAN_FLIP\", indigo_meridian_flip_items(), \"Ok\");", enabled ? "true" : "false", offset, SCRIPTING_AGENT_NAME);
+	run_script(script);
+	return wait_flip(enabled, offset, 5);
+}
+
+// a 60 minute run of a target 90 minutes before the meridian at the equator: VISIBILITY centres it on the meridian, 30 minutes ahead, unless the flip penalty moves it past
+static bool start_with_crossing_task(void) {
+	CHECK(set_setting(AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME, 0));
+	CHECK(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	set_site(0, longitude_at_hour(20));
+	CHECK(upload_placed("Crossing", -1.5, 0, "// @duration 60\n"));
+	CHECK(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	// Sequencer.js defines MERIDIAN_FLIP disabled when it is loaded
+	CHECK(wait_flip(0, 0, 15));
+	CHECK(wait_task_state("Crossing", "QUEUED", 10));
+	CHECK(wait_plan_contains("Crossing", true, 10));
+	CHECK(wait_plan_contains("meridian flip", false, 5));
+	return true;
+}
+
+static void visibility_flip_change_replans(void) {
+	REQUIRE(start_with_crossing_task());
+	ASSERT_TRUE(set_flip(true, 0));
+	ASSERT_TRUE(wait_plan_contains("| Crossing | run 1/1 | normal 50 | PLANNED | meridian flip", true, 10));
+	// the penalty moves the run past the meridian
+	ASSERT_TRUE(set_setting(AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME, 10));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", false, 10));
+	ASSERT_TRUE(wait_plan_contains("| Crossing | run 1/1 | normal 50 | PLANNED | -", true, 5));
+	// back without the penalty, then an offset the run does not reach
+	ASSERT_TRUE(set_setting(AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME, 0));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", true, 10));
+	ASSERT_TRUE(set_flip(true, 1));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", false, 10));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Crossing'"));
+}
+
+static void visibility_flip_unchanged_update_keeps_the_plan(void) {
+	REQUIRE(start_with_crossing_task());
+	ASSERT_TRUE(set_flip(true, 0));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", true, 10));
+	char before[32][INDIGO_VALUE_SIZE], after[32][INDIGO_VALUE_SIZE];
+	indigo_property_state states[32];
+	int count = plan_items(before, states, 32);
+	REQUIRE(count > 0);
+	unsigned flip_revision = 0;
+	pthread_mutex_lock(&cache_mutex);
+	observation *entry = find(SCRIPTING_AGENT_NAME, "MERIDIAN_FLIP");
+	flip_revision = entry ? entry->revision : 0;
+	pthread_mutex_unlock(&cache_mutex);
+	ASSERT_TRUE(set_flip(true, 0));
+	// the same update arrived and the plan labels stay
+	for (int i = 0; i < 500; i++) {
+		pthread_mutex_lock(&cache_mutex);
+		unsigned now = entry ? entry->revision : 0;
+		pthread_mutex_unlock(&cache_mutex);
+		if (now != flip_revision) {
+			break;
+		}
+		indigo_usleep(10000);
+	}
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(count, plan_items(after, states, 32));
+	for (int i = 0; i < count; i++) {
+		ASSERT_STREQ(before[i], after[i]);
+	}
+}
+
+static void visibility_flip_delete_disables(void) {
+	REQUIRE(start_with_crossing_task());
+	ASSERT_TRUE(set_flip(true, 0));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", true, 10));
+	run_script("indigo_delete_property(\"" SCRIPTING_AGENT_NAME "\", \"MERIDIAN_FLIP\");");
+	ASSERT_TRUE(wait_flip(-1, 0, 5));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", false, 10));
+	// defined again with the values the library kept
+	run_script("indigo_sequencer.on_enumerate_properties({ device: \"" SCRIPTING_AGENT_NAME "\", name: \"MERIDIAN_FLIP\" });");
+	ASSERT_TRUE(wait_flip(1, 0, 5));
+	ASSERT_TRUE(wait_plan_contains("meridian flip", true, 10));
+}
+
+// the flip is marked under COMPACT too, as information
+static void compact_marks_the_flip(void) {
+	set_site(0, longitude_at_hour(20));
+	// a window that opens in 20 minutes, when the target is about 16 minutes before the meridian
+	char start[32], header[128];
+	utc(minute_ahead(1200), start);
+	snprintf(header, sizeof(header), "// @duration 60\n// @window %s ..\n", start);
+	REQUIRE(upload_placed("Crossing", -0.6, 0, header));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_flip(0, 0, 15));
+	ASSERT_TRUE(wait_plan_contains("| Crossing | run 1/1 | normal 50 | PLANNED | -", true, 10));
+	ASSERT_TRUE(set_flip(true, 0));
+	ASSERT_TRUE(wait_plan_contains("| Crossing | run 1/1 | normal 50 | PLANNED | meridian flip", true, 10));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Crossing'"));
+}
+
+// -------------------------------------------------------------------------------- Unsafe hold
+
+#define THROWING_BODY(message) "if (!scheduler_task.estimate) { throw new Error(\"" message "\"); }\n" BODY_WAIT(1)
+
+// the scheduler night started an hour ago
+static void site_in_night(void) {
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
+}
+
+// waits until the oldest history entry of the task, given as for history_label(), contains text
+static bool history_has(const char *task, const char *text) {
+	char label[INDIGO_VALUE_SIZE];
+	for (int i = 0; i < 300; i++) {
+		if (history_label(task, 0, label) && strstr(label, text)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "No history entry of '%s' with '%s'\n", task, text);
+	return false;
+}
+
+// starts the scheduler with Work running; Work and the hooks are uploaded by the case
+static bool start_with_work_running(void) {
+	CHECK(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	CHECK(wait_task_state("Work", "RUNNING", 15));
+	indigo_usleep(1000000);
+	return true;
+}
+
+static void unsafe_hold_aborts_a_running_task(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n// @retry 1\n// @preempted retry\n" BODY_WAIT(30)));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_guiding(true);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Unsafe conditions, the scheduler holds", 1, 5));
+	ASSERT_TRUE(wait_message("Task 'Work' aborted by unsafe conditions, it will be retried", 1, 10));
+	ASSERT_TRUE(atomic_load(&guider_aborts) >= 1);
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	ASSERT_TRUE(message_position("Task 'Work' aborted") < message_position("Starting hook 'Secure'"));
+	ASSERT_TRUE(wait_reason("unsafe conditions", 5));
+	ASSERT_TRUE(history_has("Work #1", "| task | UNSAFE | unsafe conditions"));
+	// the run used no retry and had no retry delay
+	ASSERT_TRUE(wait_task_state("Work", "QUEUED", 5));
+	char label[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(task_label("Work", label, NULL) && strstr(label, "retries left 1"));
+	indigo_property *state = snapshot(AGENT_SCHEDULER_STATE_PROPERTY_NAME);
+	REQUIRE(state != NULL);
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state->state);
+	indigo_release_property(state);
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(1, count_messages("Starting task 'Work'"));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Secure'"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 10));
+	ASSERT_TRUE(wait_message("Starting task 'Work'", 2, 10));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Secure'"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void unsafe_hold_fails_a_task_with_preempted_fail(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n// @retry 1\n// @preempted fail\n" BODY_WAIT(30)));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Task 'Work' aborted by unsafe conditions and failed", 1, 10));
+	ASSERT_EQ_INT(0, count_messages("Task 'Work' aborted by unsafe conditions, it will be retried"));
+	ASSERT_TRUE(history_has("Work #1", "| task | UNSAFE | unsafe conditions"));
+	// @preempted fail applies as after an urgent preemption, the retry is not used
+	ASSERT_TRUE(wait_task_state("Work", "FAILED", 5));
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 10));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(1, count_messages("Starting task 'Work'"));
+	ASSERT_TRUE(wait_task_state("Work", "FAILED", 1));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void unsafe_hold_aborts_an_urgent_task(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	REQUIRE(urgent("// @task Flash\n" BODY_WAIT(8)));
+	ASSERT_TRUE(wait_task_state("Flash", "RUNNING", 15));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Task 'Flash' aborted by unsafe conditions, it will be retried", 1, 10));
+	ASSERT_TRUE(history_has("Flash #1", "| urgent | UNSAFE | unsafe conditions"));
+	// the one-off urgent task stays in the list
+	ASSERT_TRUE(wait_task_state("Flash", "QUEUED", 5));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(1, count_messages("Starting task 'Flash'"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Starting task 'Flash'", 2, 10));
+	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 20));
+	ASSERT_TRUE(wait_task_removed("Flash", 5));
+}
+
+static void unsafe_hold_fails_an_urgent_task_with_preempted_fail(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	REQUIRE(urgent("// @task Flash\n// @preempted fail\n" BODY_WAIT(8)));
+	ASSERT_TRUE(wait_task_state("Flash", "RUNNING", 15));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Task 'Flash' aborted by unsafe conditions and failed", 1, 10));
+	ASSERT_TRUE(history_has("Flash #1", "| urgent | UNSAFE | unsafe conditions"));
+	// the ended one-off urgent task leaves the list and is counted as an urgent failure
+	ASSERT_TRUE(wait_task_removed("Flash", 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, 1, 5));
+	ASSERT_EQ_INT(0, state_counter(AGENT_SCHEDULER_STATE_URGENT_DONE_ITEM_NAME));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 10));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(1, count_messages("Starting task 'Flash'"));
+}
+
+static void unsafe_hold_aborts_a_hand_started_sequence(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_sequence_state(INDIGO_OK_STATE, 15) || wait_sequence_state(INDIGO_IDLE_STATE, 1));
+	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
+	const char *first[] = { "var manual = new Sequence(\"Manual\");\nmanual.wait(30);\nmanual.start();\n" };
+	indigo_change_text_property(&observer, SCRIPTING_AGENT_NAME, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, first);
+	ASSERT_TRUE(wait_sequence_state(INDIGO_BUSY_STATE, 5));
+	ASSERT_TRUE(wait_reason("another sequence is running", 5));
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("A sequence started by hand was aborted by unsafe conditions", 1, 10));
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	ASSERT_TRUE(message_position("A sequence started by hand was aborted") < message_position("Starting hook 'Secure'"));
+	// a sequence started by hand during the hold is left alone
+	const char *second[] = { "var manual = new Sequence(\"Manual\");\nmanual.wait(3);\nmanual.start();\n" };
+	indigo_change_text_property(&observer, SCRIPTING_AGENT_NAME, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, second);
+	ASSERT_TRUE(wait_sequence_state(INDIGO_BUSY_STATE, 5));
+	ASSERT_TRUE(wait_reason("another sequence is running", 5));
+	ASSERT_TRUE(wait_sequence_state(INDIGO_OK_STATE, 10));
+	ASSERT_EQ_INT(1, count_messages("A sequence started by hand was aborted"));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Secure'"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 10));
+}
+
+static void unsafe_hold_lets_shutdown_finish(void) {
+	char future[32], text[256];
+	utc(time(NULL) + 2 * 86400, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(4)));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "Close", ""));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Starting hook 'Close'", 1, 15));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Unsafe conditions, the scheduler holds", 1, 5));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(history_has("Close", "| hook | SUCCEEDED | -"));
+	indigo_usleep(1500000);
+	// the stop runs the shutdown hook, the unsafe hook does not run
+	ASSERT_EQ_INT(0, count_messages("aborted by unsafe conditions"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Secure'"));
+}
+
+static void unsafe_hold_lets_night_end_finish(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(4)));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_in_night("Morning", ""));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) + 3, true));
+	ASSERT_TRUE(wait_message("Starting hook 'Morning'", 1, 30));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Morning' completed", 1, 15));
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	ASSERT_TRUE(message_position("Hook 'Morning' completed") < message_position("Starting hook 'Secure'"));
+	ASSERT_TRUE(history_has("Morning", "| hook | SUCCEEDED | -"));
+	ASSERT_EQ_INT(0, count_messages("aborted by unsafe conditions"));
+}
+
+static void unsafe_hold_aborts_the_startup_hook(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(6)));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 15));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Prepare' aborted by unsafe conditions", 1, 10));
+	ASSERT_TRUE(history_has("Prepare", "| hook | UNSAFE | unsafe conditions"));
+	// the startup hook may have prepared half of the equipment, the unsafe hook runs
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_BUSY_STATE, 1));
+	ASSERT_EQ_INT(0, count_messages("The startup hook failed"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the scheduler starts", 1, 10));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 2, 10));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 20));
+	ASSERT_TRUE(message_position_last("Hook 'Prepare' completed") < message_position("Starting task 'Work'"));
+}
+
+static void unsafe_hold_aborts_the_idle_hook(void) {
+	char future[32], text[256];
+	utc(time(NULL) + 7200, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(30)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Park"));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Starting hook 'Park'", 1, 15));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Park' aborted by unsafe conditions", 1, 10));
+	ASSERT_TRUE(history_has("Park", "| hook | UNSAFE | unsafe conditions"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 10));
+	indigo_usleep(2000000);
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_BUSY_STATE, 1));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Park'"));
+}
+
+static void unsafe_hold_aborts_the_night_start_hook(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(30)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_night_hooks("Evening", "", ""));
+	site_in_night();
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Starting hook 'Evening'", 1, 15));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Evening' aborted by unsafe conditions", 1, 10));
+	ASSERT_TRUE(history_has("Evening", "| hook | UNSAFE | unsafe conditions"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 20));
+	// the night counts as started, its start hook does not run again
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Evening'"));
+	ASSERT_EQ_INT(0, count_messages("The night start hook failed"));
+}
+
+static void unsafe_hold_aborts_the_resume_hook(void) {
+	char future[32], text[256];
+	utc(time(NULL) + 2 * 86400, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(6)));
+	snprintf(text, sizeof(text), "// @task Far\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Park"));
+	REQUIRE(set_night_hooks("", "", "Prepare"));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	REQUIRE(urgent("// @task Flash\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 15));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Prepare' aborted by unsafe conditions", 1, 10));
+	ASSERT_TRUE(history_has("Prepare", "| hook | UNSAFE | unsafe conditions"));
+	set_safety(INDIGO_OK_STATE);
+	// the hold ends in standby, so the resume hook prepares before the urgent task
+	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 25));
+	ASSERT_EQ_INT(2, count_messages("Starting hook 'Prepare'"));
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") < message_position("Starting task 'Flash'"));
+	ASSERT_EQ_INT(0, count_messages("The resume hook failed"));
+}
+
+static void unsafe_hold_aborts_the_safe_hook(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Reopen\n" BODY_WAIT(6)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(set_safety_hooks("Secure", "Reopen"));
+	site_in_night();
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Starting hook 'Reopen'", 1, 10));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Reopen' aborted by unsafe conditions", 1, 10));
+	ASSERT_TRUE(history_has("Reopen", "| hook | UNSAFE | unsafe conditions"));
+	// a new hold, with its own unsafe hook
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 2, 15));
+	ASSERT_EQ_INT(2, count_messages("Unsafe conditions, the scheduler holds"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Reopen' completed", 1, 20));
+	ASSERT_TRUE(wait_message("Starting task 'Work'", 2, 10));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_BUSY_STATE, 1));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void night_end_runs_during_the_hold(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_in_night("Morning", ""));
+	REQUIRE(set_night_hooks("Evening", "Morning", ""));
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	// the night ends during the hold
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) + 3, true));
+	ASSERT_TRUE(wait_message("Hook 'Morning' completed", 1, 30));
+	ASSERT_TRUE(message_position("Hook 'Secure' completed") < message_position("Starting hook 'Morning'"));
+	// a night with work starts during the hold, its start hook waits for the end of the hold
+	REQUIRE(upload("// @task Extra\n" BODY_WAIT(1)));
+	time_t dusk = time(NULL) + 3;
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	wait_until(dusk + 4);
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Evening'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Extra'"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Task 'Extra' completed", 1, 20));
+	ASSERT_TRUE(message_position("Hook 'Evening' completed") >= 0);
+	ASSERT_TRUE(message_position("Hook 'Evening' completed") < message_position("Starting task 'Extra'"));
+}
+
+static void safe_delay_restarts_after_a_short_alert(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0.1));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Task 'Work' aborted by unsafe conditions", 1, 10));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_reason("unsafe hold ends in 1 min", 5));
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(0, count_messages("Safe conditions"));
+	// an ALERT shorter than the evaluation interval restarts the delay
+	safety_blip();
+	time_t blip = time(NULL);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 15));
+	time_t ended = time(NULL);
+	ASSERT_TRUE(ended >= blip + 5);
+	ASSERT_TRUE(ended <= blip + 9);
+	ASSERT_EQ_INT(1, count_messages("Unsafe conditions, the scheduler holds"));
+	ASSERT_TRUE(wait_message("Starting task 'Work'", 2, 10));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void safe_hook_runs_at_night_with_work(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Reopen\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(set_safety_hooks("Secure", "Reopen"));
+	REQUIRE(set_night_hooks("", "", "Prepare"));
+	site_in_night();
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Reopen' completed", 1, 15));
+	ASSERT_TRUE(wait_message("Starting task 'Work'", 2, 10));
+	ASSERT_TRUE(message_position("Hook 'Reopen' completed") < message_position_last("Starting task 'Work'"));
+	// the safe hook prepared the equipment, the resume hook is not needed
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Prepare'"));
+	ASSERT_EQ_INT(0, count_messages("continues in standby"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void safe_hook_is_skipped_by_day(void) {
+	time_t dusk = minute_ahead(30);
+	char start[32], future[32], text[256];
+	utc(dusk, start);
+	utc(dusk + 2 * 86400, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Reopen\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Work\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_safety_hooks("Secure", "Reopen"));
+	REQUIRE(set_night_hooks("Evening", "", ""));
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	indigo_usleep(2000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends, the scheduler continues in standby", 1, 10));
+	// the night start hook prepares the equipment at dusk
+	ASSERT_TRUE(wait_message("Hook 'Evening' completed", 1, 120));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Reopen'"));
+}
+
+static void safe_hook_is_skipped_without_work(void) {
+	char future[32], text[256];
+	utc(time(NULL) + 2 * 86400, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Reopen\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_safety_hooks("Secure", "Reopen"));
+	REQUIRE(set_night_hooks("", "", "Prepare"));
+	site_in_night();
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	indigo_usleep(2000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends, the scheduler continues in standby", 1, 10));
+	// work that appears later is prepared by the resume hook
+	REQUIRE(upload("// @task Late\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Late' completed", 1, 20));
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") >= 0);
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") < message_position("Starting task 'Late'"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Reopen'"));
+}
+
+static void failed_unsafe_hook_stops_the_scheduler(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Bad secure\n" THROWING_BODY("roof jammed")));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(set_hooks("", "Close", ""));
+	REQUIRE(set_safety_hooks("Bad secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Bad secure' failed: Error: roof jammed", 1, 15));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(wait_message("The unsafe hook failed, the scheduler stopped", 1, 5));
+}
+
+static void failed_safe_hook_stops_the_scheduler(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Bad reopen\n" THROWING_BODY("dome stuck")));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(set_hooks("", "Close", ""));
+	REQUIRE(set_safety_hooks("Secure", "Bad reopen"));
+	site_in_night();
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Bad reopen' failed: Error: dome stuck", 1, 15));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(wait_message("The safe hook failed, the scheduler stopped", 1, 5));
+	ASSERT_EQ_INT(1, count_messages("Starting task 'Work'"));
+}
+
+static void missing_unsafe_hook_is_reported(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(set_safety_hooks("Nope", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("The unsafe hook 'Nope' names no task", 1, 15));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(1, count_messages("The unsafe hook 'Nope' names no task"));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_BUSY_STATE, 1));
+	ASSERT_EQ_INT(0, count_messages("the scheduler stopped"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Starting task 'Work'", 2, 10));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void missing_safety_counts_as_safe_by_default(void) {
+	char future[32], text[256];
+	utc(time(NULL) + 2 * 86400, future);
+	indigo_property *missing = snapshot(AGENT_SCHEDULER_SAFETY_MISSING_PROPERTY_NAME);
+	REQUIRE(missing != NULL);
+	ASSERT_TRUE(indigo_get_item(missing, AGENT_SCHEDULER_SAFETY_MISSING_SAFE_ITEM_NAME)->sw.value);
+	ASSERT_FALSE(indigo_get_item(missing, AGENT_SCHEDULER_SAFETY_MISSING_UNSAFE_ITEM_NAME)->sw.value);
+	indigo_release_property(missing);
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	// no Auxiliary Agent
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	// AGENT_AUX_SAFETY without information
+	REQUIRE(aux_attach(INDIGO_IDLE_STATE));
+	REQUIRE(upload("// @task Second\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Second' completed", 1, 15));
+	// AGENT_AUX_SAFETY deleted
+	delete_safety();
+	REQUIRE(upload("// @task Third\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Third' completed", 1, 15));
+	ASSERT_EQ_INT(0, count_messages("the scheduler holds"));
+	ASSERT_EQ_INT(0, count_messages("the start waits"));
+}
+
+static void missing_safety_counts_as_unsafe_when_selected(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(set_missing(true));
+	// no Auxiliary Agent: the start is postponed
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Unsafe conditions, the start waits for safe conditions", 1, 5));
+	ASSERT_TRUE(wait_reason("no safety information, treated as unsafe", 10));
+	// AGENT_AUX_SAFETY without information
+	REQUIRE(aux_attach(INDIGO_IDLE_STATE));
+	indigo_usleep(2000000);
+	ASSERT_TRUE(wait_reason("no safety information, treated as unsafe", 1));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Work'"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Secure'"));
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the scheduler starts", 1, 10));
+	ASSERT_TRUE(wait_task_state("Work", "RUNNING", 15));
+	indigo_usleep(1000000);
+	// AGENT_AUX_SAFETY deleted while the scheduler runs
+	delete_safety();
+	ASSERT_TRUE(wait_message("No safety information, treated as unsafe, the scheduler holds", 1, 5));
+	ASSERT_TRUE(wait_message("Task 'Work' aborted by unsafe conditions", 1, 10));
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	ASSERT_TRUE(wait_reason("no safety information, treated as unsafe", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void start_waits_for_safe_conditions(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0.1));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_ALERT_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Unsafe conditions, the start waits for safe conditions", 1, 5));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_BUSY_STATE, 1));
+	ASSERT_TRUE(wait_reason("unsafe conditions", 5));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(0, count_messages("Starting hook"));
+	ASSERT_EQ_INT(0, count_messages("Starting task"));
+	set_safety(INDIGO_OK_STATE);
+	time_t safe = time(NULL);
+	ASSERT_TRUE(wait_reason("unsafe hold ends in 1 min", 5));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 15));
+	ASSERT_TRUE(time(NULL) >= safe + 5);
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_TRUE(message_position("Safe conditions, the scheduler starts") < message_position("Starting hook 'Prepare'"));
+	// the postponed start prepared nothing, no unsafe hook runs for it
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Secure'"));
+}
+
+static void stop_during_the_hold_runs_the_shutdown_hook(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(set_hooks("", "Close", ""));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(message_position("Hook 'Secure' completed") < message_position("Starting hook 'Close'"));
+}
+
+static void abort_during_the_unsafe_hook(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(30)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(set_hooks("", "Close", ""));
+	REQUIRE(set_safety_hooks("Secure", ""));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(start_with_work_running());
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Starting hook 'Secure'", 1, 15));
+	indigo_usleep(1000000);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Secure' aborted", 1, 10));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+}
+
+static void unsafe_hold_survives_a_restart(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0.1));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Reopen\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(set_safety_hooks("Secure", "Reopen"));
+	REQUIRE(set_missing(true));
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Work", "RUNNING", 20));
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Task 'Work' aborted by unsafe conditions", 1, 10));
+	stop_scheduler();
+	// the conditions are safe again when the scheduler comes back
+	set_safety(INDIGO_OK_STATE);
+	memset(messages, 0, sizeof(messages));
+	REQUIRE(start_scheduler());
+	time_t restarted = time(NULL);
+	indigo_property *missing = snapshot(AGENT_SCHEDULER_SAFETY_MISSING_PROPERTY_NAME);
+	REQUIRE(missing != NULL);
+	ASSERT_TRUE(indigo_get_item(missing, AGENT_SCHEDULER_SAFETY_MISSING_UNSAFE_ITEM_NAME)->sw.value);
+	indigo_release_property(missing);
+	indigo_property *settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
+	REQUIRE(settings != NULL);
+	ASSERT_NEAR(0.1, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME)->number.value, 1e-9);
+	indigo_release_property(settings);
+	indigo_property *hooks = snapshot(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME);
+	REQUIRE(hooks != NULL);
+	ASSERT_STREQ("Secure", indigo_get_text_item_value(indigo_get_item(hooks, AGENT_SCHEDULER_HOOKS_UNSAFE_ITEM_NAME)));
+	ASSERT_STREQ("Reopen", indigo_get_text_item_value(indigo_get_item(hooks, AGENT_SCHEDULER_HOOKS_SAFE_ITEM_NAME)));
+	indigo_release_property(hooks);
+	// the scheduler starts stopped; START waits for SAFE_DELAY from the restart
+	indigo_usleep(1000000);
+	ASSERT_EQ_INT(0, count_messages("Starting"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Unsafe conditions, the start waits for safe conditions", 1, 5));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 15));
+	ASSERT_TRUE(time(NULL) >= restarted + 5);
+	ASSERT_TRUE(wait_task_state("Work", "RUNNING", 15));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Secure'"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Reopen'"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 10));
+	// a saved safe state older than the delay does not postpone the start
+	indigo_usleep(2500000);
+	stop_scheduler();
+	memset(messages, 0, sizeof(messages));
+	REQUIRE(start_scheduler());
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Scheduler started", 1, 5));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 10));
+	ASSERT_EQ_INT(0, count_messages("the start waits"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void safety_hooks_are_labelled(void) {
+	REQUIRE(upload("// @task Secure\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Reopen\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_safety_hooks("Secure", "Reopen"));
+	ASSERT_TRUE(wait_task_state("Secure", "HOOK | hook unsafe", 5));
+	ASSERT_TRUE(wait_task_state("Reopen", "HOOK | hook safe", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	// neither hook is an ordinary task: the list is finished without them
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 10));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Secure'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Reopen'"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook"));
+}
+
 static const indigo_test_case cases[] = {
 	{ "store_edit_and_delete", store_edit_and_delete },
 	{ "commands_and_order", commands_and_order },
@@ -4250,6 +5157,10 @@ static const indigo_test_case cases[] = {
 	{ "visibility_wait_stops_with_the_shutdown_hook", visibility_wait_stops_with_the_shutdown_hook },
 	{ "strategy_switch_back_starts_at_once", strategy_switch_back_starts_at_once },
 	{ "visibility_replans_after_failure", visibility_replans_after_failure },
+	{ "visibility_flip_change_replans", visibility_flip_change_replans },
+	{ "visibility_flip_unchanged_update_keeps_the_plan", visibility_flip_unchanged_update_keeps_the_plan },
+	{ "visibility_flip_delete_disables", visibility_flip_delete_disables },
+	{ "compact_marks_the_flip", compact_marks_the_flip },
 	{ "largest_task_text_is_stored_and_restored", largest_task_text_is_stored_and_restored },
 	{ "task_count_limit", task_count_limit },
 	{ "repeat_interval_and_retry_delay", repeat_interval_and_retry_delay },
@@ -4295,6 +5206,33 @@ static const indigo_test_case cases[] = {
 	{ "data_headers_double_a_quote", data_headers_double_a_quote },
 	{ "data_without_an_imager_agent_runs_unlabelled", data_without_an_imager_agent_runs_unlabelled },
 	{ "estimates_label_nothing", estimates_label_nothing },
+	{ "unsafe_hold_aborts_a_running_task", unsafe_hold_aborts_a_running_task },
+	{ "unsafe_hold_fails_a_task_with_preempted_fail", unsafe_hold_fails_a_task_with_preempted_fail },
+	{ "unsafe_hold_aborts_an_urgent_task", unsafe_hold_aborts_an_urgent_task },
+	{ "unsafe_hold_fails_an_urgent_task_with_preempted_fail", unsafe_hold_fails_an_urgent_task_with_preempted_fail },
+	{ "unsafe_hold_aborts_a_hand_started_sequence", unsafe_hold_aborts_a_hand_started_sequence },
+	{ "unsafe_hold_lets_shutdown_finish", unsafe_hold_lets_shutdown_finish },
+	{ "unsafe_hold_lets_night_end_finish", unsafe_hold_lets_night_end_finish },
+	{ "unsafe_hold_aborts_the_startup_hook", unsafe_hold_aborts_the_startup_hook },
+	{ "unsafe_hold_aborts_the_idle_hook", unsafe_hold_aborts_the_idle_hook },
+	{ "unsafe_hold_aborts_the_night_start_hook", unsafe_hold_aborts_the_night_start_hook },
+	{ "unsafe_hold_aborts_the_resume_hook", unsafe_hold_aborts_the_resume_hook },
+	{ "unsafe_hold_aborts_the_safe_hook", unsafe_hold_aborts_the_safe_hook },
+	{ "night_end_runs_during_the_hold", night_end_runs_during_the_hold },
+	{ "safe_delay_restarts_after_a_short_alert", safe_delay_restarts_after_a_short_alert },
+	{ "safe_hook_runs_at_night_with_work", safe_hook_runs_at_night_with_work },
+	{ "safe_hook_is_skipped_by_day", safe_hook_is_skipped_by_day },
+	{ "safe_hook_is_skipped_without_work", safe_hook_is_skipped_without_work },
+	{ "failed_unsafe_hook_stops_the_scheduler", failed_unsafe_hook_stops_the_scheduler },
+	{ "failed_safe_hook_stops_the_scheduler", failed_safe_hook_stops_the_scheduler },
+	{ "missing_unsafe_hook_is_reported", missing_unsafe_hook_is_reported },
+	{ "missing_safety_counts_as_safe_by_default", missing_safety_counts_as_safe_by_default },
+	{ "missing_safety_counts_as_unsafe_when_selected", missing_safety_counts_as_unsafe_when_selected },
+	{ "start_waits_for_safe_conditions", start_waits_for_safe_conditions },
+	{ "stop_during_the_hold_runs_the_shutdown_hook", stop_during_the_hold_runs_the_shutdown_hook },
+	{ "abort_during_the_unsafe_hook", abort_during_the_unsafe_hook },
+	{ "unsafe_hold_survives_a_restart", unsafe_hold_survives_a_restart },
+	{ "safety_hooks_are_labelled", safety_hooks_are_labelled },
 };
 
 static const char *case_filter = NULL;

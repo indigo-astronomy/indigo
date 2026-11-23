@@ -1,0 +1,949 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7f4b8d19-0576-49fe-ac62-564c212ef655",
+  "revision": 48,
+  "title": "indigo_agent_scheduler: avoid meridian flips in the best visibility plan with a flip penalty",
+  "description": "Owner request (2026-11-20): make the best-visibility (VISIBILITY) plan avoid meridian flips when that costs little observing quality, especially for short tasks. Agreed design:\n\n1. Input. The meridian flip is a global mount/telescope setting made at startup (enable_meridian_flip() in a startup script), published by Sequencer.js as Scripting Agent MERIDIAN_FLIP (ENABLED 0|1, USE_SOLVER, OFFSET h in -2..2; tickets 5e7ef4f3, a3ef4543). Task scripts do not set it and SCHEDULER_ESTIMATE / Sequence.estimate() are NOT changed: whether a run flips depends on where it is placed, so the planner decides it per placement. observe_property() caches ENABLED/OFFSET/USE_SOLVER in observed (under observed->mutex) on define/update and bumps a flip generation when a value changes; delete of the property or device = disabled; before the first update = disabled. process() sets plan_dirty when the generation differs from the last plan's. update_plan() copies the cached values once; planning never reads properties. The plan assumes the values do not change during the night.\n\n2. Real flip behaviour (verified in code): the Imager Agent pauses the batch before the first exposure that would end past HA = OFFSET (time_to_transit <= exposure - PAUSE_AFTER_TRANSIT, indigo_agent_imager.c ~1349, once per batch); the flipper waits for Mount Agent FLIP_REQUIRED (TIME_TO_TRANSIT <= 0, i.e. HA >= 0, indigo_agent_mount.c ~1152), then slews, optionally recentres, restarts guiding and settles. A run started past transit (HA >= 0) is slewed to the west side and does not flip. So a run flips iff HA_start < 0 and HA reaches OFFSET before the run ends. With OFFSET < 0 the capture also idles from max(HA_start, OFFSET) until HA = 0.\n\n3. Flip check (indigo_agent_scheduler_plan.c), replacing the prototype (scratchpad flip/plan_flip.diff, which used globals): indigo_scheduler_flip_loss(sky, target, header, start, duration, flip) returns 0 when there is no flip (flip disabled, no target, invalid grids, HA_start >= 0, or HA_start + duration * sidereal rate < OFFSET), else the penalty hours plus, for OFFSET < 0, the wait -max(HA_start, OFFSET) h. HA_start from target->hour_angle[] advanced at the sidereal rate, normalised to [-12, 12). Exposure granularity ignored.\n\n4. Cost in the objective: in vis_table() value[i][g] -= 100 * flip_loss (lost hours valued as full-quality imaging), not for urgent runs. The COMPACT value VISIBILITY compares itself with (info->compact_value) gets the same cost; the COMPACT plan itself is unchanged. Pins and the previous-plan seed use the same table.\n\n5. Durations stay fixed (the plan code assumes a fixed length per task); flip time is not added to the run duration. Possible later addition.\n\n6. Setting: new AGENT_SCHEDULER_SETTINGS number item VISIBILITY_FLIP_PENALTY (name in indigo_names.h AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME), label \"Best visibility: meridian flip penalty (min)\", 0..120 step 1, default 10, placed right after ALTITUDE_WEIGHT. Meaning: minutes of best-quality imaging the user is willing to give up to avoid one flip (at least the time a flip takes; higher avoids flips more strongly; 0 = off). It must be clearly stated everywhere that it is best-visibility only: ignored under COMPACT, no effect while MERIDIAN_FLIP.ENABLED is 0 or the property is missing. A change replans. indigo_scheduler_plan_visibility() gets a const scheduler_flip *flip parameter (enabled, offset h, penalty h; NULL = none); update the agent, unit tests, indigo_test/benchmark/bench_scheduler_plan.c and check tools/scheduler_sandbox.py.\n\n7. The published plan marks runs that will flip.\n\nStudy (5000 simulated nights, OFFSET 0): COMPACT 645 flips, 69.7 % time-weighted quality; VISIBILITY 1436 flips, 79.6 %; VISIBILITY + penalty 10 min 269 flips (-81 %), 78.9 %, runs unchanged (5879); penalty 20: 141 flips, 78.5 %. Penalising COMPACT is not worth it (it loses runs).\n\nTests: unit (test_agent_scheduler_plan.c): flip_loss for OFFSET -, 0, +, starts before/after transit and between a negative offset and transit (wait included), end just short of / past OFFSET; a short crossing task is moved, a long one keeps its flip; urgent runs ignore the cost; penalty 0 or flip disabled gives plans identical to today. Integration (test_agent_scheduler.c, the test Scripting Agent defines MERIDIAN_FLIP): cached, a change replans, an unchanged update does not, delete disables. Benchmark: flips and quality with/without the penalty. Docs: INDIGO_SCHEDULER_GUIDE.md (settings table, the VISIBILITY weights paragraph), doc/SCHEDULER.md, PROPERTIES.md.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-20T21:16:00.614132Z",
+  "status": "closed",
+  "branch": "ticket/7f4b8d19-0576-49fe-ac62-564c212ef655",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "667b6f77-ec14-4f06-a8ce-433683798964",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T21:18:06.363885Z",
+          "last_activity_at": "2026-11-20T21:55:31.313587Z",
+          "ended_at": "2026-11-20T21:55:31.313587Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2244949.702,
+          "tokens": null
+        },
+        {
+          "attempt_id": "b1547a8b-072a-4171-9233-a58e254ff201",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-20T22:01:29.305937Z",
+          "last_activity_at": "2026-11-20T22:11:18.376603Z",
+          "ended_at": "2026-11-20T22:11:18.376603Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 589070.666,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T21:18:06.363885Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/7f4b8d19-0576-49fe-ac62-564c212ef655"
+        },
+        {
+          "at": "2026-11-20T21:55:31.313587Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-20T22:01:29.305937Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-20T22:11:18.376603Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 2834020.368,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "9718f3b3-71ac-4bf8-970b-e07c0f4aba4d",
+      "title": "Design",
+      "type": "planning",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "e602fa6c-a368-4685-8b9a-5d1704d911b7",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T21:18:10.559577Z",
+          "last_activity_at": "2026-11-20T21:33:35.480847Z",
+          "ended_at": "2026-11-20T21:33:35.480847Z",
+          "outcome": {
+            "summary": "Approved design.md",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 924921.27,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T21:18:10.559577Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design started"
+        },
+        {
+          "at": "2026-11-20T21:33:35.480847Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Approved design.md"
+        }
+      ],
+      "result": {
+        "summary": "Approved design.md",
+        "source": "owner",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "phase": "design",
+      "action": "implement",
+      "workflow_step": "design/implement",
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 924921.27,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "fed417c3-7fa6-47cd-a199-7bcf61d95824",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-20T21:55:31.313620Z",
+          "last_activity_at": "2026-11-20T22:01:29.305850Z",
+          "ended_at": "2026-11-20T22:01:29.305850Z",
+          "outcome": {
+            "summary": "Code matches the approved design and owner answers Q1-Q4: flip_hour_angle/flip_needed/flip_loss (plan.c:114-154; HA from hour_angle[k] + elapsed*1.0027379, normalised to [-12,12), flip iff HA<0 and HA_end>=OFFSET, penalty<=0 returns 0 incl. negative-offset wait), cost in vis_table (plan.c:479-482) and compact_value (plan.c:1139-1142) with urgent exemption; NULL/disabled/penalty 0 subtract exactly 0 so plans are bit-identical (also asserted by visibility_flip_off_is_today). Agent: cache under observed->mutex with generation (scheduler.c:3447-3459), delete of property/device disables (3524-3528), process() marks plan_dirty on generation change (2555-2561), update_plan copies values once (2352-2359), label mark (2246-2247), SETTINGS item 5 with shifted macros and count 11, names.h, DRIVER_VERSION 0x0300001F. Unit test_agent_scheduler_plan all passed; make -C indigo_test test-agent-scheduler 138/138 passed incl. the four new flip cases. Defects: (1) indigo_docs/INDIGO_SCHEDULER_GUIDE.md:254 inserts the heading '#### Meridian flips' in the middle of 'Choosing a strategy', so the worked **Example.** (265), **When to use which.** (279) and **What VISIBILITY respects.** (284) now sit under 'Meridian flips'. Move the subsection after the end of the strategy material (before '### Time windows', line 304) or keep the strategy paragraphs together. (2) The guide's worked example table (265-275) gives the VISIBILITY placement without the flip, while the guide now recommends enabling the flip in the STARTUP hook (Unpark example, 633) and the default penalty is 10; SCHEDULER.md states the penalty removes all three flips of that example. Say in the example that it assumes the meridian flip disabled (or penalty 0). Minor, non-blocking: vis_table's best-start sentinel 'double best = -1' (plan.c:470) predates negative values; with a large penalty a task whose every start flips keeps best_minute -1, which only affects the seed ordering heuristic at plan.c:1189 (use VIS_NONE).",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 357992.23,
+          "tokens": null
+        },
+        {
+          "attempt_id": "18f9906f-afcf-4c65-b6fd-641ced9fe99b",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-20T22:11:18.376648Z",
+          "last_activity_at": "2026-11-20T22:20:20.929732Z",
+          "ended_at": "2026-11-20T22:20:20.929732Z",
+          "outcome": {
+            "summary": "Independent review of master...HEAD (6e83f711e). Flip check (indigo_agent_scheduler_plan.c:115-155): HA from target->hour_angle[k] (grid already normalised to [-12,12)) advanced at 1.00273790935 and renormalised once; flips iff HA_start<0 and HA_start+d*rate>=OFFSET; loss = penalty + (OFFSET<0 ? -max(HA_start,OFFSET) : 0); penalty<=0 returns 0 so the wait is switched off too (Q1). vis_table (:471-483) subtracts 100*loss only for non-urgent runs and now starts best at VIS_NONE, so all-negative tables get a best_minute; the DP/search use VIS_NONE sentinels throughout and handle negative values. compact_value (:1139-1143) gets the same non-urgent cost; plan_order keeps flip NULL. Agent: MERIDIAN_FLIP cached under observed->mutex with offset clamp and generation bump only on change (indigo_agent_scheduler.c:3447-3459), delete of property/device disables (:3524-3528), process() marks plan_dirty on generation change (:2555-2561), update_plan copies values once (:2352-2359); settings change already sets plan_dirty. VISIBILITY_FLIP_PENALTY 0..120 step 1 default 10 after ALTITUDE_WEIGHT, item macros reindexed, count 11; name in indigo_names.h. Label marks flips under both strategies via indigo_scheduler_run_flips, independent of penalty (Q2). DRIVER_VERSION 0x1E->0x1F. Docs: guide Meridian flips subsection now precedes Time windows (293 vs 304), worked example states flip disabled and the F=10 outcome - verified with bench_scheduler_plan owner's night: Soul 21:26, Pleiades 22:22, Jellyfish 00:51, 0 flips, 94.5 %; STARTUP-hook advice consistent across guide (Rules for the body, Hooks Unpark example), SCHEDULER.md and per-task examples; PROPERTIES.md states best-visibility only, COMPACT ignored, ENABLED 0/missing. Previous review items all resolved. Tests run here: build OK; make test-unit exit 0; test_agent_scheduler_plan 41/41 PASS (flips 405 -> 101); make test-agent-scheduler 138 run, 138 passed. Non-blocking notes: test_visibility_flip_every_start_flips' final assertion (i",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 542553.084,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-20T21:55:31.313620Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T22:01:29.305850Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Code matches the approved design and owner answers Q1-Q4: flip_hour_angle/flip_needed/flip_loss (plan.c:114-154; HA from hour_angle[k] + elapsed*1.0027379, normalised to [-12,12), flip iff HA<0 and HA_end>=OFFSET, penalty<=0 returns 0 incl. negative-offset wait), cost in vis_table (plan.c:479-482) and compact_value (plan.c:1139-1142) with urgent exemption; NULL/disabled/penalty 0 subtract exactly 0 so plans are bit-identical (also asserted by visibility_flip_off_is_today). Agent: cache under observed->mutex with generation (scheduler.c:3447-3459), delete of property/device disables (3524-3528), process() marks plan_dirty on generation change (2555-2561), update_plan copies values once (2352-2359), label mark (2246-2247), SETTINGS item 5 with shifted macros and count 11, names.h, DRIVER_VERSION 0x0300001F. Unit test_agent_scheduler_plan all passed; make -C indigo_test test-agent-scheduler 138/138 passed incl. the four new flip cases. Defects: (1) indigo_docs/INDIGO_SCHEDULER_GUIDE.md:254 inserts the heading '#### Meridian flips' in the middle of 'Choosing a strategy', so the worked **Example.** (265), **When to use which.** (279) and **What VISIBILITY respects.** (284) now sit under 'Meridian flips'. Move the subsection after the end of the strategy material (before '### Time windows', line 304) or keep the strategy paragraphs together. (2) The guide's worked example table (265-275) gives the VISIBILITY placement without the flip, while the guide now recommends enabling the flip in the STARTUP hook (Unpark example, 633) and the default penalty is 10; SCHEDULER.md states the penalty removes all three flips of that example. Say in the example that it assumes the meridian flip disabled (or penalty 0). Minor, non-blocking: vis_table's best-start sentinel 'double best = -1' (plan.c:470) predates negative values; with a large penalty a task whose every start flips keeps best_minute -1, which only affects the seed ordering heuristic at plan.c:1189 (use VIS_NONE)."
+        },
+        {
+          "at": "2026-11-20T22:11:18.376648Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-20T22:20:20.929732Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of master...HEAD (6e83f711e). Flip check (indigo_agent_scheduler_plan.c:115-155): HA from target->hour_angle[k] (grid already normalised to [-12,12)) advanced at 1.00273790935 and renormalised once; flips iff HA_start<0 and HA_start+d*rate>=OFFSET; loss = penalty + (OFFSET<0 ? -max(HA_start,OFFSET) : 0); penalty<=0 returns 0 so the wait is switched off too (Q1). vis_table (:471-483) subtracts 100*loss only for non-urgent runs and now starts best at VIS_NONE, so all-negative tables get a best_minute; the DP/search use VIS_NONE sentinels throughout and handle negative values. compact_value (:1139-1143) gets the same non-urgent cost; plan_order keeps flip NULL. Agent: MERIDIAN_FLIP cached under observed->mutex with offset clamp and generation bump only on change (indigo_agent_scheduler.c:3447-3459), delete of property/device disables (:3524-3528), process() marks plan_dirty on generation change (:2555-2561), update_plan copies values once (:2352-2359); settings change already sets plan_dirty. VISIBILITY_FLIP_PENALTY 0..120 step 1 default 10 after ALTITUDE_WEIGHT, item macros reindexed, count 11; name in indigo_names.h. Label marks flips under both strategies via indigo_scheduler_run_flips, independent of penalty (Q2). DRIVER_VERSION 0x1E->0x1F. Docs: guide Meridian flips subsection now precedes Time windows (293 vs 304), worked example states flip disabled and the F=10 outcome - verified with bench_scheduler_plan owner's night: Soul 21:26, Pleiades 22:22, Jellyfish 00:51, 0 flips, 94.5 %; STARTUP-hook advice consistent across guide (Rules for the body, Hooks Unpark example), SCHEDULER.md and per-task examples; PROPERTIES.md states best-visibility only, COMPACT ignored, ENABLED 0/missing. Previous review items all resolved. Tests run here: build OK; make test-unit exit 0; test_agent_scheduler_plan 41/41 PASS (flips 405 -> 101); make test-agent-scheduler 138 run, 138 passed. Non-blocking notes: test_visibility_flip_every_start_flips' final assertion (i"
+        }
+      ],
+      "result": {
+        "summary": "Independent review of master...HEAD (6e83f711e). Flip check (indigo_agent_scheduler_plan.c:115-155): HA from target->hour_angle[k] (grid already normalised to [-12,12)) advanced at 1.00273790935 and renormalised once; flips iff HA_start<0 and HA_start+d*rate>=OFFSET; loss = penalty + (OFFSET<0 ? -max(HA_start,OFFSET) : 0); penalty<=0 returns 0 so the wait is switched off too (Q1). vis_table (:471-483) subtracts 100*loss only for non-urgent runs and now starts best at VIS_NONE, so all-negative tables get a best_minute; the DP/search use VIS_NONE sentinels throughout and handle negative values. compact_value (:1139-1143) gets the same non-urgent cost; plan_order keeps flip NULL. Agent: MERIDIAN_FLIP cached under observed->mutex with offset clamp and generation bump only on change (indigo_agent_scheduler.c:3447-3459), delete of property/device disables (:3524-3528), process() marks plan_dirty on generation change (:2555-2561), update_plan copies values once (:2352-2359); settings change already sets plan_dirty. VISIBILITY_FLIP_PENALTY 0..120 step 1 default 10 after ALTITUDE_WEIGHT, item macros reindexed, count 11; name in indigo_names.h. Label marks flips under both strategies via indigo_scheduler_run_flips, independent of penalty (Q2). DRIVER_VERSION 0x1E->0x1F. Docs: guide Meridian flips subsection now precedes Time windows (293 vs 304), worked example states flip disabled and the F=10 outcome - verified with bench_scheduler_plan owner's night: Soul 21:26, Pleiades 22:22, Jellyfish 00:51, 0 flips, 94.5 %; STARTUP-hook advice consistent across guide (Rules for the body, Hooks Unpark example), SCHEDULER.md and per-task examples; PROPERTIES.md states best-visibility only, COMPACT ignored, ENABLED 0/missing. Previous review items all resolved. Tests run here: build OK; make test-unit exit 0; test_agent_scheduler_plan 41/41 PASS (flips 405 -> 101); make test-agent-scheduler 138 run, 138 passed. Non-blocking notes: test_visibility_flip_every_start_flips' final assertion (i",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 900545.314,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "7fcc3ca2-0088-48a3-b4ee-8456334d6dcd",
+      "event": "ticket/created",
+      "at": "2026-11-20T21:16:00.614795Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "full"
+    },
+    {
+      "event_id": "25893b1a-40d2-4123-a516-da93515ff171",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T21:16:04.262223Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "full",
+      "corrected": null
+    },
+    {
+      "event_id": "60f88631-97b5-4476-ae61-9c04e50f5a08",
+      "event": "task/progress",
+      "at": "2026-11-20T21:18:06.364057Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Implementation started on branch ticket/7f4b8d19-0576-49fe-ac62-564c212ef655"
+    },
+    {
+      "event_id": "416e314b-34f3-4acd-b0ab-edb3c5886945",
+      "event": "ticket/started",
+      "at": "2026-11-20T21:18:06.364869Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/7f4b8d19-0576-49fe-ac62-564c212ef655",
+      "base": "master"
+    },
+    {
+      "event_id": "6aecd793-f57e-4de0-a601-c7ff9ea34e9c",
+      "event": "task/progress",
+      "at": "2026-11-20T21:18:10.559653Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9718f3b3-71ac-4bf8-970b-e07c0f4aba4d",
+      "text": "Design started"
+    },
+    {
+      "event_id": "33ae0cad-3716-4274-afb7-49e435557016",
+      "event": "stage/started",
+      "at": "2026-11-20T21:18:10.560199Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "9718f3b3-71ac-4bf8-970b-e07c0f4aba4d"
+    },
+    {
+      "event_id": "c324878b-4e7f-4411-819b-0918ffdd36d5",
+      "event": "task/progress",
+      "at": "2026-11-20T21:18:30.198288Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9718f3b3-71ac-4bf8-970b-e07c0f4aba4d",
+      "text": "Design worker launched",
+      "attempt_id": "e602fa6c-a368-4685-8b9a-5d1704d911b7",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6d996e80-914d-4eb3-acdc-9fcb1039a700",
+      "event": "task/progress",
+      "at": "2026-11-20T21:18:49.873344Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9718f3b3-71ac-4bf8-970b-e07c0f4aba4d",
+      "text": "Verifying scheduler code claims against sources"
+    },
+    {
+      "event_id": "c49114ee-bb8f-4bdf-83db-5028153edcf4",
+      "event": "task/progress",
+      "at": "2026-11-20T21:22:53.050860Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9718f3b3-71ac-4bf8-970b-e07c0f4aba4d",
+      "text": "Writing design.md with simulation results"
+    },
+    {
+      "event_id": "1383025d-1301-409b-86de-9b5a8ace52f2",
+      "event": "task/progress",
+      "at": "2026-11-20T21:25:05.539076Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9718f3b3-71ac-4bf8-970b-e07c0f4aba4d",
+      "text": "design.md written, 4 open questions for the owner"
+    },
+    {
+      "event_id": "698565fd-2bda-4512-b72f-530f824f53a2",
+      "event": "stage/presented",
+      "at": "2026-11-20T21:25:29.507651Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "2435db83-70d6-49b7-8921-14e32840d708",
+      "event": "ticket/note",
+      "at": "2026-11-20T21:31:33.035499Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner answers to design.md open questions (2026-11-20): Q1 penalty 0 switches the whole cost off, the negative-offset wait included (plans identical to today). Q2 mark flipping runs under both strategies whenever MERIDIAN_FLIP.ENABLED is 1 (information only under COMPACT). Q3 the label check plus code review is enough, no test-only observable. Q4 yes: the docs (INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md) recommend setting the meridian flip once in the STARTUP hook, explain that the planner uses the current MERIDIAN_FLIP, and the per-task advice and task examples are adjusted. Correction: the simulation used 1000 random nights, not 5000.",
+      "tokens": null
+    },
+    {
+      "event_id": "9f69181e-6b08-4de5-8b74-240b4badfe94",
+      "event": "task/progress",
+      "at": "2026-11-20T21:33:35.480920Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9718f3b3-71ac-4bf8-970b-e07c0f4aba4d",
+      "text": "Design approved: design.md"
+    },
+    {
+      "event_id": "7e28edfd-3c63-4afd-87ae-f3ba18bf79fb",
+      "event": "stage/approved",
+      "at": "2026-11-20T21:33:35.481479Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "9718f3b3-71ac-4bf8-970b-e07c0f4aba4d",
+      "file": "design.md"
+    },
+    {
+      "event_id": "fdcef2c4-15d6-476a-a111-b85cf9d89696",
+      "event": "task/progress",
+      "at": "2026-11-20T21:33:50.542714Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Implementer launched",
+      "attempt_id": "667b6f77-ec14-4f06-a8ce-433683798964",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "57fa945c-61f2-4a46-9384-06383afc1782",
+      "event": "task/progress",
+      "at": "2026-11-20T21:34:42.379907Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Plan code done; wiring MERIDIAN_FLIP cache, setting and plan mark into the agent"
+    },
+    {
+      "event_id": "467526a4-8015-4ae8-9dbe-b00e950ae00e",
+      "event": "task/progress",
+      "at": "2026-11-20T21:35:50.735661Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Building library and scheduler archive in the worktree"
+    },
+    {
+      "event_id": "d9252117-c9e0-4f52-9802-19be5a102df6",
+      "event": "task/progress",
+      "at": "2026-11-20T21:38:18.380456Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Running unit tests: test_agent_scheduler_plan"
+    },
+    {
+      "event_id": "1d57fd2d-0d89-443d-8302-3e4399bbe633",
+      "event": "task/progress",
+      "at": "2026-11-20T21:39:10.723584Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Running the scheduler plan benchmark (1000 nights)"
+    },
+    {
+      "event_id": "e64877e7-15cf-4474-84d2-17d24a2cf537",
+      "event": "task/progress",
+      "at": "2026-11-20T21:40:00.492189Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Writing integration tests for the MERIDIAN_FLIP cache"
+    },
+    {
+      "event_id": "312ea968-842d-463d-a791-cb531ce115b0",
+      "event": "task/progress",
+      "at": "2026-11-20T21:41:45.127442Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Running scheduler integration cases filtered on flip"
+    },
+    {
+      "event_id": "226e2acb-b08c-4090-9c95-c1d18c3c5972",
+      "event": "task/progress",
+      "at": "2026-11-20T21:42:29.633802Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Running the full scheduler integration suite; updating the documentation"
+    },
+    {
+      "event_id": "13c759a7-d525-4cfb-a147-0a0f09f1ef55",
+      "event": "task/progress",
+      "at": "2026-11-20T21:46:25.822562Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "fec35121-67f2-4092-9d6d-f038e0f94ebe",
+      "event": "task/progress",
+      "at": "2026-11-20T21:46:25.862532Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f8f0088f-3f1d-44f8-88eb-e5a85ad6ec36",
+      "event": "task/progress",
+      "at": "2026-11-20T21:46:25.868545Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "0b9c1315-3d7c-43f2-84e2-6acf3b140d26",
+      "event": "task/progress",
+      "at": "2026-11-20T21:48:23.603551Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "e8eaad9f-c48f-4471-94e4-a76d2cc78b75",
+      "event": "check/passed",
+      "at": "2026-11-20T21:48:23.609319Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "2df69eb47da3e9f3c93d6b9ab198e5503a9f70ec",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "29b991e5-7d81-431e-b6a3-e470450e6616",
+      "event": "task/progress",
+      "at": "2026-11-20T21:48:26.741935Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "002b2e3a-fdf6-467f-b2df-bfb058ffdde9",
+      "event": "ticket/note",
+      "at": "2026-11-20T21:51:32.774128Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Benchmark (indigo_test/benchmark/bench_scheduler_plan, 1000 random nights, lat 42 lon 23, 2026-11-19, flip OFFSET 0, flips counted with indigo_scheduler_run_flips on executed runs): COMPACT 5626 runs, 645 flips (0.65/night), weighted quality 69.7 %; VISIBILITY (no penalty) 5879 runs, 1436 flips (1.44/night), 79.6 %; VISIBILITY F=10 (default penalty) 5879 runs, 269 flips (0.27/night, -81 %), 78.9 %. Owner's night: VISIBILITY 3 flips 95.8 % weighted -> F=10 0 flips 94.5 %. No night with fewer runs than COMPACT, 0 violations for all strategies; F=10 has 26 nights with the same runs as COMPACT and a lower raw weighted quality (expected: the comparison with COMPACT now includes flip costs). Plain VISIBILITY plan time p99 27.87 ms, max 38.87 ms. Unit test visibility_flip_never_fewer_runs: 405 -> 101 flips over its 250 random queues. Matches the design's prototype simulation.",
+      "tokens": null
+    },
+    {
+      "event_id": "4ccb945f-b11a-4de1-9024-c6474e52fd27",
+      "event": "task/progress",
+      "at": "2026-11-20T21:55:02.506541Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "5c485218-f689-41a2-9ff7-f437082a614a",
+      "event": "check/passed",
+      "at": "2026-11-20T21:55:02.512206Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "2df69eb47da3e9f3c93d6b9ab198e5503a9f70ec",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "d9678086-bc5c-4fb1-acf7-7047be5011cc",
+      "event": "task/progress",
+      "at": "2026-11-20T21:55:31.313683Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "text": "Review started"
+    },
+    {
+      "event_id": "c0f75da5-5ac1-47f7-abc4-4cbc924145a4",
+      "event": "review/started",
+      "at": "2026-11-20T21:55:31.314314Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "a18b5a6b-58c7-4ead-abb7-a3d23f15736b",
+      "event": "task/progress",
+      "at": "2026-11-20T21:55:45.448917Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "text": "Reviewer launched",
+      "attempt_id": "fed417c3-7fa6-47cd-a199-7bcf61d95824",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ff5569d1-c6a5-499f-8341-8c5672e35ce3",
+      "event": "task/progress",
+      "at": "2026-11-20T21:56:37.387350Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "text": "Running unit plan test and make test-agent-scheduler in worktree"
+    },
+    {
+      "event_id": "ce4ada17-abb0-4a98-97d4-a40e5e87eda5",
+      "event": "task/progress",
+      "at": "2026-11-20T22:01:29.305928Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "00d5563a-91e8-40c7-8ea5-c329d09d933d",
+      "event": "task/progress",
+      "at": "2026-11-20T22:01:29.305967Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "2f54f3ce-a1b8-496b-a68f-1383219d94a7",
+      "event": "review/changes_requested",
+      "at": "2026-11-20T22:01:29.306657Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "2df69eb47da3e9f3c93d6b9ab198e5503a9f70ec"
+    },
+    {
+      "event_id": "86c094b2-02da-483f-a3ff-e66a46eaef6f",
+      "event": "task/progress",
+      "at": "2026-11-20T22:01:54.401531Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Fixing review notes: guide section order, example assumption, vis_table best init"
+    },
+    {
+      "event_id": "be7b7c91-d79f-4e14-8fa4-9eb8185fcc6f",
+      "event": "task/progress",
+      "at": "2026-11-20T22:02:28.284043Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Running unit tests: test_agent_scheduler_plan"
+    },
+    {
+      "event_id": "6e0cfc20-0606-45fd-adf8-d2bf1aeeea45",
+      "event": "task/progress",
+      "at": "2026-11-20T22:04:52.521157Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "aaa2d11b-228c-4a7c-a92a-3fb029693f2c",
+      "event": "task/progress",
+      "at": "2026-11-20T22:04:52.543972Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b42e8d5b-d193-4457-ab56-06142c8c09ec",
+      "event": "task/progress",
+      "at": "2026-11-20T22:04:52.549810Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "3af52fd1-e6e2-49fe-92b0-331ca3256f5b",
+      "event": "task/progress",
+      "at": "2026-11-20T22:06:32.717524Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "1d4593f7-8b56-44fc-9b8e-c5ffa10452a9",
+      "event": "check/passed",
+      "at": "2026-11-20T22:06:32.725176Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "6e83f711e14a598facfb87ec1170f63fb32c4fc0",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "f73d682b-674d-4ed4-9e56-ecced5a25561",
+      "event": "task/progress",
+      "at": "2026-11-20T22:06:36.919654Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "77a2a13a-4943-4d87-94a6-1fd9b79cedf3",
+      "event": "task/progress",
+      "at": "2026-11-20T22:11:02.232660Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "aa3d0c8b-9880-4b59-a193-3e8e2f24a942",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "fb0ee0c0-68e6-4421-ad2a-d0ac578bc917",
+      "event": "check/passed",
+      "at": "2026-11-20T22:11:02.238973Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "6e83f711e14a598facfb87ec1170f63fb32c4fc0",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "b55b197f-e8f5-4dfb-b752-da85eb953d28",
+      "event": "task/progress",
+      "at": "2026-11-20T22:11:18.376792Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "text": "Review started"
+    },
+    {
+      "event_id": "91bf202c-a7e9-4955-bddd-0240d7b1d047",
+      "event": "review/started",
+      "at": "2026-11-20T22:11:18.377766Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "2d48b611-18d8-4b9a-a5dc-7d8ea9b316dd",
+      "event": "task/progress",
+      "at": "2026-11-20T22:11:30.619042Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "text": "Reviewer launched",
+      "attempt_id": "18f9906f-afcf-4c65-b6fd-641ced9fe99b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "dece7c65-0134-450a-a5c5-579676ed9200",
+      "event": "task/progress",
+      "at": "2026-11-20T22:11:36.845714Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "text": "Running plan unit test and make test-agent-scheduler"
+    },
+    {
+      "event_id": "0f8ca119-15de-49b2-8d68-58fd5239bc65",
+      "event": "task/progress",
+      "at": "2026-11-20T22:20:20.929808Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b919d33b-c222-4e09-a73f-306afb45c0a8",
+      "event": "review/passed",
+      "at": "2026-11-20T22:20:20.930581Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "820fc984-5436-4359-9663-20006507464a",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "6e83f711e14a598facfb87ec1170f63fb32c4fc0"
+    },
+    {
+      "event_id": "1340fb78-92e9-4dcf-86b3-bf87a2fb4c33",
+      "event": "ticket/closed",
+      "at": "2026-11-20T22:28:00.152284Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-20T22:28:00.152244Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "17f123cab3427ac1bc2193d715b7d58b2a90ca1c"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "high",
+  "flow": {
+    "profile": "full",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "2df69eb47da3e9f3c93d6b9ab198e5503a9f70ec",
+        "tree": "a0b7929b020bed62d2551cbd69d9846fbc08786c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T21:46:25.861448Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/7f4b8d19-0576-49fe-ac62-564c212ef655/a0b7929b020b-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "2df69eb47da3e9f3c93d6b9ab198e5503a9f70ec",
+        "tree": "a0b7929b020bed62d2551cbd69d9846fbc08786c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T21:48:23.602630Z",
+        "duration_s": 117.7,
+        "log": "/tmp/factory-flow/7f4b8d19-0576-49fe-ac62-564c212ef655/a0b7929b020b-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scheduler",
+        "commit": "2df69eb47da3e9f3c93d6b9ab198e5503a9f70ec",
+        "tree": "a0b7929b020bed62d2551cbd69d9846fbc08786c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T21:55:02.505567Z",
+        "duration_s": 395.8,
+        "log": "/tmp/factory-flow/7f4b8d19-0576-49fe-ac62-564c212ef655/a0b7929b020b-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6e83f711e14a598facfb87ec1170f63fb32c4fc0",
+        "tree": "8a5511077bc97bd269f5e65a69219b2d5d15a833",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T22:04:52.542900Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/7f4b8d19-0576-49fe-ac62-564c212ef655/8a5511077bc9-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "6e83f711e14a598facfb87ec1170f63fb32c4fc0",
+        "tree": "8a5511077bc97bd269f5e65a69219b2d5d15a833",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T22:06:32.716088Z",
+        "duration_s": 100.2,
+        "log": "/tmp/factory-flow/7f4b8d19-0576-49fe-ac62-564c212ef655/8a5511077bc9-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scheduler",
+        "commit": "6e83f711e14a598facfb87ec1170f63fb32c4fc0",
+        "tree": "8a5511077bc97bd269f5e65a69219b2d5d15a833",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-20T22:11:02.231520Z",
+        "duration_s": 265.3,
+        "log": "/tmp/factory-flow/7f4b8d19-0576-49fe-ac62-564c212ef655/8a5511077bc9-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Code matches the approved design and owner answers Q1-Q4: flip_hour_angle/flip_needed/flip_loss (plan.c:114-154; HA from hour_angle[k] + elapsed*1.0027379, normalised to [-12,12), flip iff HA<0 and HA_end>=OFFSET, penalty<=0 returns 0 incl. negative-offset wait), cost in vis_table (plan.c:479-482) and compact_value (plan.c:1139-1142) with urgent exemption; NULL/disabled/penalty 0 subtract exactly 0 so plans are bit-identical (also asserted by visibility_flip_off_is_today). Agent: cache under observed->mutex with generation (scheduler.c:3447-3459), delete of property/device disables (3524-3528), process() marks plan_dirty on generation change (2555-2561), update_plan copies values once (2352-2359), label mark (2246-2247), SETTINGS item 5 with shifted macros and count 11, names.h, DRIVER_VERSION 0x0300001F. Unit test_agent_scheduler_plan all passed; make -C indigo_test test-agent-scheduler 138/138 passed incl. the four new flip cases. Defects: (1) indigo_docs/INDIGO_SCHEDULER_GUIDE.md:254 inserts the heading '#### Meridian flips' in the middle of 'Choosing a strategy', so the worked **Example.** (265), **When to use which.** (279) and **What VISIBILITY respects.** (284) now sit under 'Meridian flips'. Move the subsection after the end of the strategy material (before '### Time windows', line 304) or keep the strategy paragraphs together. (2) The guide's worked example table (265-275) gives the VISIBILITY placement without the flip, while the guide now recommends enabling the flip in the STARTUP hook (Unpark example, 633) and the default penalty is 10; SCHEDULER.md states the penalty removes all three flips of that example. Say in the example that it assumes the meridian flip disabled (or penalty 0). Minor, non-blocking: vis_table's best-start sentinel 'double best = -1' (plan.c:470) predates negative values; with a large penalty a task whose every start flips keeps best_minute -1, which only affects the seed ordering heuristic at plan.c:1189 (use VIS_NONE).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "2df69eb47da3e9f3c93d6b9ab198e5503a9f70ec",
+        "tree": "a0b7929b020bed62d2551cbd69d9846fbc08786c",
+        "at": "2026-11-20T22:01:29.305823Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of master...HEAD (6e83f711e). Flip check (indigo_agent_scheduler_plan.c:115-155): HA from target->hour_angle[k] (grid already normalised to [-12,12)) advanced at 1.00273790935 and renormalised once; flips iff HA_start<0 and HA_start+d*rate>=OFFSET; loss = penalty + (OFFSET<0 ? -max(HA_start,OFFSET) : 0); penalty<=0 returns 0 so the wait is switched off too (Q1). vis_table (:471-483) subtracts 100*loss only for non-urgent runs and now starts best at VIS_NONE, so all-negative tables get a best_minute; the DP/search use VIS_NONE sentinels throughout and handle negative values. compact_value (:1139-1143) gets the same non-urgent cost; plan_order keeps flip NULL. Agent: MERIDIAN_FLIP cached under observed->mutex with offset clamp and generation bump only on change (indigo_agent_scheduler.c:3447-3459), delete of property/device disables (:3524-3528), process() marks plan_dirty on generation change (:2555-2561), update_plan copies values once (:2352-2359); settings change already sets plan_dirty. VISIBILITY_FLIP_PENALTY 0..120 step 1 default 10 after ALTITUDE_WEIGHT, item macros reindexed, count 11; name in indigo_names.h. Label marks flips under both strategies via indigo_scheduler_run_flips, independent of penalty (Q2). DRIVER_VERSION 0x1E->0x1F. Docs: guide Meridian flips subsection now precedes Time windows (293 vs 304), worked example states flip disabled and the F=10 outcome - verified with bench_scheduler_plan owner's night: Soul 21:26, Pleiades 22:22, Jellyfish 00:51, 0 flips, 94.5 %; STARTUP-hook advice consistent across guide (Rules for the body, Hooks Unpark example), SCHEDULER.md and per-task examples; PROPERTIES.md states best-visibility only, COMPACT ignored, ENABLED 0/missing. Previous review items all resolved. Tests run here: build OK; make test-unit exit 0; test_agent_scheduler_plan 41/41 PASS (flips 405 -> 101); make test-agent-scheduler 138 run, 138 passed. Non-blocking notes: test_visibility_flip_every_start_flips' final assertion (info.value < 0 || flip value < plain value) is implied by the preceding flip assertion and would also pass with the old best=-1 initialisation (best_minute only affects seed ordering), so it does not pin that fix; USE_SOLVER is not cached (design item 1 lists it) but it is unused and SCHEDULER.md says so. No defects found.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "6e83f711e14a598facfb87ec1170f63fb32c4fc0",
+        "tree": "8a5511077bc97bd269f5e65a69219b2d5d15a833",
+        "at": "2026-11-20T22:20:20.929707Z"
+      }
+    ],
+    "approvals": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": true,
+        "text": "",
+        "sha256": "0a5c60e6f8a30d19029cb4c066de86ee391a8f04a7dc65793b660ee3de2b7047",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-20T21:33:35.479162Z"
+      }
+    ],
+    "notes": [
+      {
+        "at": "2026-11-20T21:31:33.034941Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner answers to design.md open questions (2026-11-20): Q1 penalty 0 switches the whole cost off, the negative-offset wait included (plans identical to today). Q2 mark flipping runs under both strategies whenever MERIDIAN_FLIP.ENABLED is 1 (information only under COMPACT). Q3 the label check plus code review is enough, no test-only observable. Q4 yes: the docs (INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md) recommend setting the meridian flip once in the STARTUP hook, explain that the planner uses the current MERIDIAN_FLIP, and the per-task advice and task examples are adjusted. Correction: the simulation used 1000 random nights, not 5000.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-20T21:51:32.773516Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Benchmark (indigo_test/benchmark/bench_scheduler_plan, 1000 random nights, lat 42 lon 23, 2026-11-19, flip OFFSET 0, flips counted with indigo_scheduler_run_flips on executed runs): COMPACT 5626 runs, 645 flips (0.65/night), weighted quality 69.7 %; VISIBILITY (no penalty) 5879 runs, 1436 flips (1.44/night), 79.6 %; VISIBILITY F=10 (default penalty) 5879 runs, 269 flips (0.27/night, -81 %), 78.9 %. Owner's night: VISIBILITY 3 flips 95.8 % weighted -> F=10 0 flips 94.5 %. No night with fewer runs than COMPACT, 0 violations for all strategies; F=10 has 26 nights with the same runs as COMPACT and a lower raw weighted quality (expected: the comparison with COMPACT now includes flip costs). Plain VISIBILITY plan time p99 27.87 ms, max 38.87 ms. Unit test visibility_flip_never_fewer_runs: 405 -> 101 flips over its 250 random queues. Matches the design's prototype simulation.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-20T21:25:29.507106Z"
+      }
+    ],
+    "landing": {
+      "commit": "17f123cab3427ac1bc2193d715b7d58b2a90ca1c",
+      "tree": "8a5511077bc97bd269f5e65a69219b2d5d15a833",
+      "base": "master",
+      "at": "2026-11-20T22:27:59.859422Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "full",
+    "at": "2026-11-20T21:16:00.614132Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-20T21:16:04.262098Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 4659486.952,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 65,
+    "sha256": "68f817c82b970453565e0b9791ae3e6660beee2b99d2b03b3d6492ed280f0e8c"
+  }
+}

@@ -32,6 +32,7 @@
 //
 // Usage:
 //   build/benchmark/bench_scheduler_plan [label [nights [runs]]]
+//   build/benchmark/bench_scheduler_plan --examples file.json
 //
 //   label   free-form name printed in the header, e.g. a branch name
 //   nights  random nights per run (default 1000)
@@ -50,8 +51,16 @@
 // runs moved by more than 15 minutes or reordered) and, for VISIBILITY, how
 // each plan was decided, the plan time (min, mean, median, p95, p99, max and
 // standard deviation, warm-up plans of the first night excluded) and the
-// largest work of one plan. The owner's night of 2026-11-19 is printed run by
-// run first.
+// largest work of one plan. VISIBILITY F=10 is VISIBILITY with the meridian
+// flip enabled at OFFSET 0 and the default flip penalty of 10 minutes; the
+// meridian flips of the executed runs (a run starting before the meridian and
+// reaching it) are counted for every strategy. The owner's night of 2026-11-19
+// is printed run by run first.
+//
+// With --examples the busy and sparse nights of the scheduler guide are
+// executed with every strategy, printed run by run and written to the JSON
+// file with the sun and target altitudes on the grid, from which
+// tools/scheduler_plan_charts.py draws the charts of the guide.
 
 #include <math.h>
 #include <stdio.h>
@@ -76,13 +85,22 @@
 
 typedef enum {
 	STRATEGY_COMPACT,
-	STRATEGY_VISIBILITY
+	STRATEGY_VISIBILITY,
+	STRATEGY_VISIBILITY_FLIP
 } strategy;
+
+#define STRATEGY_COUNT	3
+
+static const char *strategy_names[STRATEGY_COUNT] = { "COMPACT", "VISIBILITY", "VISIBILITY F=10" };
+
+// the meridian flip of VISIBILITY F=10, also used to count the flips of every strategy
+static const scheduler_flip penalty_flip = { true, 0, 10 / 60.0 };
 
 typedef struct {
 	int runs;
 	double quality, weighted, duration;
 	int violations, changes;
+	int flips;
 } night_result;
 
 static scheduler_sky_grid sky;
@@ -96,6 +114,17 @@ static int sample_count;
 static long worst_work;
 static int results[4];
 static bool verbose;
+
+// the task runs of the last night executed by run_night()
+typedef struct {
+	int task;
+	time_t start, end;
+	double quality;
+	bool flip;
+} executed_run;
+
+static executed_run executed[MAX_RUNS];
+static int executed_count;
 
 static unsigned long long random_state;
 
@@ -137,19 +166,57 @@ static void random_night(void) {
 	}
 }
 
-static void owner_night(void) {
-	static const char *texts[] = {
-		"// @task Orion\n// @priority high\n// @target 05:35:17 -05:23:28\n// @altitude > 20\n// @twilight astronomical\nx();\n",
-		"// @task Rosette\n// @target 06:33:45 +04:59:54\n// @altitude > 20\n// @twilight astronomical\nx();\n",
-		"// @task Jellyfish\n// @target 06:17:00 +22:31:00\n// @altitude > 20\n// @twilight astronomical\nx();\n",
-		"// @task Pleiades\n// @target 03:47:24 +24:07:00\n// @altitude > 10\n// @twilight astronomical\nx();\n",
-		"// @task Elephant\n// @target 21:34:57 +57:30:00\n// @altitude > 20\n// @twilight astronomical\nx();\n",
-		"// @task Soul\n// @target 02:51:00 +60:24:00\n// @altitude > 10\n// @twilight astronomical\nx();\n"
-	};
-	static const int minutes[] = { 31, 21, 121, 21, 121, 28 };
+typedef struct {
+	const char *text;
+	int minutes;
+} example_task;
+
+typedef struct {
+	const char *name;
+	const example_task *tasks;
+	int count;
+} example_night;
+
+static const example_task owner_tasks[] = {
+	{ "// @task Orion\n// @priority high\n// @target 05:35:17 -05:23:28\n// @altitude > 20\n// @twilight astronomical\nx();\n", 31 },
+	{ "// @task Rosette\n// @target 06:33:45 +04:59:54\n// @altitude > 20\n// @twilight astronomical\nx();\n", 21 },
+	{ "// @task Jellyfish\n// @target 06:17:00 +22:31:00\n// @altitude > 20\n// @twilight astronomical\nx();\n", 121 },
+	{ "// @task Pleiades\n// @target 03:47:24 +24:07:00\n// @altitude > 10\n// @twilight astronomical\nx();\n", 21 },
+	{ "// @task Elephant\n// @target 21:34:57 +57:30:00\n// @altitude > 20\n// @twilight astronomical\nx();\n", 121 },
+	{ "// @task Soul\n// @target 02:51:00 +60:24:00\n// @altitude > 10\n// @twilight astronomical\nx();\n", 28 }
+};
+
+// the worked examples of the "Two nights compared" section of indigo_docs/INDIGO_SCHEDULER_GUIDE.md
+static const example_task busy_tasks[] = {
+	{ "// @task Bubble\n// @target 23:20:48 +61:12:00\n// @altitude > 25\n// @twilight astronomical\nx();\n", 60 },
+	{ "// @task Heart\n// @target 02:33:22 +61:26:36\n// @altitude > 25\n// @twilight astronomical\nx();\n", 120 },
+	{ "// @task California\n// @target 04:03:18 +36:25:18\n// @altitude > 25\n// @twilight astronomical\nx();\n", 120 },
+	{ "// @task Pleiades\n// @target 03:47:24 +24:07:00\n// @altitude > 25\n// @twilight astronomical\nx();\n", 30 },
+	{ "// @task Horsehead\n// @priority high\n// @target 05:40:59 -02:27:30\n// @altitude > 25\n// @twilight astronomical\nx();\n", 90 },
+	{ "// @task Crab\n// @target 05:34:32 +22:00:52\n// @altitude > 25\n// @twilight astronomical\nx();\n", 30 },
+	{ "// @task Rosette\n// @target 06:33:45 +04:59:54\n// @altitude > 25\n// @twilight astronomical\nx();\n", 120 },
+	{ "// @task Bode\n// @target 09:55:33 +69:04:00\n// @altitude > 25\n// @twilight astronomical\nx();\n", 120 },
+	{ "// @task Leo Triplet\n// @target 11:18:55 +13:05:32\n// @altitude > 25\n// @twilight astronomical\nx();\n", 60 }
+};
+
+static const example_task sparse_tasks[] = {
+	{ "// @task Andromeda\n// @target 00:42:44 +41:16:09\n// @altitude > 25\n// @twilight astronomical\nx();\n", 90 },
+	{ "// @task Triangulum\n// @target 01:33:51 +30:39:37\n// @altitude > 25\n// @twilight astronomical\nx();\n", 60 },
+	{ "// @task Orion\n// @target 05:35:17 -05:23:28\n// @altitude > 25\n// @twilight astronomical\nx();\n", 45 },
+	{ "// @task Bode\n// @target 09:55:33 +69:04:00\n// @altitude > 25\n// @twilight astronomical\nx();\n", 90 }
+};
+
+static const example_night example_nights[] = {
+	{ "busy", busy_tasks, sizeof(busy_tasks) / sizeof(busy_tasks[0]) },
+	{ "sparse", sparse_tasks, sizeof(sparse_tasks) / sizeof(sparse_tasks[0]) }
+};
+
+#define EXAMPLE_COUNT	(int)(sizeof(example_nights) / sizeof(example_nights[0]))
+
+static void load_night(const example_task *list, int count) {
 	task_count = 0;
-	for (int i = 0; i < 6; i++) {
-		add_task(texts[i], minutes[i]);
+	for (int i = 0; i < count; i++) {
+		add_task(list[i].text, list[i].minutes);
 	}
 }
 
@@ -201,6 +268,7 @@ static night_result run_night(strategy kind, bool timed) {
 	time_t last_end[MAX_TASKS];
 	bool ran[MAX_TASKS] = { false };
 	time_t t = T_START;
+	executed_count = 0;
 	for (int step = 0; step < 200; step++) {
 		scheduler_plan_hook hooks[2];
 		int hook_index[2], hook_count = 0;
@@ -217,15 +285,18 @@ static night_result run_night(strategy kind, bool timed) {
 			scheduler_plan_info info;
 			struct timespec from, to;
 			clock_gettime(CLOCK_MONOTONIC, &from);
-			count = indigo_scheduler_plan_visibility(&sky, state, task_count, hooks, hook_count, t, T_END + 1, 1, 1, have_previous ? previous : NULL, previous_count, plan, MAX_RUNS, &info);
+			count = indigo_scheduler_plan_visibility(&sky, state, task_count, hooks, hook_count, t, T_END + 1, 1, 1, kind == STRATEGY_VISIBILITY_FLIP ? &penalty_flip : NULL, have_previous ? previous : NULL, previous_count, plan, MAX_RUNS, &info);
 			clock_gettime(CLOCK_MONOTONIC, &to);
-			if (timed && sample_count < MAX_SAMPLES) {
-				samples[sample_count++] = elapsed(&from, &to) * 1000;
+			// the timing and the decisions are those of plain VISIBILITY
+			if (kind == STRATEGY_VISIBILITY) {
+				if (timed && sample_count < MAX_SAMPLES) {
+					samples[sample_count++] = elapsed(&from, &to) * 1000;
+				}
+				if (info.work > worst_work) {
+					worst_work = info.work;
+				}
+				results[info.result]++;
 			}
-			if (info.work > worst_work) {
-				worst_work = info.work;
-			}
-			results[info.result]++;
 		}
 		if (have_previous && changed(previous, previous_count, plan, count)) {
 			result.changes++;
@@ -259,11 +330,18 @@ static night_result run_night(strategy kind, bool timed) {
 			}
 			ran[i] = true;
 			last_end[i] = start + tasks[i].duration;
+			bool flips = indigo_scheduler_run_flips(&sky, &targets[i], &headers[i], start, tasks[i].duration, &penalty_flip);
+			if (flips) {
+				result.flips++;
+			}
+			if (executed_count < MAX_RUNS) {
+				executed[executed_count++] = (executed_run){ i, start, start + tasks[i].duration, quality(i, start), flips };
+			}
 			if (verbose) {
 				char a[8], b[8];
 				hhmm(start, a);
 				hhmm(start + tasks[i].duration, b);
-				printf("    %s-%s %-10s %5.1f %%\n", a, b, headers[i].name, quality(i, start));
+				printf("    %s-%s %-10s %5.1f %%%s\n", a, b, headers[i].name, quality(i, start), flips ? "  FLIP" : "");
 			}
 			result.runs++;
 			result.quality += quality(i, start);
@@ -306,7 +384,59 @@ static void print_timing(void) {
 }
 
 static void print_line(const char *name, const night_result *total, int fewer, int worse) {
-	printf("%-10s runs %5d  mean quality %5.1f %%  weighted quality %5.1f %%  nights with fewer runs than COMPACT %d  same runs and worse %d  violations %d  plan changes %d\n", name, total->runs, total->runs > 0 ? total->quality / total->runs : 0, total->duration > 0 ? total->weighted / total->duration : 0, fewer, worse, total->violations, total->changes);
+	printf("%-15s runs %5d  mean quality %5.1f %%  weighted quality %5.1f %%  nights with fewer runs than COMPACT %d  same runs and worse %d  violations %d  plan changes %d\n", name, total->runs, total->runs > 0 ? total->quality / total->runs : 0, total->duration > 0 ? total->weighted / total->duration : 0, fewer, worse, total->violations, total->changes);
+}
+
+static void print_flips(const char *name, const night_result *total, int nights) {
+	printf("%-15s meridian flips %5d  flips per night %.2f  runs %5d  weighted quality %5.1f %%\n", name, total->flips, nights > 0 ? (double)total->flips / nights : 0, total->runs, total->duration > 0 ? total->weighted / total->duration : 0);
+}
+
+static void write_series(FILE *file, const char *name, const double *values, int from, int to) {
+	fprintf(file, "\"%s\": [", name);
+	for (int k = from; k < to; k++) {
+		fprintf(file, "%s%.3f", k > from ? ", " : "", values[k]);
+	}
+	fprintf(file, "]");
+}
+
+// the example nights with their target grids and the runs every strategy executes, as JSON for tools/scheduler_plan_charts.py
+static bool write_examples(const char *path) {
+	FILE *file = fopen(path, "w");
+	if (file == NULL) {
+		perror(path);
+		return false;
+	}
+	static const char *priorities[] = { "low", "normal", "high", "urgent", "hook" };
+	// the grid points from the start of the plan to an hour after the night end hook
+	int from = (int)((T_START - sky.start) / SCHEDULER_GRID_STEP), to = (int)((T_END + 3600 - sky.start) / SCHEDULER_GRID_STEP) + 1;
+	fprintf(file, "{\n\"latitude\": %d, \"longitude\": %d, \"date\": \"2026-11-19\", \"plan_start\": %d, \"night_start_hook\": %d, \"night_end_hook\": %d, \"flip_offset\": %.1f, \"flip_penalty_minutes\": %.0f,\n", LATITUDE, LONGITUDE, T_START, T_NIGHT_START, T_END, penalty_flip.offset, penalty_flip.penalty * 60);
+	fprintf(file, "\"grid_start\": %ld, \"grid_step\": %d,\n", (long)(sky.start + from * SCHEDULER_GRID_STEP), SCHEDULER_GRID_STEP);
+	write_series(file, "sun_altitude", sky.sun_altitude, from, to);
+	fprintf(file, ",\n\"nights\": [\n");
+	for (int n = 0; n < EXAMPLE_COUNT; n++) {
+		load_night(example_nights[n].tasks, example_nights[n].count);
+		fprintf(file, "%s{\"name\": \"%s\", \"tasks\": [\n", n > 0 ? ",\n" : "", example_nights[n].name);
+		for (int i = 0; i < task_count; i++) {
+			fprintf(file, "%s{\"name\": \"%s\", \"ra\": %.4f, \"dec\": %.4f, \"min_altitude\": %.1f, \"priority\": \"%s\", \"minutes\": %d, \"repeat\": %d, \"transit_altitude\": %.3f, ", i > 0 ? ",\n" : "", headers[i].name, headers[i].ra, headers[i].dec, headers[i].has_min_altitude ? headers[i].min_altitude : 0, priorities[headers[i].priority_class], tasks[i].duration / 60, headers[i].repeat, targets[i].transit_altitude);
+			write_series(file, "altitude", targets[i].altitude, from, to);
+			fprintf(file, ", ");
+			write_series(file, "hour_angle", targets[i].hour_angle, from, to);
+			fprintf(file, "}");
+		}
+		fprintf(file, "],\n\"plans\": [\n");
+		for (int kind = STRATEGY_COMPACT; kind < STRATEGY_COUNT; kind++) {
+			night_result result = run_night(kind, false);
+			fprintf(file, "%s{\"strategy\": \"%s\", \"weighted_quality\": %.2f, \"runs\": [", kind > 0 ? ",\n" : "", strategy_names[kind], result.duration > 0 ? result.weighted / result.duration : 0);
+			for (int r = 0; r < executed_count; r++) {
+				fprintf(file, "%s{\"task\": %d, \"start\": %ld, \"end\": %ld, \"quality\": %.2f, \"flip\": %s}", r > 0 ? ", " : "", executed[r].task, (long)executed[r].start, (long)executed[r].end, executed[r].quality, executed[r].flip ? "true" : "false");
+			}
+			fprintf(file, "]}");
+		}
+		fprintf(file, "]}");
+	}
+	fprintf(file, "\n]\n}\n");
+	fclose(file);
+	return true;
 }
 
 int main(int argc, char **argv) {
@@ -320,18 +450,35 @@ int main(int argc, char **argv) {
 		repeats = 1;
 	}
 	indigo_scheduler_sky_build(&sky, T_START, LATITUDE, LONGITUDE, 0);
+	if (argc > 1 && strcmp(argv[1], "--examples") == 0) {
+		if (argc < 3) {
+			fprintf(stderr, "usage: %s --examples file.json\n", argv[0]);
+			return 1;
+		}
+		verbose = true;
+		for (int n = 0; n < EXAMPLE_COUNT; n++) {
+			load_night(example_nights[n].tasks, example_nights[n].count);
+			for (int kind = STRATEGY_COMPACT; kind < STRATEGY_COUNT; kind++) {
+				printf("  %s night, %s:\n", example_nights[n].name, strategy_names[kind]);
+				night_result result = run_night(kind, false);
+				printf("    %d runs, mean quality %.1f %%, weighted quality %.1f %%, meridian flips %d\n", result.runs, result.runs > 0 ? result.quality / result.runs : 0, result.duration > 0 ? result.weighted / result.duration : 0, result.flips);
+			}
+		}
+		verbose = false;
+		return write_examples(argv[2]) ? 0 : 1;
+	}
 	printf("Scheduler plan benchmark: %s, %d random nights x %d, latitude %d, longitude %d, 2026-11-19\n", label, nights, repeats, LATITUDE, LONGITUDE);
-	owner_night();
+	load_night(owner_tasks, sizeof(owner_tasks) / sizeof(owner_tasks[0]));
 	verbose = true;
-	for (int kind = STRATEGY_COMPACT; kind <= STRATEGY_VISIBILITY; kind++) {
-		printf("  owner's night, %s:\n", kind == STRATEGY_COMPACT ? "COMPACT" : "VISIBILITY");
+	for (int kind = STRATEGY_COMPACT; kind < STRATEGY_COUNT; kind++) {
+		printf("  owner's night, %s:\n", strategy_names[kind]);
 		night_result result = run_night(kind, false);
-		printf("    %d runs, mean quality %.1f %%, weighted quality %.1f %%\n", result.runs, result.quality / result.runs, result.weighted / result.duration);
+		printf("    %d runs, mean quality %.1f %%, weighted quality %.1f %%, meridian flips %d\n", result.runs, result.quality / result.runs, result.weighted / result.duration, result.flips);
 	}
 	verbose = false;
 	memset(results, 0, sizeof(results));
-	night_result totals[2];
-	int fewer[2] = { 0 }, worse[2] = { 0 };
+	night_result totals[STRATEGY_COUNT];
+	int fewer[STRATEGY_COUNT] = { 0 }, worse[STRATEGY_COUNT] = { 0 };
 	for (int repeat = 0; repeat < repeats; repeat++) {
 		memset(totals, 0, sizeof(totals));
 		memset(fewer, 0, sizeof(fewer));
@@ -342,8 +489,9 @@ int main(int argc, char **argv) {
 			night_result compact = run_night(STRATEGY_COMPACT, false);
 			// the plans of the first night are warm-up
 			night_result visibility = run_night(STRATEGY_VISIBILITY, repeat > 0 || night > 0);
-			night_result *each[2] = { &compact, &visibility };
-			for (int kind = 0; kind < 2; kind++) {
+			night_result visibility_flip = run_night(STRATEGY_VISIBILITY_FLIP, false);
+			night_result *each[STRATEGY_COUNT] = { &compact, &visibility, &visibility_flip };
+			for (int kind = 0; kind < STRATEGY_COUNT; kind++) {
 				night_result *result = each[kind];
 				totals[kind].runs += result->runs;
 				totals[kind].quality += result->quality;
@@ -351,6 +499,7 @@ int main(int argc, char **argv) {
 				totals[kind].duration += result->duration;
 				totals[kind].violations += result->violations;
 				totals[kind].changes += result->changes;
+				totals[kind].flips += result->flips;
 				if (result->runs < compact.runs) {
 					fewer[kind]++;
 				} else if (result->runs == compact.runs && result->duration > 0 && compact.duration > 0 && result->weighted / result->duration < compact.weighted / compact.duration - 1e-9) {
@@ -359,8 +508,12 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	print_line("COMPACT", totals + 0, fewer[0], worse[0]);
-	print_line("VISIBILITY", totals + 1, fewer[1], worse[1]);
+	for (int kind = 0; kind < STRATEGY_COUNT; kind++) {
+		print_line(strategy_names[kind], totals + kind, fewer[kind], worse[kind]);
+	}
+	for (int kind = 0; kind < STRATEGY_COUNT; kind++) {
+		print_flips(strategy_names[kind], totals + kind, nights);
+	}
 	printf("VISIBILITY plans: %d planned, %d COMPACT not worse, %d no arrangement, %d too large\n", results[SCHEDULER_VISIBILITY_PLANNED], results[SCHEDULER_VISIBILITY_NOT_BETTER], results[SCHEDULER_VISIBILITY_NO_ARRANGEMENT], results[SCHEDULER_VISIBILITY_TOO_LARGE]);
 	print_timing();
 	return 0;

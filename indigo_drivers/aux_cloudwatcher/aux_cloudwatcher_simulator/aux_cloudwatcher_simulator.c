@@ -7,7 +7,7 @@
 #define SIM_NAME "aux_cloudwatcher"
 #define SIM_TERMINATOR '!'
 #include "../../../indigo_test/simulator_common/aux_simulator_common.h"
-static int relay, pwm;
+static int relay, pwm, rh_requests, anemometer_requests;
 static char reply[120];
 static size_t reply_size;
 
@@ -23,6 +23,12 @@ static void block(const char *text) {
 // no-sensors    - no RH/T, no pressure, no SQ, no anemometer, dark sky
 // precise       - high resolution RH/T encoding plus the ambient thermistor
 // wet-overcast  - raining, overcast, very light sky, humid, calm
+// rh-invalid    - the RH sensor is fitted but its temperature is out of range
+// rh-garbled    - the RH temperature reply is unreadable after the first poll
+// rh-first-lost - the first RH temperature reply of the session is unreadable
+// anemometer-late        - the anemometer reply is unreadable at connect and the first poll, then fitted
+// anemometer-late-absent - the anemometer reply is unreadable at connect and the first poll, then not fitted
+// sky-invalid   - the IR sky temperature reply is malformed, so no reading completes
 // constants-high - factory M! constants whose low bytes exceed 127
 // slow-switch    - the relay state reply is held, so a change can land during a poll
 static void sim_dispatch(const char *command) {
@@ -47,7 +53,7 @@ static void sim_dispatch(const char *command) {
 		if (strcmp(sim_profile, "relay-error")) { relay = command[0] == 'H'; }
 		block(!strcmp(sim_profile, "relay-error") ? "!Z" : relay ? "!Y" : "!X");
 	}
-	else if (!strcmp(command, "S!")) { block(wet ? "!1 500" : "!1 -1200"); }
+	else if (!strcmp(command, "S!")) { block(!strcmp(sim_profile, "sky-invalid") ? "!Z 0" : wet ? "!1 500" : "!1 -1200"); }
 	else if (!strcmp(command, "T!")) { block("!2 2000"); }
 	else if (!strcmp(command, "E!")) { block(wet ? "!R 300" : "!R 2500"); }
 	else if (!strcmp(command, "C!")) {
@@ -57,10 +63,13 @@ static void sim_dispatch(const char *command) {
 		block("!5 512");
 		if (!no_sensors) { block("!8 100"); }
 	}
-	else if (!strcmp(command, "v!")) { block(no_sensors ? "!v 0" : "!v 1"); }
+	else if (!strcmp(command, "v!")) {
+		const bool late = !strcmp(sim_profile, "anemometer-late") || !strcmp(sim_profile, "anemometer-late-absent");
+		block(late && anemometer_requests++ < 2 ? "!Z 0" : no_sensors || !strcmp(sim_profile, "anemometer-late-absent") ? "!v 0" : "!v 1");
+	}
 	else if (!strcmp(command, "V!")) { block(wet ? "!w 0" : "!w 36"); }
-	else if (!strcmp(command, "h!")) { block(precise ? "!hh26214" : wet ? "!h 80" : "!h 40"); }
-	else if (!strcmp(command, "t!")) { block(no_sensors ? "!t 65535" : precise ? "!th17000" : "!t 38"); }
+	else if (!strcmp(command, "h!")) { block(precise ? "!hh26214" : wet ? "!h 82" : "!h 40"); }
+	else if (!strcmp(command, "t!")) { block(no_sensors ? "!t 65535" : precise ? "!th17000" : !strcmp(sim_profile, "rh-invalid") ? "!t 100" : !strcmp(sim_profile, "rh-garbled") && rh_requests++ > 0 ? "!Z 0" : !strcmp(sim_profile, "rh-first-lost") && rh_requests++ == 0 ? "!Z 0" : "!t 38"); }
 	else if (!strcmp(command, "p!")) { block(no_sensors ? "!p 65535" : "!p 1600000"); }
 	else if (!strcmp(command, "q!")) { block("!q 2000"); }
 	else if (!strcmp(command, "M!")) {

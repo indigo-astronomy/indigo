@@ -60,7 +60,8 @@ static void usage(const char *name) {
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  --firmware <version>    Reported firmware version, default is 1.8m\n");
 	printf("  Faults: drop, header, truncate <n>, garbage <n>, infinite <n>, close\n");
-	printf("  Runtime control is read once from <ready-file>.control as ACTION ARGUMENT\n");
+	printf("  Readings: set <n> <text> replaces record line <n> in every later record\n");
+	printf("  Runtime control is read once from <ready-file>.control, one ACTION ARGUMENT per line\n");
 	printf("  and every complete command is recorded in <ready-file>.events.\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -188,13 +189,17 @@ static void record_command(const char *command) {
 	fclose(file);
 }
 
-// One fault is armed at a time in <ready-file>.control as "ACTION ARGUMENT" and consumed by the
-// next record. ARGUMENT is the one-based index of the affected record line for the actions that
-// take one, and "*" for the rest.
+// <ready-file>.control is consumed by the next record, one "ACTION ARGUMENT" per line. ARGUMENT is
+// the one-based index of the affected record line for the actions that take one, and "*" for the
+// rest. One fault is armed at a time and applies to that record only. "set <n> <text>" replaces
+// record line <n> with <text> in that and every later record, so a test can put each reading at a
+// chosen level, or make a sensor report "nan" as an Arduino prints a failed reading.
 typedef struct {
 	char action[16];
 	int line;
 } simulator_fault;
+
+static char overrides[10][32];
 
 static simulator_fault take_fault(void) {
 	simulator_fault fault = { { 0 }, 0 };
@@ -205,15 +210,24 @@ static simulator_fault take_fault(void) {
 	if (file == NULL) {
 		return fault;
 	}
-	char argument[16] = { 0 };
-	int count = fscanf(file, "%15s %15s", fault.action, argument);
-	fclose(file);
-	if (count != 2) {
-		fault.action[0] = '\0';
-		return fault;
+	char line[96];
+	while (fgets(line, sizeof(line), file) != NULL) {
+		char action[16] = { 0 };
+		char argument[16] = { 0 };
+		char text[32] = { 0 };
+		int count = sscanf(line, "%15s %15s %31s", action, argument, text);
+		if (count == 3 && !strcmp(action, "set")) {
+			int index = atoi(argument);
+			if (index > 0 && index < 10) {
+				snprintf(overrides[index], sizeof(overrides[index]), "%s", text);
+			}
+		} else if (count >= 2 && fault.action[0] == '\0') {
+			snprintf(fault.action, sizeof(fault.action), "%s", action);
+			fault.line = atoi(argument);
+		}
 	}
+	fclose(file);
 	unlink(options.control_file);
-	fault.line = atoi(argument);
 	return fault;
 }
 
@@ -235,6 +249,11 @@ static void send_record(int fd, const simulator_fault *fault) {
 	snprintf(lines[8], sizeof(lines[8]), "%s", options.firmware);        // firmware version
 	snprintf(lines[9], sizeof(lines[9]), "101791.83");                   // pressure [Pa]
 	samples++;
+	for (int i = 1; i < 10; i++) {
+		if (overrides[i][0] != '\0') {
+			snprintf(lines[i], sizeof(lines[i]), "%s", overrides[i]);
+		}
+	}
 	int count = 10;
 	if (!strcmp(fault->action, "drop")) {
 		return;

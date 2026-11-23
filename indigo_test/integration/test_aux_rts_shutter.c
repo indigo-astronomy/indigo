@@ -112,7 +112,7 @@ static void note_transition(bool state) {
 	}
 }
 
-indigo_uni_handle *rts_test_open(const char *port, int level) {
+indigo_uni_handle *rts_test_open(const char *port, int level, const char **error_message) {
 	if (atomic_exchange(&rts_fail_open, 0)) {
 		return NULL;
 	}

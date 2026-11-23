@@ -30,7 +30,7 @@ static atomic_int opens, closes, invalid_io, fail_open, fail_write, fail_read, b
 static char command[64];
 static const char *bad_command;
 
-indigo_uni_handle *wheel_test_open(const char *port, int speed, int level) {
+indigo_uni_handle *wheel_test_open(const char *port, int speed, int level, const char **error_message) {
 	if (speed != 9600) {
 		invalid_io++;
 	}
