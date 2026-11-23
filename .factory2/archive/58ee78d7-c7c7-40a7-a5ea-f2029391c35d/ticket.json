@@ -1,0 +1,430 @@
+{
+  "schema_version": 1,
+  "ticket_id": "58ee78d7-c7c7-40a7-a5ea-f2029391c35d",
+  "revision": 20,
+  "title": "indigo_mount_simulator: MOUNT_STATE slew light never shows a coordinates ALERT",
+  "description": "Audit in 1078b2c4: the slew light is never set to ALERT. mount_simulator ships with INDIGO and is user-visible. Owner's rule (decided 2026-11-22 for mount_synscan, ticket 1078b2c4, and extended to this driver on 2026-11-23): whenever MOUNT_EQUATORIAL_COORDINATES is in ALERT, the SLEW light of MOUNT_STATE is ALERT too; BUSY while the coordinates are BUSY; otherwise as before. The library keeps a coordinates ALERT until the next BUSY (indigo_update_coordinates() kept-ALERT rule, indigo_reject_coordinates_change()), so the light must be derived from the coordinates state after indigo_update_coordinates() has decided it, at every place the driver publishes the coordinates or MOUNT_STATE (poll, refusals, sync, abort, park/home, connect), not from the driver's own motion flags alone. Reference implementation: synscan_update_mount_state() and its call order in indigo_drivers/mount_synscan/indigo_mount_synscan.driver (commit 5f794cc15). Scope: the .driver source (version bump, regenerate with the unchanged generator), simulator-backed cases proving the light follows the coordinates state through a refused/failed request (ALERT kept while idle), the next accepted request (BUSY, then OK/IDLE) and connect, adaptation of existing cases that asserted IDLE under a kept ALERT, recorded run with tools/run_driver_test.py, MIGRATION_STATUS count. Refusals inserted by the generator (parked/homing guards) cannot call driver code; if the light lags there until the next poll, record it in the ticket note and do not change the generator.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-23T13:54:24.182170Z",
+  "status": "closed",
+  "branch": "ticket/58ee78d7-c7c7-40a7-a5ea-f2029391c35d",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c94c140c-dc21-444f-8189-32574460f6b1",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T13:54:28.278930Z",
+          "last_activity_at": "2026-11-23T15:54:35.814786Z",
+          "ended_at": "2026-11-23T15:54:35.814786Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 7207535.856,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:54:28.278930Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/58ee78d7-c7c7-40a7-a5ea-f2029391c35d"
+        },
+        {
+          "at": "2026-11-23T15:54:35.814786Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 7207535.856,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "157c0466-8af2-4ec4-ba3a-12c16ac02c51",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "17b78ee4-87a3-4835-ae5c-9e284fb8022e",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T15:54:35.814933Z",
+          "last_activity_at": "2026-11-23T16:29:53.488134Z",
+          "ended_at": "2026-11-23T16:29:53.488134Z",
+          "outcome": {
+            "summary": "No required changes: update_mount_state() follows every coordinates publication, generated files byte-identical to regeneration, six affected cases rerun pass, park/home lights unchanged. Remark needing the owner's decision before close: the light is now BUSY during manual motion (coordinates are BUSY then); agent_mount reacts to SLEW changing to BUSY by aborting imager and guider processes and resetting star selection, which it did not do for the simulator's manual motion before. Other non-blocking: slew_light_alert_across_polls() may read the previous publication (polls+1 would make '>= 2 polls' exact); comment in slew_light_update() describes the chaining the wrong way round; sync BUSY is not mirrored on the light; aborted park/homing ALERT not asserted directly; pre-existing since 2018: with tracking off the simulated mount stops following the sky while coordinates are not OK (kept ALERT).",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 2117673.201,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T15:54:35.814933Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T16:29:53.488134Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "No required changes: update_mount_state() follows every coordinates publication, generated files byte-identical to regeneration, six affected cases rerun pass, park/home lights unchanged. Remark needing the owner's decision before close: the light is now BUSY during manual motion (coordinates are BUSY then); agent_mount reacts to SLEW changing to BUSY by aborting imager and guider processes and resetting star selection, which it did not do for the simulator's manual motion before. Other non-blocking: slew_light_alert_across_polls() may read the previous publication (polls+1 would make '>= 2 polls' exact); comment in slew_light_update() describes the chaining the wrong way round; sync BUSY is not mirrored on the light; aborted park/homing ALERT not asserted directly; pre-existing since 2018: with tracking off the simulated mount stops following the sky while coordinates are not OK (kept ALERT)."
+        }
+      ],
+      "result": {
+        "summary": "No required changes: update_mount_state() follows every coordinates publication, generated files byte-identical to regeneration, six affected cases rerun pass, park/home lights unchanged. Remark needing the owner's decision before close: the light is now BUSY during manual motion (coordinates are BUSY then); agent_mount reacts to SLEW changing to BUSY by aborting imager and guider processes and resetting star selection, which it did not do for the simulator's manual motion before. Other non-blocking: slew_light_alert_across_polls() may read the previous publication (polls+1 would make '>= 2 polls' exact); comment in slew_light_update() describes the chaining the wrong way round; sync BUSY is not mirrored on the light; aborted park/homing ALERT not asserted directly; pre-existing since 2018: with tracking off the simulated mount stops following the sky while coordinates are not OK (kept ALERT).",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 2117673.201,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "c5d3e45b-6482-45ba-ba97-884f3ecc5105",
+      "event": "ticket/created",
+      "at": "2026-11-23T13:54:24.182846Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "f68410e1-332f-4943-8534-cf1c65ee5b21",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T13:54:24.350943Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "1f4761c5-220a-4467-b48e-37c6fe209970",
+      "event": "task/progress",
+      "at": "2026-11-23T13:54:28.279178Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Implementation started on branch ticket/58ee78d7-c7c7-40a7-a5ea-f2029391c35d"
+    },
+    {
+      "event_id": "37629f6d-a749-49d5-9ac6-600963549e8a",
+      "event": "ticket/started",
+      "at": "2026-11-23T13:54:28.280591Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/58ee78d7-c7c7-40a7-a5ea-f2029391c35d",
+      "base": "master"
+    },
+    {
+      "event_id": "1c2bbb96-305b-459e-b34e-c7dfefba738e",
+      "event": "task/progress",
+      "at": "2026-11-23T13:55:30.346223Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Implementer launched",
+      "attempt_id": "c94c140c-dc21-444f-8189-32574460f6b1",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "07525e11-45a2-4605-8ace-2963189be6c9",
+      "event": "task/progress",
+      "at": "2026-11-23T13:58:46.820723Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Editing mount_simulator .driver: SLEW light follows coordinates state"
+    },
+    {
+      "event_id": "8797ab19-5797-480f-aa75-04bfaccbcdec",
+      "event": "task/progress",
+      "at": "2026-11-23T13:59:40.207892Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Building libs, generator and mount_simulator in the worktree"
+    },
+    {
+      "event_id": "0d36ff8e-5cd7-4e0c-8fac-58a1c1e46d94",
+      "event": "task/progress",
+      "at": "2026-11-23T14:03:00.032057Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Running filtered test_mount_simulator cases (abort, parked, manual, sync)"
+    },
+    {
+      "event_id": "d86b7758-3a21-4815-830e-ed647b7f70b9",
+      "event": "task/progress",
+      "at": "2026-11-23T14:58:15.919736Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Running changed cases against the unchanged v29 driver (expected to fail)"
+    },
+    {
+      "event_id": "d5b35015-d132-4646-a7db-69ecccd1a903",
+      "event": "task/progress",
+      "at": "2026-11-23T15:02:06.265946Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Recorded run: run_driver_test.py mount_simulator"
+    },
+    {
+      "event_id": "8a55c07e-dc84-409a-aa48-b0fa2d9f2c27",
+      "event": "task/progress",
+      "at": "2026-11-23T15:50:44.482474Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Running agent_mount and agent_alpaca suites --no-record against mount_simulator v30"
+    },
+    {
+      "event_id": "34c3107d-746c-4c03-be1f-03cd7e3cc0f4",
+      "event": "task/progress",
+      "at": "2026-11-23T15:53:13.598204Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "aa471dba-0fd6-4ec6-9a57-baf75c2bd618",
+      "event": "task/progress",
+      "at": "2026-11-23T15:53:13.624725Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "cc965c29-79fe-4a74-9449-2d7c6f9cece3",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ef96e561-92fe-440e-8c0b-07750310ca49",
+      "event": "check/passed",
+      "at": "2026-11-23T15:53:13.626262Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "fed42626df67282adc36cbdab02484ce7286424a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "5e31fcd7-f522-46c6-907b-03cb7976ea39",
+      "event": "ticket/note",
+      "at": "2026-11-23T15:53:44.631006Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementation (indigo_mount_simulator 3.0.0.29 -> 3.0.0.30).\n\nCause: the driver set MOUNT_STATE.SLEW only to BUSY (GOTO, park, homing) and IDLE (slew end, abort, unpark, disconnect), from its own motion flags. The ALERT that indigo_update_coordinates() keeps after an aborted GOTO/park/homing/manual motion, a refused sync (pole limit) or a refusal of the generated parked guard never reached the light: it showed IDLE under a coordinates ALERT. Manual motion made the coordinates BUSY with the light IDLE.\n\nFix (.driver only, regenerated with the unchanged generator; generated diff = the .driver edits + DRIVER_VERSION 0x0300001E, .h and _main.c unchanged): new update_mount_state(device, changed) in mount.code derives SLEW from MOUNT_EQUATORIAL_COORDINATES->state after indigo_update_coordinates() decided it (ALERT -> ALERT, BUSY -> BUSY, else IDLE) and publishes MOUNT_STATE only when the light changes or the caller changed another light. Called after every indigo_update_coordinates() the driver makes (position_handler poll and slew end, manual_motion_finalizer, move_raw_position) and in place of the hand-set SLEW values in park, unpark, home, GOTO and abort; at the end of the MOUNT_EQUATORIAL_COORDINATES on_change for the sync result, which the generated indigo_update_coordinates() publishes unchanged after the BUSY of the request (same pattern as synscan 5f794cc15). on_disconnect keeps SLEW IDLE with coordinates OK (the library clears the kept ALERT on disconnect), so a connection defines the light matching the coordinates.\n\nBehaviour changes: SLEW is ALERT after an abort of a GOTO/park/homing/manual motion and after a refused sync until the next accepted request; it stays ALERT through an unpark that follows a parked refusal; SLEW is BUSY during manual motion (coordinates BUSY); a second GOTO/sync during a slew is only told (indigo_reject_change on a BUSY property sends a message, coordinates stay BUSY), so the light stays BUSY.\n\nLimitation (generator, not changed): th",
+      "tokens": null
+    },
+    {
+      "event_id": "0a0a0927-f7f4-4667-a22d-86bbd9f6e0e5",
+      "event": "task/progress",
+      "at": "2026-11-23T15:54:35.814996Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "157c0466-8af2-4ec4-ba3a-12c16ac02c51",
+      "text": "Review started"
+    },
+    {
+      "event_id": "52d676d9-64b8-4c11-9218-a8736fc835ca",
+      "event": "review/started",
+      "at": "2026-11-23T15:54:35.816109Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "ec693501-9193-4fa3-abd8-8833b9fb9fc2",
+      "event": "task/progress",
+      "at": "2026-11-23T16:29:53.488225Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "157c0466-8af2-4ec4-ba3a-12c16ac02c51",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "76ae57a4-7c3a-4b9f-afe5-f566f8ccde20",
+      "event": "review/passed",
+      "at": "2026-11-23T16:29:53.489473Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "157c0466-8af2-4ec4-ba3a-12c16ac02c51",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "fed42626df67282adc36cbdab02484ce7286424a"
+    },
+    {
+      "event_id": "7711f87e-93d0-4d44-964c-cdd37beab2be",
+      "event": "question/asked",
+      "at": "2026-11-23T16:29:53.577091Z",
+      "actor": "human/Peter Polakovic",
+      "text": "The light is now BUSY during manual motion (MOUNT_MOTION_RA/DEC) because the coordinates are BUSY then. agent_mount reacts to the SLEW light changing to BUSY by aborting imager and guider processes and resetting the star selection; with the simulator it did not do so for manual motion before. Keep BUSY during manual motion, or keep the light as before (IDLE) during manual motion and apply only the ALERT rule?"
+    },
+    {
+      "event_id": "0bdb19b2-703a-422a-b530-2cca5fa55c50",
+      "event": "question/answered",
+      "at": "2026-11-23T19:34:38.850012Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner (2026-11-23): keep the SLEW light BUSY during manual motion; the light follows the coordinates there too, consistent with mounts without MOUNT_STATE where agent_mount reads the coordinates state directly."
+    },
+    {
+      "event_id": "e1e8afc0-a261-43d9-b0e9-f1e7d014f9a4",
+      "event": "ticket/closed",
+      "at": "2026-11-23T19:34:39.247147Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-23T19:34:39.247118Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "ab0441a46f89621e201fdcc76a03ba53f6d1d7d7"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "fed42626df67282adc36cbdab02484ce7286424a",
+        "tree": "cf5b333eefc8471d74698b47406d1856932bd02c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T15:53:13.624073Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/58ee78d7-c7c7-40a7-a5ea-f2029391c35d/cf5b333eefc8-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "No required changes: update_mount_state() follows every coordinates publication, generated files byte-identical to regeneration, six affected cases rerun pass, park/home lights unchanged. Remark needing the owner's decision before close: the light is now BUSY during manual motion (coordinates are BUSY then); agent_mount reacts to SLEW changing to BUSY by aborting imager and guider processes and resetting star selection, which it did not do for the simulator's manual motion before. Other non-blocking: slew_light_alert_across_polls() may read the previous publication (polls+1 would make '>= 2 polls' exact); comment in slew_light_update() describes the chaining the wrong way round; sync BUSY is not mirrored on the light; aborted park/homing ALERT not asserted directly; pre-existing since 2018: with tracking off the simulated mount stops following the sky while coordinates are not OK (kept ALERT).",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "fed42626df67282adc36cbdab02484ce7286424a",
+        "tree": "cf5b333eefc8471d74698b47406d1856932bd02c",
+        "at": "2026-11-23T16:29:53.487978Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T15:53:44.629816Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementation (indigo_mount_simulator 3.0.0.29 -> 3.0.0.30).\n\nCause: the driver set MOUNT_STATE.SLEW only to BUSY (GOTO, park, homing) and IDLE (slew end, abort, unpark, disconnect), from its own motion flags. The ALERT that indigo_update_coordinates() keeps after an aborted GOTO/park/homing/manual motion, a refused sync (pole limit) or a refusal of the generated parked guard never reached the light: it showed IDLE under a coordinates ALERT. Manual motion made the coordinates BUSY with the light IDLE.\n\nFix (.driver only, regenerated with the unchanged generator; generated diff = the .driver edits + DRIVER_VERSION 0x0300001E, .h and _main.c unchanged): new update_mount_state(device, changed) in mount.code derives SLEW from MOUNT_EQUATORIAL_COORDINATES->state after indigo_update_coordinates() decided it (ALERT -> ALERT, BUSY -> BUSY, else IDLE) and publishes MOUNT_STATE only when the light changes or the caller changed another light. Called after every indigo_update_coordinates() the driver makes (position_handler poll and slew end, manual_motion_finalizer, move_raw_position) and in place of the hand-set SLEW values in park, unpark, home, GOTO and abort; at the end of the MOUNT_EQUATORIAL_COORDINATES on_change for the sync result, which the generated indigo_update_coordinates() publishes unchanged after the BUSY of the request (same pattern as synscan 5f794cc15). on_disconnect keeps SLEW IDLE with coordinates OK (the library clears the kept ALERT on disconnect), so a connection defines the light matching the coordinates.\n\nBehaviour changes: SLEW is ALERT after an abort of a GOTO/park/homing/manual motion and after a refused sync until the next accepted request; it stays ALERT through an unpark that follows a parked refusal; SLEW is BUSY during manual motion (coordinates BUSY); a second GOTO/sync during a slew is only told (indigo_reject_change on a BUSY property sends a message, coordinates stay BUSY), so the light stays BUSY.\n\nLimitation (generator, not changed): the parked refusals are made by the generated guards (INDIGO_REJECT_COORDINATES_CHANGE_IF in change_property and the parked check at the top of mount_equatorial_coordinates_handler), which cannot call driver code; the light follows with the next position poll (at most about 1 s while idle). The tests wait for that.\n\nTests (indigo_test/integration/test_mount_simulator.c, 35 cases, count unchanged, MIGRATION_STATUS unchanged at 35 / 0), scenario mapping:\n(a) refused/failed request keeps coordinates ALERT and SLEW ALERT over >= 2 polls while idle: mount_abort_allows_fresh_goto (aborted GOTO: light ALERT published with the abort, 2 polls), mount_park_home_and_parked_guards (parked GOTO and parked sync via generator guard, 2 polls each; still ALERT after unpark and an abort of no motion, 1 more poll), mount_sync_publishes_busy_and_keeps_a_refusal (pole-refused sync, 2 polls; second refusal and refusal before reconnection ALERT), mount_manual_axes_reverse_and_abort (aborted manual motion: coordinates and light ALERT).\n(b) next accepted request BUSY on both, then OK with light IDLE: slew_light_busy_then_idle() counts MOUNT_STATE publications with SLEW BUSY while the cached coordinates are BUSY; used for the GOTO after the abort and the GOTO after the parked refusals; accepted sync and GoTo after refused syncs end IDLE; manual motion shows coordinates and light BUSY together.\n(c) after connect the light matches the coordinates: mount_sync_publishes_busy_and_keeps_a_refusal reconnects after a refused sync and asserts coordinates OK / SLEW IDLE at the define and after 2 polls; mount_reconnect_publishes_device_state (unchanged) asserts SLEW IDLE with coordinates OK.\nPoll counting uses MOUNT_LST_TIME revisions: MOUNT_RAW_COORDINATES is hidden in the CONTROLLER alignment mode, so wait_for_polls() sees no poll there. MOUNT_WAIT_UNTIL moved above its first use.\n\nProof without the fix: the test source built against the unchanged v29 driver (git show HEAD:...indigo_mount_simulator.c compiled into the test binary in the scratchpad) fails all four changed cases: abort (line 610: SLEW expected 3 got 0), parked guards (parked GOTO: SLEW light 0 while the coordinates are 3), manual axes (light never BUSY with the coordinates), sync (refused sync: SLEW light 0 while the coordinates are 3). With v30 the same filtered cases plus mount_reconnect_publishes_device_state, mount_state_lights_follow_slew_completion and mount_park_and_home_positions_and_abort pass.\n\nRuns (macOS arm64, simulator, machine-wide lock): recorded python3 tools/run_driver_test.py mount_simulator -> 35/35 OK, record \"2026-11-23 16:45 3.0.0.30 mac arm64 simulator 35/35 OK\" (README Testing line replaced, TEST_SUMMARY.md regenerated). Consumers: run_driver_test.py agent_mount --no-record -> 86/86 OK (needed indigo_mount_synscan.a built in the fresh worktree first); run_driver_test.py agent_alpaca --no-record -> 6/6 OK; no case encoded the old light, nothing adapted, no record for those two. flow check: whitespace passed (only check selected).\n\nNot verified: Linux, Windows, hardware (simulator driver, none applicable).\n\nSide finding (not changed, out of scope): position_handler advances the raw RA with tracking off only when the coordinates are OK (`MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_OK_STATE && MOUNT_TRACKING_OFF_ITEM->sw.value`), so while a kept ALERT is shown (after an abort or a refused sync) with tracking off the simulated mount stops following the sky until the next accepted request.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "The light is now BUSY during manual motion (MOUNT_MOTION_RA/DEC) because the coordinates are BUSY then. agent_mount reacts to the SLEW light changing to BUSY by aborting imager and guider processes and resetting the star selection; with the simulator it did not do so for manual motion before. Keep BUSY during manual motion, or keep the light as before (IDLE) during manual motion and apply only the ALERT rule?",
+        "at": "2026-11-23T16:29:53.575916Z",
+        "actor": "human/Peter Polakovic",
+        "answer": "Owner (2026-11-23): keep the SLEW light BUSY during manual motion; the light follows the coordinates there too, consistent with mounts without MOUNT_STATE where agent_mount reads the coordinates state directly.",
+        "answered_at": "2026-11-23T19:34:38.848508Z",
+        "answered_by": "human/Peter Polakovic"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "ab0441a46f89621e201fdcc76a03ba53f6d1d7d7",
+      "tree": "cf5b333eefc8471d74698b47406d1856932bd02c",
+      "base": "master",
+      "at": "2026-11-23T19:34:39.161756Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-23T13:54:24.182170Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-23T13:54:24.350830Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 9325209.057,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 26,
+    "sha256": "c9de3b13e8e050d05baccaf4ed39acce02fac85fb6b9563ca0ee94e60809a228"
+  }
+}
