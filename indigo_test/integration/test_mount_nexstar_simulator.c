@@ -1986,6 +1986,41 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A switch of MOUNT_ON_COORDINATES_SET that arrives while the handler of a sync waits for the controller's answer is refused
+// (ALERT, SYNC kept), because the coordinates stay BUSY until the handler has read the mode for the last time; the sync ends
+// as a sync, OK at the synced position, and no GOTO is sent. With the generated OK prologue the switch was accepted in that
+// window and the handler read TRACK after the controller had synced.
+static void nexstar_mode_change_during_sync_is_refused(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	clear_simulator_events(&simulator);
+	// the answer to the precise sync comes 500 ms late
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "delay", "s"));
+	unsigned int revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(request_coordinates(3.1, 21));
+	SERIAL_CHECK_TRUE(wait_for_control_consumed(&simulator));
+	unsigned int mode_revision = property_revision(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, INDIGO_ALERT_STATE, mode_revision));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_TRUE(coordinates_are(3.1, 21, 0.001));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "73"));
+	SERIAL_CHECK_EQ_INT(0, count_simulator_events(&simulator, "72"));
+	SERIAL_CHECK_TRUE(select_mount_switch(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 // One position readback that fails while a GOTO is under way is a transport hiccup, not a failed slew: the coordinates
 // stay BUSY with the last position read, the next poll retries, and a GOTO the controller completes at the target right
 // after the failure ends OK. No ALERT is published on the way or at the end.
@@ -2652,6 +2687,7 @@ int main(void) {
 		{ "nexstar_coordinates_publish_the_mount_position", nexstar_coordinates_publish_the_mount_position },
 		{ "nexstar_poll_in_flight_does_not_complete_goto", nexstar_poll_in_flight_does_not_complete_goto },
 		{ "nexstar_request_during_sync_is_refused", nexstar_request_during_sync_is_refused },
+		{ "nexstar_mode_change_during_sync_is_refused", nexstar_mode_change_during_sync_is_refused },
 		{ "nexstar_goto_survives_failed_position_readback", nexstar_goto_survives_failed_position_readback },
 		{ "nexstar_goto_ends_alert_when_position_readback_keeps_failing", nexstar_goto_ends_alert_when_position_readback_keeps_failing },
 		{ "nexstar_disconnect_stops_goto_and_motion", nexstar_disconnect_stops_goto_and_motion },

@@ -695,6 +695,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ON_COORDINATES_SET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
+		INDIGO_REJECT_CHANGE_IF(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE, MOUNT_ON_COORDINATES_SET_PROPERTY, "Mount is busy, the mode is not changed");
 		indigo_property_copy_values(MOUNT_ON_COORDINATES_SET_PROPERTY, property, false);
 		MOUNT_ON_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ON_COORDINATES_SET_PROPERTY, NULL);

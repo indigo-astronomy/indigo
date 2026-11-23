@@ -233,7 +233,7 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 |  |  |  |  | DEFAULT | yes | Set default position |
 | MOUNT_HOME_POSITION | number | no | no | HA | yes | Hidden by default. |
 |  |  |  |  | DEC | yes | Declination (-90 to 90°) |
-| MOUNT_ON_COORDINATES_SET | switch | no | yes | TRACK | yes | Slew to target and track |
+| MOUNT_ON_COORDINATES_SET | switch | no | yes | TRACK | yes | Slew to target and track. A change is refused (ALERT, previous mode kept) while MOUNT_EQUATORIAL_COORDINATES is BUSY. |
 |  |  |  |  | SYNC | yes | Sync to target |
 |  |  |  |  | SLEW | no | Slew to target and stop |
 | MOUNT_SLEW_RATE | switch | no | no | GUIDE | no | Guide rate |

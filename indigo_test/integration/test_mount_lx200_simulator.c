@@ -175,6 +175,35 @@ static bool lx_switch(const simulator_driver_case *device, const char *property,
 	return indigo_change_switch_property_1(&simulator_test_client, device->device_name, property, item, value) == INDIGO_OK && wait_for_property_state_seen_after(property, state, revision);
 }
 
+// MOUNT_ON_COORDINATES_SET can't change while MOUNT_EQUATORIAL_COORDINATES is BUSY, and a poll sets the coordinates BUSY before
+// it publishes them (the phantom slew of the first poll after connect, the motion of a classic guiding pulse), so a selection
+// made after a cached not-BUSY state can still be refused with ALERT: it is sent again once the coordinates are not BUSY.
+static bool lx_select_mode(const char *item) {
+	for (int attempt = 0; attempt < 3; attempt++) {
+		for (int i = 0; i < 3 && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+			wait_for_property_not_busy(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+		}
+		unsigned int revision = property_revision(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME);
+		if (indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, item, true) != INDIGO_OK) {
+			return false;
+		}
+		for (int i = 0; i < 50 && property_revision(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) == revision; i++) {
+			indigo_usleep(100000);
+		}
+		indigo_property_state state = find_cached_property(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME)->state;
+		if (property_revision(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME) != revision && state == INDIGO_OK_STATE) {
+			return true;
+		}
+		if (state != INDIGO_ALERT_STATE) {
+			break;
+		}
+		// the refusing poll publishes its BUSY at its end
+		indigo_usleep(200000);
+	}
+	fprintf(stderr, "    MOUNT_ON_COORDINATES_SET.%s not selected, MOUNT_ON_COORDINATES_SET %d, MOUNT_EQUATORIAL_COORDINATES %d\n", item, find_cached_property(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME)->state, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	return false;
+}
+
 static bool lx_number(const simulator_driver_case *device, const char *property, const char *item, double value, indigo_property_state state) {
 	unsigned int revision = property_revision(property);
 	return indigo_change_number_property_1(&simulator_test_client, device->device_name, property, item, value) == INDIGO_OK && wait_for_property_state_seen_after(property, state, revision);
@@ -2270,7 +2299,7 @@ cleanup:
 // motion, so the following poll publishes BUSY, which ends the refusal like any motion.
 static bool classic_pulse_refuses(external_serial_simulator *simulator, const char *label, const char *on_set) {
 	static coordinates_publication events[COORDINATES_PUBLICATIONS_SIZE];
-	if (!lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, on_set, true, INDIGO_OK_STATE)) {
+	if (!lx_select_mode(on_set)) {
 		return false;
 	}
 	int slews = event_count(simulator, "MS", NULL), syncs = event_count(simulator, "CM", NULL);
@@ -2340,7 +2369,7 @@ static void lx200_classic_guiding_refusal_is_published(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(classic_pulse_refuses(&simulator, "GOTO during classic guiding", MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
 	SERIAL_CHECK_TRUE(classic_pulse_refuses(&simulator, "sync during classic guiding", MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
-	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_select_mode(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
 	// an accepted GOTO
 	for (int i = 0; i < 3 && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
 		wait_for_property_not_busy(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
@@ -5694,8 +5723,10 @@ static void check_lx200_sync_result(const char *label, external_serial_simulator
 	}
 	SERIAL_CHECK_TRUE(started);
 	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
-	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	// the first poll after connect publishes the coordinates, also when a retried selection has waited for it
+	unsigned int fresh = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(lx_select_mode(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, fresh));
 	cached_coordinates(&ra0, &dec0, &alt0, &az0);
 	double ra = fmod(floor(ra0 * 60) / 60 + 0.5, 24);
 	double dec = dec0 > 60 ? 40 : floor(dec0) + 2;

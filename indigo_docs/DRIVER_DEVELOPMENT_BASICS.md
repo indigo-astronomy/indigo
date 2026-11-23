@@ -187,7 +187,7 @@ if (set_tracking(device, on)) {
 }
 ```
 
-The poll keeps its <span style="color:orange">**BUSY**</span> check. Only requests guarded by <span style="color:orange">**BUSY**</span> (`INDIGO_COPY_VALUES_PROCESS_CHANGE`) may rely on the target: a request accepted while <span style="color:orange">**BUSY**</span> (the `_ANYTIME` variants) may overwrite the targets while the handler reads them. Selector properties that an action reads right after them on the bus thread (for example `MOUNT_ON_COORDINATES_SET`) stay synchronous and do not need the target. Text items have no target.
+The poll keeps its <span style="color:orange">**BUSY**</span> check. Only requests guarded by <span style="color:orange">**BUSY**</span> (`INDIGO_COPY_VALUES_PROCESS_CHANGE`) may rely on the target: a request accepted while <span style="color:orange">**BUSY**</span> (the `_ANYTIME` variants) may overwrite the targets while the handler reads them. Selector properties that an action reads right after them on the bus thread (for example `MOUNT_ON_COORDINATES_SET`) stay synchronous and do not need the target. `MOUNT_ON_COORDINATES_SET` cannot change while `MOUNT_EQUATORIAL_COORDINATES` is <span style="color:orange">**BUSY**</span> (`indigo_mount_change_property()` refuses the change), so the queued coordinates handler and its finalizer read the mode selected when the request was admitted, provided the coordinates stay <span style="color:orange">**BUSY**</span> from the admission of the request until the handler has read the mode for the last time. Text items have no target.
 
 ## Types of INDIGO Drivers
 

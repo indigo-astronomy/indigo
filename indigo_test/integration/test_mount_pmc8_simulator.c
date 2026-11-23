@@ -1697,7 +1697,8 @@ cleanup:
 }
 
 // A GOTO requested while another one runs is not taken: every point carries the first target and the
-// mount ends there.
+// mount ends there. The second request is sent with the mode of the first one, a mode change is refused while
+// the coordinates are BUSY.
 static void pmc8_mount_keeps_the_first_goto_when_a_second_arrives(void) {
 	external_serial_simulator simulator = { 0 };
 
@@ -1705,7 +1706,7 @@ static void pmc8_mount_keeps_the_first_goto_when_a_second_arrives(void) {
 	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-5), 80));
 	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
 	unsigned int alerts = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
-	SERIAL_CHECK_TRUE(request_coordinates(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra_at_hour_angle(-4), 70));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, PMC8_MOUNT_DEVICE_NAME, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, (const char *[]){ MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME }, (double []){ ra_at_hour_angle(-4), 70 }));
 	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, 60));
 	SERIAL_CHECK_EQ_INT(alerts, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(3, event_count(&simulator, "ESPt1"));

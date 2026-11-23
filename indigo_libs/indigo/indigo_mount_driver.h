@@ -213,6 +213,7 @@ extern "C" {
 
 //----------------------------------------------
 /** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
+    A change is refused (ALERT, previous mode kept) while MOUNT_EQUATORIAL_COORDINATES is BUSY, so an admitted coordinates request runs with the mode it was admitted with.
  */
 #define MOUNT_ON_COORDINATES_SET_PROPERTY							(MOUNT_CONTEXT->mount_on_coordinates_set_property)
 
