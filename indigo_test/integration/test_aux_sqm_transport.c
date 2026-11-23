@@ -28,7 +28,7 @@ static indigo_uni_handle handle;
 static atomic_int opens, closes, reads, invalid_io, fail_open, fail_write, fail_read, bad_handshake;
 static const char *reading = "r,20.70m,22921Hz,20c,0.125s,39.4C";
 static char command[4];
-indigo_uni_handle *sqm_test_open(const char *port, int speed, int level) {
+indigo_uni_handle *sqm_test_open(const char *port, int speed, int level, const char **error_message) {
 	if (speed != 115200) {
 		invalid_io++;
 	}

@@ -35,7 +35,7 @@ static char failed_command;
 static atomic_int hold_reads, reads_entered, reads_released;
 static pthread_mutex_t transport_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-indigo_uni_handle *ao_test_open(const char *port, int level) {
+indigo_uni_handle *ao_test_open(const char *port, int level, const char **error_message) {
 	if (atomic_exchange(&fail_open, 0)) {
 		return NULL;
 	}

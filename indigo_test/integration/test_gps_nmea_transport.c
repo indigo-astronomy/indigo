@@ -31,7 +31,7 @@ static char input[128];
 // a closed socket) or wait out the timeout without a sentence (a quiet receiver)
 static atomic_int opens, closes, reads, invalid_io, fail_open, fail_read, eof_read, silent_read;
 
-indigo_uni_handle *nmea_test_open(const char *port, const char *config, int level) {
+indigo_uni_handle *nmea_test_open(const char *port, const char *config, int level, const char **error_message) {
 	if (atomic_exchange(&fail_open, 0)) {
 		return NULL;
 	}

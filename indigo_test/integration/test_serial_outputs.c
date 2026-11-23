@@ -45,14 +45,12 @@ indigo_uni_handle *output_open(const char *port, int level) {
 	return &handle;
 }
 
-#if TEST_KIND == 1
 indigo_uni_handle *output_open2(const char *port, int level, const char **error_message) {
 	if (error_message != NULL) {
 		*error_message = NULL;
 	}
 	return output_open(port, level);
 }
-#endif
 
 void output_close(indigo_uni_handle **port) {
 	if (*port) {
