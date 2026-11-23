@@ -1,0 +1,741 @@
+{
+  "schema_version": 1,
+  "ticket_id": "82634c3e-1b0c-4876-852f-667c6222342b",
+  "revision": 43,
+  "title": "indigo_mount_lx200: generic, classic and stargo2 profiles report a false slew right after connect",
+  "description": "Found in the review of d0a643e1. For profiles whose poll decodes the motion state with meade_update_generic_state() (generic, classic, stargo2) the first poll after connect compares the coordinates just read with PRIVATE_DATA->lastRA/lastDec, which are 0 in freshly allocated private data and are set only at the end of each poll (indigo_mount_lx200.driver:3497, :3735-3736). Unless the mount happens to point within 2' of RA 0 / Dec 0 the first poll therefore sees a 'slew': MOUNT_EQUATORIAL_COORDINATES and the slew light go BUSY for one poll period (measured on the simulator: OK -> BUSY at ~0.1 s -> OK at ~0.7 s after connect). Visible effects: a client sees a slew that does not exist, and since d0a643e1 a MOUNT_ON_COORDINATES_SET change or coordinates request in that window is refused with ALERT. Expected: the first poll of a connection seeds lastRA/lastDec from its own reading (and the values are reset at disconnect/connect so a reconnect at another position behaves the same) and reports no motion; a real slew detected by later polls is unchanged. Scope: indigo_mount_lx200.driver (version bump, regenerate), a simulator-backed case per affected profile proving the coordinates never go BUSY after connect, and removal of nothing in test_mount_lx200_simulator.c that other cases need (lx_select_mode retry may stay). Recorded run with tools/run_driver_test.py mount_lx200; MIGRATION_STATUS count.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-23T05:20:25.000722Z",
+  "status": "closed",
+  "branch": "ticket/82634c3e-1b0c-4876-852f-667c6222342b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a70d9dd2-539a-4865-b0e3-6c5f74ce3b29",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T05:20:36.510875Z",
+          "last_activity_at": "2026-11-23T08:37:13.776224Z",
+          "ended_at": "2026-11-23T08:37:13.776224Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 11797265.349,
+          "tokens": null
+        },
+        {
+          "attempt_id": "3d119354-0951-45ad-b86b-8a8dac77b65b",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T08:52:24.164218Z",
+          "last_activity_at": "2026-11-23T08:52:54.841171Z",
+          "ended_at": "2026-11-23T08:52:54.841171Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 30676.953,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T05:20:36.510875Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/82634c3e-1b0c-4876-852f-667c6222342b"
+        },
+        {
+          "at": "2026-11-23T08:37:13.776224Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-23T08:52:24.164218Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-23T08:52:54.841171Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 11827942.302,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "8299b47d-2627-4ef1-9c28-b10857cab3d9",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d01fc3d1-e2f2-42cc-9070-b9beb6e4a403",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-23T08:37:13.776377Z",
+          "last_activity_at": "2026-11-23T08:52:24.164121Z",
+          "ended_at": "2026-11-23T08:52:24.164121Z",
+          "outcome": {
+            "summary": "No correctness defect in the connect/sync/epoch false-slew fix or in the settled_state park/home admission; generated output byte-identical to regeneration; new cases fail against the old admission (3/3) and the old J2000-frame comparison; 43 park/home cases pass. Required: test_mount_lx200_simulator.c:4488, header comment of lx200_zwo_park_and_home_requests_during_poll says 'The requests are judged on the queue the poll runs on' - that is the reverted first attempt; the final fix judges at request time from settled_state. Non-blocking: a GoTo handled before the first poll of a session (or after a sync whose readback failed) is published OK by that poll while the mount still slews, because there is nothing to compare with; seeding lastRA/lastDec from a read in meade_init_mount() would close it at the cost of one round trip. RA wrap at 0/24 h in the 2' comparison is pre-existing.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 910387.744,
+          "tokens": null
+        },
+        {
+          "attempt_id": "8c6dcd0e-9f12-415b-963d-935ba8ee2910",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T08:52:54.841296Z",
+          "last_activity_at": "2026-11-23T08:53:11.906288Z",
+          "ended_at": "2026-11-23T08:53:11.906288Z",
+          "outcome": {
+            "summary": "Round 2 (delta afb1ecb5f..c8c8c072a): only the comment above lx200_zwo_park_and_home_requests_during_poll, now accurate (requests judged at arrival from settled_state). Code under test unchanged; round 1 runs still apply.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 17064.992,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T08:37:13.776377Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T08:52:24.164121Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "No correctness defect in the connect/sync/epoch false-slew fix or in the settled_state park/home admission; generated output byte-identical to regeneration; new cases fail against the old admission (3/3) and the old J2000-frame comparison; 43 park/home cases pass. Required: test_mount_lx200_simulator.c:4488, header comment of lx200_zwo_park_and_home_requests_during_poll says 'The requests are judged on the queue the poll runs on' - that is the reverted first attempt; the final fix judges at request time from settled_state. Non-blocking: a GoTo handled before the first poll of a session (or after a sync whose readback failed) is published OK by that poll while the mount still slews, because there is nothing to compare with; seeding lastRA/lastDec from a read in meade_init_mount() would close it at the cost of one round trip. RA wrap at 0/24 h in the 2' comparison is pre-existing."
+        },
+        {
+          "at": "2026-11-23T08:52:54.841296Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T08:53:11.906288Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Round 2 (delta afb1ecb5f..c8c8c072a): only the comment above lx200_zwo_park_and_home_requests_during_poll, now accurate (requests judged at arrival from settled_state). Code under test unchanged; round 1 runs still apply."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 (delta afb1ecb5f..c8c8c072a): only the comment above lx200_zwo_park_and_home_requests_during_poll, now accurate (requests judged at arrival from settled_state). Code under test unchanged; round 1 runs still apply.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 927452.736,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "516af9d1-a9b8-41d0-9e5f-6fb2ea3bbdc9",
+      "event": "ticket/created",
+      "at": "2026-11-23T05:20:25.002200Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "7c710ba5-8150-488d-bb64-c29059c95828",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T05:20:30.906039Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "9f56669e-8cbf-47ca-af7e-629e068d136f",
+      "event": "task/progress",
+      "at": "2026-11-23T05:20:36.511145Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Implementation started on branch ticket/82634c3e-1b0c-4876-852f-667c6222342b"
+    },
+    {
+      "event_id": "50738655-f22b-429a-8727-c4beaaf9661c",
+      "event": "ticket/started",
+      "at": "2026-11-23T05:20:36.512756Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/82634c3e-1b0c-4876-852f-667c6222342b",
+      "base": "master"
+    },
+    {
+      "event_id": "612c4b48-40a0-4b40-9ebb-f08a23ba6ccc",
+      "event": "task/progress",
+      "at": "2026-11-23T05:21:05.579858Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Implementer launched",
+      "attempt_id": "a70d9dd2-539a-4865-b0e3-6c5f74ce3b29",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "bb830ff0-c7ea-460e-ba4f-83a84d134b43",
+      "event": "task/progress",
+      "at": "2026-11-23T05:24:22.600684Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Building INDIGO library and generator in the worktree for baseline"
+    },
+    {
+      "event_id": "5486b285-cd66-48a2-a020-5d7c48c6095d",
+      "event": "task/progress",
+      "at": "2026-11-23T05:26:15.574657Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Building unchanged driver and test to reproduce the phantom slew with the new cases"
+    },
+    {
+      "event_id": "ecbcd837-22d0-4da8-b684-4df8585805ea",
+      "event": "task/progress",
+      "at": "2026-11-23T05:26:51.501341Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "New cases fail on v88 (1 BUSY each); implementing the seeded-position fix in the .driver"
+    },
+    {
+      "event_id": "74970a15-540e-4042-857f-00e5e25403b4",
+      "event": "task/progress",
+      "at": "2026-11-23T05:28:25.187040Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Temporary experiment: drop the on-connect reset to show the reconnect check fails"
+    },
+    {
+      "event_id": "ee470d74-a326-40e2-9f47-832426b15950",
+      "event": "task/progress",
+      "at": "2026-11-23T05:29:51.722912Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Running 20 repeats of the four new connect_reports_no_slew cases"
+    },
+    {
+      "event_id": "3830114b-3878-4fe1-b9fe-66517480d836",
+      "event": "task/progress",
+      "at": "2026-11-23T05:51:59.925914Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "New cases 20/20 x4 passed; starting recorded run tools/run_driver_test.py mount_lx200"
+    },
+    {
+      "event_id": "1122687c-37c6-48ca-bd27-1ed8ed6e8f81",
+      "event": "task/progress",
+      "at": "2026-11-23T06:17:40.409203Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Recorded run 173/172: known intermittent lx200_zwo_park_goes_home_first failed; rerunning it filtered"
+    },
+    {
+      "event_id": "cbfe0a6d-034a-4e53-9ecb-d2bb1f929799",
+      "event": "task/progress",
+      "at": "2026-11-23T06:22:02.276827Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "zwo_park_goes_home_first also fails 1/6 on unchanged v88; running flow check"
+    },
+    {
+      "event_id": "840b29f3-7211-4648-83f4-c94cb2dc64c2",
+      "event": "task/progress",
+      "at": "2026-11-23T06:22:02.626183Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "eb02eb1f-8d3d-47fd-a55c-1b4159e0c18d",
+      "event": "task/progress",
+      "at": "2026-11-23T06:22:02.652832Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2e6c888d-fd0d-40b0-9d8b-3672bce5dbc6",
+      "event": "check/passed",
+      "at": "2026-11-23T06:22:02.654564Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "13a0c0498727d33a5ac6c516059a8f288adf143f",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "fa0a5cc3-f366-4390-944a-9663de248b8f",
+      "event": "ticket/note",
+      "at": "2026-11-23T06:22:32.202799Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementation record (driver 3.0.0.88 -> 3.0.0.89, mode: non-interactive simulator).\n\nCause: meade_update_generic_state() reports a slew when the coordinates read by the poll differ by more than 2' from PRIVATE_DATA->lastRA/lastDec. Those fields are set only at the end of each poll (meade_update_mount_state), so the first poll of a session compared the first reading with 0, 0 (fresh private data) or with the last position of the previous session, and published MOUNT_EQUATORIAL_COORDINATES and the SLEW light BUSY for one poll. Affected: every profile that decodes motion with meade_update_generic_state(): generic, classic, StarGO2, and also Astro-Physics when :GOS# is not used (GTOCP2, revision letter below S, or a failed :GOS#). No other \"last value\" comparison exists in the state-decoding path (lastMotionNS/WE, lastSlewRate, lastTrackRate are request-side and already reset at disconnect).\n\nFix (indigo_mount_lx200.driver, regenerated .c): new private field last_position_valid; reset in meade_init_mount() (runs on every connect); set at the end of meade_update_mount_state() only when the position read did not fail; meade_update_generic_state() compares with lastRA/lastDec only while it is set. A first read that fails therefore does not seed the comparison either. Real slew detection in later polls is unchanged. Generated diff: DRIVER_VERSION 0x03000058 -> 0x03000059 and the four edited spots only; the unchanged generator reproduced the checked-in output before the edit.\n\nTests (indigo_test/integration/test_mount_lx200_simulator.c): timed_client_update() now counts BUSY publications of the mount's MOUNT_EQUATORIAL_COORDINATES and of its MOUNT_STATE.SLEW light. New cases, one per affected decoding: lx200_generic_connect_reports_no_slew, lx200_classic_connect_reports_no_slew, lx200_stargo2_connect_reports_no_slew, lx200_ap_gtocp2_connect_reports_no_slew (--ap-version J). Each: connect to a simulator standing at 6 h/+45 deg, wait for 2 complete polls, require position re",
+      "tokens": null
+    },
+    {
+      "event_id": "a2dcff66-9014-44a2-88ce-b74d1d312622",
+      "event": "task/progress",
+      "at": "2026-11-23T06:23:15.396434Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Follow-up: fixing phantom slew after sync and diagnosing zwo_park_goes_home_first"
+    },
+    {
+      "event_id": "cf2ed66f-7b10-457a-9ca4-8520ede65b97",
+      "event": "task/progress",
+      "at": "2026-11-23T06:24:52.573737Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Reproducing sync and epoch phantom slews with a non-fatal variant of the new case"
+    },
+    {
+      "event_id": "33781822-c937-4a81-ab31-6ccdbc378cc0",
+      "event": "task/progress",
+      "at": "2026-11-23T06:24:52.659918Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Reproducing sync and epoch phantom slews with a non-fatal variant of the new case"
+    },
+    {
+      "event_id": "2c432769-54c4-49b5-9c28-823784ee5061",
+      "event": "task/progress",
+      "at": "2026-11-23T06:29:01.183010Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Temporary experiment: frame compare kept, sync reseed removed"
+    },
+    {
+      "event_id": "fb9de72e-2a84-4c6d-9853-d9f819b66480",
+      "event": "task/progress",
+      "at": "2026-11-23T06:29:50.848733Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Diagnosing zwo_park_goes_home_first with simulator traces"
+    },
+    {
+      "event_id": "d5a15ecf-7b22-4419-a69e-ba0a533edb2a",
+      "event": "task/progress",
+      "at": "2026-11-23T06:34:38.250863Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Park/home admission moved onto the device queue; running 30 repeats of zwo_park_goes_home_first"
+    },
+    {
+      "event_id": "3001440d-991c-490b-a28f-94868363de26",
+      "event": "task/progress",
+      "at": "2026-11-23T06:46:25.281217Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Deterministic case for park/home requests during the poll: with and without the fix"
+    },
+    {
+      "event_id": "460c9ce8-ae0f-4874-a9d9-b55cda186b3d",
+      "event": "task/progress",
+      "at": "2026-11-23T06:47:45.429105Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Running 20 repeats of the no_slew_without_motion cases and the requests_during_poll case"
+    },
+    {
+      "event_id": "4caaf7bd-5f1f-49e5-8925-062a18d503b1",
+      "event": "task/progress",
+      "at": "2026-11-23T07:15:33.643070Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Repeats clean (20/20, 20/20, zwo 30/30); starting recorded run mount_lx200"
+    },
+    {
+      "event_id": "bbab2b42-46a3-435c-bfce-1dcf45155742",
+      "event": "task/progress",
+      "at": "2026-11-23T07:44:33.308031Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Handler-time admission broke Meade park; reworked as request-time admission from a settled snapshot"
+    },
+    {
+      "event_id": "162104a6-19f4-4a2c-ad60-c0357c57fded",
+      "event": "task/progress",
+      "at": "2026-11-23T07:49:14.435241Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Repeats on the settled-state fix: zwo_park_goes_home_first x30, requests_during_poll x20, no_slew x5"
+    },
+    {
+      "event_id": "e82a191e-c529-4b10-ab7e-e8b572cc897d",
+      "event": "task/progress",
+      "at": "2026-11-23T08:10:08.074244Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Repeats clean (zwo 30/30, during_poll 20/20, no_slew 5/5); starting recorded run mount_lx200"
+    },
+    {
+      "event_id": "723aa50a-5462-4561-865c-dc8c380daabb",
+      "event": "task/progress",
+      "at": "2026-11-23T08:36:24.493940Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "6095b270-475d-4d99-a540-05905070aabe",
+      "event": "task/progress",
+      "at": "2026-11-23T08:36:24.521138Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5aec4cda-6502-4d42-b0d1-acaf4d610f9a",
+      "event": "check/passed",
+      "at": "2026-11-23T08:36:24.522762Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "afb1ecb5fc491b308177bcb85fe35da55e284c7a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "8083e1d8-22c6-4847-bdcc-7968968edd45",
+      "event": "ticket/note",
+      "at": "2026-11-23T08:36:48.199240Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Follow-up record (coordinator round 2; driver stays 3.0.0.89). This supersedes the earlier note's test names, counts and recorded line.\n\n1. Phantom slew without motion beyond the first poll. Reproduced on the simulator for generic, classic, StarGO2 and AP GTOCP2 with a non-fatal variant of the case (first-poll fix only): 1 BUSY coordinates + 1 BUSY slew light after an accepted sync (6 h/+45 -> 2 h/+60), after MOUNT_EPOCH 2000 -> 0 and after 0 -> 2000 (the published J2000 position moves by the precession, 7.5' in declination at +60). Fix: the slew detection compares positions in the controller's frame. meade_read_position() stores the raw reading in positionRA/positionDec before the J2000 conversion, meade_update_generic_state() compares those with lastRA/lastDec, and the poll stores lastRA/lastDec from them, so an epoch change no longer moves either side. After an accepted sync the handler reseeds lastRA/lastDec from its own readback (and marks them valid); if that readback fails or the Meade is silent after a park, it clears last_position_valid so the next poll reseeds. Reseeding was chosen over clearing because it cannot hide a real slew: the next poll still compares, against the controller's own reading taken right after the sync, so any motion after that moment is detected exactly as before; only the jump the sync itself made is absorbed. Clearing would skip one full comparison. Without the reseed (frame comparison kept, temporary experiment, reverted) the sync step failed (1 BUSY each). No other operation on these profiles was found to move the reported position without motion: generic/classic/StarGO2 hide park and home, AP park is a real slew, and host-side alignment does not transform the published coordinates in this driver. Time/site changes were not reproducible on the simulator and are not claimed.\nTests: the four cases are renamed lx200_{generic,classic,stargo2,ap_gtocp2}_no_slew_without_motion and check two complete polls each after connect, after the s",
+      "tokens": null
+    },
+    {
+      "event_id": "2a04153c-ff56-4326-b601-c46bc6fc5745",
+      "event": "task/progress",
+      "at": "2026-11-23T08:37:13.776438Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8299b47d-2627-4ef1-9c28-b10857cab3d9",
+      "text": "Review started"
+    },
+    {
+      "event_id": "aa95fb86-b3e0-465e-ab75-47d88b5438eb",
+      "event": "review/started",
+      "at": "2026-11-23T08:37:13.777615Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "c3db7580-da19-431d-a5d5-6a0a227eb34e",
+      "event": "task/progress",
+      "at": "2026-11-23T08:52:24.164214Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8299b47d-2627-4ef1-9c28-b10857cab3d9",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "45566991-e2be-48b4-bd03-98a918feb9bc",
+      "event": "task/progress",
+      "at": "2026-11-23T08:52:24.164237Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "22a26050-e8df-42b5-9221-3017adc352af",
+      "event": "review/changes_requested",
+      "at": "2026-11-23T08:52:24.165635Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8299b47d-2627-4ef1-9c28-b10857cab3d9",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "afb1ecb5fc491b308177bcb85fe35da55e284c7a"
+    },
+    {
+      "event_id": "1d473b7e-4af4-43df-b2c5-5d9a2eac025e",
+      "event": "task/progress",
+      "at": "2026-11-23T08:52:36.700503Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Review fix: correcting the comment of lx200_zwo_park_and_home_requests_during_poll"
+    },
+    {
+      "event_id": "04a354a7-1f77-4ce0-8211-ad58d8747e34",
+      "event": "task/progress",
+      "at": "2026-11-23T08:52:40.018005Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f1d568c2-9b51-4af5-b0a0-47da428fbdf6",
+      "event": "task/progress",
+      "at": "2026-11-23T08:52:40.045438Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "86b022c4-ba10-4867-a832-1b44e254d315",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2e929aa5-2db4-450e-8dcf-ef5baad47af5",
+      "event": "check/passed",
+      "at": "2026-11-23T08:52:40.047674Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "c8c8c072aa2ded7fe3153b75cec13359f9d9bc47",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "2a72f736-3f90-4f9c-a26b-bb2062f46bfa",
+      "event": "ticket/note",
+      "at": "2026-11-23T08:52:45.209601Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review round 1 (changes, comment only): the header comment of lx200_zwo_park_and_home_requests_during_poll described the reverted handler-time attempt; it now says the requests are still judged at request time, from settled_state, which only the end of the poll's decoding, meade_init_mount() and the AP park, unpark and abort handlers write. Test file compiled, flow check (whitespace) passed; no test rerun (comment-only). Reviewer's non-blocking remark, not done here: a GoTo handled before the first poll of a session (or after a sync whose readback failed) is published OK by that poll while the mount is still slewing on the generic-decoding profiles, because there is no earlier position to compare with yet; seeding lastRA/lastDec from a read in meade_init_mount() would close it at the cost of one round trip at connect.",
+      "tokens": null
+    },
+    {
+      "event_id": "a7013e92-52e9-4be9-b3d7-c22c368995b1",
+      "event": "task/progress",
+      "at": "2026-11-23T08:52:54.841368Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8299b47d-2627-4ef1-9c28-b10857cab3d9",
+      "text": "Review started"
+    },
+    {
+      "event_id": "1e473b5f-0d03-40f2-94fc-df4aa34d2863",
+      "event": "review/started",
+      "at": "2026-11-23T08:52:54.842611Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "750c01f7-2e10-4046-a621-d7d98322037d",
+      "event": "task/progress",
+      "at": "2026-11-23T08:53:11.906377Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8299b47d-2627-4ef1-9c28-b10857cab3d9",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "0bc03a36-353e-4407-b425-2787eaf08e4e",
+      "event": "review/passed",
+      "at": "2026-11-23T08:53:11.907736Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "8299b47d-2627-4ef1-9c28-b10857cab3d9",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "c8c8c072aa2ded7fe3153b75cec13359f9d9bc47"
+    },
+    {
+      "event_id": "dfa164db-7245-4251-a4da-932e772e7902",
+      "event": "ticket/closed",
+      "at": "2026-11-23T08:53:12.163005Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-23T08:53:12.162983Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "ec5db6e443d5661bc8dddec68f09b8c6a1458cad"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "13a0c0498727d33a5ac6c516059a8f288adf143f",
+        "tree": "47085834ad91d80edadbabd1646385264ce55b89",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T06:22:02.652125Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/82634c3e-1b0c-4876-852f-667c6222342b/47085834ad91-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "afb1ecb5fc491b308177bcb85fe35da55e284c7a",
+        "tree": "892c1df2460afaddff91c7c41f8188db0e391bfd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T08:36:24.520413Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/82634c3e-1b0c-4876-852f-667c6222342b/892c1df2460a-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c8c8c072aa2ded7fe3153b75cec13359f9d9bc47",
+        "tree": "9232a57558e1ea4cb816e78f60d56563bd9b38c7",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T08:52:40.044465Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/82634c3e-1b0c-4876-852f-667c6222342b/9232a57558e1-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "No correctness defect in the connect/sync/epoch false-slew fix or in the settled_state park/home admission; generated output byte-identical to regeneration; new cases fail against the old admission (3/3) and the old J2000-frame comparison; 43 park/home cases pass. Required: test_mount_lx200_simulator.c:4488, header comment of lx200_zwo_park_and_home_requests_during_poll says 'The requests are judged on the queue the poll runs on' - that is the reverted first attempt; the final fix judges at request time from settled_state. Non-blocking: a GoTo handled before the first poll of a session (or after a sync whose readback failed) is published OK by that poll while the mount still slews, because there is nothing to compare with; seeding lastRA/lastDec from a read in meade_init_mount() would close it at the cost of one round trip. RA wrap at 0/24 h in the 2' comparison is pre-existing.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "afb1ecb5fc491b308177bcb85fe35da55e284c7a",
+        "tree": "892c1df2460afaddff91c7c41f8188db0e391bfd",
+        "at": "2026-11-23T08:52:24.163965Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 (delta afb1ecb5f..c8c8c072a): only the comment above lx200_zwo_park_and_home_requests_during_poll, now accurate (requests judged at arrival from settled_state). Code under test unchanged; round 1 runs still apply.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "c8c8c072aa2ded7fe3153b75cec13359f9d9bc47",
+        "tree": "9232a57558e1ea4cb816e78f60d56563bd9b38c7",
+        "at": "2026-11-23T08:53:11.906131Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T06:22:32.201627Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementation record (driver 3.0.0.88 -> 3.0.0.89, mode: non-interactive simulator).\n\nCause: meade_update_generic_state() reports a slew when the coordinates read by the poll differ by more than 2' from PRIVATE_DATA->lastRA/lastDec. Those fields are set only at the end of each poll (meade_update_mount_state), so the first poll of a session compared the first reading with 0, 0 (fresh private data) or with the last position of the previous session, and published MOUNT_EQUATORIAL_COORDINATES and the SLEW light BUSY for one poll. Affected: every profile that decodes motion with meade_update_generic_state(): generic, classic, StarGO2, and also Astro-Physics when :GOS# is not used (GTOCP2, revision letter below S, or a failed :GOS#). No other \"last value\" comparison exists in the state-decoding path (lastMotionNS/WE, lastSlewRate, lastTrackRate are request-side and already reset at disconnect).\n\nFix (indigo_mount_lx200.driver, regenerated .c): new private field last_position_valid; reset in meade_init_mount() (runs on every connect); set at the end of meade_update_mount_state() only when the position read did not fail; meade_update_generic_state() compares with lastRA/lastDec only while it is set. A first read that fails therefore does not seed the comparison either. Real slew detection in later polls is unchanged. Generated diff: DRIVER_VERSION 0x03000058 -> 0x03000059 and the four edited spots only; the unchanged generator reproduced the checked-in output before the edit.\n\nTests (indigo_test/integration/test_mount_lx200_simulator.c): timed_client_update() now counts BUSY publications of the mount's MOUNT_EQUATORIAL_COORDINATES and of its MOUNT_STATE.SLEW light. New cases, one per affected decoding: lx200_generic_connect_reports_no_slew, lx200_classic_connect_reports_no_slew, lx200_stargo2_connect_reports_no_slew, lx200_ap_gtocp2_connect_reports_no_slew (--ap-version J). Each: connect to a simulator standing at 6 h/+45 deg, wait for 2 complete polls, require position read, zero BUSY coordinates, zero BUSY slew lights, coordinates OK, slew light not BUSY; then sync to 18 h/-30 deg, disconnect, connect the same driver to a second simulator standing at 6 h/+45 deg and require the same. Scenario mapping: first poll after connect -> first half; reconnect at a different position (needs the reset on connect) -> second half; real slew detection unchanged -> existing lx200_generic_goto_polling_progress and the classic GOTO cases in the recorded run. Only a stale comment of lx_select_mode() mentioning the phantom slew was adapted; no existing case depended on it.\n\nProof of failure without the fix: on the unchanged v88 driver all four cases failed at the first check (1 BUSY coordinates, 1 BUSY slew light each). With the fix but the reset in meade_init_mount() removed (temporary experiment, reverted), all four failed at the reconnect check (1 BUSY each), so the reconnect half proves the reset.\n\nRuns (macOS arm64, simulator): new cases 20 x 4 filtered, 80/80 passed. Recorded run python3 tools/run_driver_test.py mount_lx200: 173 run, 172 passed, Failed; the only failure is the known intermittent lx200_zwo_park_goes_home_first (line 3020, :hC# counted twice). It is unrelated (ZWO profile never reaches meade_update_generic_state): filtered reruns on v89 failed 2 of 5, and the same case built against the unchanged v88 driver failed 1 of 6. flow check (whitespace) passed. MIGRATION_STATUS.md lx200 hardware-free count 172 -> 176 (173 run by the script + 3 opt-in TCP cases).\n\nSide finding (not fixed, out of scope): on the same generic-decoding profiles the poll right after an accepted sync also reports a slew (measured in the experiment: 1 BUSY coordinates and 1 BUSY slew light after the sync to 18 h/-30 deg), because the sync jumps the position and lastRA/lastDec still hold the pre-sync reading. Reseeding lastRA/lastDec from the sync readback would fix it.\n\nNot verified: Linux, Windows, physical hardware.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T08:36:48.198013Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Follow-up record (coordinator round 2; driver stays 3.0.0.89). This supersedes the earlier note's test names, counts and recorded line.\n\n1. Phantom slew without motion beyond the first poll. Reproduced on the simulator for generic, classic, StarGO2 and AP GTOCP2 with a non-fatal variant of the case (first-poll fix only): 1 BUSY coordinates + 1 BUSY slew light after an accepted sync (6 h/+45 -> 2 h/+60), after MOUNT_EPOCH 2000 -> 0 and after 0 -> 2000 (the published J2000 position moves by the precession, 7.5' in declination at +60). Fix: the slew detection compares positions in the controller's frame. meade_read_position() stores the raw reading in positionRA/positionDec before the J2000 conversion, meade_update_generic_state() compares those with lastRA/lastDec, and the poll stores lastRA/lastDec from them, so an epoch change no longer moves either side. After an accepted sync the handler reseeds lastRA/lastDec from its own readback (and marks them valid); if that readback fails or the Meade is silent after a park, it clears last_position_valid so the next poll reseeds. Reseeding was chosen over clearing because it cannot hide a real slew: the next poll still compares, against the controller's own reading taken right after the sync, so any motion after that moment is detected exactly as before; only the jump the sync itself made is absorbed. Clearing would skip one full comparison. Without the reseed (frame comparison kept, temporary experiment, reverted) the sync step failed (1 BUSY each). No other operation on these profiles was found to move the reported position without motion: generic/classic/StarGO2 hide park and home, AP park is a real slew, and host-side alignment does not transform the published coordinates in this driver. Time/site changes were not reproducible on the simulator and are not claimed.\nTests: the four cases are renamed lx200_{generic,classic,stargo2,ap_gtocp2}_no_slew_without_motion and check two complete polls each after connect, after the sync, after the epoch changes JNow and J2000, and after the reconnect to a controller at another position: position read, 0 BUSY coordinates, 0 BUSY slew lights, coordinates OK.\n\n2. lx200_zwo_park_goes_home_first (failed 1/6 to 2/5 on v88 and v89): driver defect, a race. The simulator trace of a failing run shows the second :hC# right after a poll's GR/GD/GAT/GU/Gps/Gm sequence, i.e. the HOME request of the \"parked mount refuses home\" step was admitted. MOUNT_PARK and MOUNT_HOME judged requests in on_change_request, on the bus thread, from PRIVATE_DATA->parked/parking/homing/homed. meade_update_mount_state() clears those flags after the position readback and decodes them again from :GU#/:Gps# (ZWO), so a request arriving in that window saw a parked mount as not parked: home was sent (:hC# twice) and an unpark would have been refused. First attempt (judge in on_change on the device queue) was wrong and reverted: the Meade decoder infers parked from MOUNT_PARK being BUSY, which the request itself sets before the handler runs, so lx200_park_meade and lx200_meade_silent_park_is_parked failed (recorded run 2026-11-23 08:15, 174/172, replaced). Final fix: the request is still judged at request time, from settled_state, an int of SETTLED_PARKED/PARKING/HOMING/HOMED bits written in one store by meade_settle_state() at the end of meade_init_mount(), at the end of each poll's decoding, and right after the handlers that change the flags (AP park parked = true, unpark parked = false, abort parking = homing = false). New deterministic case lx200_zwo_park_and_home_requests_during_poll: parked ZWO, a HOME requested from the log trigger on the poll's \"<- :GU#\" must send no :hC#, then an UNPARK requested the same way must send :Spu# and end unparked. Built against the pre-fix driver it failed 3/3 at the :hC# check; with the fix it passed 20/20. lx200_zwo_park_goes_home_first passed 30/30 filtered with the final fix (and 30/30 with the reverted attempt), against 1/6 and 2/5 failures before. The test expectation (hC exactly once) is correct and unchanged.\n\nRepeat counts (final driver unless noted): no_slew_without_motion 4 cases 20/20 runs (sync reseed version) plus 5/5 after the admission fix; requests_during_poll 20/20; zwo_park_goes_home_first 30/30; park/home/abort related cases filtered once each, all passed.\n\nRecorded run python3 tools/run_driver_test.py mount_lx200: 2026-11-23 09:10 3.0.0.89 mac arm64 simulator 174/174 OK. MIGRATION_STATUS.md lx200 hardware-free count 177 (174 run by the script + 3 opt-in TCP cases). flow check (whitespace) passed. Generated diff checked: only the .driver edits, with the generator's own alignment of the new defines.\n\nNot verified: Linux, Windows, physical hardware.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T08:52:45.208337Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review round 1 (changes, comment only): the header comment of lx200_zwo_park_and_home_requests_during_poll described the reverted handler-time attempt; it now says the requests are still judged at request time, from settled_state, which only the end of the poll's decoding, meade_init_mount() and the AP park, unpark and abort handlers write. Test file compiled, flow check (whitespace) passed; no test rerun (comment-only). Reviewer's non-blocking remark, not done here: a GoTo handled before the first poll of a session (or after a sync whose readback failed) is published OK by that poll while the mount is still slewing on the generic-decoding profiles, because there is no earlier position to compare with yet; seeding lastRA/lastDec from a read in meade_init_mount() would close it at the cost of one round trip at connect.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "ec5db6e443d5661bc8dddec68f09b8c6a1458cad",
+      "tree": "9232a57558e1ea4cb816e78f60d56563bd9b38c7",
+      "base": "master",
+      "at": "2026-11-23T08:53:12.097604Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-23T05:20:25.000722Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-23T05:20:30.905901Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 12755395.038,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 56,
+    "sha256": "401e0b9054d1b76620be670e8c88c04d363a93ea466e6a63f0c086330ac76581"
+  }
+}
