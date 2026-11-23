@@ -160,6 +160,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_agent_mount_simulator \
 	$(INTEGRATION_BUILD)/test_agent_config \
 	$(INTEGRATION_BUILD)/test_agent_auxiliary \
+	$(INTEGRATION_BUILD)/test_agent_auxiliary_simulator \
 	$(INTEGRATION_BUILD)/test_agent_mcp \
 	$(INTEGRATION_BUILD)/test_agent_astrometry \
 	$(INTEGRATION_BUILD)/test_agent_platesolver \
@@ -2538,6 +2539,13 @@ $(INTEGRATION_BUILD)/test_agent_auxiliary: integration/test_agent_auxiliary.c in
 .PHONY: test-agent-auxiliary
 test-agent-auxiliary: check-lib $(INTEGRATION_BUILD)/test_agent_auxiliary
 	$(INTEGRATION_BUILD)/test_agent_auxiliary
+
+$(INTEGRATION_BUILD)/test_agent_auxiliary_simulator: integration/test_agent_auxiliary_simulator.c integration/simulator_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_agent_auxiliary.a $(BUILD_DRIVERS)/indigo_aux_simulator.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_auxiliary.a $(BUILD_DRIVERS)/indigo_aux_simulator.a $(TEST_LDFLAGS)
+
+.PHONY: test-agent-auxiliary-simulator
+test-agent-auxiliary-simulator: check-lib $(INTEGRATION_BUILD)/test_agent_auxiliary_simulator
+	$(INTEGRATION_BUILD)/test_agent_auxiliary_simulator
 
 # Real Astrometry Agent with controlled local image2xy, solve-field and curl peers.
 ASTROMETRY_TEST_FLAGS = -DINDIGO_ASTROMETRY_TEST
