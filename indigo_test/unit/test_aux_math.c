@@ -195,6 +195,41 @@ static void weather_safety_ignores_missing_items(void) {
 	indigo_release_property(property);
 }
 
+static indigo_property *init_rain_condition_property(void) {
+	indigo_property *property = indigo_init_light_property(NULL, "Weather", AUX_RAIN_PROPERTY_NAME, "Weather", "Rain condition", INDIGO_IDLE_STATE, 3);
+	indigo_init_light_item(property->items + 0, AUX_RAIN_RAINING_ITEM_NAME, "Raining", INDIGO_ALERT_STATE);
+	indigo_init_light_item(property->items + 1, AUX_RAIN_WET_ITEM_NAME, "Wet", INDIGO_OK_STATE);
+	indigo_init_light_item(property->items + 2, AUX_RAIN_DRY_ITEM_NAME, "Dry", INDIGO_BUSY_STATE);
+	return property;
+}
+
+static void condition_level_is_the_only_ok_light(void) {
+	indigo_property *property = init_rain_condition_property();
+	indigo_aux_set_condition(property, INDIGO_OK_STATE, property->items + 0);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->state);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->items[0].light.value);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[1].light.value);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[2].light.value);
+	indigo_aux_set_condition(property, INDIGO_OK_STATE, property->items + 1);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[0].light.value);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, property->items[1].light.value);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[2].light.value);
+	indigo_release_property(property);
+}
+
+static void condition_without_reading_or_sensor_has_no_level(void) {
+	indigo_property_state states[] = { INDIGO_ALERT_STATE, INDIGO_IDLE_STATE, INDIGO_BUSY_STATE };
+	for (int i = 0; i < (int)(sizeof(states) / sizeof(states[0])); i++) {
+		indigo_property *property = init_rain_condition_property();
+		indigo_aux_set_condition(property, states[i], property->items + 1);
+		ASSERT_EQ_INT(states[i], property->state);
+		for (int j = 0; j < property->count; j++) {
+			ASSERT_EQ_INT(INDIGO_IDLE_STATE, property->items[j].light.value);
+		}
+		indigo_release_property(property);
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "dewpoint_matches_magnus_reference_values", dewpoint_matches_magnus_reference_values },
@@ -205,7 +240,9 @@ int main(void) {
 		{ "weather_safety_reason_without_values", weather_safety_reason_without_values },
 		{ "weather_safety_invalid_reading_is_alert", weather_safety_invalid_reading_is_alert },
 		{ "weather_safety_reports_changed_reasons", weather_safety_reports_changed_reasons },
-		{ "weather_safety_ignores_missing_items", weather_safety_ignores_missing_items }
+		{ "weather_safety_ignores_missing_items", weather_safety_ignores_missing_items },
+		{ "condition_level_is_the_only_ok_light", condition_level_is_the_only_ok_light },
+		{ "condition_without_reading_or_sensor_has_no_level", condition_without_reading_or_sensor_has_no_level }
 	};
 	return indigo_run_tests("aux math unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));
 }

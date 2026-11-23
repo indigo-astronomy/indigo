@@ -105,6 +105,33 @@ static bool light_is(const char *property_name, const char *item_name, indigo_pr
 	return true;
 }
 
+// A condition property is a light vector: the item of the current level is OK and the other items are IDLE,
+// the property state reports the sensor. With level NULL every item is IDLE.
+static bool condition_is(const char *property_name, const char *level, indigo_property_state state) {
+	indigo_property *property = find_cached_property(property_name);
+	if (property == NULL) {
+		fprintf(stderr, "%s is not defined\n", property_name);
+		return false;
+	}
+	bool result = true;
+	if (property->type != INDIGO_LIGHT_VECTOR) {
+		fprintf(stderr, "%s is not a light vector\n", property_name);
+		result = false;
+	}
+	if (property->state != state) {
+		fprintf(stderr, "%s: expected state %d, received %d\n", property_name, state, property->state);
+		result = false;
+	}
+	for (int i = 0; i < property->count; i++) {
+		indigo_property_state expected = level != NULL && !strcmp(property->items[i].name, level) ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+		if (property->items[i].light.value != expected) {
+			fprintf(stderr, "%s.%s: expected light %d, received %d\n", property_name, property->items[i].name, expected, property->items[i].light.value);
+			result = false;
+		}
+	}
+	return result;
+}
+
 // The compliance context remembers every property name it has ever seen, so
 // current visibility is read from the live property cache instead.
 static bool number_metadata_is(const char *property_name, const char *item_name, double min, double max, const char *format) {
@@ -282,11 +309,11 @@ static void readings_and_conditions(void) {
 	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME, 44, .01));
 	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, 11.1054, .01));
 	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME, 9, .001));
-	SERIAL_CHECK_TRUE(switch_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_DRY_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_LIGHT_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_NORMAL_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_DRY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_LIGHT_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_NORMAL_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(light_is(AUX_WIND_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(light_is(AUX_RAIN_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(light_is(AUX_DEW_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_OK_STATE));
@@ -332,9 +359,11 @@ static void absent_sensors(void) {
 	// is the last ambient fallback.
 	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_TEMPERATURE_ITEM_NAME, 20, .001));
 	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ANEMOMETER_STATUS", 0, .001));
-	SERIAL_CHECK_TRUE(switch_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_DARK_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_DARK_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_HUMIDITY_PROPERTY_NAME, INDIGO_IDLE_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WIND_PROPERTY_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WIND_WARNING_PROPERTY_NAME, INDIGO_IDLE_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_DEW_WARNING_PROPERTY_NAME, INDIGO_IDLE_STATE));
 	SERIAL_CHECK_TRUE(light_is(AUX_WIND_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_IDLE_STATE));
@@ -348,11 +377,11 @@ cleanup:
 static void wet_overcast(void) {
 	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
 	SERIAL_CHECK_TRUE(first_reading());
-	SERIAL_CHECK_TRUE(switch_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_OVERCAST_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_VERY_LIGHT_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_CALM_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, AUX_CLOUD_OVERCAST_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, AUX_SKY_VERY_LIGHT_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_CALM_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_WIND_SPEED_ITEM_NAME, 0, .001));
 	SERIAL_CHECK_TRUE(light_is(AUX_RAIN_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(light_is(AUX_DEW_WARNING_PROPERTY_NAME, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, INDIGO_ALERT_STATE));
@@ -559,8 +588,8 @@ static void weather_safety_each_condition(void) {
 	SERIAL_CHECK_TRUE(change_threshold(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 5));
 	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
 	SERIAL_CHECK_TRUE(first_reading());
-	SERIAL_CHECK_TRUE(switch_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, true));
-	SERIAL_CHECK_TRUE(switch_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: wind 9.2 m/s above 5.0 m/s, humidity 44.0 % above 40.0 %"));
 cleanup:
@@ -608,6 +637,7 @@ static void weather_safety_invalid_humidity(void) {
 	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: humidity sensor gives no valid reading"));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
 cleanup:
 	aux_stop(&primary);
 }
@@ -635,6 +665,12 @@ static void weather_safety_read_failure(void) {
 	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: clouds sensor gives no valid reading, rain sensor gives no valid reading, wind sensor gives no valid reading, humidity sensor gives no valid reading"));
+	// Every fitted sensor has no valid reading, so every condition is ALERT with all lights IDLE.
+	SERIAL_CHECK_TRUE(condition_is(AUX_CLOUD_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_RAIN_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_SKY_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_HUMIDITY_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
 cleanup:
 	aux_stop(&primary);
 }
@@ -664,6 +700,7 @@ static void weather_safety_anemometer_unknown_fitted(void) {
 	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: wind sensor gives no valid reading"));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, NULL, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ANEMOMETER_STATUS", 0, .001));
 	SERIAL_CHECK_TRUE(wait_for_safety_message_count(2));
 	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
@@ -671,7 +708,7 @@ static void weather_safety_anemometer_unknown_fitted(void) {
 	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
 	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ANEMOMETER_STATUS", 1, .001));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(X_CONSTANTS_PROPERTY_NAME)->state);
-	SERIAL_CHECK_TRUE(switch_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME, INDIGO_OK_STATE));
 cleanup:
 	aux_stop(&primary);
 }
@@ -685,6 +722,7 @@ static void weather_safety_anemometer_unknown_absent(void) {
 	SERIAL_CHECK_TRUE(wait_for_safety_message_count(2));
 	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(condition_is(AUX_WIND_PROPERTY_NAME, NULL, INDIGO_IDLE_STATE));
 	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
 	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ANEMOMETER_STATUS", 0, .001));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(X_CONSTANTS_PROPERTY_NAME)->state);
@@ -702,7 +740,27 @@ cleanup:
 	aux_stop(&primary);
 }
 
+// A threshold saved by CONFIG comes back when the driver is shut down and attached again: the bus loads the
+// configuration on attach and the thresholds are defined while disconnected.
+static void thresholds_saved_by_config(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(change_threshold(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_WET_ITEM_NAME, 1500));
+	SERIAL_CHECK_TRUE(save_configuration_on(primary.device_name));
+	aux_stop(&primary);
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_WET_ITEM_NAME, 1500, 0));
+	SERIAL_CHECK_TRUE(number_is(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, 400, .001));
+cleanup:
+	aux_stop(&primary);
+}
+
 int main(void) {
+	// CONFIG saves go to a private home, so a run neither reads nor changes the user's configuration.
+	if (!indigo_test_use_private_home()) {
+		return 1;
+	}
 	simulator_test_client.send_message = safety_recording_send_message;
 	const aux_simulated_case tests[] = {
 		{ "normal", normal, "normal" },
@@ -735,6 +793,9 @@ int main(void) {
 		{ "weather_safety_anemometer_unknown_fitted", weather_safety_anemometer_unknown_fitted, "anemometer-late" },
 		{ "weather_safety_anemometer_unknown_absent", weather_safety_anemometer_unknown_absent, "anemometer-late-absent" },
 		{ "humidity_threshold_defaults", humidity_threshold_defaults, "normal" },
+		{ "thresholds_saved_by_config", thresholds_saved_by_config, "normal" },
 	};
-	return run_aux_simulated("cloudwatcher", "build/integration/aux_cloudwatcher_simulator", tests, ARRAY_SIZE(tests));
+	int result = run_aux_simulated("cloudwatcher", "build/integration/aux_cloudwatcher_simulator", tests, ARRAY_SIZE(tests));
+	indigo_test_remove_private_home();
+	return result;
 }
