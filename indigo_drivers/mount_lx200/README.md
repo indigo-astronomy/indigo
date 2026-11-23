@@ -73,4 +73,4 @@ Driver is developed and tested with:
 - 2026-10-07 02:01 3.0.0.80 linux arm64 simulator 150/150 OK
 - 2026-10-07 02:19 3.0.0.80 linux arm64 aGotino 35/35 OK
 - 2026-11-06 08:43 3.0.0.83 linux x64 simulator 163/163 OK
-- 2026-11-23 09:10 3.0.0.89 mac arm64 simulator 174/174 OK
+- 2026-11-23 17:00 3.0.0.90 mac arm64 simulator 177/177 OK

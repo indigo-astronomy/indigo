@@ -118,39 +118,58 @@ static atomic_int mount_coordinates_state = INDIGO_OK_STATE;
 
 // The SLEW light of MOUNT_STATE, captured from the moment a test armed it with
 // arm_slew_light_capture(): when it was first published BUSY (monotonic ns, 0 until then), and the
-// light the client held when the coordinates were first published OK after a BUSY publication
-// (-1 until then). MOUNT_STATE has to change in the same update as the coordinates, so it is
-// already published when they are.
-static atomic_bool slew_light_armed, slew_coordinates_busy;
+// light of the first MOUNT_STATE published after the coordinates were first published OK after a
+// BUSY publication (-1 until then). The poll publishes MOUNT_STATE right after the coordinates,
+// with the SLEW light of the state indigo_update_coordinates() published them in.
+static atomic_bool slew_light_armed, slew_coordinates_busy, slew_coordinates_ok;
 static atomic_uint_fast64_t slew_light_busy_at;
 static atomic_int slew_light_at_ok;
 
 static void arm_slew_light_capture(void) {
 	atomic_store(&slew_light_busy_at, 0);
 	atomic_store(&slew_coordinates_busy, false);
+	atomic_store(&slew_coordinates_ok, false);
 	atomic_store(&slew_light_at_ok, -1);
 	atomic_store(&slew_light_armed, true);
 }
 
 static void capture_slew_light(indigo_property *property) {
-	indigo_item *light = find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME);
-	if (light == NULL || !atomic_load(&slew_light_armed)) {
+	if (!atomic_load(&slew_light_armed)) {
 		return;
 	}
 	if (!strcmp(property->name, MOUNT_STATE_PROPERTY_NAME)) {
 		uint_fast64_t expected = 0;
 		for (int i = 0; i < property->count; i++) {
-			if (!strcmp(property->items[i].name, MOUNT_STATE_SLEW_ITEM_NAME) && property->items[i].light.value == INDIGO_BUSY_STATE) {
+			if (strcmp(property->items[i].name, MOUNT_STATE_SLEW_ITEM_NAME)) {
+				continue;
+			}
+			if (property->items[i].light.value == INDIGO_BUSY_STATE) {
 				atomic_compare_exchange_strong(&slew_light_busy_at, &expected, lx_monotonic_ns());
+			}
+			if (atomic_load(&slew_coordinates_ok)) {
+				int at_ok = -1;
+				atomic_compare_exchange_strong(&slew_light_at_ok, &at_ok, (int)property->items[i].light.value);
 			}
 		}
 	} else if (property->state == INDIGO_BUSY_STATE) {
 		atomic_store(&slew_coordinates_busy, true);
 	} else if (property->state == INDIGO_OK_STATE && atomic_load(&slew_coordinates_busy)) {
-		int expected = -1;
-		atomic_compare_exchange_strong(&slew_light_at_ok, &expected, (int)light->light.value);
+		atomic_store(&slew_coordinates_ok, true);
 	}
 }
+
+// The SLEW light published with the end of the slew, see capture_slew_light(); -1 when none was.
+static int wait_slew_light_at_ok(void) {
+	for (int i = 0; i < 200 && atomic_load(&slew_light_at_ok) == -1; i++) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(&slew_light_at_ok);
+}
+
+// A goto the client sends from its own callback the moment CONNECTION of the mount is published OK and connected, which
+// queues it ahead of the first poll the connection handler queues after that publication.
+static atomic_bool goto_on_connect_armed;
+static double goto_on_connect_ra, goto_on_connect_dec;
 
 // The BUSY publications of the mount's coordinates and of its SLEW light since a test last cleared them.
 static atomic_int coordinates_busy_publications, slew_light_busy_publications;
@@ -182,7 +201,17 @@ static indigo_result timed_client_update(indigo_client *client, indigo_device *d
 			atomic_store(guide_completed + axis, lx_monotonic_ns());
 		}
 	}
-	return simulator_client_update_property(client, device, property, message);
+	indigo_result result = simulator_client_update_property(client, device, property, message);
+	if (!strcmp(property->device, lx200_mount.device_name) && !strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && atomic_load(&goto_on_connect_armed)) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, CONNECTION_CONNECTED_ITEM_NAME) && property->items[i].sw.value && atomic_exchange(&goto_on_connect_armed, false)) {
+				const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+				double values[] = { goto_on_connect_ra, goto_on_connect_dec };
+				indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, items, values);
+			}
+		}
+	}
+	return result;
 }
 
 // Every operation waits for a fresh update, never a cached pre-request OK.
@@ -3474,6 +3503,18 @@ static indigo_property_state cached_light_value(const char *property_name, const
 	return item == NULL ? INDIGO_IDLE_STATE : item->light.value;
 }
 
+// MOUNT_STATE follows the coordinates in a separate publication, so a case that has seen the coordinates waits for it.
+static bool wait_for_slew_light(indigo_property_state state) {
+	for (int i = 0; i < 200; i++) {
+		if (cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) == state) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "The SLEW light is %d, expected %d\n", cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME), state);
+	return false;
+}
+
 static void lx200_nyx_park_light_follows_the_mount(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -4602,8 +4643,10 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// Whether MOUNT_STATE.SLEW was published BUSY after the last :MS# and before the first :GR# of the
-// poll that followed it. The simulator and the client share the monotonic clock.
+// Whether MOUNT_STATE.SLEW was published BUSY, since the capture was armed right before the request,
+// before the first :GR# of the poll that followed the last :MS#: with the coordinates the request
+// set BUSY, by a poll that ran before the handler sent :MS#, or by that handler, not a poll later.
+// The simulator and the client share the monotonic clock.
 static bool slew_light_precedes_the_next_poll(external_serial_simulator *simulator) {
 	for (int i = 0; i < 500 && atomic_load(&slew_light_busy_at) == 0; i++) {
 		indigo_usleep(10000);
@@ -4634,15 +4677,16 @@ static bool slew_light_precedes_the_next_poll(external_serial_simulator *simulat
 		}
 	}
 	printf("    :MS# at %.3f, the slew light at %.3f, the next poll at %.3f\n", slew, lit, poll);
-	return poll > 0 && lit > slew && lit < poll;
+	return poll > 0 && lit < poll;
 }
 
 // An abort that lands in the middle of a goto stops the mount short of the target, and the goto it
 // ended is a failed request: MOUNT_EQUATORIAL_COORDINATES ends ALERT, never OK at a target the
 // mount did not reach. Two fresh readbacks of the same position prove the stop, the stop is sent
 // once, and the next goto is taken. An abort while the mount stands still changes neither its
-// position nor its tracking. MOUNT_STATE carries the SLEW light in the same update as the
-// coordinates, BUSY when the goto is accepted and IDLE when it ends.
+// position nor its tracking. MOUNT_STATE carries the SLEW light of the coordinates: BUSY when the
+// goto is accepted, ALERT with the ALERT of the aborted goto as long as the polls keep it, and IDLE
+// published with the end of the next goto.
 static void lx200_goto_abort_ends_alert_and_idle_abort_keeps_state(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -4665,17 +4709,19 @@ static void lx200_goto_abort_ends_alert_and_idle_abort_keeps_state(void) {
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - ra) < 0.0001);
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 0.0001);
 	// A goto of about three seconds, aborted half a second in.
+	int slews = event_count(&simulator, "MS", NULL);
 	arm_slew_light_capture();
 	SERIAL_CHECK_TRUE(lx_coordinates(18, -80, INDIGO_BUSY_STATE));
-	// The light goes on when the goto is accepted, after :MS# and before the first poll that
-	// follows it, which is what turned it on before.
+	// The light goes on with the coordinates the goto set BUSY, before the first poll that follows
+	// :MS#, which is what turned it on before.
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", slews));
 	SERIAL_CHECK_TRUE(slew_light_precedes_the_next_poll(&simulator));
 	atomic_store(&slew_light_armed, false);
 	stops = settled_event_count(&simulator, "Q");
 	unsigned int revision = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
-	SERIAL_CHECK_TRUE(cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(wait_for_slew_light(INDIGO_ALERT_STATE));
 	SERIAL_CHECK_EQ_INT(stops + 1, settled_event_count(&simulator, "Q"));
 	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
 	double first_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
@@ -4686,15 +4732,17 @@ static void lx200_goto_abort_ends_alert_and_idle_abort_keeps_state(void) {
 	printf("    the aborted goto stopped at RA %.4f DEC %.4f, the target was RA 18 DEC -80\n", second_ra, second_dec);
 	SERIAL_CHECK_TRUE(fabs(first_ra - second_ra) < 0.0001 && fabs(first_dec - second_dec) < 0.0001);
 	SERIAL_CHECK_TRUE(fabs(second_dec + 80) > 1 && fabs(second_ra - 18) > 0.1);
-	// The polls keep the ALERT of the aborted goto until the next request, and the next goto is taken.
+	// The polls keep the ALERT of the aborted goto and the SLEW light with it until the next request, and the next
+	// goto is taken.
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
-	int slews = event_count(&simulator, "MS", NULL);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
+	slews = event_count(&simulator, "MS", NULL);
 	arm_slew_light_capture();
 	SERIAL_CHECK_TRUE(lx_coordinates(9, 15, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", slews));
 	SERIAL_CHECK_TRUE(slew_light_precedes_the_next_poll(&simulator));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, atomic_load(&slew_light_at_ok));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, wait_slew_light_at_ok());
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 15, 0.001));
 cleanup:
 	atomic_store(&slew_light_armed, false);
@@ -4885,28 +4933,29 @@ static void check_abort_keeps_alert_while_decelerating(const lx_readback_dialect
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alerts));
 	unsigned int busy = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE);
-	// The axes decelerate, the controller reports the slew until they stand, and the polls see it: the slew light is on
-	// while the mount moves, but the stop of the goto is no new slew and the coordinates keep the ALERT of the abort.
+	// The axes decelerate, the controller reports the slew until they stand, and the polls see it, but the stop of the
+	// goto is no new slew: the coordinates keep the ALERT of the abort and the SLEW light shows it.
 	SERIAL_CHECK_TRUE(wait_position_polls(&simulator, dialect->position, 2));
 	indigo_property *property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	printf("      while the axes decelerate: %s, slew light %s, %u BUSY publications\n", state_name(property->state), state_name(cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)), property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE) - busy);
-	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
 	SERIAL_CHECK_EQ_INT(busy, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, property->state);
-	// The axes stand short of the target: the slew light goes off and the ALERT stays until the next request.
+	// The axes stand short of the target: the ALERT and the SLEW light with it stay until the next request.
 	SERIAL_CHECK_TRUE(send_control(&simulator, "halt"));
 	SERIAL_CHECK_TRUE(wait_position_polls(&simulator, dialect->position, 2));
 	property = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	printf("      after the axes stood: %s at DEC %.4f, slew light %s\n", state_name(property->state), cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME), state_name(cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)));
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, property->state);
 	SERIAL_CHECK_EQ_INT(busy, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) + 60) > 1);
 	SERIAL_CHECK_TRUE(targets_at(22, -60));
-	// The next goto is taken and ends OK at its target.
+	// The next goto is taken and ends OK at its target, the SLEW light IDLE.
 	SERIAL_CHECK_TRUE(lx_coordinates(6.25, 12.5, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(coordinates_at(6.25, 12.5));
+	SERIAL_CHECK_TRUE(wait_for_slew_light(INDIGO_IDLE_STATE));
 cleanup:
 	if (online) {
 		stop_serial_driver(&lx200_mount);
@@ -5138,6 +5187,165 @@ static void lx200_stargo2_no_slew_without_motion(void) {
 static void lx200_ap_gtocp2_no_slew_without_motion(void) {
 	const char *arguments[] = { "--model", "ap", "--ap-version", "J", NULL };
 	check_no_slew_without_motion(arguments, "AP");
+}
+
+static external_serial_simulator *seed_simulator;
+
+// :Gg# is the last command of the connection before the position read that gives the first poll its comparison, so a
+// fault rule written while it is sent answers that read.
+static void fail_the_position_read_at_connect(void) {
+	inject_reply(seed_simulator, "GR", "invalid#");
+}
+
+// A goto that arrives before the first poll of a session, here sent by the client the moment the connection is
+// published OK, is handled before that poll. On a profile whose slew is the position moving between two polls (generic
+// here) the first poll compared with nothing and published the goto OK while the mount was on its way. The position read
+// at connect is what that poll compares with now, and when that read fails, the goto reads the position it starts from
+// itself. Either way the coordinates stay BUSY, the SLEW light with them, until the simulated slew ends, and are
+// published OK at the target.
+static void check_goto_before_the_first_poll(bool read_fails) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "generic", NULL };
+	bool online = false;
+	printf("    %s\n", read_fails ? "the position read at connect fails" : "the position read at connect");
+	seed_simulator = &simulator;
+	unsigned int oks = 0;
+	goto_on_connect_ra = 18;
+	goto_on_connect_dec = -80;
+	atomic_store(&goto_on_connect_armed, true);
+	if (read_fails) {
+		arm_log_trigger("<- :Gg#", fail_the_position_read_at_connect);
+	}
+	clear_busy_publications();
+	SERIAL_CHECK_TRUE(start_profile_with_args(&simulator, arguments, "GENERIC"));
+	online = true;
+	SERIAL_CHECK_TRUE(!atomic_load(&goto_on_connect_armed));
+	if (read_fails) {
+		SERIAL_CHECK_TRUE(wait_for_log_trigger());
+		disarm_log_trigger();
+	}
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MS", 0));
+	SERIAL_CHECK_EQ_INT(read_fails ? 1 : 0, event_count(&simulator, "fault GR", NULL));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	oks = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	printf("      the goto ended OK at RA %.4f DEC %.4f after %d BUSY coordinates and %d BUSY slew lights, the target was RA 18 DEC -80\n", ra, dec, atomic_load(&coordinates_busy_publications), atomic_load(&slew_light_busy_publications));
+	SERIAL_CHECK_TRUE(coordinates_at(18, -80));
+	// The request and at least one poll of the slew published BUSY.
+	SERIAL_CHECK_TRUE(atomic_load(&coordinates_busy_publications) >= 2);
+	SERIAL_CHECK_TRUE(atomic_load(&slew_light_busy_publications) >= 1);
+	SERIAL_CHECK_TRUE(wait_for_slew_light(INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(oks, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+cleanup:
+	atomic_store(&goto_on_connect_armed, false);
+	disarm_log_trigger();
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_generic_goto_before_the_first_poll(void) {
+	check_goto_before_the_first_poll(false);
+	check_goto_before_the_first_poll(true);
+}
+
+// :GD# of the position read at connect is the last command before the first poll, so a fault rule written while it is
+// sent answers the readback of that poll.
+static void fail_the_first_poll_readback(void) {
+	inject_reply(seed_simulator, "GR", "invalid#");
+}
+
+// The position read at connect succeeds and the readback of the first poll fails. A poll whose readback fails carries the
+// position it holds over as the one the next poll compares with, so that has to be the position read at connect, not the
+// zero a first session starts from: the next poll reads the unchanged position, and no slew is reported on the way.
+static void lx200_generic_first_poll_readback_fails_after_the_connect_read(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "generic", NULL };
+	bool online = false;
+	seed_simulator = &simulator;
+	arm_log_trigger("<- :GD#", fail_the_first_poll_readback);
+	clear_busy_publications();
+	SERIAL_CHECK_TRUE(start_profile_with_args(&simulator, arguments, "GENERIC"));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_log_trigger());
+	disarm_log_trigger();
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "fault GR", 0));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 3));
+	printf("    after the failed readback: %d BUSY coordinates, %d BUSY slew lights, coordinates %s, slew light %s\n", atomic_load(&coordinates_busy_publications), atomic_load(&slew_light_busy_publications), state_name(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state), state_name(cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)));
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&coordinates_busy_publications));
+	SERIAL_CHECK_EQ_INT(0, atomic_load(&slew_light_busy_publications));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
+cleanup:
+	disarm_log_trigger();
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Each of the given number of complete polls left MOUNT_EQUATORIAL_COORDINATES and the SLEW light of MOUNT_STATE in the
+// given states.
+static bool slew_light_across_polls(external_serial_simulator *simulator, const char *label, int polls, indigo_property_state coordinates, indigo_property_state light) {
+	for (int i = 1; i <= polls; i++) {
+		if (!wait_complete_polls(simulator, 1)) {
+			return false;
+		}
+		indigo_property_state state = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state;
+		indigo_property_state slew = cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME);
+		if (state != coordinates || slew != light) {
+			fprintf(stderr, "    %s: after poll %d the coordinates are %s and the SLEW light %s, expected %s and %s\n", label, i, state_name(state), state_name(slew), state_name(coordinates), state_name(light));
+			return false;
+		}
+	}
+	return true;
+}
+
+// The SLEW light of MOUNT_STATE follows MOUNT_EQUATORIAL_COORDINATES: ALERT whenever they are, the ALERT that
+// indigo_update_coordinates() keeps after a refused goto until the next request included, BUSY while they are BUSY.
+// A refused goto leaves both ALERT over the polls of a mount standing still, the next goto lights BUSY and ends OK
+// with the light IDLE, and a session that follows one ended under a kept ALERT starts with the coordinates OK and the
+// light IDLE. A profile whose slew is the position moving between two polls (generic) and one whose status reports
+// it (ZWO).
+static void check_slew_light_follows_coordinates(const char *model, const char *type) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	printf("    %s\n", model);
+	SERIAL_CHECK_TRUE(start_profile(&simulator, model, type));
+	online = true;
+	SERIAL_CHECK_TRUE(slew_light_across_polls(&simulator, "connect", 1, INDIGO_OK_STATE, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	// The mount refuses the goto: the handler publishes the light with the result.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "MS", "1"));
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
+	SERIAL_CHECK_TRUE(slew_light_across_polls(&simulator, "refused goto", 2, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+	// The next goto clears the ALERT.
+	clear_busy_publications();
+	SERIAL_CHECK_TRUE(lx_coordinates(7.5, -12.5, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(coordinates_at(7.5, -12.5));
+	SERIAL_CHECK_TRUE(atomic_load(&slew_light_busy_publications) >= 1);
+	SERIAL_CHECK_TRUE(wait_for_slew_light(INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(slew_light_across_polls(&simulator, "next goto", 2, INDIGO_OK_STATE, INDIGO_IDLE_STATE));
+	// A session ended under a kept ALERT, the next one starts clean.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "MS", "1"));
+	SERIAL_CHECK_TRUE(lx_coordinates(9, 15, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(slew_light_across_polls(&simulator, "second refused goto", 1, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME));
+	SERIAL_CHECK_TRUE(slew_light_across_polls(&simulator, "reconnect", 2, INDIGO_OK_STATE, INDIGO_IDLE_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_slew_light_follows_kept_coordinates_alert(void) {
+	check_slew_light_follows_coordinates("generic", "GENERIC");
+	check_slew_light_follows_coordinates("zwo", NULL);
 }
 
 // Sexagesimal fields that round up carry into the next field and never reach 60 or 24: a right
@@ -6060,6 +6268,9 @@ int main(int argc, char **argv) {
 		{ "lx200_classic_no_slew_without_motion", lx200_classic_no_slew_without_motion },
 		{ "lx200_stargo2_no_slew_without_motion", lx200_stargo2_no_slew_without_motion },
 		{ "lx200_ap_gtocp2_no_slew_without_motion", lx200_ap_gtocp2_no_slew_without_motion },
+		{ "lx200_generic_goto_before_the_first_poll", lx200_generic_goto_before_the_first_poll },
+		{ "lx200_generic_first_poll_readback_fails_after_the_connect_read", lx200_generic_first_poll_readback_fails_after_the_connect_read },
+		{ "lx200_slew_light_follows_kept_coordinates_alert", lx200_slew_light_follows_kept_coordinates_alert },
 		{ "lx200_coordinate_encoding_at_wrap_points", lx200_coordinate_encoding_at_wrap_points },
 		{ "lx200_meade_goto_refusals_stop_the_sequence", lx200_meade_goto_refusals_stop_the_sequence },
 		{ "lx200_shutdown_refused_while_connected", lx200_shutdown_refused_while_connected },

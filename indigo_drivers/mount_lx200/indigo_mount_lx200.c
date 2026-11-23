@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000059
+#define DRIVER_VERSION       0x0300005A
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -3793,10 +3793,45 @@ static void meade_init_generic_mount(indigo_device *device) {
 static void meade_update_generic_state(indigo_device *device) {
 	// After Track or Slew
 	// NOTE: Distance bar `:D#` is not working (e.g. classic LX200).
-	// The first poll of a session has no earlier position, the one it reads is no slew.
+	// Without an earlier position (a failed read at connect, a sync whose readback failed) the one this poll read is no slew.
 	if (PRIVATE_DATA->last_position_valid && (fabs(PRIVATE_DATA->positionRA - PRIVATE_DATA->lastRA) > 2.0/60.0 || fabs(PRIVATE_DATA->positionDec - PRIVATE_DATA->lastDec) > 2.0/60.0)) {
 		PRIVATE_DATA->slewing = true;
 	}
+}
+
+// The profiles whose poll is decoded by meade_update_generic_state(): their slew is the position moving between two polls.
+static bool meade_slew_from_position(indigo_device *device) {
+	return MOUNT_TYPE_STARGO2_ITEM->sw.value || MOUNT_TYPE_CLASSIC_ITEM->sw.value || MOUNT_TYPE_GENERIC_ITEM->sw.value || (MOUNT_TYPE_AP_ITEM->sw.value && !PRIVATE_DATA->ap_use_gos);
+}
+
+// Gives meade_update_generic_state() the position the next poll compares with, read from the controller now; a failed
+// read leaves it without one. It is in the frame of the controller, as positionRA and positionDec, so MOUNT_EPOCH does
+// not matter, and the published coordinates are left to the poll. positionRA and positionDec take it too: a poll whose
+// readback fails carries them over as the position to compare with, and an older value there would be a false slew.
+static void meade_seed_last_position(indigo_device *device) {
+	double ra = 0, dec = 0;
+	if (meade_get_coordinates(device, &ra, &dec)) {
+		PRIVATE_DATA->positionRA = PRIVATE_DATA->lastRA = ra;
+		PRIVATE_DATA->positionDec = PRIVATE_DATA->lastDec = dec;
+		PRIVATE_DATA->last_position_valid = true;
+	}
+}
+
+// The SLEW light of MOUNT_STATE is ALERT whenever MOUNT_EQUATORIAL_COORDINATES is, the ALERT that
+// indigo_update_coordinates() keeps after a refused or failed request included, and BUSY while they are BUSY. Otherwise
+// it stays what the caller decided, except that an ALERT light does not outlive the ALERT of the coordinates. Call it
+// after indigo_update_coordinates() or indigo_reject_coordinates_change() has published the state, or with the state a
+// handler leaves for the indigo_update_coordinates() that follows the BUSY of its request and publishes it unchanged.
+// Returns whether the light changed.
+static bool meade_update_slew_light(indigo_device *device) {
+	indigo_property_state light = MOUNT_STATE_SLEW_ITEM->light.value;
+	indigo_property_state state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	if (state == INDIGO_ALERT_STATE || state == INDIGO_BUSY_STATE) {
+		MOUNT_STATE_SLEW_ITEM->light.value = state;
+	} else if (light == INDIGO_ALERT_STATE) {
+		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+	}
+	return MOUNT_STATE_SLEW_ITEM->light.value != light;
 }
 
 // ---------------------------------------------------------------------  generic init & state update
@@ -3985,6 +4020,15 @@ static void meade_init_mount(indigo_device *device) {
 			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
 		}
 	}
+	// The first poll of a session compares with this position, so a goto accepted before that poll is seen moving
+	// instead of being published OK by it. A failed read leaves the first poll without one, it reads no slew.
+	if (meade_slew_from_position(device)) {
+		meade_seed_last_position(device);
+	}
+	// The session starts with the coordinates OK, as the disconnect of the previous one left them, and the SLEW light
+	// follows them, not the light the previous session ended with.
+	MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+	meade_update_slew_light(device);
 	meade_settle_state(device);
 }
 
@@ -4065,7 +4109,7 @@ static void meade_update_mount_state(indigo_device *device) {
 	} else if (PRIVATE_DATA->slewing && PRIVATE_DATA->stopping) {
 		// The axes decelerate after an abort and the controller reports the slew until they stand. That is the stop
 		// of the slew the abort ended, published with it, so the coordinates keep their state; a BUSY would clear the
-		// ALERT of an aborted GOTO, which indigo_update_coordinates() keeps until the next request.
+		// ALERT of an aborted GOTO, which indigo_update_coordinates() keeps until the next request, and so does the light.
 		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 	} else if (PRIVATE_DATA->slewing) {
 		// a running slew (driver or hand controller initiated) completes when it stops
@@ -4076,7 +4120,7 @@ static void meade_update_mount_state(indigo_device *device) {
 	} else {
 		// The coordinates were read, so the position is valid again after a failed readback.
 		// The ALERT of a refused or aborted GOTO stays until the next request: it was published
-		// right after BUSY, and indigo_update_coordinates() publishes this OK as ALERT until then.
+		// right after BUSY, and indigo_update_coordinates() publishes this OK as ALERT until then, the SLEW light with it.
 		PRIVATE_DATA->goto_issued = PRIVATE_DATA->stopping = false;
 		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -4144,8 +4188,10 @@ static void meade_update_mount_state(indigo_device *device) {
 	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	indigo_update_coordinates(device, NULL);
+	// After the publication, which turns the OK of the reading into a kept ALERT.
+	meade_update_slew_light(device);
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 }
 
 //- code
@@ -4865,6 +4911,9 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	if (meade_host_timed_guiding(device) && (PRIVATE_DATA->classicGuideNS || PRIVATE_DATA->classicGuideWE)) {
 		indigo_reject_coordinates_change(device, "Classic guiding is active");
+		if (meade_update_slew_light(device)) {
+			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+		}
 		return;
 	}
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -4872,6 +4921,12 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+		// A poll with no earlier position to compare with, after a connect whose read failed or a sync whose
+		// readback failed, would publish this goto OK while the mount slews: the position it starts from is
+		// read first. If that read fails too, the first poll still has nothing to compare with.
+		if (meade_slew_from_position(device) && !PRIVATE_DATA->last_position_valid) {
+			meade_seed_last_position(device);
+		}
 		if (meade_set_tracking_rate(device) && meade_slew(device, ra, dec)) {
 			indigo_usleep(500000); // wait for the mount to start slewing to get correct state in the position timer
 			PRIVATE_DATA->goto_issued = true;
@@ -4888,6 +4943,12 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		if (meade_sync(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			// A poll that ran between the admission of the sync and this handler lit the light with the BUSY
+			// coordinates; the sync moved nothing, so it goes off with the result.
+			if (!PRIVATE_DATA->slewing && MOUNT_STATE_SLEW_ITEM->light.value == INDIGO_BUSY_STATE) {
+				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+			}
 			// The result carries the position the mount reports now, a failed readback leaves it to the next poll.
 			// The sync moved the reported position without a motion: the slew detection of the generic decoding
 			// compares the next poll with this readback, or reseeds from the next poll without one.
@@ -4902,6 +4963,10 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_send_message(device, ALERT_PROPERTY, "Sync failed");
 		}
+	}
+	// The result follows the BUSY of the request, the indigo_update_coordinates() after this block publishes it unchanged.
+	if (meade_update_slew_light(device)) {
+		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	}
 	//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	indigo_update_coordinates(device, NULL);
@@ -4945,16 +5010,14 @@ static void mount_abort_motion_handler(indigo_device *device) {
 			// An aborted goto did not reach its target, so it ends as a failed request.
 			// The values are the last position read; the polls publish the position the
 			// mount stopped at and keep the ALERT until the next request.
-			bool goto_aborted = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
-			if (goto_aborted) {
+			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 				PRIVATE_DATA->goto_issued = false;
-				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
-			}
-			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
-			if (goto_aborted) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_coordinates(device, "Goto aborted");
 			}
+			// After the coordinates, the SLEW light of an aborted goto is their ALERT.
+			meade_update_slew_light(device);
+			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			PRIVATE_DATA->classicGoto = false;
 			PRIVATE_DATA->lastMotionNS = PRIVATE_DATA->lastMotionWE = 0;
 			MOUNT_MOTION_NORTH_ITEM->sw.value = false;
