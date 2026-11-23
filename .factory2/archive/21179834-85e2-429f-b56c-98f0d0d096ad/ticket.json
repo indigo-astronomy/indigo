@@ -1,0 +1,749 @@
+{
+  "schema_version": 1,
+  "ticket_id": "21179834-85e2-429f-b56c-98f0d0d096ad",
+  "revision": 39,
+  "title": "indigo_libs: add AUX_WEATHER_SAFETY with aux_simulator as the reference driver",
+  "description": "Add the AUX_WEATHER_SAFETY standard property and make aux_simulator the reference driver.\n\n- indigo_libs: AUX_WEATHER_SAFETY property and item names (SAFE, CLOUDS, RAIN, WIND, HUMIDITY) in indigo_names.h; one shared helper in indigo_aux_driver.c that evaluates the conditions (per condition: fitted or not, valid reading or not, unsafe level reached or not) into the lights and the reason message, so every driver behaves the same. No generator change: drivers declare the property in their .driver files like AUX_WEATHER.\n- aux_simulator: it already has AUX_CLOUD, AUX_RAIN and AUX_WIND with fixed limits. Add AUX_CLOUD_THRESHOLDS, AUX_RAIN_THRESHOLDS, AUX_WIND_THRESHOLDS, AUX_HUMIDITY_THRESHOLDS and AUX_HUMIDITY, drive the classification from them, and add AUX_WEATHER_SAFETY. Bump the driver version.\n- indigo_docs/PROPERTIES.md: the new property and the simulator's new properties; document the safety rule in the aux section.\n- Tests: integration tests on the simulator for every condition crossing its unsafe level and back, SAFE combining, the reason message, Idle when disconnected, threshold changes taking effect, a condition switched off by an out-of-reach threshold; unit tests for the helper if practical.\n\n\nAgreed design (owner, 2026-11-23):\n\nNew standard light property AUX_WEATHER_SAFETY (read-only) on weather devices, items SAFE, CLOUDS, RAIN, WIND, HUMIDITY. Every weather driver defines all five items.\n- Condition item: Idle = no such sensor in the driver or none fitted on this unit; Ok = reading below its unsafe level; Alert = reading at or past its unsafe level, or a fitted sensor gives no valid reading (a broken sensor is never Idle).\n- SAFE: Alert as soon as any condition is Alert; Ok when every fitted sensor is Ok; Idle when no condition has a sensor or the device is disconnected.\n- The reason is given in the update message when the verdict changes, e.g. \"Unsafe: wind 12.4 m/s above 10.0 m/s\" or \"Safe: all conditions within limits\"; the measured values stay in AUX_WEATHER and the condition lights show which limit was crossed.\n\nUnsafe levels reuse the existing standard two-level classification and threshold properties (as in aux_cloudwatcher): AUX_CLOUD_THRESHOLDS / AUX_CLOUD, AUX_RAIN_THRESHOLDS / AUX_RAIN, AUX_WIND_THRESHOLDS / AUX_WIND, AUX_HUMIDITY_THRESHOLDS / AUX_HUMIDITY. The worst level is unsafe: clouds OVERCAST, rain RAINING, wind STRONG, humidity HUMID. Each driver sets its own threshold defaults in its own units. A condition is switched off by moving its unsafe threshold out of reach; no extra limits or enable property.\n\nPowerboxes (ppb, upb, upb3, usbdp, mgbox, svbpowerbox, wbplusv3, wbprov3) are excluded: they control dew heaters. sqm, astromechanics and mount_lx200 are excluded: they measure none of the four conditions.\n\nTickets: (1) framework + aux_simulator, (2) aux_cloudwatcher, (3) aux_skyalert, (4) system_alpaca, (5) agent_auxiliary aggregation. 2-5 depend on 1.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-22T22:58:52.167640Z",
+  "status": "closed",
+  "branch": "ticket/21179834-85e2-429f-b56c-98f0d0d096ad",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "4f814b4f-9eb1-4e88-a9ba-0b595dca5ab0",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T23:10:02.023967Z",
+          "last_activity_at": "2026-11-22T23:41:45.081836Z",
+          "ended_at": "2026-11-22T23:41:45.081836Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1903057.869,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T23:10:02.023967Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/21179834-85e2-429f-b56c-98f0d0d096ad"
+        },
+        {
+          "at": "2026-11-22T23:41:45.081836Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1903057.869,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "24626fd6-8880-4bcd-99a8-f42757de153b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T23:41:45.081870Z",
+          "last_activity_at": "2026-11-22T23:47:56.246889Z",
+          "ended_at": "2026-11-22T23:47:56.246889Z",
+          "outcome": {
+            "summary": "Independent review of master...HEAD (ce1c74aad). Verdict: pass.\n\nVerified:\n- Design and owner notes met: AUX_WEATHER_SAFETY items SAFE/CLOUDS/RAIN/WIND/HUMIDITY (indigo_names.h:946-951); Idle without sensor, Alert for unsafe or invalid fitted sensor, property state Alert on invalid reading (indigo_aux_driver.c:95-127); SAFE rule (Alert wins, Ok when every fitted Ok, Idle when none fitted); connection-only definition in the generated connect handler (indigo_aux_simulator.c:589-590, deleted 627-628); thresholds always defined and saved via CONFIG (enumerate 793-796, save 819-824); worst level unsafe (severity == 2); simulator cloud classification on sky temperature as in aux_cloudwatcher (OVERCAST when not below CLOUDY, defaults -10/0); reason on verdict change and, while unsafe, on change of the ALERT set or of reading validity.\n- Helper: message assembly is bounded (weather_safety_append uses vsnprintf with the remaining size and skips when full; unit test covers a 12-byte buffer), items looked up by name and missing items ignored, NULL/0 message buffer supported for the initial evaluation. Stateless: previous lights/state of the property are the previous result; callers must run it on the device queue like any property update (standard INDIGO convention). API fits cloudwatcher (reversed flag, fitted known after connect) and skyalert.\n- Generated code: regenerated indigo_aux_simulator.driver in a temp dir with the unchanged build/bin/indigo_generator; .c, .h and _main.c are byte-identical to the checked-in files. No generator change, version 1 -> 2 (DRIVER_VERSION 0x03000002), no MAX_DEVICES override, no on_connect return, no finalizers, threshold on_change blocks only reclassify while connected.\n- Behaviour changes vs master documented in PROPERTIES.md: wet threshold 0.1 mm/h instead of > 0, cloud classification by sky temperature instead of ambient-sky delta, new AUX_HUMIDITY and four threshold properties, AUX_WEATHER_SAFETY. Standard names, no X_ prefix needed.\n-",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 371165.019,
+          "tokens": null
+        },
+        {
+          "attempt_id": "21339af0-6275-4f5c-af90-c0e5f5f830ab",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-22T23:56:39.672754Z",
+          "last_activity_at": "2026-11-22T23:57:11.946328Z",
+          "ended_at": "2026-11-22T23:57:11.946328Z",
+          "outcome": {
+            "summary": "Re-review of tree 355d8392 (commit 0596e5a99) after the recorded test run. The previous independent code review passed ce1c74aad (tree 0c6228dd); this review covers the delta and confirms the overall diff.\n- git diff ce1c74aad HEAD --stat: only TEST_SUMMARY.md (+1) and indigo_drivers/aux_simulator/README.md (+1). The master...HEAD stat lists the same 10 files as before (indigo_libs names/helper, aux_simulator .driver/.c, PROPERTIES.md, integration and unit tests, plus the two record files). Nothing else changed.\n- README: one line appended to the existing ## Testing section, \"- 2026-11-23 01:53 3.0.0.2 linux x64 simulator 18/18 OK\". The version matches DRIVER_VERSION 0x03000002 / .driver version = 2. 18 matches the 18 cases in the tests[] table of indigo_test/integration/test_aux_simulator.c. The existing mac arm64 simulator line is a different configuration, so it stays (indigo_test/AGENTS.md \"keep only the latest run of each configuration\"). Lines are in timestamp order and the format follows the AGENTS.md record form.\n- TEST_SUMMARY.md: the only change is the matching aux_simulator row \"| | 2026-11-23 01:53 | 3.0.0.2 | linux x64 | simulator | 18 / 18 | OK |\", placed right after the existing aux_simulator row. Running python3 tools/make_test_summary.py -o - on the worktree produces output byte-identical to the committed TEST_SUMMARY.md, so it was generated rather than edited by hand, and no other rows changed.\n- The whitespace and unit flow checks passed on tree 355d8392. The worktree is clean.\nVerdict: pass. Limits: the test run itself was not repeated; this review relies on the recorded result and on the earlier code review of the unchanged product files.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 32273.574,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-22T23:41:45.081870Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T23:47:56.246889Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of master...HEAD (ce1c74aad). Verdict: pass.\n\nVerified:\n- Design and owner notes met: AUX_WEATHER_SAFETY items SAFE/CLOUDS/RAIN/WIND/HUMIDITY (indigo_names.h:946-951); Idle without sensor, Alert for unsafe or invalid fitted sensor, property state Alert on invalid reading (indigo_aux_driver.c:95-127); SAFE rule (Alert wins, Ok when every fitted Ok, Idle when none fitted); connection-only definition in the generated connect handler (indigo_aux_simulator.c:589-590, deleted 627-628); thresholds always defined and saved via CONFIG (enumerate 793-796, save 819-824); worst level unsafe (severity == 2); simulator cloud classification on sky temperature as in aux_cloudwatcher (OVERCAST when not below CLOUDY, defaults -10/0); reason on verdict change and, while unsafe, on change of the ALERT set or of reading validity.\n- Helper: message assembly is bounded (weather_safety_append uses vsnprintf with the remaining size and skips when full; unit test covers a 12-byte buffer), items looked up by name and missing items ignored, NULL/0 message buffer supported for the initial evaluation. Stateless: previous lights/state of the property are the previous result; callers must run it on the device queue like any property update (standard INDIGO convention). API fits cloudwatcher (reversed flag, fitted known after connect) and skyalert.\n- Generated code: regenerated indigo_aux_simulator.driver in a temp dir with the unchanged build/bin/indigo_generator; .c, .h and _main.c are byte-identical to the checked-in files. No generator change, version 1 -> 2 (DRIVER_VERSION 0x03000002), no MAX_DEVICES override, no on_connect return, no finalizers, threshold on_change blocks only reclassify while connected.\n- Behaviour changes vs master documented in PROPERTIES.md: wet threshold 0.1 mm/h instead of > 0, cloud classification by sky temperature instead of ambient-sky delta, new AUX_HUMIDITY and four threshold properties, AUX_WEATHER_SAFETY. Standard names, no X_ prefix needed.\n-"
+        },
+        {
+          "at": "2026-11-22T23:56:39.672754Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-22T23:57:11.946328Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review of tree 355d8392 (commit 0596e5a99) after the recorded test run. The previous independent code review passed ce1c74aad (tree 0c6228dd); this review covers the delta and confirms the overall diff.\n- git diff ce1c74aad HEAD --stat: only TEST_SUMMARY.md (+1) and indigo_drivers/aux_simulator/README.md (+1). The master...HEAD stat lists the same 10 files as before (indigo_libs names/helper, aux_simulator .driver/.c, PROPERTIES.md, integration and unit tests, plus the two record files). Nothing else changed.\n- README: one line appended to the existing ## Testing section, \"- 2026-11-23 01:53 3.0.0.2 linux x64 simulator 18/18 OK\". The version matches DRIVER_VERSION 0x03000002 / .driver version = 2. 18 matches the 18 cases in the tests[] table of indigo_test/integration/test_aux_simulator.c. The existing mac arm64 simulator line is a different configuration, so it stays (indigo_test/AGENTS.md \"keep only the latest run of each configuration\"). Lines are in timestamp order and the format follows the AGENTS.md record form.\n- TEST_SUMMARY.md: the only change is the matching aux_simulator row \"| | 2026-11-23 01:53 | 3.0.0.2 | linux x64 | simulator | 18 / 18 | OK |\", placed right after the existing aux_simulator row. Running python3 tools/make_test_summary.py -o - on the worktree produces output byte-identical to the committed TEST_SUMMARY.md, so it was generated rather than edited by hand, and no other rows changed.\n- The whitespace and unit flow checks passed on tree 355d8392. The worktree is clean.\nVerdict: pass. Limits: the test run itself was not repeated; this review relies on the recorded result and on the earlier code review of the unchanged product files."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of tree 355d8392 (commit 0596e5a99) after the recorded test run. The previous independent code review passed ce1c74aad (tree 0c6228dd); this review covers the delta and confirms the overall diff.\n- git diff ce1c74aad HEAD --stat: only TEST_SUMMARY.md (+1) and indigo_drivers/aux_simulator/README.md (+1). The master...HEAD stat lists the same 10 files as before (indigo_libs names/helper, aux_simulator .driver/.c, PROPERTIES.md, integration and unit tests, plus the two record files). Nothing else changed.\n- README: one line appended to the existing ## Testing section, \"- 2026-11-23 01:53 3.0.0.2 linux x64 simulator 18/18 OK\". The version matches DRIVER_VERSION 0x03000002 / .driver version = 2. 18 matches the 18 cases in the tests[] table of indigo_test/integration/test_aux_simulator.c. The existing mac arm64 simulator line is a different configuration, so it stays (indigo_test/AGENTS.md \"keep only the latest run of each configuration\"). Lines are in timestamp order and the format follows the AGENTS.md record form.\n- TEST_SUMMARY.md: the only change is the matching aux_simulator row \"| | 2026-11-23 01:53 | 3.0.0.2 | linux x64 | simulator | 18 / 18 | OK |\", placed right after the existing aux_simulator row. Running python3 tools/make_test_summary.py -o - on the worktree produces output byte-identical to the committed TEST_SUMMARY.md, so it was generated rather than edited by hand, and no other rows changed.\n- The whitespace and unit flow checks passed on tree 355d8392. The worktree is clean.\nVerdict: pass. Limits: the test run itself was not repeated; this review relies on the recorded result and on the earlier code review of the unchanged product files.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 403438.593,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "f2c45c5e-ec49-47db-b0b9-776df256b7f8",
+      "event": "ticket/created",
+      "at": "2026-11-22T22:58:52.168480Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "369b3f16-d7d8-44ba-94be-5391ab7b87e1",
+      "event": "ticket/confirmed",
+      "at": "2026-11-22T23:08:43.387780Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "96a7fdbf-a36f-491e-95ae-b79a559e31f4",
+      "event": "task/progress",
+      "at": "2026-11-22T23:10:02.024129Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Implementation started on branch ticket/21179834-85e2-429f-b56c-98f0d0d096ad"
+    },
+    {
+      "event_id": "01361f0a-9970-423a-8300-7593d4a356ff",
+      "event": "ticket/started",
+      "at": "2026-11-22T23:10:02.025058Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/21179834-85e2-429f-b56c-98f0d0d096ad",
+      "base": "master"
+    },
+    {
+      "event_id": "95086458-2ac3-4f95-8ff8-2baa9d0a8fcd",
+      "event": "task/progress",
+      "at": "2026-11-22T23:10:24.215747Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Implementer launched",
+      "attempt_id": "4f814b4f-9eb1-4e88-a9ba-0b595dca5ab0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e08d337a-e21d-4bea-8ce3-af8044224da1",
+      "event": "task/progress",
+      "at": "2026-11-22T23:13:45.775544Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Writing the AUX_WEATHER_SAFETY helper in indigo_aux_driver"
+    },
+    {
+      "event_id": "7dfa07fd-f0cd-4011-88b9-b0a36bd65896",
+      "event": "task/progress",
+      "at": "2026-11-22T23:15:03.333576Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Adding thresholds, AUX_HUMIDITY and AUX_WEATHER_SAFETY to aux_simulator.driver"
+    },
+    {
+      "event_id": "cf14e8f4-d159-4665-96ec-1378730d4e81",
+      "event": "task/progress",
+      "at": "2026-11-22T23:18:14.016246Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Writing weather safety integration tests in test_aux_simulator.c"
+    },
+    {
+      "event_id": "1923dc40-a297-48a4-ae24-b15837df553e",
+      "event": "task/progress",
+      "at": "2026-11-22T23:19:33.562246Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Running test_aux_simulator integration test"
+    },
+    {
+      "event_id": "70f03e08-688a-4b4a-bf1c-a413fce4ffa9",
+      "event": "task/progress",
+      "at": "2026-11-22T23:25:36.869424Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Running tools/run_driver_test.py aux_simulator --dry-run"
+    },
+    {
+      "event_id": "b83c6977-9d5a-44fe-9bb6-b78666301443",
+      "event": "task/progress",
+      "at": "2026-11-22T23:26:36.180686Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5655588a-14fd-40cf-ab8a-da17fa436d05",
+      "event": "task/progress",
+      "at": "2026-11-22T23:26:36.202096Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e7a09651-7bec-4ca7-a9e5-086b1a651e67",
+      "event": "task/progress",
+      "at": "2026-11-22T23:26:36.207007Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "50683081-d534-48a8-963c-d4ed6ec2ac0d",
+      "event": "task/progress",
+      "at": "2026-11-22T23:28:39.610474Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "7a8f0951-5651-427b-bbae-2a676fb555c8",
+      "event": "check/passed",
+      "at": "2026-11-22T23:28:39.615429Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "facf7b925bd37ce0d2714d33427c09ef33ae77e7",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "c6f9c48f-0cb5-4e95-83ce-19be30ab98e1",
+      "event": "ticket/note",
+      "at": "2026-11-22T23:28:51.024674Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementer verification: flow check whitespace+unit passed (test_aux_math 7/7 incl. 5 new helper cases). test_aux_simulator 18/18 passed (5 new weather_safety cases), also its ASAN/UBSan build and 3 repeat runs; tools/run_driver_test.py aux_simulator --dry-run: 18/18 OK, not recorded in README/TEST_SUMMARY (owner decision pending). Runs need LD_LIBRARY_PATH unset: the session exports the primary checkout's build/lib, which shadows the worktree libindigo (RUNPATH) and fails with an undefined indigo_aux_evaluate_weather_safety. Limitation: the generator initialises AUX_WEATHER_SAFETY with state OK and on_attach runs before property allocation, so before the first connect the property state is OK (lights IDLE); after a disconnect indigo_aux_reset_weather_safety() sets state IDLE.",
+      "tokens": null
+    },
+    {
+      "event_id": "5a5374eb-c670-4dee-b0e8-d6e5e0a99e52",
+      "event": "ticket/note",
+      "at": "2026-11-22T23:32:34.479505Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions 2026-11-23 after the first implementation: (1) AUX_WEATHER_SAFETY is defined only while the device is connected, like AUX_WEATHER, and deleted on disconnect; the 'Idle when disconnected' case disappears (SAFE is still Idle when no condition has a sensor). The thresholds stay always defined and saved. (2) A fitted sensor with no valid reading sets its condition and SAFE Alert and the property state Alert (as implemented). (3) The simulator follows the Cloudwatcher meaning of AUX_CLOUD_THRESHOLDS: sky temperature in C, CLEAR when below CLEAR, CLOUDY when below CLOUDY, OVERCAST when not below CLOUDY (not reversed); pick defaults that fit the simulator's sky temperature input. (4) The reason message is sent when the SAFE verdict changes and also whenever the set of unsafe conditions (or no-valid-reading conditions) changes.",
+      "tokens": null
+    },
+    {
+      "event_id": "67f275c2-6140-45c9-a2eb-6461304193aa",
+      "event": "task/progress",
+      "at": "2026-11-22T23:33:35.014673Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Rework per owner answers: connection-only property, reason-set messages, sky temperature clouds"
+    },
+    {
+      "event_id": "1972c93c-7b2f-4d99-b0b6-369f52bb4842",
+      "event": "task/progress",
+      "at": "2026-11-22T23:35:47.010382Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Running test_aux_math and test_aux_simulator after rework"
+    },
+    {
+      "event_id": "abe06a72-e1ff-4cd9-95ed-995e617fcd5a",
+      "event": "task/progress",
+      "at": "2026-11-22T23:39:18.158682Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "7defb966-c54b-44b2-b297-f836421de3b0",
+      "event": "task/progress",
+      "at": "2026-11-22T23:39:18.180228Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7ef07548-597e-4be8-b830-14909238476b",
+      "event": "task/progress",
+      "at": "2026-11-22T23:39:18.185359Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "327f6510-6a33-43d1-9ec8-69db0a50157c",
+      "event": "task/progress",
+      "at": "2026-11-22T23:40:56.384828Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6710b257-37a9-4acd-b0f2-3e410856c3b6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "7dc2ad8f-1ca4-4c3b-a68a-13e197705c98",
+      "event": "check/passed",
+      "at": "2026-11-22T23:40:56.390391Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "ce1c74aad46b754c137824e572ec7e0594ba3f77",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "c17fd114-6c1c-4c51-a1fe-45d8501a83f9",
+      "event": "ticket/note",
+      "at": "2026-11-22T23:41:07.492774Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Rework after owner answers: AUX_WEATHER_SAFETY is connection-only in aux_simulator (lights set with indigo_aux_evaluate_weather_safety in on_connect, defined by the generated connect handler, deleted on disconnect); indigo_aux_reset_weather_safety removed. Reason message on SAFE change and, while unsafe, on any change of the ALERT condition set or of reading validity (property state). Simulator AUX_CLOUD_THRESHOLDS now sky temperature as in cloudwatcher, defaults CLEAR -10, CLOUDY 0. flow check passed on tree 0c6228dd (test_aux_math 8/8); test_aux_simulator 18/18 incl. ASAN; run_driver_test.py aux_simulator --dry-run 18/18 OK, not recorded. Known limit: stateless change detection misses a condition switching between unsafe and no-valid-reading while another condition stays without a valid reading.",
+      "tokens": null
+    },
+    {
+      "event_id": "2cb804aa-03e8-40bc-bcb2-a9ec1733d18d",
+      "event": "task/progress",
+      "at": "2026-11-22T23:41:45.081934Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "text": "Review started"
+    },
+    {
+      "event_id": "95d485eb-5a11-4930-a05f-674d32563a71",
+      "event": "review/started",
+      "at": "2026-11-22T23:41:45.082523Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "1881e5e0-21d3-45cf-b174-6f19d1387996",
+      "event": "task/progress",
+      "at": "2026-11-22T23:41:45.232475Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "text": "Reviewer launched",
+      "attempt_id": "24626fd6-8880-4bcd-99a8-f42757de153b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "860ebcc8-97d4-4362-a3d5-e107ee075efa",
+      "event": "task/progress",
+      "at": "2026-11-22T23:42:53.586486Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "text": "Reviewer: building and running test_aux_math, test_aux_simulator, run_driver_test dry-run"
+    },
+    {
+      "event_id": "5807bc51-7d8b-4f48-bea4-efed0197dfd3",
+      "event": "ticket/note",
+      "at": "2026-11-22T23:45:17.656720Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision 2026-11-23: the known message gap of the stateless helper (a condition switching between unsafe and no valid reading while another fitted condition stays without a valid reading sends no new message; lights and verdict stay correct) is accepted. Do not add driver-kept state for it.",
+      "tokens": null
+    },
+    {
+      "event_id": "fc23f520-3e5c-415d-b976-d5a00de280c3",
+      "event": "task/progress",
+      "at": "2026-11-22T23:47:56.246964Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "98a040c3-1329-477d-b4aa-a07516d02451",
+      "event": "review/passed",
+      "at": "2026-11-22T23:47:56.247646Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "ce1c74aad46b754c137824e572ec7e0594ba3f77"
+    },
+    {
+      "event_id": "e35a87c1-1df9-4219-a362-c712f86c53f7",
+      "event": "task/progress",
+      "at": "2026-11-22T23:54:27.440060Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d8075c5f-7df1-412c-91e6-761b5056597a",
+      "event": "task/progress",
+      "at": "2026-11-22T23:54:27.462598Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "9fdba5ec-56e7-42a2-92d8-b5fb4eac4e6c",
+      "event": "task/progress",
+      "at": "2026-11-22T23:54:27.468350Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "273a80f8-c104-4f67-81f1-144dfa102ac4",
+      "event": "task/progress",
+      "at": "2026-11-22T23:56:09.314338Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "4e05fb37-1d06-4fa7-a158-91646189fd11",
+      "event": "check/passed",
+      "at": "2026-11-22T23:56:09.321496Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "0596e5a993b5113888def84e9d299db2789865fb",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "53de3b2f-5a6c-467e-92a7-09fe15f0288f",
+      "event": "task/progress",
+      "at": "2026-11-22T23:56:39.672833Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "text": "Review started"
+    },
+    {
+      "event_id": "af64ede9-86d2-4772-836c-7dd72214d476",
+      "event": "review/started",
+      "at": "2026-11-22T23:56:39.673502Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "189daf0e-6afa-44a2-9918-83a386b7a805",
+      "event": "task/progress",
+      "at": "2026-11-22T23:56:48.093649Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "text": "Re-reviewer launched",
+      "attempt_id": "21339af0-6275-4f5c-af90-c0e5f5f830ab",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "dcb67f5d-d73b-49db-ab8f-a73f99192810",
+      "event": "task/progress",
+      "at": "2026-11-22T23:57:11.946405Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "e1ccbb87-c987-4240-9292-7c48adcdfd2e",
+      "event": "review/passed",
+      "at": "2026-11-22T23:57:11.947130Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1724eff-c1d8-49b5-a61b-7e2b87f45186",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0596e5a993b5113888def84e9d299db2789865fb"
+    },
+    {
+      "event_id": "c6b811b0-7e66-43b9-8dfe-735bc11e3dbf",
+      "event": "ticket/closed",
+      "at": "2026-11-23T00:02:00.024130Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-23T00:02:00.024063Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "78a7c923ad1278ce3b065ac1494d028d3021cfbb"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "facf7b925bd37ce0d2714d33427c09ef33ae77e7",
+        "tree": "4ff7eafe9ad08a1b07abf40990c48ca5ebfba666",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T23:26:36.201374Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/21179834-85e2-429f-b56c-98f0d0d096ad/4ff7eafe9ad0-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "facf7b925bd37ce0d2714d33427c09ef33ae77e7",
+        "tree": "4ff7eafe9ad08a1b07abf40990c48ca5ebfba666",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T23:28:39.609687Z",
+        "duration_s": 123.4,
+        "log": "/tmp/factory-flow/21179834-85e2-429f-b56c-98f0d0d096ad/4ff7eafe9ad0-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ce1c74aad46b754c137824e572ec7e0594ba3f77",
+        "tree": "0c6228dd1b436471e25a7e469e0d824c55b88411",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T23:39:18.179427Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/21179834-85e2-429f-b56c-98f0d0d096ad/0c6228dd1b43-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "ce1c74aad46b754c137824e572ec7e0594ba3f77",
+        "tree": "0c6228dd1b436471e25a7e469e0d824c55b88411",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T23:40:56.384003Z",
+        "duration_s": 98.2,
+        "log": "/tmp/factory-flow/21179834-85e2-429f-b56c-98f0d0d096ad/0c6228dd1b43-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0596e5a993b5113888def84e9d299db2789865fb",
+        "tree": "355d83923d73a72298cd10afabec38dc695a9925",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T23:54:27.461608Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/21179834-85e2-429f-b56c-98f0d0d096ad/355d83923d73-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "0596e5a993b5113888def84e9d299db2789865fb",
+        "tree": "355d83923d73a72298cd10afabec38dc695a9925",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-22T23:56:09.313342Z",
+        "duration_s": 101.8,
+        "log": "/tmp/factory-flow/21179834-85e2-429f-b56c-98f0d0d096ad/355d83923d73-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of master...HEAD (ce1c74aad). Verdict: pass.\n\nVerified:\n- Design and owner notes met: AUX_WEATHER_SAFETY items SAFE/CLOUDS/RAIN/WIND/HUMIDITY (indigo_names.h:946-951); Idle without sensor, Alert for unsafe or invalid fitted sensor, property state Alert on invalid reading (indigo_aux_driver.c:95-127); SAFE rule (Alert wins, Ok when every fitted Ok, Idle when none fitted); connection-only definition in the generated connect handler (indigo_aux_simulator.c:589-590, deleted 627-628); thresholds always defined and saved via CONFIG (enumerate 793-796, save 819-824); worst level unsafe (severity == 2); simulator cloud classification on sky temperature as in aux_cloudwatcher (OVERCAST when not below CLOUDY, defaults -10/0); reason on verdict change and, while unsafe, on change of the ALERT set or of reading validity.\n- Helper: message assembly is bounded (weather_safety_append uses vsnprintf with the remaining size and skips when full; unit test covers a 12-byte buffer), items looked up by name and missing items ignored, NULL/0 message buffer supported for the initial evaluation. Stateless: previous lights/state of the property are the previous result; callers must run it on the device queue like any property update (standard INDIGO convention). API fits cloudwatcher (reversed flag, fitted known after connect) and skyalert.\n- Generated code: regenerated indigo_aux_simulator.driver in a temp dir with the unchanged build/bin/indigo_generator; .c, .h and _main.c are byte-identical to the checked-in files. No generator change, version 1 -> 2 (DRIVER_VERSION 0x03000002), no MAX_DEVICES override, no on_connect return, no finalizers, threshold on_change blocks only reclassify while connected.\n- Behaviour changes vs master documented in PROPERTIES.md: wet threshold 0.1 mm/h instead of > 0, cloud classification by sky temperature instead of ambient-sky delta, new AUX_HUMIDITY and four threshold properties, AUX_WEATHER_SAFETY. Standard names, no X_ prefix needed.\n- Tests: built and ran myself with LD_LIBRARY_PATH unset: test_aux_math 8/8 PASS, test_aux_simulator 18/18 PASS, tools/run_driver_test.py aux_simulator --dry-run 18/18 OK (not recorded). The integration tests assert lights, property state, exact reason strings and message counts (no message when reasons are unchanged), threshold changes while connected and disconnected, condition switch-off via out-of-reach thresholds and connection-only definition.\n- Formatting: tabs, K&R, one-line calls, { 0 }; no new files, so no Xcode change; copyright years updated in indigo_aux_driver.c/.h.\n\nNon-blocking observations (no change requested):\n1. Known gap (unsafe <-> no-valid-reading switch while another condition stays invalid gives no new message): low severity, lights and verdict stay correct, only the reason text is stale; accepted by the owner.\n2. For ticket 4 (system_alpaca): an Alpaca SafetyMonitor exposes only IsSafe. indigo_aux_evaluate_weather_safety() derives SAFE solely from the four conditions, so a SAFE-only verdict cannot be expressed without mapping it onto a condition or setting the SAFE light directly; that ticket will have to decide (or extend the helper).\n3. The verdict change to IDLE emits \"Unknown: no weather condition is monitored\" (indigo_aux_driver.c:160), which PROPERTIES.md does not quote; harmless.\n4. If a driver omitted the SAFE item, the helper would report a verdict change on every non-idle evaluation; the design requires all five items, so not a defect.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "ce1c74aad46b754c137824e572ec7e0594ba3f77",
+        "tree": "0c6228dd1b436471e25a7e469e0d824c55b88411",
+        "at": "2026-11-22T23:47:56.246864Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of tree 355d8392 (commit 0596e5a99) after the recorded test run. The previous independent code review passed ce1c74aad (tree 0c6228dd); this review covers the delta and confirms the overall diff.\n- git diff ce1c74aad HEAD --stat: only TEST_SUMMARY.md (+1) and indigo_drivers/aux_simulator/README.md (+1). The master...HEAD stat lists the same 10 files as before (indigo_libs names/helper, aux_simulator .driver/.c, PROPERTIES.md, integration and unit tests, plus the two record files). Nothing else changed.\n- README: one line appended to the existing ## Testing section, \"- 2026-11-23 01:53 3.0.0.2 linux x64 simulator 18/18 OK\". The version matches DRIVER_VERSION 0x03000002 / .driver version = 2. 18 matches the 18 cases in the tests[] table of indigo_test/integration/test_aux_simulator.c. The existing mac arm64 simulator line is a different configuration, so it stays (indigo_test/AGENTS.md \"keep only the latest run of each configuration\"). Lines are in timestamp order and the format follows the AGENTS.md record form.\n- TEST_SUMMARY.md: the only change is the matching aux_simulator row \"| | 2026-11-23 01:53 | 3.0.0.2 | linux x64 | simulator | 18 / 18 | OK |\", placed right after the existing aux_simulator row. Running python3 tools/make_test_summary.py -o - on the worktree produces output byte-identical to the committed TEST_SUMMARY.md, so it was generated rather than edited by hand, and no other rows changed.\n- The whitespace and unit flow checks passed on tree 355d8392. The worktree is clean.\nVerdict: pass. Limits: the test run itself was not repeated; this review relies on the recorded result and on the earlier code review of the unchanged product files.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "0596e5a993b5113888def84e9d299db2789865fb",
+        "tree": "355d83923d73a72298cd10afabec38dc695a9925",
+        "at": "2026-11-22T23:57:11.946302Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-22T23:28:51.024122Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementer verification: flow check whitespace+unit passed (test_aux_math 7/7 incl. 5 new helper cases). test_aux_simulator 18/18 passed (5 new weather_safety cases), also its ASAN/UBSan build and 3 repeat runs; tools/run_driver_test.py aux_simulator --dry-run: 18/18 OK, not recorded in README/TEST_SUMMARY (owner decision pending). Runs need LD_LIBRARY_PATH unset: the session exports the primary checkout's build/lib, which shadows the worktree libindigo (RUNPATH) and fails with an undefined indigo_aux_evaluate_weather_safety. Limitation: the generator initialises AUX_WEATHER_SAFETY with state OK and on_attach runs before property allocation, so before the first connect the property state is OK (lights IDLE); after a disconnect indigo_aux_reset_weather_safety() sets state IDLE.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T23:32:34.478905Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions 2026-11-23 after the first implementation: (1) AUX_WEATHER_SAFETY is defined only while the device is connected, like AUX_WEATHER, and deleted on disconnect; the 'Idle when disconnected' case disappears (SAFE is still Idle when no condition has a sensor). The thresholds stay always defined and saved. (2) A fitted sensor with no valid reading sets its condition and SAFE Alert and the property state Alert (as implemented). (3) The simulator follows the Cloudwatcher meaning of AUX_CLOUD_THRESHOLDS: sky temperature in C, CLEAR when below CLEAR, CLOUDY when below CLOUDY, OVERCAST when not below CLOUDY (not reversed); pick defaults that fit the simulator's sky temperature input. (4) The reason message is sent when the SAFE verdict changes and also whenever the set of unsafe conditions (or no-valid-reading conditions) changes.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T23:41:07.492202Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Rework after owner answers: AUX_WEATHER_SAFETY is connection-only in aux_simulator (lights set with indigo_aux_evaluate_weather_safety in on_connect, defined by the generated connect handler, deleted on disconnect); indigo_aux_reset_weather_safety removed. Reason message on SAFE change and, while unsafe, on any change of the ALERT condition set or of reading validity (property state). Simulator AUX_CLOUD_THRESHOLDS now sky temperature as in cloudwatcher, defaults CLEAR -10, CLOUDY 0. flow check passed on tree 0c6228dd (test_aux_math 8/8); test_aux_simulator 18/18 incl. ASAN; run_driver_test.py aux_simulator --dry-run 18/18 OK, not recorded. Known limit: stateless change detection misses a condition switching between unsafe and no-valid-reading while another condition stays without a valid reading.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-22T23:45:17.656097Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision 2026-11-23: the known message gap of the stateless helper (a condition switching between unsafe and no valid reading while another fitted condition stays without a valid reading sends no new message; lights and verdict stay correct) is accepted. Do not add driver-kept state for it.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "78a7c923ad1278ce3b065ac1494d028d3021cfbb",
+      "tree": "355d83923d73a72298cd10afabec38dc695a9925",
+      "base": "master",
+      "at": "2026-11-23T00:01:59.946877Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-22T22:58:52.167640Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-22T23:08:43.387725Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2306496.462,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 49,
+    "sha256": "7dff9fab7e95e3009c3b19cde8b39806b6e6cad8a683a4d5bbf221d65c4a2179"
+  }
+}
