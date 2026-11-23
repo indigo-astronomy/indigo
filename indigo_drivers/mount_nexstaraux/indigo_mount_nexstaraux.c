@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001C
+#define DRIVER_VERSION       0x0300001D
 #define DRIVER_NAME          "indigo_mount_nexstaraux"
 #define DRIVER_LABEL         "NexStar AUX Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar AUX"
@@ -860,6 +860,15 @@ static bool nexstaraux_slew_stalled(indigo_device *device) {
 	return now - PRIVATE_DATA->stall_since > STALL_TIMEOUT;
 }
 
+// The SLEW light is ALERT whenever MOUNT_EQUATORIAL_COORDINATES is, the ALERT that indigo_update_coordinates() keeps after
+// a refused or failed request included, BUSY while they are BUSY and idle otherwise. It is derived from the state that
+// function published: call it after indigo_update_coordinates() or indigo_reject_coordinates_change(), never between
+// writing the state and publishing it.
+static void nexstaraux_update_slew_light(indigo_device *device) {
+	indigo_property_state state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
+	MOUNT_STATE_SLEW_ITEM->light.value = state == INDIGO_ALERT_STATE || state == INDIGO_BUSY_STATE ? state : INDIGO_IDLE_STATE;
+}
+
 static void nexstar_update_mount_state(indigo_device *device) {
 	double ra = 0, dec = 0;
 	if (nextstar_get_coordinates(device, &ra, &dec)) {
@@ -880,13 +889,17 @@ static void nexstar_update_mount_state(indigo_device *device) {
 		indigo_timetoisogm(time(NULL), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 		indigo_update_coordinates(device, NULL);
+		// after the publication, which turns the OK of the reading into a kept ALERT
+		nexstaraux_update_slew_light(device);
+		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	} else if (PRIVATE_DATA->handle != NULL && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_OK_STATE) {
 		// The last valid position stays published, marked as no longer current.
 		PRIVATE_DATA->poll_failed = true;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_coordinates(device, "Mount position could not be read");
+		nexstaraux_update_slew_light(device);
+		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	}
 }
 
@@ -902,9 +915,9 @@ static void nexstar_update_mount_state(indigo_device *device) {
 // the horizontal coordinates with them and keeps the ALERT until the next request.
 static void mount_slew_failed(indigo_device *device, const char *message) {
 	PRIVATE_DATA->centering = PRIVATE_DATA->slewing = PRIVATE_DATA->stopping = false;
-	MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_coordinates(device, message);
+	nexstaraux_update_slew_light(device);
 	if (PRIVATE_DATA->parking) {
 		PRIVATE_DATA->parking = PRIVATE_DATA->parked = false;
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -936,7 +949,7 @@ static void mount_slew_finalizer(indigo_device *device) {
 				PRIVATE_DATA->centering = PRIVATE_DATA->slewing = PRIVATE_DATA->stopping = false;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_coordinates(device, NULL);
-				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+				nexstaraux_update_slew_light(device);
 				if (PRIVATE_DATA->parking) {
 					PRIVATE_DATA->parking = false;
 					PRIVATE_DATA->parked = false;
@@ -965,9 +978,9 @@ static void mount_slew_finalizer(indigo_device *device) {
 					MOUNT_STATE_TRACKING_ITEM->light.value = tracking ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				}
 				PRIVATE_DATA->centering = PRIVATE_DATA->slewing = false;
-				MOUNT_STATE_SLEW_ITEM->light.value = arrived ? INDIGO_IDLE_STATE : INDIGO_ALERT_STATE;
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = arrived ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				indigo_update_coordinates(device, arrived ? NULL : "Mount stopped short of the target");
+				nexstaraux_update_slew_light(device);
 				if (PRIVATE_DATA->parking) {
 					PRIVATE_DATA->parking = false;
 					PRIVATE_DATA->parked = arrived;
@@ -1060,6 +1073,9 @@ static void mount_connection_handler(indigo_device *device) {
 			if (PRIVATE_DATA->german && nextstar_get_coordinates(device, &ra, &dec)) {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, PRIVATE_DATA->east ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 			}
+			// MOUNT_STATE is defined after this with the coordinates, which a new session starts without the ALERT of the
+			// previous one, so the SLEW light of a failed goto does not outlive its session either.
+			nexstaraux_update_slew_light(device);
 			//- mount.on_connect
 		}
 		if (connection_result) {
@@ -1193,6 +1209,13 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
+	// The generated handler publishes the result with indigo_update_coordinates() right after this block. The BUSY of
+	// the request, published when it was admitted, cleared the kept ALERT, so the result is published as it is set
+	// here, and MOUNT_STATE goes ahead of it with the SLEW light of that result.
+	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+		nexstaraux_update_slew_light(device);
+		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+	}
 	//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	indigo_update_coordinates(device, NULL);
 }
@@ -1257,6 +1280,8 @@ static void mount_abort_motion_handler(indigo_device *device) {
 		if (!PRIVATE_DATA->slewing && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_coordinates(device, NULL);
+			nexstaraux_update_slew_light(device);
+			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 		}
 		indigo_cancel_pending_handler(device, mount_motion_ra_handler);
 		if (MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {

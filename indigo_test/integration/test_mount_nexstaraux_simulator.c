@@ -622,17 +622,58 @@ cleanup:
 	driver_stop();
 }
 
+static void start_recording(void);
+static void stop_recording(void);
+static bool wait_for_light(const char *item_name, indigo_property_state state);
+static bool slew_light_alert_across_polls(const char *label, int polls);
+static bool slew_light_returned_to_idle(const char *label);
+
+// The SLEW light of MOUNT_STATE when the mount defined the property last, -1 before.
+static atomic_int defined_slew_light;
+
+static indigo_result observe_slew_light_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, nexstaraux_mount.device_name) && !strcmp(property->name, MOUNT_STATE_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, MOUNT_STATE_SLEW_ITEM_NAME)) {
+				atomic_store(&defined_slew_light, property->items[i].light.value);
+			}
+		}
+	}
+	return simulator_client_define_property(client, device, property, message);
+}
+
+static void observe_slew_light_defines(void) {
+	atomic_store(&defined_slew_light, -1);
+	simulator_test_client.define_property = observe_slew_light_define;
+}
+
+static void stop_observing_defines(void) {
+	simulator_test_client.define_property = simulator_client_define_property;
+}
+
+// The mount keeps its position across a reconnect, and the new session starts without the ALERT of a goto the controller
+// refused in the previous one: the coordinates are defined OK and MOUNT_STATE with the SLEW light IDLE, which used to
+// keep the ALERT of the previous session until the next goto.
 static void reconnect(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(prepare_mount(5, 20));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault(AZM_GOTO_FAST, "silent"));
+	SERIAL_CHECK_TRUE(coordinates_change(6, 25, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_ALERT_STATE));
 	disconnect_serial_device(&nexstaraux_mount);
 	SERIAL_CHECK_TRUE(!context.connected);
+	observe_slew_light_defines();
 	SERIAL_CHECK_TRUE(connect_mount());
+	printf("    MOUNT_STATE defined with the SLEW light %d after a refused goto of the previous session\n", atomic_load(&defined_slew_light));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, atomic_load(&defined_slew_light));
 	// The mount keeps its coordinates across the reconnect.
 	SERIAL_CHECK_TRUE(coordinates_are(5, 20, .05));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value);
 	// Nothing was published for a property that was not defined at the time.
 	SERIAL_CHECK_EQ_INT(0, updates_without_define());
 cleanup:
+	stop_observing_defines();
 	driver_stop();
 }
 
@@ -680,21 +721,29 @@ cleanup:
 }
 
 // A slew the motor controller refuses must be reported, not published as a
-// motion that never ends.
+// motion that never ends. The SLEW light of MOUNT_STATE is ALERT with the
+// coordinates while the mount stands idle, until the next goto, which shows it
+// BUSY and ends with it IDLE; it used to stay IDLE through the refusal.
 static void slew_command_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(fault(AZM_GOTO_FAST, "silent"));
 	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("refused goto", 2));
 	// The mount stays usable once the controller answers again.
+	start_recording();
 	SERIAL_CHECK_TRUE(coordinates_change(3, 20, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .1));
+	SERIAL_CHECK_TRUE(slew_light_returned_to_idle("goto after the refused one"));
 cleanup:
+	stop_recording();
 	driver_stop();
 }
 
-// A sync the motor controller refuses must be reported as well.
+// A sync the motor controller refuses must be reported as well, with the SLEW
+// light of MOUNT_STATE ALERT while the coordinates keep the ALERT, IDLE after
+// the accepted sync.
 static void sync_command_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
@@ -703,8 +752,10 @@ static void sync_command_failure(void) {
 	// A refused synchronization is not retried by the driver.
 	indigo_usleep(300000);
 	SERIAL_CHECK_EQ_INT(1, requests(ALT_SET_POSITION));
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("refused sync", 2));
 	SERIAL_CHECK_TRUE(coordinates_change(3.5, 45, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(coordinates_are(3.5, 45, .05));
+	SERIAL_CHECK_TRUE(wait_for_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
 cleanup:
 	driver_stop();
 }
@@ -2006,6 +2057,38 @@ static bool wait_for_light(const char *item_name, indigo_property_state state) {
 	return false;
 }
 
+// The SLEW light of MOUNT_STATE is ALERT whenever the coordinates are, the ALERT that indigo_update_coordinates() keeps
+// after a refused or failed request included. Checked once a whole poll ran after the call and again after each of
+// `polls` more polls: a poll asks for the position first, so once the next one has asked, the poll before it has
+// published the coordinates and the lights.
+static bool slew_light_alert_across_polls(const char *label, int polls) {
+	int asked = requests(AZM_GET_POSITION);
+	for (int i = 0; i <= polls; i++) {
+		if (!wait_for_requests(AZM_GET_POSITION, asked + 2 + i)) {
+			fprintf(stderr, "    %s: no polls\n", label);
+			return false;
+		}
+		indigo_property_state coordinates = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state;
+		indigo_property_state light = find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value;
+		if (coordinates != INDIGO_ALERT_STATE || light != INDIGO_ALERT_STATE) {
+			fprintf(stderr, "    %s: after poll %d the coordinates are %d and the SLEW light %d, both expected ALERT (%d)\n", label, i, coordinates, light, INDIGO_ALERT_STATE);
+			return false;
+		}
+	}
+	return true;
+}
+
+// The request recorded since start_recording() cleared a kept ALERT and ended OK: the SLEW light was published BUSY and
+// is IDLE with the coordinates OK now.
+static bool slew_light_returned_to_idle(const char *label) {
+	bool ok = next_mount_state(0, INDIGO_BUSY_STATE, -1) >= 0 && wait_for_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE) && find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state == INDIGO_OK_STATE;
+	if (!ok) {
+		fprintf(stderr, "    %s: the SLEW light is %d and the coordinates %d, expected the light BUSY, then IDLE with the coordinates OK\n", label, find_cached_item(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME)->light.value, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+		print_publications();
+	}
+	return ok;
+}
+
 static double cached_value(const char *property_name, const char *item_name) {
 	indigo_item *item = find_cached_item(property_name, item_name);
 	return item == NULL ? NAN : item->number.value;
@@ -2179,6 +2262,42 @@ cleanup:
 	driver_stop();
 }
 
+// An abort that reaches a goto still waiting on the device queue cancels it before anything is sent to the mount. The
+// abort publishes the coordinates ALERT and MOUNT_STATE with the SLEW light ALERT right after them, ahead of the next
+// poll, and both stay ALERT while the mount stands idle; the light used to stay IDLE.
+static void abort_cancels_a_queued_goto(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(prepare_mount(2, 10));
+	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	indigo_device *mount = driver_device(nexstaraux_mount.device_name);
+	SERIAL_CHECK_TRUE(mount != NULL);
+	int fast = requests(AZM_GOTO_FAST);
+	queue_gate(mount);
+	SERIAL_CHECK_TRUE(wait_for_gate());
+	start_recording();
+	SERIAL_CHECK_TRUE(coordinates_change(4, 35, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(indigo_change_switch_property_1(&simulator_test_client, nexstaraux_mount.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true) == INDIGO_OK);
+	atomic_store(&gate_release, true);
+	SERIAL_CHECK_TRUE(wait_for_publication(nexstaraux_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_fresh_coordinates());
+	stop_recording();
+	int alert = next_state(0, nexstaraux_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	int light = next_mount_state(alert, INDIGO_ALERT_STATE, -1);
+	int poll = next_publication(alert + 1, nexstaraux_mount.device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	printf("    queued goto aborted: coordinates ALERT at %d, SLEW light ALERT at %d, next coordinates at %d\n", alert, light, poll);
+	if (!(alert >= 0 && light > alert && (poll < 0 || light < poll))) {
+		print_publications();
+	}
+	SERIAL_CHECK_TRUE(alert >= 0 && light > alert && (poll < 0 || light < poll));
+	SERIAL_CHECK_EQ_INT(fast, requests(AZM_GOTO_FAST));
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("aborted queued goto", 2));
+cleanup:
+	stop_recording();
+	atomic_store(&gate_release, true);
+	driver_stop();
+}
+
 // Each manual direction moves the readback the right way, and a guide pulse on the declination axis
 // moves it the same way as manual motion, by the guide rate times the pulse length.
 static void motion_directions_read_back(void) {
@@ -2251,10 +2370,14 @@ static void parked_guards(void) {
 	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME));
 	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME));
 	SERIAL_CHECK_TRUE(assert_rejected_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 20));
-	// A refused GOTO and sync stay ALERT over the following polls and through the unpark, until an accepted GOTO.
+	// A refused GOTO and sync stay ALERT over the following polls and through the unpark, until an accepted GOTO, and the
+	// SLEW light of MOUNT_STATE with them. The refusal is the generator's parked guard, which runs no driver code, so the
+	// light follows with the next poll.
 	double parked_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", nexstaraux_mount.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, fmod(parked_ra + 1, 24), 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("parked GOTO", 2));
 	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", nexstaraux_mount.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, fmod(parked_ra + 1, 24), 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("parked sync", 2));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, INDIGO_OK_STATE));
 	// The guider shares the mount, so a parked mount is not guided either.
 	start_recording();
@@ -2265,8 +2388,10 @@ static void parked_guards(void) {
 	// Unparked, every one of them is accepted again.
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("unparked after a refused sync", 1));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(coordinates_change(fmod(parked_ra + 1, 24), 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, INDIGO_OK_STATE));
@@ -2764,6 +2889,7 @@ int main(void) {
 		{ "goto_survives_a_lost_status_reply", goto_survives_a_lost_status_reply, "normal" },
 		{ "busy_goto_ignores_second_request", busy_goto_ignores_second_request, "slow-slew" },
 		{ "abort_lands_mid_slew", abort_lands_mid_slew, "slow-slew" },
+		{ "abort_cancels_a_queued_goto", abort_cancels_a_queued_goto, "normal" },
 		{ "motion_directions_read_back", motion_directions_read_back, "normal" },
 		{ "parked_guards", parked_guards, "normal" },
 		{ "park_refused_by_controller", park_refused_by_controller, "normal" },
