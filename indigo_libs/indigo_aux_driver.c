@@ -144,6 +144,8 @@ bool indigo_aux_evaluate_weather_safety(indigo_property *property, const indigo_
 				first = false;
 				if (!condition->valid) {
 					weather_safety_append(message, message_size, "%s%s sensor gives no valid reading", separator, weather_safety_labels[i]);
+				} else if (condition->omit_values) {
+					weather_safety_append(message, message_size, "%s%s", separator, weather_safety_labels[i]);
 				} else {
 					const char *unit = condition->unit != NULL && *condition->unit ? condition->unit : NULL;
 					const char *relation = condition->value == condition->limit ? "at" : (condition->reversed ? "below" : "above");

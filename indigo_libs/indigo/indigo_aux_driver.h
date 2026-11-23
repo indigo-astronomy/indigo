@@ -98,6 +98,7 @@ typedef struct {
 	double value;				///< the reading, used in the reason message
 	double limit;				///< the unsafe level, used in the reason message
 	const char *unit;		///< unit of value and limit used in the reason message, e.g. "m/s", or NULL
+	bool omit_values;		///< the reason message names the condition without value and limit, for readings that mean nothing to the user
 } indigo_aux_safety_input;
 
 /** Evaluate the weather safety conditions into the lights of AUX_WEATHER_SAFETY.

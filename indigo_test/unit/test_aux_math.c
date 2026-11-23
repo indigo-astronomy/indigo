@@ -107,6 +107,30 @@ static void weather_safety_reversed_sensor_reason(void) {
 	indigo_release_property(property);
 }
 
+// A condition with omit_values is named without value and limit; an invalid reading keeps its usual reason.
+static void weather_safety_reason_without_values(void) {
+	indigo_property *property = init_weather_safety_property();
+	indigo_aux_safety_input conditions[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { { 0 } };
+	conditions[INDIGO_AUX_SAFETY_RAIN] = (indigo_aux_safety_input){ true, true, true, true, 350, 400, NULL, true };
+	conditions[INDIGO_AUX_SAFETY_WIND] = (indigo_aux_safety_input){ true, true, true, false, 12.4, 10, "m/s" };
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain, wind 12.4 m/s above 10.0 m/s", message);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, safety_light(property, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME));
+	conditions[INDIGO_AUX_SAFETY_WIND].unsafe = false;
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain", message);
+	conditions[INDIGO_AUX_SAFETY_RAIN].valid = false;
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Unsafe: rain sensor gives no valid reading", message);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	conditions[INDIGO_AUX_SAFETY_RAIN].valid = true;
+	conditions[INDIGO_AUX_SAFETY_RAIN].unsafe = false;
+	ASSERT_TRUE(indigo_aux_evaluate_weather_safety(property, conditions, message, sizeof(message)));
+	ASSERT_STREQ("Safe: all conditions within limits", message);
+	indigo_release_property(property);
+}
+
 static void weather_safety_invalid_reading_is_alert(void) {
 	indigo_property *property = init_weather_safety_property();
 	indigo_aux_safety_input conditions[INDIGO_AUX_SAFETY_CONDITION_COUNT] = { { 0 } };
@@ -178,6 +202,7 @@ int main(void) {
 		{ "weather_safety_without_sensors_is_idle", weather_safety_without_sensors_is_idle },
 		{ "weather_safety_unfitted_conditions_stay_idle", weather_safety_unfitted_conditions_stay_idle },
 		{ "weather_safety_reversed_sensor_reason", weather_safety_reversed_sensor_reason },
+		{ "weather_safety_reason_without_values", weather_safety_reason_without_values },
 		{ "weather_safety_invalid_reading_is_alert", weather_safety_invalid_reading_is_alert },
 		{ "weather_safety_reports_changed_reasons", weather_safety_reports_changed_reasons },
 		{ "weather_safety_ignores_missing_items", weather_safety_ignores_missing_items }

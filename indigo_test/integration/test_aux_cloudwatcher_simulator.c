@@ -46,7 +46,8 @@ static const char *connected_properties[] = {
 	AUX_WIND_PROPERTY_NAME,
 	AUX_RAIN_PROPERTY_NAME,
 	AUX_CLOUD_PROPERTY_NAME,
-	AUX_SKY_PROPERTY_NAME
+	AUX_SKY_PROPERTY_NAME,
+	AUX_WEATHER_SAFETY_PROPERTY_NAME
 };
 
 // Published whether or not the device is connected, and saved by CONFIG.SAVE.
@@ -140,6 +141,71 @@ static bool properties_undefined(const char * const *names, int count) {
 		}
 	}
 	return true;
+}
+
+static char safety_message[INDIGO_VALUE_SIZE];
+static atomic_int safety_message_count;
+
+// Records the reason messages of AUX_WEATHER_SAFETY; the bus delivers an update message after the update itself.
+static indigo_result safety_recording_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (property != NULL && !strcmp(property->name, AUX_WEATHER_SAFETY_PROPERTY_NAME) && message != NULL && *message) {
+		INDIGO_COPY_VALUE(safety_message, message);
+		safety_message_count++;
+	}
+	return simulator_client_send_message(client, device, property, message);
+}
+
+static indigo_property_state safety_light(const char *item) {
+	indigo_item *found = find_cached_item(AUX_WEATHER_SAFETY_PROPERTY_NAME, item);
+	return found != NULL ? found->light.value : -1;
+}
+
+// Checks every light of AUX_WEATHER_SAFETY in item order SAFE, CLOUDS, RAIN, WIND, HUMIDITY.
+static bool safety_lights_are(indigo_property_state safe, indigo_property_state clouds, indigo_property_state rain, indigo_property_state wind, indigo_property_state humidity) {
+	const char *items[] = { AUX_WEATHER_SAFETY_SAFE_ITEM_NAME, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, AUX_WEATHER_SAFETY_WIND_ITEM_NAME, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME };
+	indigo_property_state expected[] = { safe, clouds, rain, wind, humidity };
+	bool result = true;
+	for (int i = 0; i < ARRAY_SIZE(items); i++) {
+		if (safety_light(items[i]) != expected[i]) {
+			fprintf(stderr, "    %s.%s is %d, expected %d\n", AUX_WEATHER_SAFETY_PROPERTY_NAME, items[i], safety_light(items[i]), expected[i]);
+			result = false;
+		}
+	}
+	return result;
+}
+
+static bool safety_state_is(indigo_property_state expected) {
+	indigo_property *property = find_cached_property(AUX_WEATHER_SAFETY_PROPERTY_NAME);
+	if (property == NULL || property->state != expected) {
+		fprintf(stderr, "    %s state is %d, expected %d\n", AUX_WEATHER_SAFETY_PROPERTY_NAME, property != NULL ? (int)property->state : -1, expected);
+		return false;
+	}
+	return true;
+}
+
+static bool last_safety_message_is(const char *expected) {
+	if (strcmp(safety_message, expected)) {
+		fprintf(stderr, "    reason message is '%s', expected '%s'\n", safety_message, expected);
+		return false;
+	}
+	return true;
+}
+
+// The readings are polled every 15 s, so a change made while connected shows up within one poll.
+static bool wait_for_safety_message_count(int count) {
+	for (int i = 0; i < 250 && safety_message_count < count; i++) {
+		indigo_usleep(100000);
+	}
+	if (safety_message_count < count) {
+		fprintf(stderr, "    %d reason messages received, expected %d\n", (int)safety_message_count, count);
+		return false;
+	}
+	return true;
+}
+
+static bool change_threshold(const char *property, const char *item, double value) {
+	unsigned revision = property_revision(property);
+	return indigo_change_number_property_1(&simulator_test_client, primary.device_name, property, item, value) == INDIGO_OK && wait_for_property_state_after(property, INDIGO_OK_STATE, revision);
 }
 
 // The first complete reading of every profile lands on AUX_WEATHER last, so
@@ -418,7 +484,226 @@ cleanup:
 	aux_stop(&primary);
 }
 
+// All conditions within their limits give a safe verdict with its reason.
+static void weather_safety_safe(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_WEATHER_SAFETY_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+	SERIAL_CHECK_EQ_INT(0, context.update_without_define_count);
+	disconnect_serial_device(&primary);
+	SERIAL_CHECK_TRUE(properties_undefined((const char *[]){ AUX_WEATHER_SAFETY_PROPERTY_NAME }, 1));
+cleanup:
+	aux_stop(&primary);
+}
+
+// Clouds, rain and humidity at their worst level are named in one reason; the calm wind stays safe.
+static void weather_safety_wet_overcast(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_OK_STATE));
+	char expected[INDIGO_VALUE_SIZE];
+	snprintf(expected, sizeof(expected), "Unsafe: clouds %.1f C above 0.0 C, rain, humidity 96.5 %% above 95.0 %%", cached_number_value(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME));
+	SERIAL_CHECK_TRUE(last_safety_message_is(expected));
+cleanup:
+	aux_stop(&primary);
+}
+
+// Without an anemometer and an RH sensor wind and humidity are IDLE and do not affect the verdict.
+static void weather_safety_absent_sensors(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+cleanup:
+	aux_stop(&primary);
+}
+
+// Each condition crosses its unsafe level when its threshold is moved below the reading.
+static void weather_safety_each_condition(void) {
+	struct {
+		const char *property;
+		const char *item;
+		double unsafe;
+		double safe;
+		const char *safety_item;
+		const char *reason;
+	} cases[] = {
+		{ AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, -20, 0, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME, "Unsafe: clouds -12.9 C above -20.0 C" },
+		{ AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, 3000, 400, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, "Unsafe: rain" },
+		{ AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 5, 10, AUX_WEATHER_SAFETY_WIND_ITEM_NAME, "Unsafe: wind 9.2 m/s above 5.0 m/s" },
+		{ AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, 40, 95, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME, "Unsafe: humidity 44.0 % above 40.0 %" }
+	};
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	enumerate_simulator_device();
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		fprintf(stderr, "    condition %s\n", cases[i].safety_item);
+		SERIAL_CHECK_TRUE(change_threshold(cases[i].property, cases[i].item, cases[i].unsafe));
+		SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+		SERIAL_CHECK_TRUE(first_reading());
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, safety_light(cases[i].safety_item));
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, safety_light(AUX_WEATHER_SAFETY_SAFE_ITEM_NAME));
+		SERIAL_CHECK_TRUE(safety_state_is(INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(last_safety_message_is(cases[i].reason));
+		disconnect_serial_device(&primary);
+		SERIAL_CHECK_TRUE(change_threshold(cases[i].property, cases[i].item, cases[i].safe));
+	}
+	// The classifications agree with the condition lights at the worst level.
+	SERIAL_CHECK_TRUE(change_threshold(AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, 40));
+	SERIAL_CHECK_TRUE(change_threshold(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 5));
+	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(switch_is(AUX_HUMIDITY_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: wind 9.2 m/s above 5.0 m/s, humidity 44.0 % above 40.0 %"));
+cleanup:
+	aux_stop(&primary);
+}
+
+// A threshold moved back while connected makes the next reading safe again.
+static void weather_safety_back_to_safe(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(change_threshold(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, -20));
+	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	int messages = safety_message_count;
+	SERIAL_CHECK_TRUE(change_threshold(AUX_CLOUD_THRESHOLDS_PROPERTY_NAME, AUX_CLOUD_CLOUDY_ITEM_NAME, 0));
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(messages + 1));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+cleanup:
+	aux_stop(&primary);
+}
+
+// While unsafe, a change of the set of unsafe conditions gives a new reason.
+static void weather_safety_reason_change(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(change_threshold(AUX_RAIN_THRESHOLDS_PROPERTY_NAME, AUX_RAIN_RAINING_ITEM_NAME, 3000));
+	SERIAL_CHECK_TRUE(connect_serial_device(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: rain"));
+	int messages = safety_message_count;
+	SERIAL_CHECK_TRUE(change_threshold(AUX_WIND_THRESHOLDS_PROPERTY_NAME, AUX_WIND_STRONG_ITEM_NAME, 5));
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(messages + 1));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: rain, wind 9.2 m/s above 5.0 m/s"));
+cleanup:
+	aux_stop(&primary);
+}
+
+// A fitted RH sensor without a valid reading makes humidity, the verdict and the property state ALERT.
+static void weather_safety_invalid_humidity(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: humidity sensor gives no valid reading"));
+cleanup:
+	aux_stop(&primary);
+}
+
+// An unreadable RH reply after the sensor was found keeps it fitted, so humidity, the verdict and the property
+// state go ALERT instead of IDLE.
+static void weather_safety_humidity_reply_lost(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(first_reading());
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	int messages = safety_message_count;
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(messages + 1));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: humidity sensor gives no valid reading"));
+cleanup:
+	aux_stop(&primary);
+}
+
+// A reading that cannot be completed leaves every fitted sensor without a valid reading. The RH sensor's
+// presence is still unknown before the first complete reading, so it counts as fitted and humidity is ALERT too.
+static void weather_safety_read_failure(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(1));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: clouds sensor gives no valid reading, rain sensor gives no valid reading, wind sensor gives no valid reading, humidity sensor gives no valid reading"));
+cleanup:
+	aux_stop(&primary);
+}
+
+// The first RH reply of the session is lost, so the sensor's presence is unknown: humidity, the verdict and
+// the property state are ALERT rather than IDLE until the next poll finds the sensor and reads it.
+static void weather_safety_humidity_presence_unknown(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(1));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: humidity sensor gives no valid reading"));
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(2));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+	SERIAL_CHECK_TRUE(number_is(AUX_WEATHER_PROPERTY_NAME, AUX_WEATHER_HUMIDITY_ITEM_NAME, 44, .01));
+cleanup:
+	aux_stop(&primary);
+}
+
+// The anemometer detection fails at connect and at the first poll, so its presence is unknown: wind, the verdict
+// and the property state are ALERT until a later poll's retry gets a definite answer that it is fitted.
+static void weather_safety_anemometer_unknown_fitted(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(1));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: wind sensor gives no valid reading"));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ANEMOMETER_STATUS", 0, .001));
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(2));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ANEMOMETER_STATUS", 1, .001));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(X_CONSTANTS_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(switch_is(AUX_WIND_PROPERTY_NAME, AUX_WIND_MODERATE_ITEM_NAME, true));
+cleanup:
+	aux_stop(&primary);
+}
+
+// As above, but the retry finds no anemometer, so wind becomes IDLE and the verdict safe.
+static void weather_safety_anemometer_unknown_absent(void) {
+	SERIAL_CHECK_TRUE(start_serial_driver(&primary, aux_simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(1));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Unsafe: wind sensor gives no valid reading"));
+	SERIAL_CHECK_TRUE(wait_for_safety_message_count(2));
+	SERIAL_CHECK_TRUE(safety_lights_are(INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_IDLE_STATE, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(safety_state_is(INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(last_safety_message_is("Safe: all conditions within limits"));
+	SERIAL_CHECK_TRUE(number_is(X_CONSTANTS_PROPERTY_NAME, "ANEMOMETER_STATUS", 0, .001));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(X_CONSTANTS_PROPERTY_NAME)->state);
+cleanup:
+	aux_stop(&primary);
+}
+
+// The unsafe humidity level defaults to 95 %, above the NORMAL level.
+static void humidity_threshold_defaults(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&primary));
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(number_is(AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_HUMID_ITEM_NAME, 95, .001));
+	SERIAL_CHECK_TRUE(number_is(AUX_HUMIDITY_THRESHOLDS_PROPERTY_NAME, AUX_HUMIDITY_NORMAL_ITEM_NAME, 30, .001));
+cleanup:
+	aux_stop(&primary);
+}
+
 int main(void) {
+	simulator_test_client.send_message = safety_recording_send_message;
 	const aux_simulated_case tests[] = {
 		{ "normal", normal, "normal" },
 		{ "constants", constants, "normal" },
@@ -437,6 +722,19 @@ int main(void) {
 		{ "relay_error", relay_error, "relay-error" },
 		{ "relay_failure_shows_the_device_state", relay_failure_shows_the_device_state, "relay-error" },
 		{ "timeout", rejected_connection, "timeout" },
+		{ "weather_safety_safe", weather_safety_safe, "normal" },
+		{ "weather_safety_wet_overcast", weather_safety_wet_overcast, "wet-overcast" },
+		{ "weather_safety_absent_sensors", weather_safety_absent_sensors, "no-sensors" },
+		{ "weather_safety_each_condition", weather_safety_each_condition, "normal" },
+		{ "weather_safety_back_to_safe", weather_safety_back_to_safe, "normal" },
+		{ "weather_safety_reason_change", weather_safety_reason_change, "normal" },
+		{ "weather_safety_invalid_humidity", weather_safety_invalid_humidity, "rh-invalid" },
+		{ "weather_safety_read_failure", weather_safety_read_failure, "sky-invalid" },
+		{ "weather_safety_humidity_reply_lost", weather_safety_humidity_reply_lost, "rh-garbled" },
+		{ "weather_safety_humidity_presence_unknown", weather_safety_humidity_presence_unknown, "rh-first-lost" },
+		{ "weather_safety_anemometer_unknown_fitted", weather_safety_anemometer_unknown_fitted, "anemometer-late" },
+		{ "weather_safety_anemometer_unknown_absent", weather_safety_anemometer_unknown_absent, "anemometer-late-absent" },
+		{ "humidity_threshold_defaults", humidity_threshold_defaults, "normal" },
 	};
 	return run_aux_simulated("cloudwatcher", "build/integration/aux_cloudwatcher_simulator", tests, ARRAY_SIZE(tests));
 }

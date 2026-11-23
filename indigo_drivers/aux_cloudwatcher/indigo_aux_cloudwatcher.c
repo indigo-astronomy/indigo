@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000010
+#define DRIVER_VERSION       0x03000011
 #define DRIVER_NAME          "indigo_aux_cloudwatcher"
 #define DRIVER_LABEL         "AAG CloudWatcher"
 #define AUX_DEVICE_NAME      "AAG CloudWatcher"
@@ -72,6 +72,13 @@ typedef enum {
 	pulse
 } heating_algorithm_state;
 
+// Presence of an optional sensor; unknown until the device gives a definite answer.
+typedef enum {
+	sensor_unknown,
+	sensor_absent,
+	sensor_present
+} sensor_presence;
+
 typedef struct {
 	int power_voltage;
 	int ir_sky_temperature;
@@ -79,6 +86,7 @@ typedef struct {
 	int ambient_temperature;     // In newer models there is no ambient temperature sensor so NO_READING is returned.
 	float rh;
 	float rh_temperature;
+	sensor_presence rh_presence; // whether the unit has an RH sensor, even without a valid reading; kept when the reply is unreadable
 	float atm_pressure;
 	float atm_temperature;
 	int rain_frequency;
@@ -240,6 +248,13 @@ typedef struct {
 #define AUX_SKY_LIGHT_ITEM             (AUX_SKY_PROPERTY->items + 1)
 #define AUX_SKY_VERY_LIGHT_ITEM        (AUX_SKY_PROPERTY->items + 2)
 
+#define AUX_SAFETY_PROPERTY            (PRIVATE_DATA->aux_safety_property)
+#define AUX_SAFETY_SAFE_ITEM           (AUX_SAFETY_PROPERTY->items + 0)
+#define AUX_SAFETY_CLOUDS_ITEM         (AUX_SAFETY_PROPERTY->items + 1)
+#define AUX_SAFETY_RAIN_ITEM           (AUX_SAFETY_PROPERTY->items + 2)
+#define AUX_SAFETY_WIND_ITEM           (AUX_SAFETY_PROPERTY->items + 3)
+#define AUX_SAFETY_HUMIDITY_ITEM       (AUX_SAFETY_PROPERTY->items + 4)
+
 #define X_ANEMOMETER_TYPE_PROPERTY        (PRIVATE_DATA->x_anemometer_type_property)
 #define X_ANEMOMETER_TYPE_BLACK_ITEM      (X_ANEMOMETER_TYPE_PROPERTY->items + 0)
 #define X_ANEMOMETER_TYPE_GREY_ITEM       (X_ANEMOMETER_TYPE_PROPERTY->items + 1)
@@ -295,11 +310,15 @@ typedef struct {
 	indigo_property *aux_rain_property;
 	indigo_property *aux_cloud_property;
 	indigo_property *aux_sky_property;
+	indigo_property *aux_safety_property;
 	indigo_property *x_anemometer_type_property;
 	indigo_property *x_rain_sensor_heater_setup_property;
 	//+ data
 	float firmware;
 	bool anemometer_black;
+	bool electrical_constants_read;
+	sensor_presence anemometer;
+	sensor_presence humidity;
 	heating_algorithm_state heating_state;
 	double pulse_start_time;
 	double wet_start_time;
@@ -502,8 +521,12 @@ static bool cloudwatcher_get_switch(indigo_device *device, bool *closed) {
 	return true;
 }
 
-static bool cloudwatcher_get_rh_temperature(indigo_device *device, float *rh, float *temperature) {
+// The presence changes only on a definite answer: firmware before 5.6 or a 65535
+// reply means no sensor, any other readable reply a fitted one. A timeout or an
+// unreadable reply keeps the previous presence and gives no valid reading.
+static bool cloudwatcher_get_rh_temperature(indigo_device *device, float *rh, float *temperature, sensor_presence *presence) {
 	if (PRIVATE_DATA->firmware < 5.6) {
+		*presence = sensor_absent;
 		return false;
 	}
 	int rhi = 0, tempi = 0;
@@ -518,8 +541,11 @@ static bool cloudwatcher_get_rh_temperature(indigo_device *device, float *rh, fl
 		precise = false;
 	}
 	if (tempi == 65535) {
+		*presence = sensor_absent;
 		return false; // No sensor
 	}
+	// From here on the sensor is fitted, a failure is an invalid reading.
+	*presence = sensor_present;
 	*temperature = precise ? (float)((tempi * 175.72) / 65536 - 46.85) : (float)(tempi * 1.7572 - 46.85);
 	if (*temperature < -50 || *temperature > 80) {
 		return false;
@@ -649,7 +675,8 @@ static bool cloudwatcher_get_data(indigo_device *device, cloudwatcher_data *data
 			return false;
 		}
 	}
-	if (!cloudwatcher_get_rh_temperature(device, &data->rh, &data->rh_temperature)) {
+	data->rh_presence = PRIVATE_DATA->humidity;
+	if (!cloudwatcher_get_rh_temperature(device, &data->rh, &data->rh_temperature, &data->rh_presence)) {
 		data->rh_temperature = NO_READING;
 		data->rh = NO_READING;
 	}
@@ -670,21 +697,55 @@ static bool cloudwatcher_get_data(indigo_device *device, cloudwatcher_data *data
 	return cloudwatcher_get_pwm_duty_cycle(device, &data->rain_heater);
 }
 
+// One v! request; the presence stays unknown until a definite answer arrives.
+static bool cloudwatcher_detect_anemometer(indigo_device *device) {
+	bool present = false;
+	if (!cloudwatcher_is_anemometer_present(device, &present)) {
+		return false;
+	}
+	PRIVATE_DATA->anemometer = present ? sensor_present : sensor_absent;
+	X_CONSTANTS_ANEMOMETER_STATE_ITEM->number.value = present ? 1 : 0;
+	return true;
+}
+
 static bool cloudwatcher_populate_constants(indigo_device *device) {
-	bool constants_read = cloudwatcher_get_electrical_constants(device);
+	PRIVATE_DATA->electrical_constants_read = cloudwatcher_get_electrical_constants(device);
 	X_CONSTANTS_AMBIENT_BETA_ITEM->number.value = 3811;
 	X_CONSTANTS_AMBIENT_R_AT_25_ITEM->number.value = 10;
 	X_CONSTANTS_AMBIENT_PULLUP_R_ITEM->number.value = 9.9;
-	bool present = false;
-	bool anemometer_read = cloudwatcher_is_anemometer_present(device, &present);
-	X_CONSTANTS_ANEMOMETER_STATE_ITEM->number.value = present ? 1 : 0;
-	if (constants_read && anemometer_read) {
+	bool anemometer_read = cloudwatcher_detect_anemometer(device);
+	if (PRIVATE_DATA->electrical_constants_read && anemometer_read) {
 		X_CONSTANTS_PROPERTY->state = INDIGO_OK_STATE;
 		return true;
 	}
 	X_CONSTANTS_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_send_message(device, ALERT_PROPERTY, "Failed reading device constants");
 	return false;
+}
+
+// A failed anemometer detection at connect is retried with one request per poll.
+static void cloudwatcher_retry_anemometer_detection(indigo_device *device) {
+	if (PRIVATE_DATA->anemometer == sensor_unknown && cloudwatcher_detect_anemometer(device)) {
+		INDIGO_UPDATE_PROPERTY_STATE(X_CONSTANTS_PROPERTY, PRIVATE_DATA->electrical_constants_read ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
+	}
+}
+
+// Each condition is unsafe at the worst level of its classification. Without
+// data the reading failed, so every fitted sensor has no valid reading. An
+// optional sensor of unknown presence counts as fitted without a valid reading.
+// The raw rain sensor reading means nothing to the user, so its reason has no numbers.
+static void cloudwatcher_update_safety(indigo_device *device, const cloudwatcher_data *data) {
+	bool valid = data != NULL;
+	if (valid) {
+		PRIVATE_DATA->humidity = data->rh_presence;
+	}
+	indigo_aux_safety_input safety[INDIGO_AUX_SAFETY_CONDITION_COUNT] = {
+		{ true, valid, AUX_CLOUD_OVERCAST_ITEM->sw.value, false, AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value, AUX_CLOUD_CLOUDY_THRESHOLD_ITEM->number.value, "C" },
+		{ true, valid, AUX_RAIN_RAINING_ITEM->sw.value, true, X_SENSOR_RAIN_CYCLES_ITEM->number.value, AUX_RAIN_RAINING_THRESHOLD_ITEM->number.value, NULL, true },
+		{ PRIVATE_DATA->anemometer != sensor_absent, valid && PRIVATE_DATA->anemometer == sensor_present, AUX_WIND_STRONG_ITEM->sw.value, false, AUX_WEATHER_WIND_SPEED_ITEM->number.value, AUX_WIND_STRONG_THRESHOLD_ITEM->number.value, "m/s" },
+		{ PRIVATE_DATA->humidity != sensor_absent, valid && data->rh != NO_READING, AUX_HUMIDITY_HUMID_ITEM->sw.value, false, AUX_WEATHER_HUMIDITY_ITEM->number.value, AUX_HUMIDITY_HUMID_THRESHOLD_ITEM->number.value, "%" }
+	};
+	indigo_aux_update_weather_safety(device, AUX_SAFETY_PROPERTY, safety);
 }
 
 static void cloudwatcher_process_data(indigo_device *device, const cloudwatcher_data *data) {
@@ -812,7 +873,7 @@ static void cloudwatcher_process_data(indigo_device *device, const cloudwatcher_
 	INDIGO_UPDATE_PROPERTY_STATE(AUX_CLOUD_PROPERTY, INDIGO_OK_STATE, NULL);
 	// Wind speed and warning
 	AUX_WEATHER_WIND_SPEED_ITEM->number.value = data->wind_speed;
-	if (X_CONSTANTS_ANEMOMETER_STATE_ITEM->number.value < 1) {
+	if (PRIVATE_DATA->anemometer != sensor_present) {
 		AUX_WIND_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_WIND_WARNING_PROPERTY, INDIGO_IDLE_STATE, NULL);
 		for (int i = 0; i < AUX_WIND_PROPERTY->count; i++) {
@@ -831,6 +892,7 @@ static void cloudwatcher_process_data(indigo_device *device, const cloudwatcher_
 		}
 		INDIGO_UPDATE_PROPERTY_STATE(AUX_WIND_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
+	cloudwatcher_update_safety(device, data);
 	INDIGO_UPDATE_PROPERTY_STATE(X_SENSOR_READINGS_PROPERTY, INDIGO_OK_STATE, NULL);
 	INDIGO_UPDATE_PROPERTY_STATE(AUX_WEATHER_PROPERTY, INDIGO_OK_STATE, NULL);
 }
@@ -967,6 +1029,13 @@ static void cloudwatcher_reset_properties(indigo_device *device) {
 			conditions[i]->items[j].sw.value = false;
 		}
 	}
+	// No condition is known before the first reading.
+	AUX_SAFETY_PROPERTY->state = INDIGO_BUSY_STATE;
+	for (int i = 0; i < AUX_SAFETY_PROPERTY->count; i++) {
+		AUX_SAFETY_PROPERTY->items[i].light.value = INDIGO_IDLE_STATE;
+	}
+	PRIVATE_DATA->anemometer = sensor_unknown;
+	PRIVATE_DATA->humidity = sensor_unknown;
 }
 
 static void cloudwatcher_apply_outlet_names(indigo_device *device) {
@@ -1021,9 +1090,12 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	//+ aux.on_timer
 	cloudwatcher_data data;
+	cloudwatcher_retry_anemometer_detection(device);
 	if (cloudwatcher_get_data(device, &data)) {
 		cloudwatcher_process_data(device, &data);
 		cloudwatcher_heating_algorithm(device);
+	} else {
+		cloudwatcher_update_safety(device, NULL);
 	}
 	bool closed = false;
 	// The relay state the device reports is always recorded, a failed request shows it. The BUSY
@@ -1085,6 +1157,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_RAIN_PROPERTY, NULL);
 			indigo_define_property(device, AUX_CLOUD_PROPERTY, NULL);
 			indigo_define_property(device, AUX_SKY_PROPERTY, NULL);
+			indigo_define_property(device, AUX_SAFETY_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -1118,6 +1191,7 @@ static void aux_connection_handler(indigo_device *device) {
 			AUX_RAIN_PROPERTY,
 			AUX_CLOUD_PROPERTY,
 			AUX_SKY_PROPERTY,
+			AUX_SAFETY_PROPERTY,
 		};
 		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
 			if (cancelled_properties[i] != NULL && cancelled_properties[i]->state == INDIGO_BUSY_STATE) {
@@ -1173,6 +1247,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_RAIN_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_CLOUD_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SKY_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_SAFETY_PROPERTY, NULL);
 		cloudwatcher_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1342,7 +1417,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_HUMIDITY_THRESHOLDS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_HUMIDITY_HUMID_THRESHOLD_ITEM, AUX_HUMIDITY_HUMID_ITEM_NAME, "Humid (more than)", 0, 100, 0, 60);
+		indigo_init_number_item(AUX_HUMIDITY_HUMID_THRESHOLD_ITEM, AUX_HUMIDITY_HUMID_ITEM_NAME, "Humid (more than)", 0, 100, 0, 95);
 		indigo_init_number_item(AUX_HUMIDITY_NORMAL_THRESHOLD_ITEM, AUX_HUMIDITY_NORMAL_ITEM_NAME, "Normal (more than)", 0, 100, 0, 30);
 		AUX_WIND_THRESHOLDS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WIND_THRESHOLDS_PROPERTY_NAME, THRESHOLDS_GROUP, "Wind thresholds (m/s)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AUX_WIND_THRESHOLDS_PROPERTY == NULL) {
@@ -1403,6 +1478,15 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_SKY_DARK_ITEM, AUX_SKY_DARK_ITEM_NAME, "Dark", false);
 		indigo_init_switch_item(AUX_SKY_LIGHT_ITEM, AUX_SKY_LIGHT_ITEM_NAME, "Light", false);
 		indigo_init_switch_item(AUX_SKY_VERY_LIGHT_ITEM, AUX_SKY_VERY_LIGHT_ITEM_NAME, "Very light", false);
+		AUX_SAFETY_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_WEATHER_SAFETY_PROPERTY_NAME, WEATHER_GROUP, "Weather safety", INDIGO_OK_STATE, 5);
+		if (AUX_SAFETY_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_light_item(AUX_SAFETY_SAFE_ITEM, AUX_WEATHER_SAFETY_SAFE_ITEM_NAME, "Safe", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AUX_SAFETY_CLOUDS_ITEM, AUX_WEATHER_SAFETY_CLOUDS_ITEM_NAME, "Clouds", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AUX_SAFETY_RAIN_ITEM, AUX_WEATHER_SAFETY_RAIN_ITEM_NAME, "Rain", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AUX_SAFETY_WIND_ITEM, AUX_WEATHER_SAFETY_WIND_ITEM_NAME, "Wind", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AUX_SAFETY_HUMIDITY_ITEM, AUX_WEATHER_SAFETY_HUMIDITY_ITEM_NAME, "Humidity", INDIGO_IDLE_STATE);
 		X_ANEMOMETER_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_ANEMOMETER_TYPE_PROPERTY_NAME, SETTINGS_GROUP, "Anemometer type (if present)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (X_ANEMOMETER_TYPE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -1442,6 +1526,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_RAIN_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_CLOUD_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_SKY_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_SAFETY_PROPERTY);
 	}
 	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_NAMES_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_SKY_CORRECTION_PROPERTY);
@@ -1576,6 +1661,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_RAIN_PROPERTY);
 	indigo_release_property(AUX_CLOUD_PROPERTY);
 	indigo_release_property(AUX_SKY_PROPERTY);
+	indigo_release_property(AUX_SAFETY_PROPERTY);
 	indigo_release_property(X_ANEMOMETER_TYPE_PROPERTY);
 	indigo_release_property(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
