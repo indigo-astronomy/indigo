@@ -29,4 +29,4 @@ indigo_server -s
 
 - 2026-09-26 22:40 3.0.0.23 linux x64 simulator 19/19 OK
 - 2026-10-04 11:19 3.0.0.24 linux arm64 simulator 20/20 OK
-- 2026-11-22 23:33 3.0.0.29 mac arm64 simulator 35/35 OK
+- 2026-11-23 16:45 3.0.0.30 mac arm64 simulator 35/35 OK

@@ -569,7 +569,20 @@ cleanup:
 	stop_serial_driver(&mount_simulator);
 }
 
+#define MOUNT_WAIT_UNTIL(condition, timeout) ({ double deadline_ = indigo_monotonic_time() + (timeout); bool ready_ = (condition); while (!ready_ && indigo_monotonic_time() < deadline_) { indigo_usleep(5000); ready_ = (condition); } ready_; })
+
+static indigo_property_state cached_state(const char *property_name);
+static indigo_property_state cached_light(const char *item_name);
+static void install_slew_light_observer(void);
+static void remove_slew_light_observer(void);
+static unsigned int slew_light_busy_publications(void);
+static bool slew_light_alert_across_polls(const char *label, int polls);
+static bool slew_light_busy_then_idle(const char *label, unsigned int busy);
+
+// An abort ends a GOTO ALERT; the coordinates keep the ALERT until the next request, and the SLEW light of MOUNT_STATE with
+// them, which is BUSY again with the coordinates of the next GOTO and IDLE when it ends OK.
 static void mount_abort_allows_fresh_goto(void) {
+	install_slew_light_observer();
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
 	SERIAL_CHECK_TRUE(unpark_mount());
@@ -593,7 +606,9 @@ static void mount_abort_allows_fresh_goto(void) {
 	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
 	SERIAL_CHECK_TRUE(fabs(dec - 30) > 1);
-	indigo_usleep(1200000);
+	// published with the abort, before MOUNT_ABORT_MOTION is OK
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("aborted GOTO", 2));
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
 	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) == ra);
 	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) == dec);
@@ -613,12 +628,15 @@ static void mount_abort_allows_fresh_goto(void) {
 	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)->number.target - 30) < 0.001);
 	double target_ra = fmod(ra + 0.2, 24);
 	double target_dec = dec < 88 ? dec + 1.5 : dec - 1.5;
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	coordinate_revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	unsigned int busy = slew_light_busy_publications();
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(target_ra, target_dec));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE, coordinate_revision));
 	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, coordinate_revision));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, target_ra, 0.001));
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, target_dec, 0.001));
+	SERIAL_CHECK_TRUE(slew_light_busy_then_idle("GOTO after the abort", busy));
 	// An abort while idle leaves the position, the coordinate state and tracking unchanged
 	ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
@@ -632,8 +650,10 @@ static void mount_abort_allows_fresh_goto(void) {
 	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) == dec);
 	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME)->sw.value);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_TRACKING_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 cleanup:
 	stop_serial_driver(&mount_simulator);
+	remove_slew_light_observer();
 }
 
 // MULTI_POINT has no alignment model; its translations returned success without writing the result, so a GOTO kept
@@ -677,7 +697,11 @@ cleanup:
 	stop_serial_driver(&mount_simulator);
 }
 
+// The SLEW light of MOUNT_STATE is ALERT as long as the coordinates keep the ALERT of a GOTO or sync refused while parked,
+// through the unpark; the refusal is made by the guard of the generated change branch, which cannot run driver code, so
+// the light follows with the next poll. An accepted GOTO turns it BUSY and IDLE when it ends.
 static void mount_park_home_and_parked_guards(void) {
+	install_slew_light_observer();
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true));
@@ -697,22 +721,31 @@ static void mount_park_home_and_parked_guards(void) {
 	// A parked mount refuses a GOTO and a sync; the refusal stays ALERT over the following polls.
 	double parked_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	double parked_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked GOTO", mount_simulator.device_name, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, fmod(parked_ra + 1, 24), 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("parked GOTO", 2));
 	SERIAL_CHECK_TRUE(check_coordinates_refusal("parked sync", mount_simulator.device_name, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, fmod(parked_ra + 1, 24), 20, 2, 0.1));
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("parked sync", 2));
 	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
 	// A parked mount refuses the abort through a reject_change guard, which also restores the switch.
 	SERIAL_CHECK_TRUE(assert_rejected_switch_change(MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME));
 	SERIAL_CHECK_TRUE(unpark_mount());
+	// published with the unpark, before MOUNT_PARK is OK
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	// A guard must not be sticky once the mount is unparked.
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
-	// The kept refusal lasts through the unpark, an accepted GOTO ends it.
+	// The kept refusal lasts through the unpark and an abort of no motion, an accepted GOTO ends it.
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("unparked after the refusals", 1));
+	unsigned int busy = slew_light_busy_publications();
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME), fmax(-80, fmin(80, parked_dec - 2))));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(slew_light_busy_then_idle("GOTO after the refusals", busy));
 cleanup:
 	stop_serial_driver(&mount_simulator);
+	remove_slew_light_observer();
 }
 
 static void guider_axes_complete_independently(void) {
@@ -745,6 +778,8 @@ static void mount_manual_axes_reverse_and_abort(void) {
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_mount_coordinate_change(initial_ra, initial_dec));
+	// the coordinates are BUSY while the mount moves, and the SLEW light with them
+	SERIAL_CHECK_TRUE(MOUNT_WAIT_UNTIL(cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE && cached_light(MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_BUSY_STATE, 5));
 	// East and north raise RA and Dec, the same directions as guide pulses
 	double east_ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
 	double north_dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
@@ -765,6 +800,9 @@ static void mount_manual_axes_reverse_and_abort(void) {
 	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME)->sw.value);
 	SERIAL_CHECK_TRUE(!find_cached_item(MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME)->sw.value);
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+	// the aborted motion ends the coordinates ALERT, the SLEW light with them
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 cleanup:
 	stop_serial_driver(&mount_simulator);
 }
@@ -1142,8 +1180,6 @@ cleanup:
 	}
 	simulator_test_client.update_property = simulator_client_update_property;
 }
-
-#define MOUNT_WAIT_UNTIL(condition, timeout) ({ double deadline_ = indigo_monotonic_time() + (timeout); bool ready_ = (condition); while (!ready_ && indigo_monotonic_time() < deadline_) { indigo_usleep(5000); ready_ = (condition); } ready_; })
 
 static indigo_property_state cached_state(const char *property_name) {
 	indigo_property *property = find_cached_property(property_name);
@@ -1583,6 +1619,71 @@ static bool wait_for_polls(int count) {
 	return MOUNT_WAIT_UNTIL(property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME) >= revision + count, 5.0 * count);
 }
 
+// The publications of MOUNT_STATE with the SLEW light BUSY while the coordinates are BUSY, counted on the bus thread; the
+// observer passes every publication on to the observer it replaced, which may be a recorder of check_coordinates_refusal().
+static atomic_uint slew_busy_publications;
+
+static indigo_result slew_light_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, mount_simulator.device_name) && !strcmp(property->name, MOUNT_STATE_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, MOUNT_STATE_SLEW_ITEM_NAME) && property->items[i].light.value == INDIGO_BUSY_STATE && cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_BUSY_STATE) {
+				atomic_fetch_add(&slew_busy_publications, 1);
+			}
+		}
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static void install_slew_light_observer(void) {
+	atomic_store(&slew_busy_publications, 0);
+	simulator_test_client.update_property = slew_light_update;
+}
+
+static void remove_slew_light_observer(void) {
+	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+static unsigned int slew_light_busy_publications(void) {
+	return atomic_load(&slew_busy_publications);
+}
+
+// The SLEW light of MOUNT_STATE is ALERT whenever the coordinates are, the ALERT that indigo_update_coordinates() keeps
+// after a refused or failed request included, and both stay so over the following polls of the idle mount. A refusal of
+// a guard of the generated change branch reaches the light with the next poll. The polls are counted by MOUNT_LST_TIME,
+// which every poll publishes with a new value, also in the CONTROLLER alignment mode, where MOUNT_RAW_COORDINATES is hidden.
+static bool slew_light_alert_across_polls(const char *label, int polls) {
+	if (!MOUNT_WAIT_UNTIL(cached_light(MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_ALERT_STATE, 3)) {
+		fprintf(stderr, "    %s: SLEW light %d while the coordinates are %d\n", label, cached_light(MOUNT_STATE_SLEW_ITEM_NAME), cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+		return false;
+	}
+	for (int i = 0; i < polls; i++) {
+		unsigned int revision = property_revision(MOUNT_LST_TIME_PROPERTY_NAME);
+		if (!MOUNT_WAIT_UNTIL(property_revision(MOUNT_LST_TIME_PROPERTY_NAME) > revision, 5)) {
+			fprintf(stderr, "    %s: no poll\n", label);
+			return false;
+		}
+		if (cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) != INDIGO_ALERT_STATE || cached_light(MOUNT_STATE_SLEW_ITEM_NAME) != INDIGO_ALERT_STATE) {
+			fprintf(stderr, "    %s: after poll %d the coordinates are %d and the SLEW light %d, both should stay ALERT\n", label, i + 1, cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME), cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
+			return false;
+		}
+	}
+	return true;
+}
+
+// An accepted request published the SLEW light BUSY with the coordinates BUSY since `busy` was read, and ended with the
+// coordinates OK and the light IDLE.
+static bool slew_light_busy_then_idle(const char *label, unsigned int busy) {
+	if (!MOUNT_WAIT_UNTIL(cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == INDIGO_OK_STATE && cached_light(MOUNT_STATE_SLEW_ITEM_NAME) == INDIGO_IDLE_STATE, 30)) {
+		fprintf(stderr, "    %s: the coordinates ended %d and the SLEW light %d\n", label, cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME), cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
+		return false;
+	}
+	if (slew_light_busy_publications() <= busy) {
+		fprintf(stderr, "    %s: the SLEW light was not published BUSY with the coordinates\n", label);
+		return false;
+	}
+	return true;
+}
+
 // The publications of one request: the first is its BUSY, the result follows BUSY publications only, then nothing but
 // polls in the state of the result, at least `polls` of them; the result is published once. A poll that ran between the
 // start of the log and the request, in the state before it, is skipped. MOUNT_HORIZONTAL_COORDINATES is published right
@@ -1630,8 +1731,9 @@ static bool check_coordinates_request(const char *label, coordinates_event *even
 
 // A sync of the INDIGO alignment model publishes BUSY and its result once, from the change handler: a refusal stays ALERT
 // across the following polls until the next request, an accepted sync after it ends OK and so does a GoTo after a
-// refused sync. A reconnection starts without the ALERT of the previous session. (The simulator has no way to fail a
-// position readback.)
+// refused sync. A reconnection starts without the ALERT of the previous session. The SLEW light of MOUNT_STATE follows the
+// coordinates: ALERT with a refusal, IDLE after an accepted request and after the reconnection. (The simulator has no way
+// to fail a position readback.)
 static void mount_sync_publishes_busy_and_keeps_a_refusal(void) {
 	static coordinates_event events[COORDINATES_LOG_SIZE];
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
@@ -1651,6 +1753,7 @@ static void mount_sync_publishes_busy_and_keeps_a_refusal(void) {
 	int count = stop_coordinates_log(events);
 	SERIAL_CHECK_TRUE(check_coordinates_request("refused sync", events, count, INDIGO_ALERT_STATE, 3));
 	SERIAL_CHECK_TRUE(coordinates_alert_message_contains("celestial pole"));
+	SERIAL_CHECK_TRUE(slew_light_alert_across_polls("refused sync", 2));
 	SERIAL_CHECK_EQ_INT(0, alignment_point_count());
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - dec) < 0.01);
 	// an accepted sync after the refused one: BUSY, OK, and OK from the following polls
@@ -1660,6 +1763,7 @@ static void mount_sync_publishes_busy_and_keeps_a_refusal(void) {
 	SERIAL_CHECK_TRUE(wait_for_polls(3));
 	count = stop_coordinates_log(events);
 	SERIAL_CHECK_TRUE(check_coordinates_request("accepted sync after a refused one", events, count, INDIGO_OK_STATE, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - (dec + 0.05)) < 0.01);
 	// a GoTo after a refused sync: BUSY until it arrives, then OK
 	start_coordinates_log();
@@ -1667,11 +1771,13 @@ static void mount_sync_publishes_busy_and_keeps_a_refusal(void) {
 	SERIAL_CHECK_TRUE(wait_for_polls(2));
 	count = stop_coordinates_log(events);
 	SERIAL_CHECK_TRUE(check_coordinates_request("second refused sync", events, count, INDIGO_ALERT_STATE, 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	start_coordinates_log();
 	SERIAL_CHECK_TRUE(goto_hour_angle(3, 35));
 	SERIAL_CHECK_TRUE(wait_for_polls(2));
 	count = stop_coordinates_log(events);
 	SERIAL_CHECK_TRUE(check_coordinates_request("GoTo after a refused sync", events, count, INDIGO_OK_STATE, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	// a refused sync, then a reconnection: the next session starts OK
 	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
 	start_coordinates_log();
@@ -1679,8 +1785,12 @@ static void mount_sync_publishes_busy_and_keeps_a_refusal(void) {
 	SERIAL_CHECK_TRUE(wait_for_polls(2));
 	count = stop_coordinates_log(events);
 	SERIAL_CHECK_TRUE(check_coordinates_request("refused sync before reconnection", events, count, INDIGO_ALERT_STATE, 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	disconnect_serial_device(&mount_simulator);
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	// MOUNT_STATE is defined with the SLEW light of the coordinates it is defined with
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 	start_coordinates_log();
 	SERIAL_CHECK_TRUE(wait_for_polls(2));
 	count = stop_coordinates_log(events);
@@ -1694,6 +1804,7 @@ static void mount_sync_publishes_busy_and_keeps_a_refusal(void) {
 	SERIAL_CHECK_TRUE(publications >= 4);
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, cached_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, cached_state(MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, cached_light(MOUNT_STATE_SLEW_ITEM_NAME));
 cleanup:
 	stop_coordinates_log(events);
 	if (context.connected && alignment_point_count() > 0) {
