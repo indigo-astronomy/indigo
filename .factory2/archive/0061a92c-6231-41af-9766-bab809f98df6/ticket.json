@@ -1,0 +1,837 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0061a92c-6231-41af-9766-bab809f98df6",
+  "revision": 40,
+  "title": "indigo_agent_auxiliary: compute AGENT_AUX_SAFETY from AUX_WEATHER_SAFETY of the selected aux devices",
+  "description": "The Auxiliary Agent defines AGENT_AUX_SAFETY (light, SAFE) but never computes it, so it stays IDLE. Make the agent consume AUX_WEATHER_SAFETY from the aux devices and publish the combined result through AGENT_AUX_SAFETY. The Scheduler Agent already reads AGENT_AUX_SAFETY.SAFE and must keep working unchanged.\n\nDesign agreed with the owner:\n1. Sources: only devices selected in FILTER_AUX_1_LIST to FILTER_AUX_4_LIST. Each one that defines AUX_WEATHER_SAFETY contributes; several sources are allowed. The agent keeps no thresholds; drivers own them.\n2. Combination (worst wins, same rule as indigo_aux_evaluate_weather_safety()): SAFE = ALERT if any source SAFE is ALERT, otherwise OK if at least one source is OK, otherwise IDLE (no source or all IDLE).\n3. Add items CLOUDS, RAIN, WIND, HUMIDITY to AGENT_AUX_SAFETY, each combined worst-wins across sources. SAFE stays item 0. Publish the new item names in indigo_agent_auxiliary.h.\n4. Messages: when the combined SAFE changes, or the set of unsafe sources changes, pass on the source's reason with the device name appended, e.g. 'Unsafe: wind 12.4 m/s above 10.0 m/s (AAG CloudWatcher)'. Other updates carry no message.\n5. Lost source (disconnect, deselect, property deleted): recompute without it. With no source left: SAFE IDLE, property state ALERT, message 'Weather safety source lost'. The scheduler's AGENT_SCHEDULER_SAFETY_MISSING then decides how missing data counts.\n\nImplementation: add agent client define/update/delete callbacks (pattern of indigo_agent_mount.c agent_define_property) that forward to indigo_filter_*_property() and recompute when AUX_WEATHER_SAFETY of a device in an aux slot is involved; recompute from the cache via indigo_filter_cached_property() over INDIGO_FILTER_AUX_1_INDEX..INDIGO_FILTER_AUX_4_INDEX, under a mutex, updating only on change. Also recompute after indigo_filter_change_property() handles a FILTER_AUX_x_LIST change. Bump DRIVER_VERSION to 0x03000007. Update AGENT_AUX_SAFETY in indigo_docs/PROPERTIES.md (it currently says the agent does not compute it).\n\nTests: agent integration test with aux_simulator as the source: select and see OK; move a threshold under the reading and see ALERT with the reason; restore and see OK; deselect/disconnect and see the lost-source behaviour; two sources with one unsafe gives ALERT.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-23T08:07:03.112656Z",
+  "status": "closed",
+  "branch": "ticket/0061a92c-6231-41af-9766-bab809f98df6",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "5d66bed1-f70e-49e3-8013-413034398b67",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T08:10:43.521707Z",
+          "last_activity_at": "2026-11-23T08:31:55.806144Z",
+          "ended_at": "2026-11-23T08:31:55.806144Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1272284.437,
+          "tokens": null
+        },
+        {
+          "attempt_id": "e9a539ac-9b4e-4b7a-819f-52ea19afbb1d",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T08:54:06.511523Z",
+          "last_activity_at": "2026-11-23T08:59:20.942744Z",
+          "ended_at": "2026-11-23T08:59:20.942744Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 314431.221,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T08:10:43.521707Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/0061a92c-6231-41af-9766-bab809f98df6"
+        },
+        {
+          "at": "2026-11-23T08:31:55.806144Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-23T08:54:06.511523Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-23T08:59:20.942744Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1586715.658,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "da05f1a7-0c3b-442e-a5eb-f8ce2a14960b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T08:31:55.806179Z",
+          "last_activity_at": "2026-11-23T08:37:00.072778Z",
+          "ended_at": "2026-11-23T08:37:00.072778Z",
+          "outcome": {
+            "summary": "Pass. Diff master...HEAD meets the approved design: sources are the FILTER_AUX_1..4 selections, worst-wins for SAFE and the four conditions, SAFE stays item 0 (scheduler unchanged, it looks up SAFE by name), message on combined SAFE or unsafe-set change, lost source gives SAFE IDLE, state ALERT and 'Weather safety source lost'. DRIVER_VERSION is 0x03000007. PROPERTIES.md, the header, Xcode (C0DE20261123A00100000001 is unique and in the test group) and the Makefile (in INTEGRATION_TESTS, run_driver_test.py picks it up by the test_agent_auxiliary_ prefix) are all correct. Reviewer ran: test-agent-auxiliary-simulator 3x 4/4 pass, test-agent-auxiliary pass, and the driver builds without warnings. Deviations checked: (a) indigo_filter_cached_property is marked deprecated in indigo_filter.h:288. The direct loop does the same thing and also requires a finished selection (list OK and slot match), which is correct. (b) The bus delivers the reason through send_message straight after update_property, under the same recursive bus_mutex (indigo_bus.c:1326-1331). Over XML the <message name=...> element follows the setVector on the same socket and is replayed with the cached property (indigo_xml.c:1308). For a source that uses indigo_aux_update_weather_safety(), as aux_simulator and aux_cloudwatcher do and PROPERTIES.md requires, an unsafe transition is therefore neither delayed nor lost, and the two cannot arrive out of order. If another trigger runs between a remote setVector and its <message>, the transition is published with a synthesized reason and the real one is dropped. Minor. (c) and (d) are acceptable. (e) A stand-in is needed because aux_simulator has only one weather device. Locking: every compute_safety call runs inside bus_mutex (change_property and the client callbacks). The lock order is always bus then safety, and indigo_update_property re-enters the recursive bus mutex, so there is no deadlock. Shutdown detaches the client before the device, so the mutex is not u",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 304266.599,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ae250825-a7f8-4b56-8b14-6a333b86040f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-23T08:51:39.520599Z",
+          "last_activity_at": "2026-11-23T08:54:06.511451Z",
+          "ended_at": "2026-11-23T08:54:06.511451Z",
+          "outcome": {
+            "summary": "Round 2. N1 fixed: a source SAFE change, including OK->ALERT, is published at once from agent_update_property; the reason follows in a second update (reason_arrived/follow_up), identical follow-ups are suppressed via published_message, no loop is possible (own updates and the agent's own device are excluded, reason_written is cleared on every rebuild). N2 fixed: PROPERTIES.md states the agent-written reason without values. Locking is sound: all bus callbacks run under the recursive bus_mutex, safety_mutex is always taken inside it. Formatting OK. test-agent-auxiliary-simulator (5/5) and test-agent-auxiliary (3/3) pass.\nFinding R2-1 (stale reason, contradicts PROPERTIES.md): indigo_agent_auxiliary.c:124-126 source_reason_available() treats the stored reason as valid whenever reason_light equals the current SAFE light; the reason is never invalidated when the source's SAFE light changes (compute_safety line 175). Sequence ALERT with reason 'Unsafe: rain 3.0 mm/h above 1.0 mm/h' -> OK without message -> ALERT without message publishes the old 'Unsafe: rain 3.0 mm/h above 1.0 mm/h (Weather Stand-in)' instead of 'Unsafe: rain (Weather Stand-in)'. Reproduced with a scratch copy of test_agent_auxiliary_simulator.c (case fails: message is the old reason). An old ALERT reason can name a condition that is no longer the cause. PROPERTIES.md says a change without a message gets an agent-written reason. Fix: in compute_safety, when the new light differs from the previous source_light[slot], clear reason_device[slot] (the source's reason always arrives after the update, so the new one revalidates it); add this sequence to source_change_without_reason.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 146990.852,
+          "tokens": null
+        },
+        {
+          "attempt_id": "8b41bea4-915f-4fb6-a70e-f2ba190acb62",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T08:59:20.942772Z",
+          "last_activity_at": "2026-11-23T09:00:52.982790Z",
+          "ended_at": "2026-11-23T09:00:52.982790Z",
+          "outcome": {
+            "summary": "Round 3 review of git diff master...HEAD (41a8e63f8). R2-1 fixed: compute_safety (indigo_agent_auxiliary.c:175-178) clears reason_device of a slot whenever its SAFE light differs from the last computed source_light, so a reason stored for an earlier ALERT cannot be reused after an OK in between. Traced the repro: ALERT+reason -> update clears, message stored with reason_light ALERT, follow-up publishes it; OK without message -> cleared, agent-written Safe; ALERT without message -> nothing stored, agent-written 'Unsafe: rain (dev)'. The old code would publish the stale reason at step 3 (reason_light == source_light == ALERT, same device), so the new test steps in source_change_without_reason (test_agent_auxiliary_simulator.c:361-369) discriminate. Valid reasons are not dropped: indigo_update_property delivers update_property before send_message (indigo_bus.c:1330), so the clearing happens on the update that changes the light and the message that follows is stored with the same light and passed on by the reason_arrived follow-up (covered by the messages+2 assertion and the new step 1). reason_written follow-up path unchanged and still correct: follow-up only when the slot had an agent-written reason, its light equals the verdict and the stored reason matches the current light; identical text is suppressed. N1 unaffected (no hold-back). PROPERTIES.md AGENT_AUX_SAFETY paragraph still matches the behaviour. Locking, formatting, Makefile and Xcode entries not touched by the latest change. Ran make -C indigo_test test-agent-auxiliary-simulator (5/5 pass, archive rebuilt from current source) and test-agent-auxiliary (3/3 pass). No findings.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 92040.018,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T08:31:55.806179Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T08:37:00.072778Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Diff master...HEAD meets the approved design: sources are the FILTER_AUX_1..4 selections, worst-wins for SAFE and the four conditions, SAFE stays item 0 (scheduler unchanged, it looks up SAFE by name), message on combined SAFE or unsafe-set change, lost source gives SAFE IDLE, state ALERT and 'Weather safety source lost'. DRIVER_VERSION is 0x03000007. PROPERTIES.md, the header, Xcode (C0DE20261123A00100000001 is unique and in the test group) and the Makefile (in INTEGRATION_TESTS, run_driver_test.py picks it up by the test_agent_auxiliary_ prefix) are all correct. Reviewer ran: test-agent-auxiliary-simulator 3x 4/4 pass, test-agent-auxiliary pass, and the driver builds without warnings. Deviations checked: (a) indigo_filter_cached_property is marked deprecated in indigo_filter.h:288. The direct loop does the same thing and also requires a finished selection (list OK and slot match), which is correct. (b) The bus delivers the reason through send_message straight after update_property, under the same recursive bus_mutex (indigo_bus.c:1326-1331). Over XML the <message name=...> element follows the setVector on the same socket and is replayed with the cached property (indigo_xml.c:1308). For a source that uses indigo_aux_update_weather_safety(), as aux_simulator and aux_cloudwatcher do and PROPERTIES.md requires, an unsafe transition is therefore neither delayed nor lost, and the two cannot arrive out of order. If another trigger runs between a remote setVector and its <message>, the transition is published with a synthesized reason and the real one is dropped. Minor. (c) and (d) are acceptable. (e) A stand-in is needed because aux_simulator has only one weather device. Locking: every compute_safety call runs inside bus_mutex (change_property and the client callbacks). The lock order is always bus then safety, and indigo_update_property re-enters the recursive bus mutex, so there is no deadlock. Shutdown detaches the client before the device, so the mutex is not u"
+        },
+        {
+          "at": "2026-11-23T08:51:39.520599Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T08:54:06.511451Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2. N1 fixed: a source SAFE change, including OK->ALERT, is published at once from agent_update_property; the reason follows in a second update (reason_arrived/follow_up), identical follow-ups are suppressed via published_message, no loop is possible (own updates and the agent's own device are excluded, reason_written is cleared on every rebuild). N2 fixed: PROPERTIES.md states the agent-written reason without values. Locking is sound: all bus callbacks run under the recursive bus_mutex, safety_mutex is always taken inside it. Formatting OK. test-agent-auxiliary-simulator (5/5) and test-agent-auxiliary (3/3) pass.\nFinding R2-1 (stale reason, contradicts PROPERTIES.md): indigo_agent_auxiliary.c:124-126 source_reason_available() treats the stored reason as valid whenever reason_light equals the current SAFE light; the reason is never invalidated when the source's SAFE light changes (compute_safety line 175). Sequence ALERT with reason 'Unsafe: rain 3.0 mm/h above 1.0 mm/h' -> OK without message -> ALERT without message publishes the old 'Unsafe: rain 3.0 mm/h above 1.0 mm/h (Weather Stand-in)' instead of 'Unsafe: rain (Weather Stand-in)'. Reproduced with a scratch copy of test_agent_auxiliary_simulator.c (case fails: message is the old reason). An old ALERT reason can name a condition that is no longer the cause. PROPERTIES.md says a change without a message gets an agent-written reason. Fix: in compute_safety, when the new light differs from the previous source_light[slot], clear reason_device[slot] (the source's reason always arrives after the update, so the new one revalidates it); add this sequence to source_change_without_reason."
+        },
+        {
+          "at": "2026-11-23T08:59:20.942772Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T09:00:52.982790Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 3 review of git diff master...HEAD (41a8e63f8). R2-1 fixed: compute_safety (indigo_agent_auxiliary.c:175-178) clears reason_device of a slot whenever its SAFE light differs from the last computed source_light, so a reason stored for an earlier ALERT cannot be reused after an OK in between. Traced the repro: ALERT+reason -> update clears, message stored with reason_light ALERT, follow-up publishes it; OK without message -> cleared, agent-written Safe; ALERT without message -> nothing stored, agent-written 'Unsafe: rain (dev)'. The old code would publish the stale reason at step 3 (reason_light == source_light == ALERT, same device), so the new test steps in source_change_without_reason (test_agent_auxiliary_simulator.c:361-369) discriminate. Valid reasons are not dropped: indigo_update_property delivers update_property before send_message (indigo_bus.c:1330), so the clearing happens on the update that changes the light and the message that follows is stored with the same light and passed on by the reason_arrived follow-up (covered by the messages+2 assertion and the new step 1). reason_written follow-up path unchanged and still correct: follow-up only when the slot had an agent-written reason, its light equals the verdict and the stored reason matches the current light; identical text is suppressed. N1 unaffected (no hold-back). PROPERTIES.md AGENT_AUX_SAFETY paragraph still matches the behaviour. Locking, formatting, Makefile and Xcode entries not touched by the latest change. Ran make -C indigo_test test-agent-auxiliary-simulator (5/5 pass, archive rebuilt from current source) and test-agent-auxiliary (3/3 pass). No findings."
+        }
+      ],
+      "result": {
+        "summary": "Round 3 review of git diff master...HEAD (41a8e63f8). R2-1 fixed: compute_safety (indigo_agent_auxiliary.c:175-178) clears reason_device of a slot whenever its SAFE light differs from the last computed source_light, so a reason stored for an earlier ALERT cannot be reused after an OK in between. Traced the repro: ALERT+reason -> update clears, message stored with reason_light ALERT, follow-up publishes it; OK without message -> cleared, agent-written Safe; ALERT without message -> nothing stored, agent-written 'Unsafe: rain (dev)'. The old code would publish the stale reason at step 3 (reason_light == source_light == ALERT, same device), so the new test steps in source_change_without_reason (test_agent_auxiliary_simulator.c:361-369) discriminate. Valid reasons are not dropped: indigo_update_property delivers update_property before send_message (indigo_bus.c:1330), so the clearing happens on the update that changes the light and the message that follows is stored with the same light and passed on by the reason_arrived follow-up (covered by the messages+2 assertion and the new step 1). reason_written follow-up path unchanged and still correct: follow-up only when the slot had an agent-written reason, its light equals the verdict and the stored reason matches the current light; identical text is suppressed. N1 unaffected (no hold-back). PROPERTIES.md AGENT_AUX_SAFETY paragraph still matches the behaviour. Locking, formatting, Makefile and Xcode entries not touched by the latest change. Ran make -C indigo_test test-agent-auxiliary-simulator (5/5 pass, archive rebuilt from current source) and test-agent-auxiliary (3/3 pass). No findings.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 543297.469,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "913ff26c-ecbf-4c38-b00e-68c8f35fa5b2",
+      "event": "ticket/created",
+      "at": "2026-11-23T08:07:03.113980Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "14b550de-fa13-40b4-b22d-e2dc5336ae33",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T08:10:28.850486Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "a79429c8-db54-4361-8b20-b5693f4fcd37",
+      "event": "task/progress",
+      "at": "2026-11-23T08:10:43.522256Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Implementation started on branch ticket/0061a92c-6231-41af-9766-bab809f98df6"
+    },
+    {
+      "event_id": "05806010-1434-4cec-b784-fd524d269e0b",
+      "event": "ticket/started",
+      "at": "2026-11-23T08:10:43.524258Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/0061a92c-6231-41af-9766-bab809f98df6",
+      "base": "master"
+    },
+    {
+      "event_id": "bbd99be0-fc22-436f-92ca-445ef96b049c",
+      "event": "task/progress",
+      "at": "2026-11-23T08:11:01.059751Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Implementer launched",
+      "attempt_id": "5d66bed1-f70e-49e3-8013-413034398b67",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3a18df45-f6c5-4ad2-ab7c-bf73e1c7d9ad",
+      "event": "task/progress",
+      "at": "2026-11-23T08:15:10.717223Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Implementing AGENT_AUX_SAFETY combination in indigo_agent_auxiliary.c"
+    },
+    {
+      "event_id": "f91eef37-6279-4d62-a0ad-4e30f7c6b01b",
+      "event": "task/progress",
+      "at": "2026-11-23T08:19:07.960797Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Running test_agent_auxiliary_simulator and test_agent_auxiliary"
+    },
+    {
+      "event_id": "e73b86d1-944d-4d53-a5b1-884ba460b056",
+      "event": "task/progress",
+      "at": "2026-11-23T08:26:30.851007Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d9a48808-fd77-448b-91bb-3c6ce2c1d8f6",
+      "event": "task/progress",
+      "at": "2026-11-23T08:26:30.891782Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "1f98f6e5-56dd-45e8-a470-61237e773267",
+      "event": "task/progress",
+      "at": "2026-11-23T08:26:30.903729Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "45ad9ed2-b62e-4883-9abd-b59a27457e2d",
+      "event": "task/progress",
+      "at": "2026-11-23T08:27:46.814153Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "3c5402ad-3288-4231-a633-e757dc099485",
+      "event": "check/passed",
+      "at": "2026-11-23T08:27:46.821089Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "8ec1d5c3bc6dd435a95487cf6f338594d5f39d04",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "5d35fa67-3b8b-414e-93aa-8459c1e20360",
+      "event": "task/progress",
+      "at": "2026-11-23T08:27:51.283447Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Implementation done; flow check passed, ready for review"
+    },
+    {
+      "event_id": "3531eca6-201c-4c12-9b14-cf24d6dd8126",
+      "event": "task/progress",
+      "at": "2026-11-23T08:31:55.704562Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Reviewer launched",
+      "attempt_id": "5d66bed1-f70e-49e3-8013-413034398b67",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ab561b02-9a32-4cca-a74f-8c294ea60ccd",
+      "event": "task/progress",
+      "at": "2026-11-23T08:31:55.806228Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e133d164-128c-499d-9619-8b2556965322",
+      "event": "review/started",
+      "at": "2026-11-23T08:31:55.806483Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "b6779b13-512f-45be-9ae5-0f706de70484",
+      "event": "task/progress",
+      "at": "2026-11-23T08:34:03.750873Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Building and running test-agent-auxiliary-simulator and test-agent-auxiliary"
+    },
+    {
+      "event_id": "d2e705e9-b42c-4909-b8ed-5798927d8329",
+      "event": "task/progress",
+      "at": "2026-11-23T08:37:00.072885Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "6beae822-f8c7-465e-a7d2-66d36a0e73f3",
+      "event": "review/passed",
+      "at": "2026-11-23T08:37:00.073334Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "8ec1d5c3bc6dd435a95487cf6f338594d5f39d04"
+    },
+    {
+      "event_id": "91ed4a71-8c83-4dfb-ba8b-edf1b1b2684f",
+      "event": "ticket/note",
+      "at": "2026-11-23T08:45:47.575368Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision after the passing review: fix N1 and N2 before closing. N1: in indigo_agent_auxiliary.c (safety_reason_follows / agent_update_property) a source SAFE change waits for the source's reason message, and without a message every later SAFE change of that source is ignored, including OK->ALERT. Fix: never hold back a change to ALERT (publish at once, take the reason when it arrives); for other changes hold back at most the one update that changed SAFE, comparing with the last received SAFE, not the last calculation. Add a test where a source changes SAFE to ALERT without sending a message. N2: PROPERTIES.md AGENT_AUX_SAFETY paragraph must state that when no reason from the source is available the agent writes its own reason without values, e.g. 'Unsafe: wind (device)'.",
+      "tokens": null
+    },
+    {
+      "event_id": "881ab533-58f0-452c-b30c-0be572ea127c",
+      "event": "task/progress",
+      "at": "2026-11-23T08:46:20.646612Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Fixing review notes N1 (held-back SAFE changes) and N2 (docs)"
+    },
+    {
+      "event_id": "e8e7e9ec-5a4a-45bb-999c-88beef7e2c35",
+      "event": "task/progress",
+      "at": "2026-11-23T08:50:04.079001Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "N1/N2 fixed, tests pass; running flow check"
+    },
+    {
+      "event_id": "65a4e60b-1e54-4082-b977-e6478e1cc708",
+      "event": "task/progress",
+      "at": "2026-11-23T08:50:04.244345Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b2d85e9c-2c8f-4a21-bb57-d8f5a89c4d01",
+      "event": "task/progress",
+      "at": "2026-11-23T08:50:04.266177Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a6344d86-7a25-48a9-996f-dc854ae371f5",
+      "event": "task/progress",
+      "at": "2026-11-23T08:50:04.271114Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "1faa6793-93cc-425f-aefd-4b6116f13c51",
+      "event": "task/progress",
+      "at": "2026-11-23T08:51:12.574140Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "91d10db0-9552-4ff5-b161-1b268af67f66",
+      "event": "check/passed",
+      "at": "2026-11-23T08:51:12.588507Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "237da2c49fa127add01b5d0879e6e07e37ea5037",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "599ec7a5-2709-4584-8e95-2654534e82cf",
+      "event": "task/progress",
+      "at": "2026-11-23T08:51:39.520673Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "4671e4eb-8422-4d2d-9eaa-4c521308f077",
+      "event": "review/started",
+      "at": "2026-11-23T08:51:39.520934Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "99687d15-8a92-47d3-8944-633b5c9c9e0b",
+      "event": "task/progress",
+      "at": "2026-11-23T08:51:42.513385Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Round 2 reviewer launched",
+      "attempt_id": "ae250825-a7f8-4b56-8b14-6a333b86040f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b1a09ab4-e43c-4b32-9668-867cdfaf6799",
+      "event": "task/progress",
+      "at": "2026-11-23T08:53:02.681305Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Running test-agent-auxiliary-simulator and test-agent-auxiliary"
+    },
+    {
+      "event_id": "e33e6215-48ad-435a-b88f-a53d06d10f03",
+      "event": "task/progress",
+      "at": "2026-11-23T08:54:06.511518Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "bd069e54-8418-4238-bf5a-ccd6eec9055a",
+      "event": "task/progress",
+      "at": "2026-11-23T08:54:06.511536Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "71b7c55d-1c0a-4763-bb10-beb40dfb84ac",
+      "event": "review/changes_requested",
+      "at": "2026-11-23T08:54:06.511919Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "237da2c49fa127add01b5d0879e6e07e37ea5037"
+    },
+    {
+      "event_id": "09867538-3567-423d-a1f1-53df0ef23c1c",
+      "event": "task/progress",
+      "at": "2026-11-23T08:54:36.701708Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Fixing R2-1: clear stale source reason when SAFE light changes"
+    },
+    {
+      "event_id": "4176f255-64f2-4cdd-9628-b009d92aab2d",
+      "event": "task/progress",
+      "at": "2026-11-23T08:57:51.461584Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "396b0ef9-9479-43b2-a122-fc2d53b95fc3",
+      "event": "task/progress",
+      "at": "2026-11-23T08:57:51.502637Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "d05e5575-8287-4b64-b9cf-b67bdff0e576",
+      "event": "task/progress",
+      "at": "2026-11-23T08:57:51.506831Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "3cb8e6e4-1825-4d0b-8e81-3610eac46619",
+      "event": "task/progress",
+      "at": "2026-11-23T08:59:01.657461Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "c50d357b-78db-4d64-bd21-2acf896fe82c",
+      "event": "check/passed",
+      "at": "2026-11-23T08:59:01.667387Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "41a8e63f86d2984b9b6b4ca29217cfaed7bccbf3",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "22688507-cc27-4205-903a-77add857ab98",
+      "event": "task/progress",
+      "at": "2026-11-23T08:59:20.856884Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "70de81dc-a750-454a-a17c-fbc1f780d2dc",
+      "text": "Round 3 reviewer launched",
+      "attempt_id": "e9a539ac-9b4e-4b7a-819f-52ea19afbb1d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6fce1b6e-9fdf-4aeb-8ca8-172894309bd5",
+      "event": "task/progress",
+      "at": "2026-11-23T08:59:20.942831Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "48d9e689-e441-4e59-9141-7f781e440786",
+      "event": "review/started",
+      "at": "2026-11-23T08:59:20.943150Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "6a156a9c-54c9-4e3e-8917-93c1327da38f",
+      "event": "task/progress",
+      "at": "2026-11-23T09:00:25.075669Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Running agent auxiliary integration tests in the worktree"
+    },
+    {
+      "event_id": "79f156f2-8037-4ee1-b09b-a3e0e4343ee8",
+      "event": "task/progress",
+      "at": "2026-11-23T09:00:52.982844Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "a6d29a4b-a31b-4412-8786-173f5fbed25f",
+      "event": "review/passed",
+      "at": "2026-11-23T09:00:52.983190Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9d346f7f-9239-4840-840b-32e962fe790b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "41a8e63f86d2984b9b6b4ca29217cfaed7bccbf3"
+    },
+    {
+      "event_id": "564237cf-6fa0-4d91-a7b3-344ab5507144",
+      "event": "ticket/closed",
+      "at": "2026-11-23T09:10:03.694239Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-23T09:10:03.694203Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "e9110733e7a14a901b44de86e2021d14c7e4bf01"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8ec1d5c3bc6dd435a95487cf6f338594d5f39d04",
+        "tree": "ee5451e91221da8e7a6fc79bea2cfe43e8191945",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T08:26:30.891064Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/0061a92c-6231-41af-9766-bab809f98df6/ee5451e91221-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "8ec1d5c3bc6dd435a95487cf6f338594d5f39d04",
+        "tree": "ee5451e91221da8e7a6fc79bea2cfe43e8191945",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T08:27:46.810076Z",
+        "duration_s": 75.9,
+        "log": "/tmp/factory-flow/0061a92c-6231-41af-9766-bab809f98df6/ee5451e91221-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "237da2c49fa127add01b5d0879e6e07e37ea5037",
+        "tree": "d09a938fb8c080dab43251b4179f95346783ca91",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T08:50:04.265800Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/0061a92c-6231-41af-9766-bab809f98df6/d09a938fb8c0-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "237da2c49fa127add01b5d0879e6e07e37ea5037",
+        "tree": "d09a938fb8c080dab43251b4179f95346783ca91",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T08:51:12.571130Z",
+        "duration_s": 68.3,
+        "log": "/tmp/factory-flow/0061a92c-6231-41af-9766-bab809f98df6/d09a938fb8c0-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "41a8e63f86d2984b9b6b4ca29217cfaed7bccbf3",
+        "tree": "c5eef7923e6a56540d6c1a324237c10cf25d4396",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T08:57:51.502123Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/0061a92c-6231-41af-9766-bab809f98df6/c5eef7923e6a-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "41a8e63f86d2984b9b6b4ca29217cfaed7bccbf3",
+        "tree": "c5eef7923e6a56540d6c1a324237c10cf25d4396",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T08:59:01.648744Z",
+        "duration_s": 70.1,
+        "log": "/tmp/factory-flow/0061a92c-6231-41af-9766-bab809f98df6/c5eef7923e6a-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Diff master...HEAD meets the approved design: sources are the FILTER_AUX_1..4 selections, worst-wins for SAFE and the four conditions, SAFE stays item 0 (scheduler unchanged, it looks up SAFE by name), message on combined SAFE or unsafe-set change, lost source gives SAFE IDLE, state ALERT and 'Weather safety source lost'. DRIVER_VERSION is 0x03000007. PROPERTIES.md, the header, Xcode (C0DE20261123A00100000001 is unique and in the test group) and the Makefile (in INTEGRATION_TESTS, run_driver_test.py picks it up by the test_agent_auxiliary_ prefix) are all correct. Reviewer ran: test-agent-auxiliary-simulator 3x 4/4 pass, test-agent-auxiliary pass, and the driver builds without warnings. Deviations checked: (a) indigo_filter_cached_property is marked deprecated in indigo_filter.h:288. The direct loop does the same thing and also requires a finished selection (list OK and slot match), which is correct. (b) The bus delivers the reason through send_message straight after update_property, under the same recursive bus_mutex (indigo_bus.c:1326-1331). Over XML the <message name=...> element follows the setVector on the same socket and is replayed with the cached property (indigo_xml.c:1308). For a source that uses indigo_aux_update_weather_safety(), as aux_simulator and aux_cloudwatcher do and PROPERTIES.md requires, an unsafe transition is therefore neither delayed nor lost, and the two cannot arrive out of order. If another trigger runs between a remote setVector and its <message>, the transition is published with a synthesized reason and the real one is dropped. Minor. (c) and (d) are acceptable. (e) A stand-in is needed because aux_simulator has only one weather device. Locking: every compute_safety call runs inside bus_mutex (change_property and the client callbacks). The lock order is always bus then safety, and indigo_update_property re-enters the recursive bus mutex, so there is no deadlock. Shutdown detaches the client before the device, so the mutex is not used after it is destroyed. Formatting is clean (git diff --check, one-line calls, braces, no blank lines inside functions). Non-blocking notes for the owner: N1 (indigo_agent_auxiliary.c safety_reason_follows/agent_update_property): the agent defers an AUX_WEATHER_SAFETY update that changes SAFE until a reason message arrives. It compares against source_light from the last computation, so every later update of a source that sends no message is also deferred, and the source's SAFE changes, an unsafe one included, are not picked up until an unrelated trigger: a CONNECTION update, a define or delete, or an AUX list change. This only affects a source that breaks the documented contract (third-party or future drivers). If wanted, make it fail-safe by deferring only the one update that changes SAFE (track the light of the last received update rather than of the last computation), or by never deferring a transition to ALERT. N2 (PROPERTIES.md AGENT_AUX_SAFETY paragraph): it says the agent passes on the source's reason, but without a stored reason the agent writes its own (e.g. 'Unsafe: wind' without values). One sentence would document this. N3: safety_append duplicates the static weather_safety_append of indigo_aux_driver.c. Cosmetic.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "8ec1d5c3bc6dd435a95487cf6f338594d5f39d04",
+        "tree": "ee5451e91221da8e7a6fc79bea2cfe43e8191945",
+        "at": "2026-11-23T08:37:00.071560Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 2. N1 fixed: a source SAFE change, including OK->ALERT, is published at once from agent_update_property; the reason follows in a second update (reason_arrived/follow_up), identical follow-ups are suppressed via published_message, no loop is possible (own updates and the agent's own device are excluded, reason_written is cleared on every rebuild). N2 fixed: PROPERTIES.md states the agent-written reason without values. Locking is sound: all bus callbacks run under the recursive bus_mutex, safety_mutex is always taken inside it. Formatting OK. test-agent-auxiliary-simulator (5/5) and test-agent-auxiliary (3/3) pass.\nFinding R2-1 (stale reason, contradicts PROPERTIES.md): indigo_agent_auxiliary.c:124-126 source_reason_available() treats the stored reason as valid whenever reason_light equals the current SAFE light; the reason is never invalidated when the source's SAFE light changes (compute_safety line 175). Sequence ALERT with reason 'Unsafe: rain 3.0 mm/h above 1.0 mm/h' -> OK without message -> ALERT without message publishes the old 'Unsafe: rain 3.0 mm/h above 1.0 mm/h (Weather Stand-in)' instead of 'Unsafe: rain (Weather Stand-in)'. Reproduced with a scratch copy of test_agent_auxiliary_simulator.c (case fails: message is the old reason). An old ALERT reason can name a condition that is no longer the cause. PROPERTIES.md says a change without a message gets an agent-written reason. Fix: in compute_safety, when the new light differs from the previous source_light[slot], clear reason_device[slot] (the source's reason always arrives after the update, so the new one revalidates it); add this sequence to source_change_without_reason.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "237da2c49fa127add01b5d0879e6e07e37ea5037",
+        "tree": "d09a938fb8c080dab43251b4179f95346783ca91",
+        "at": "2026-11-23T08:54:06.511365Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3 review of git diff master...HEAD (41a8e63f8). R2-1 fixed: compute_safety (indigo_agent_auxiliary.c:175-178) clears reason_device of a slot whenever its SAFE light differs from the last computed source_light, so a reason stored for an earlier ALERT cannot be reused after an OK in between. Traced the repro: ALERT+reason -> update clears, message stored with reason_light ALERT, follow-up publishes it; OK without message -> cleared, agent-written Safe; ALERT without message -> nothing stored, agent-written 'Unsafe: rain (dev)'. The old code would publish the stale reason at step 3 (reason_light == source_light == ALERT, same device), so the new test steps in source_change_without_reason (test_agent_auxiliary_simulator.c:361-369) discriminate. Valid reasons are not dropped: indigo_update_property delivers update_property before send_message (indigo_bus.c:1330), so the clearing happens on the update that changes the light and the message that follows is stored with the same light and passed on by the reason_arrived follow-up (covered by the messages+2 assertion and the new step 1). reason_written follow-up path unchanged and still correct: follow-up only when the slot had an agent-written reason, its light equals the verdict and the stored reason matches the current light; identical text is suppressed. N1 unaffected (no hold-back). PROPERTIES.md AGENT_AUX_SAFETY paragraph still matches the behaviour. Locking, formatting, Makefile and Xcode entries not touched by the latest change. Ran make -C indigo_test test-agent-auxiliary-simulator (5/5 pass, archive rebuilt from current source) and test-agent-auxiliary (3/3 pass). No findings.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "41a8e63f86d2984b9b6b4ca29217cfaed7bccbf3",
+        "tree": "c5eef7923e6a56540d6c1a324237c10cf25d4396",
+        "at": "2026-11-23T09:00:52.982745Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T08:45:47.575012Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision after the passing review: fix N1 and N2 before closing. N1: in indigo_agent_auxiliary.c (safety_reason_follows / agent_update_property) a source SAFE change waits for the source's reason message, and without a message every later SAFE change of that source is ignored, including OK->ALERT. Fix: never hold back a change to ALERT (publish at once, take the reason when it arrives); for other changes hold back at most the one update that changed SAFE, comparing with the last received SAFE, not the last calculation. Add a test where a source changes SAFE to ALERT without sending a message. N2: PROPERTIES.md AGENT_AUX_SAFETY paragraph must state that when no reason from the source is available the agent writes its own reason without values, e.g. 'Unsafe: wind (device)'.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "e9110733e7a14a901b44de86e2021d14c7e4bf01",
+      "tree": "c5eef7923e6a56540d6c1a324237c10cf25d4396",
+      "base": "master",
+      "at": "2026-11-23T09:10:03.559541Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-23T08:07:03.112656Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-23T08:10:28.850417Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2130013.127,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 57,
+    "sha256": "5c4f37d2f35fcca22d10ffe5ac9426c78541ac214acafa61764bf0a33e1ba717"
+  }
+}
