@@ -152,12 +152,28 @@ static void capture_slew_light(indigo_property *property) {
 	}
 }
 
+// The BUSY publications of the mount's coordinates and of its SLEW light since a test last cleared them.
+static atomic_int coordinates_busy_publications, slew_light_busy_publications;
+
+static void clear_busy_publications(void) {
+	atomic_store(&coordinates_busy_publications, 0);
+	atomic_store(&slew_light_busy_publications, 0);
+}
+
 static indigo_result timed_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (!strcmp(property->device, lx200_mount.device_name) && !strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 		atomic_store(&mount_coordinates_state, property->state);
+		if (property->state == INDIGO_BUSY_STATE) {
+			atomic_fetch_add(&coordinates_busy_publications, 1);
+		}
 		capture_slew_light(property);
 	}
 	if (!strcmp(property->device, lx200_mount.device_name) && !strcmp(property->name, MOUNT_STATE_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, MOUNT_STATE_SLEW_ITEM_NAME) && property->items[i].light.value == INDIGO_BUSY_STATE) {
+				atomic_fetch_add(&slew_light_busy_publications, 1);
+			}
+		}
 		capture_slew_light(property);
 	}
 	if (!strcmp(property->device, lx200_guider.device_name) && property->state == INDIGO_OK_STATE) {
@@ -176,7 +192,7 @@ static bool lx_switch(const simulator_driver_case *device, const char *property,
 }
 
 // MOUNT_ON_COORDINATES_SET can't change while MOUNT_EQUATORIAL_COORDINATES is BUSY, and a poll sets the coordinates BUSY before
-// it publishes them (the phantom slew of the first poll after connect, the motion of a classic guiding pulse), so a selection
+// it publishes them (the motion of a classic guiding pulse), so a selection
 // made after a cached not-BUSY state can still be refused with ALERT: it is sent again once the coordinates are not BUSY.
 static bool lx_select_mode(const char *item) {
 	for (int attempt = 0; attempt < 3; attempt++) {
@@ -4458,6 +4474,49 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void request_home(void) {
+	indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true);
+}
+
+static void request_unpark(void) {
+	indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+}
+
+// The poll clears the parked, parking, homing and homed flags after the position readback and decodes them again from
+// :GU# and :Gps#. A HOME or a PARK request judged by those flags while the poll runs, here while it sends :GU#, found a
+// parked mount not parked: the home was sent to it (:hC# a second time in lx200_zwo_park_goes_home_first) and the unpark
+// was refused. The requests are still judged when they arrive, but from settled_state, which only the end of the poll's
+// decoding, meade_init_mount() and the AP park, unpark and abort handlers write.
+static void lx200_zwo_park_and_home_requests_during_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_profile(&simulator, "zwo", NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	int homes = settled_event_count(&simulator, "hC");
+	unsigned int revision = property_revision(MOUNT_HOME_PROPERTY_NAME);
+	arm_log_trigger("<- :GU#", request_home);
+	SERIAL_CHECK_TRUE(wait_for_log_trigger());
+	disarm_log_trigger();
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	SERIAL_CHECK_EQ_INT(homes, settled_event_count(&simulator, "hC"));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	int unparks = event_count(&simulator, "Spu", NULL);
+	arm_log_trigger("<- :GU#", request_unpark);
+	SERIAL_CHECK_TRUE(wait_for_log_trigger());
+	disarm_log_trigger();
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Spu", unparks));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true));
+cleanup:
+	disarm_log_trigger();
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static const char *next_pulse_property, *next_pulse_item;
 
 static void request_next_pulse(void) {
@@ -5006,6 +5065,79 @@ static void lx200_connect_publishes_the_device_state(void) {
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
 	stop_external_serial_simulator(&simulator);
+}
+
+// The two complete polls after the operation named by the label published the position the controller stands at,
+// within the tolerance of the epoch the driver converts from, and neither the coordinates nor the SLEW light went
+// BUSY since the counts were cleared.
+static bool polls_reported_no_slew(external_serial_simulator *simulator, const char *label, double expected_ra, double expected_dec) {
+	if (!wait_complete_polls(simulator, 2)) {
+		return false;
+	}
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	int coordinates_busy = atomic_load(&coordinates_busy_publications), slew_light_busy = atomic_load(&slew_light_busy_publications);
+	indigo_property_state state = find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state;
+	printf("      after %s: %.4f h %.4f°, %d BUSY coordinates, %d BUSY slew lights, coordinates %s\n", label, ra, dec, coordinates_busy, slew_light_busy, state_name(state));
+	return fabs(ra - expected_ra) < 0.1 && fabs(dec - expected_dec) < 1 && coordinates_busy == 0 && slew_light_busy == 0 && state == INDIGO_OK_STATE && cached_light_value(MOUNT_STATE_PROPERTY_NAME, MOUNT_STATE_SLEW_ITEM_NAME) != INDIGO_BUSY_STATE;
+}
+
+// Profiles that tell a slew from the coordinates moving between two polls (generic, classic, StarGO2, a GTO servo
+// controller without :GOS#) must not take a change of the published position that involves no motion for a slew:
+// the first poll of a session, which has no earlier position (the simulator stands at 6 h, +45°, away from 0, 0), an
+// accepted sync, a change of MOUNT_EPOCH, which moves the published J2000 position by the precession (7.5' in
+// declination at 2 h, +60°), and the first poll after a reconnect to a controller standing elsewhere than where the
+// previous session left the driver.
+static void check_no_slew_without_motion(const char * const *arguments, const char *type) {
+	external_serial_simulator simulator = { 0 }, moved = { 0 };
+	bool online = false;
+	clear_busy_publications();
+	SERIAL_CHECK_TRUE(start_profile_with_args(&simulator, arguments, type));
+	online = true;
+	SERIAL_CHECK_TRUE(polls_reported_no_slew(&simulator, "connect", 6, 45));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_select_mode(MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME));
+	// The request itself is published BUSY before its OK, the polls that follow it are counted.
+	SERIAL_CHECK_TRUE(lx_coordinates(2, 60, INDIGO_OK_STATE));
+	clear_busy_publications();
+	SERIAL_CHECK_TRUE(polls_reported_no_slew(&simulator, "sync", 2, 60));
+	clear_busy_publications();
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(polls_reported_no_slew(&simulator, "epoch JNow", 2, 60));
+	clear_busy_publications();
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(polls_reported_no_slew(&simulator, "epoch J2000", 2, 60));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&moved, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments));
+	clear_busy_publications();
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, moved.port));
+	SERIAL_CHECK_TRUE(polls_reported_no_slew(&moved, "reconnect", 6, 45));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&moved);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void lx200_generic_no_slew_without_motion(void) {
+	const char *arguments[] = { "--model", "generic", NULL };
+	check_no_slew_without_motion(arguments, "GENERIC");
+}
+
+static void lx200_classic_no_slew_without_motion(void) {
+	const char *arguments[] = { "--model", "classic", NULL };
+	check_no_slew_without_motion(arguments, "CLASSIC");
+}
+
+static void lx200_stargo2_no_slew_without_motion(void) {
+	const char *arguments[] = { "--model", "stargo2", NULL };
+	check_no_slew_without_motion(arguments, "STARGO2");
+}
+
+// A GTOCP2 (revision letter below S) has no :GOS#, its poll falls back to the generic decoding.
+static void lx200_ap_gtocp2_no_slew_without_motion(void) {
+	const char *arguments[] = { "--model", "ap", "--ap-version", "J", NULL };
+	check_no_slew_without_motion(arguments, "AP");
 }
 
 // Sexagesimal fields that round up carry into the next field and never reach 60 or 24: a right
@@ -5914,6 +6046,7 @@ int main(int argc, char **argv) {
 		{ "lx200_esp32go_degree_mark_and_status", lx200_esp32go_degree_mark_and_status },
 		{ "lx200_onstep_track_rate_request_survives_frequency_read", lx200_onstep_track_rate_request_survives_frequency_read },
 		{ "lx200_aux_power_request_survives_poll", lx200_aux_power_request_survives_poll },
+		{ "lx200_zwo_park_and_home_requests_during_poll", lx200_zwo_park_and_home_requests_during_poll },
 		{ "lx200_classic_guider_pulse_survives_previous_finalizer", lx200_classic_guider_pulse_survives_previous_finalizer },
 		{ "lx200_utc_request_survives_host_time", lx200_utc_request_survives_host_time },
 		{ "lx200_goto_abort_ends_alert_and_idle_abort_keeps_state", lx200_goto_abort_ends_alert_and_idle_abort_keeps_state },
@@ -5923,6 +6056,10 @@ int main(int argc, char **argv) {
 		{ "lx200_onstep_park_and_home_abort_settle", lx200_onstep_park_and_home_abort_settle },
 		{ "lx200_disconnect_stops_motion_and_reconnect_is_clean", lx200_disconnect_stops_motion_and_reconnect_is_clean },
 		{ "lx200_connect_publishes_the_device_state", lx200_connect_publishes_the_device_state },
+		{ "lx200_generic_no_slew_without_motion", lx200_generic_no_slew_without_motion },
+		{ "lx200_classic_no_slew_without_motion", lx200_classic_no_slew_without_motion },
+		{ "lx200_stargo2_no_slew_without_motion", lx200_stargo2_no_slew_without_motion },
+		{ "lx200_ap_gtocp2_no_slew_without_motion", lx200_ap_gtocp2_no_slew_without_motion },
 		{ "lx200_coordinate_encoding_at_wrap_points", lx200_coordinate_encoding_at_wrap_points },
 		{ "lx200_meade_goto_refusals_stop_the_sequence", lx200_meade_goto_refusals_stop_the_sequence },
 		{ "lx200_shutdown_refused_while_connected", lx200_shutdown_refused_while_connected },

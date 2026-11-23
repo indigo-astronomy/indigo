@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000058
+#define DRIVER_VERSION       0x03000059
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -71,6 +71,12 @@
 // A slew in progress stays BUSY over this many consecutive polls whose position readback failed, the next poll
 // retries; one more failure ends it ALERT.
 #define POSITION_READ_RETRIES 2
+
+// The bits of settled_state, see meade_settle_state().
+#define SETTLED_PARKED       1
+#define SETTLED_PARKING      2
+#define SETTLED_HOMING       4
+#define SETTLED_HOMED        8
 
 #ifndef MAX
 #define MAX(a,               b) ((a) > (b) ? (a) : (b))
@@ -382,7 +388,11 @@ typedef struct {
 	bool classicGoto;
 	double classicGuideDeadlineNS, classicGuideDeadlineWE;
 	indigo_device *classicGuider;
-	double lastRA, lastDec;
+	// The position the last successful read reported and the one the previous poll had, both in the frame of the
+	// controller, so that a change of MOUNT_EPOCH does not move them; the latter is valid once a poll of this session
+	// has read a position.
+	double positionRA, positionDec, lastRA, lastDec;
+	bool last_position_valid;
 	bool coordinate_read_failed;
 	// Consecutive polls whose position readback failed.
 	int position_failures;
@@ -437,6 +447,9 @@ typedef struct {
 	bool stopping;
 	// The guider device, which shows the guiding speed of a Gemini as GUIDER_RATE.
 	indigo_device *guider_device;
+	// The parked, parking, homing and homed flags as SETTLED_* bits, written in one store once a poll or a handler has
+	// decided them, for the requests that are judged on the bus thread while a poll clears and decodes the flags.
+	int settled_state;
 	bool park_allowed, unpark_allowed, home_allowed;
 	double timeout;
 	char response[128];
@@ -1258,6 +1271,8 @@ static bool meade_read_position(indigo_device *device) {
 	if (!meade_get_coordinates(device, &ra, &dec)) {
 		return false;
 	}
+	PRIVATE_DATA->positionRA = ra;
+	PRIVATE_DATA->positionDec = dec;
 	indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
@@ -3778,12 +3793,19 @@ static void meade_init_generic_mount(indigo_device *device) {
 static void meade_update_generic_state(indigo_device *device) {
 	// After Track or Slew
 	// NOTE: Distance bar `:D#` is not working (e.g. classic LX200).
-	if (fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - PRIVATE_DATA->lastRA) > 2.0/60.0 || fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value - PRIVATE_DATA->lastDec) > 2.0/60.0) {
+	// The first poll of a session has no earlier position, the one it reads is no slew.
+	if (PRIVATE_DATA->last_position_valid && (fabs(PRIVATE_DATA->positionRA - PRIVATE_DATA->lastRA) > 2.0/60.0 || fabs(PRIVATE_DATA->positionDec - PRIVATE_DATA->lastDec) > 2.0/60.0)) {
 		PRIVATE_DATA->slewing = true;
 	}
 }
 
 // ---------------------------------------------------------------------  generic init & state update
+
+// Publishes the parked, parking, homing and homed flags to the requests judged on the bus thread, once the poll or a
+// handler has decided them.
+static void meade_settle_state(indigo_device *device) {
+	PRIVATE_DATA->settled_state = (PRIVATE_DATA->parked ? SETTLED_PARKED : 0) | (PRIVATE_DATA->parking ? SETTLED_PARKING : 0) | (PRIVATE_DATA->homing ? SETTLED_HOMING : 0) | (PRIVATE_DATA->homed ? SETTLED_HOMED : 0);
+}
 
 static void meade_init_mount(indigo_device *device) {
 	MOUNT_MODE_PROPERTY->hidden = true;
@@ -3828,6 +3850,7 @@ static void meade_init_mount(indigo_device *device) {
 	PRIVATE_DATA->slewing = PRIVATE_DATA->tracking = PRIVATE_DATA->parking = PRIVATE_DATA->parked = PRIVATE_DATA->homing = PRIVATE_DATA->homed = false;
 	PRIVATE_DATA->goto_issued = PRIVATE_DATA->stopping = false;
 	PRIVATE_DATA->coordinate_read_failed = false;
+	PRIVATE_DATA->last_position_valid = false;
 	PRIVATE_DATA->position_failures = 0;
 	PRIVATE_DATA->meade_park_silent = PRIVATE_DATA->meade_no_gw = PRIVATE_DATA->meade_lxd600 = false;
 	// A park or a stall from the previous session says nothing about this one.
@@ -3962,6 +3985,7 @@ static void meade_init_mount(indigo_device *device) {
 			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
 		}
 	}
+	meade_settle_state(device);
 }
 
 static void meade_update_mount_state(indigo_device *device) {
@@ -4016,8 +4040,12 @@ static void meade_update_mount_state(indigo_device *device) {
 	if (meade_host_timed_guiding(device) && !PRIVATE_DATA->slewing && !PRIVATE_DATA->coordinate_read_failed) {
 		PRIVATE_DATA->classicGoto = false;
 	}
-	PRIVATE_DATA->lastRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-	PRIVATE_DATA->lastDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+	PRIVATE_DATA->lastRA = PRIVATE_DATA->positionRA;
+	PRIVATE_DATA->lastDec = PRIVATE_DATA->positionDec;
+	if (!PRIVATE_DATA->coordinate_read_failed) {
+		PRIVATE_DATA->last_position_valid = true;
+	}
+	meade_settle_state(device);
 	indigo_debug("*** slewing=%d, tracking=%d, parked=%d, parking=%d, homed=%d, homing=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->parking, PRIVATE_DATA->homed, PRIVATE_DATA->homing);
 	// A failed readback during a slew is retried by the next poll, the slew stays BUSY with the last position read; an
 	// ALERT would be kept after the BUSY and turn the completion of a correct GOTO into ALERT. A readback that keeps
@@ -4727,6 +4755,7 @@ static void mount_park_handler(indigo_device *device) {
 					MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 				} else {
 					PRIVATE_DATA->parked = true;
+					meade_settle_state(device);
 				}
 			}
 			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
@@ -4746,6 +4775,7 @@ static void mount_park_handler(indigo_device *device) {
 				// poll leaves a window in which the admission guard below refuses
 				// the next request against a mount it still believes is parked.
 				PRIVATE_DATA->parked = false;
+				meade_settle_state(device);
 			}
 		} else {
 			meade_restore_park_switch(device);
@@ -4859,8 +4889,14 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		if (meade_sync(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			// The result carries the position the mount reports now, a failed readback leaves it to the next poll.
-			if (!PRIVATE_DATA->meade_park_silent) {
-				meade_read_position(device);
+			// The sync moved the reported position without a motion: the slew detection of the generic decoding
+			// compares the next poll with this readback, or reseeds from the next poll without one.
+			if (!PRIVATE_DATA->meade_park_silent && meade_read_position(device)) {
+				PRIVATE_DATA->lastRA = PRIVATE_DATA->positionRA;
+				PRIVATE_DATA->lastDec = PRIVATE_DATA->positionDec;
+				PRIVATE_DATA->last_position_valid = true;
+			} else {
+				PRIVATE_DATA->last_position_valid = false;
 			}
 		} else {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -4885,6 +4921,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 			indigo_cancel_pending_handler(device, mount_park_handler);
 			indigo_cancel_pending_handler(device, mount_home_handler);
 			PRIVATE_DATA->parking = PRIVATE_DATA->homing = false;
+			meade_settle_state(device);
 			PRIVATE_DATA->gemini_park_expected = PRIVATE_DATA->oat_park_expected = PRIVATE_DATA->ap_parking = false;
 			PRIVATE_DATA->zwo_park_stage = 0;
 			PRIVATE_DATA->touptek_park_pending = PRIVATE_DATA->touptek_home_pending = false;
@@ -5408,8 +5445,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
 		//+ mount.MOUNT_PARK.on_change_request
-		PRIVATE_DATA->park_allowed = !PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing;
-		PRIVATE_DATA->unpark_allowed = PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing;
+		// The request is judged by the state the mount was in when it arrived, as the last poll or handler settled it:
+		// a poll running now has cleared the flags it decodes again.
+		int settled = PRIVATE_DATA->settled_state;
+		bool parked = settled & SETTLED_PARKED, parking = settled & SETTLED_PARKING, homing = settled & SETTLED_HOMING;
+		PRIVATE_DATA->park_allowed = !parked && !parking && !homing;
+		PRIVATE_DATA->unpark_allowed = parked && !parking && !homing;
 		//- mount.MOUNT_PARK.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);
 		return INDIGO_OK;
@@ -5418,7 +5459,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_HOME_PROPERTY, property)) {
 		//+ mount.MOUNT_HOME.on_change_request
-		PRIVATE_DATA->home_allowed = !PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing && !PRIVATE_DATA->homed;
+		// Judged by the settled state, see MOUNT_PARK.
+		int settled = PRIVATE_DATA->settled_state;
+		PRIVATE_DATA->home_allowed = !(settled & (SETTLED_PARKED | SETTLED_PARKING | SETTLED_HOMING | SETTLED_HOMED));
 		//- mount.MOUNT_HOME.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_PROPERTY, mount_home_handler);
 		return INDIGO_OK;
