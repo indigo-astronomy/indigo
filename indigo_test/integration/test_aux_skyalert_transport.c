@@ -29,7 +29,7 @@ static indigo_uni_handle handle;
 static atomic_int opens, closes, invalid_io, fail_open, fail_write, index_read, failed_index = -1, failure_mode;
 static const char *record[] = { "Data", "20.3", "-12.5", "1008", "751", "66.3", "415", "1", "1.8m", "101791.83" };
 
-indigo_uni_handle *skyalert_test_open(const char *port, int speed, int level) {
+indigo_uni_handle *skyalert_test_open(const char *port, int speed, int level, const char **error_message) {
 	if (speed != 115200) {
 		invalid_io++;
 	}

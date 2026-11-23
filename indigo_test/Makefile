@@ -2349,7 +2349,7 @@ $(INTEGRATION_BUILD)/test_aux_sqm_transport: integration/test_aux_sqm_transport.
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_sqm_transport.o -o $@ $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/aux_skyalert_transport.o: ../indigo_drivers/aux_skyalert/indigo_aux_skyalert.c Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_speed=skyalert_test_open -Dindigo_uni_close=skyalert_test_close -Dindigo_uni_discard=skyalert_test_discard -Dindigo_uni_printf=skyalert_test_printf -Dindigo_uni_read_section=skyalert_test_read -c $< -o $@
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial_with_speed2=skyalert_test_open -Dindigo_uni_close=skyalert_test_close -Dindigo_uni_discard=skyalert_test_discard -Dindigo_uni_printf=skyalert_test_printf -Dindigo_uni_read_section=skyalert_test_read -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_aux_skyalert_transport: integration/test_aux_skyalert_transport.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_skyalert_transport.o Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(INTEGRATION_BUILD)/aux_skyalert_transport.o -o $@ $(TEST_LDFLAGS)
