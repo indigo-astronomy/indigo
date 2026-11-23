@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "7f1e2a98-34b4-4e35-949e-13d9cb3fae07",
-  "revision": 1,
+  "revision": 2,
   "title": "indigo_ccd_atik: Atik Infinity no longer connects since the generator migration (3.0-8+)",
   "description": "User report: an Atik Infinity Color connects and works with INDIGO 3.0-1 but fails to connect with 3.0-9 and 3.0-11 (two clean upgrades from the 3.0-1 indigosky armhf image; Raspberry Pi 3 Model B, Raspbian 12 bookworm 32-bit, kernel 6.12.93+rpt-rpi-v7, usbfs buffer 192MiB). In the web UI and ain-imager the connection fails; in Ekos the user reports a crash on connect. Other devices on the same server (Player One Ceres 462M, SynScan mount, Moonlite focuser) keep working.\n\nAnalysis so far (code reading only, not reproduced): the driver was migrated to the code generator on 2026-09-12 (released in 3.0-8); the bundled armhf libatikcameras.so (2025.06.30.2074) is unchanged since November 2025, so the difference is in driver code. The hand-written driver ignored the results of ArtemisTemperatureSensorInfo, ArtemisCoolingInfo and ArtemisGetMaxBin (comment 'Temporary workaround for SDK_2020_06_23') and only set ALERT on the window heater and preset properties when their readout failed. atik_initialize_ccd() in indigo_ccd_atik.driver now fails the whole connection when: ArtemisTemperatureSensorInfo or ArtemisCoolingInfo returns anything other than ARTEMIS_OK or ARTEMIS_NOT_IMPLEMENTED; the camera reports cooling flags (flags & 3) == 3 with max <= min or without a temperature sensor; ArtemisGetMaxBin fails or returns out-of-range values; the window heater or preset/gain/offset readout fails. The migrated driver was hardware-tested with Atik Titan, Atik One and Atik 11000 only, not with an Infinity. Less likely alternative: atik_open() now locates the camera by serial number instead of by index and fails there.\n\nThe Ekos crash is not explained by the failed connection path (the generated handler calls atik_close only after a successful atik_open) and may be a separate defect.\n\nA debug log (indigo_server -vv, including the SDK debug callback output) of a connection attempt on 3.0-11 and of the Ekos crash has been requested from the reporter. Wait for it, or reproduce with the fake SDK, before fixing, so the fix targets the call that actually fails.\n\nProposed fix: a failure of an optional capability query (temperature sensor, cooling, window heater, presets/gain/offset) hides that capability instead of refusing the connection; keep a hard failure only for ArtemisProperties, sensor geometry and buffer allocation. Add fake SDK tests for an uncooled camera whose capability queries return error codes, and bump the driver version.",
   "type": "bug",
@@ -21,6 +21,16 @@
       "priority": "medium",
       "severity": "high",
       "profile": "simple"
+    },
+    {
+      "event_id": "81beb116-01ec-4281-91e8-975f59ad03df",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T18:20:45.741523Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "high",
+      "profile": "simple",
+      "corrected": null
     }
   ],
   "closure": null,
@@ -36,8 +46,8 @@
     "profile": "simple",
     "at": "2026-11-20T18:20:17.166944Z",
     "actor": "human/Peter Polakovic",
-    "confirmed_at": null,
-    "confirmed_by": null
+    "confirmed_at": "2026-11-20T18:20:45.741399Z",
+    "confirmed_by": "human/Peter Polakovic"
   },
   "metrics": {
     "duration_ms": 0.0,
@@ -57,7 +67,7 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "2f5000df53bc5335043384c4f37bf7c0b8e250cd075012709872462483f465f4"
+    "entries": 2,
+    "sha256": "fdd7c8f775ee80222e0781b8142d8d6925e519ca663fff3b7e03c0bc5da46516"
   }
 }
