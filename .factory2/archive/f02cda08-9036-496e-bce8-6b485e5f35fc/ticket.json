@@ -1,0 +1,391 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f02cda08-9036-496e-bce8-6b485e5f35fc",
+  "revision": 16,
+  "title": "indigo_mount_ioptron: MOUNT_STATE slew light never shows a coordinates ALERT",
+  "description": "Audit in 1078b2c4: the slew light is never set to ALERT. Owner's rule (decided 2026-11-22 for mount_synscan, ticket 1078b2c4, and extended to this driver on 2026-11-23): whenever MOUNT_EQUATORIAL_COORDINATES is in ALERT, the SLEW light of MOUNT_STATE is ALERT too; BUSY while the coordinates are BUSY; otherwise as before. The library keeps a coordinates ALERT until the next BUSY (indigo_update_coordinates() kept-ALERT rule, indigo_reject_coordinates_change()), so the light must be derived from the coordinates state after indigo_update_coordinates() has decided it, at every place the driver publishes the coordinates or MOUNT_STATE (poll, refusals, sync, abort, park/home, connect), not from the driver's own motion flags alone. Reference implementation: synscan_update_mount_state() and its call order in indigo_drivers/mount_synscan/indigo_mount_synscan.driver (commit 5f794cc15). Scope: the .driver source (version bump, regenerate with the unchanged generator), simulator-backed cases proving the light follows the coordinates state through a refused/failed request (ALERT kept while idle), the next accepted request (BUSY, then OK/IDLE) and connect, adaptation of existing cases that asserted IDLE under a kept ALERT, recorded run with tools/run_driver_test.py, MIGRATION_STATUS count. Refusals inserted by the generator (parked/homing guards) cannot call driver code; if the light lags there until the next poll, record it in the ticket note and do not change the generator.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-23T13:54:19.834744Z",
+  "status": "closed",
+  "branch": "ticket/f02cda08-9036-496e-bce8-6b485e5f35fc",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "e38cb216-a4a0-47d9-9e49-51651f502cd1",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "681f540b-9c9c-4fb1-97d1-ecd221529bf3",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T13:54:24.060114Z",
+          "last_activity_at": "2026-11-23T14:18:06.661171Z",
+          "ended_at": "2026-11-23T14:18:06.661171Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1422601.057,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:54:24.060114Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/f02cda08-9036-496e-bce8-6b485e5f35fc"
+        },
+        {
+          "at": "2026-11-23T14:18:06.661171Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1422601.057,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "769fd750-aa90-40e2-a742-96af0bb522e1",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "32418f58-c706-4450-a474-142fd34d6da8",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T14:18:06.661331Z",
+          "last_activity_at": "2026-11-23T14:29:22.674484Z",
+          "ended_at": "2026-11-23T14:29:22.674484Z",
+          "outcome": {
+            "summary": "No required changes. MOUNT_STATE is now published once per poll after the coordinates via the whole-property fingerprint (PARK/HOME/TRACKING lights still published); all writers run on the device queue; generated files byte-identical to regeneration with the current generator; the connect check fails 2/2 without the init_mount line; adapted cases legitimate. Non-blocking: comment on ioptron_slew_light says 'after indigo_update_coordinates()' while the on_change call is deliberately before the generated publication; MOUNT_STATE goes out just before the coordinates on that path; parked-guard refusal lags until the next poll (no dedicated case); build/bin/indigo_generator in the primary checkout is stale and must be rebuilt before regenerating there. Not verified: Linux, Windows, TCP suite, hardware.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 676013.153,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T14:18:06.661331Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T14:29:22.674484Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "No required changes. MOUNT_STATE is now published once per poll after the coordinates via the whole-property fingerprint (PARK/HOME/TRACKING lights still published); all writers run on the device queue; generated files byte-identical to regeneration with the current generator; the connect check fails 2/2 without the init_mount line; adapted cases legitimate. Non-blocking: comment on ioptron_slew_light says 'after indigo_update_coordinates()' while the on_change call is deliberately before the generated publication; MOUNT_STATE goes out just before the coordinates on that path; parked-guard refusal lags until the next poll (no dedicated case); build/bin/indigo_generator in the primary checkout is stale and must be rebuilt before regenerating there. Not verified: Linux, Windows, TCP suite, hardware."
+        }
+      ],
+      "result": {
+        "summary": "No required changes. MOUNT_STATE is now published once per poll after the coordinates via the whole-property fingerprint (PARK/HOME/TRACKING lights still published); all writers run on the device queue; generated files byte-identical to regeneration with the current generator; the connect check fails 2/2 without the init_mount line; adapted cases legitimate. Non-blocking: comment on ioptron_slew_light says 'after indigo_update_coordinates()' while the on_change call is deliberately before the generated publication; MOUNT_STATE goes out just before the coordinates on that path; parked-guard refusal lags until the next poll (no dedicated case); build/bin/indigo_generator in the primary checkout is stale and must be rebuilt before regenerating there. Not verified: Linux, Windows, TCP suite, hardware.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 676013.153,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "76a57401-d586-43ed-b179-7215e315e12b",
+      "event": "ticket/created",
+      "at": "2026-11-23T13:54:19.835450Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "eaced117-4433-4fec-85f5-8d3598311b06",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T13:54:20.012077Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "e239afc0-181b-4181-b4b1-33a75a851136",
+      "event": "task/progress",
+      "at": "2026-11-23T13:54:24.060406Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e38cb216-a4a0-47d9-9e49-51651f502cd1",
+      "text": "Implementation started on branch ticket/f02cda08-9036-496e-bce8-6b485e5f35fc"
+    },
+    {
+      "event_id": "8c2ea5d9-7b21-4083-952b-b73c1fb5324f",
+      "event": "ticket/started",
+      "at": "2026-11-23T13:54:24.062015Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/f02cda08-9036-496e-bce8-6b485e5f35fc",
+      "base": "master"
+    },
+    {
+      "event_id": "7916ec87-374f-4be1-9cef-81e5e02df7e2",
+      "event": "task/progress",
+      "at": "2026-11-23T13:55:31.116601Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e38cb216-a4a0-47d9-9e49-51651f502cd1",
+      "text": "Implementer launched",
+      "attempt_id": "681f540b-9c9c-4fb1-97d1-ecd221529bf3",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5e07df6d-0764-484f-942c-d4254b1630d9",
+      "event": "task/progress",
+      "at": "2026-11-23T13:57:43.262914Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e38cb216-a4a0-47d9-9e49-51651f502cd1",
+      "text": "Deriving the SLEW light from the published coordinates state in the .driver"
+    },
+    {
+      "event_id": "6c11677d-9efd-430d-911c-5e75eba9ce8d",
+      "event": "task/progress",
+      "at": "2026-11-23T13:59:45.310630Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e38cb216-a4a0-47d9-9e49-51651f502cd1",
+      "text": "Building the driver and the ioptron simulator test"
+    },
+    {
+      "event_id": "3a67f6d2-cea6-4060-b951-b98fdc628991",
+      "event": "task/progress",
+      "at": "2026-11-23T14:01:44.819250Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e38cb216-a4a0-47d9-9e49-51651f502cd1",
+      "text": "Running the new slew light cases with a case filter"
+    },
+    {
+      "event_id": "8f79fb6d-2106-421b-b9c0-7b02af4c4198",
+      "event": "task/progress",
+      "at": "2026-11-23T14:03:23.184447Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e38cb216-a4a0-47d9-9e49-51651f502cd1",
+      "text": "Recorded run: tools/run_driver_test.py mount_ioptron"
+    },
+    {
+      "event_id": "429f748b-0cea-4131-bbb8-4a89f76fded7",
+      "event": "task/progress",
+      "at": "2026-11-23T14:17:22.990945Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e38cb216-a4a0-47d9-9e49-51651f502cd1",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3c5509dc-b7bf-425b-92f7-37498d6dfc6e",
+      "event": "task/progress",
+      "at": "2026-11-23T14:17:23.017669Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e38cb216-a4a0-47d9-9e49-51651f502cd1",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "9a622889-ec85-4623-9c14-d93e8753f91f",
+      "event": "check/passed",
+      "at": "2026-11-23T14:17:23.019177Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "6ff9d2f3053be67706de08d27e3b091fdef1c1ed",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "e3855c55-7a19-45fe-98e5-2e421a1d12ba",
+      "event": "ticket/note",
+      "at": "2026-11-23T14:17:43.285438Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Cause: the status poll set MOUNT_STATE_SLEW_ITEM only from the controller's slew flag (BUSY while slewing, IDLE otherwise) and published MOUNT_STATE before indigo_update_coordinates(), so a refused GOTO, a failed sync, an aborted GOTO, a slew ended short of the target or a failing position readback left the coordinates ALERT (kept by the library) with an IDLE light. Fix (indigo_mount_ioptron.driver version 71 -> 72, regenerated .c with the unchanged generator, .h/_main.c unchanged): ioptron_slew_light() derives the light from the coordinates state (ALERT -> ALERT, BUSY or controller still slewing -> BUSY, else IDLE); ioptron_update_slew_light() sets it and publishes MOUNT_STATE only when its fingerprint changed. Called after indigo_update_coordinates() in the poll (MOUNT_STATE is now published after the coordinates instead of inside the polled loop, still only on change), at the end of the MOUNT_EQUATORIAL_COORDINATES on_change (the result follows the BUSY published by INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE, so the generated indigo_update_coordinates() publishes it unchanged) and after the 'Slew aborted' publication; ioptron_init_mount() sets the light from the coordinates state before MOUNT_STATE is defined. Behaviour change beyond IDLE->ALERT: after an abort during a slew the light is ALERT instead of BUSY while the mount decelerates. Known lag: the generator-inserted parked guard (indigo_reject_coordinates_change 'Mount is parked!') cannot call driver code, the light follows at the next poll (<= 1 s); not changed, not covered by a dedicated case. Tests (indigo_test/integration/test_mount_ioptron_simulator.c): new ioptron_slew_light_follows_coordinates_8406/_0205/_0300 (HC8406, V2.5, V3 protocols): (a) refused GOTO (injected MS/MS1 refusal) -> coordinates ALERT and light ALERT, held 2.5 s (>= 2 idle polls) with no other SLEW light published; same for a refused sync (injected Sd reply 0); (b) next accepted GOTO -> coordinates BUSY and a BUSY light publicati",
+      "tokens": null
+    },
+    {
+      "event_id": "a7be3fc3-7f3e-4800-857f-f7ea91b76054",
+      "event": "task/progress",
+      "at": "2026-11-23T14:18:06.661392Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "769fd750-aa90-40e2-a742-96af0bb522e1",
+      "text": "Review started"
+    },
+    {
+      "event_id": "23f545c9-0612-4453-98e2-0fd37f1bfc57",
+      "event": "review/started",
+      "at": "2026-11-23T14:18:06.662586Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "821d8b3f-e3e5-47fb-959e-7c8fd0527676",
+      "event": "task/progress",
+      "at": "2026-11-23T14:29:22.674577Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "769fd750-aa90-40e2-a742-96af0bb522e1",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "88a4f603-bf11-4c38-8471-eda38fb31d68",
+      "event": "review/passed",
+      "at": "2026-11-23T14:29:22.676856Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "769fd750-aa90-40e2-a742-96af0bb522e1",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "6ff9d2f3053be67706de08d27e3b091fdef1c1ed"
+    },
+    {
+      "event_id": "590dbd72-de5a-4d5b-bf3a-34e2c2e13a7d",
+      "event": "ticket/closed",
+      "at": "2026-11-23T14:29:22.948512Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-23T14:29:22.948493Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "719eae47d7b7d90747825b8035c690824338dca2"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6ff9d2f3053be67706de08d27e3b091fdef1c1ed",
+        "tree": "872f7cd6bdc547ab42c6f62ee4ca5e52bf888e7e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T14:17:23.016993Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/f02cda08-9036-496e-bce8-6b485e5f35fc/872f7cd6bdc5-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "No required changes. MOUNT_STATE is now published once per poll after the coordinates via the whole-property fingerprint (PARK/HOME/TRACKING lights still published); all writers run on the device queue; generated files byte-identical to regeneration with the current generator; the connect check fails 2/2 without the init_mount line; adapted cases legitimate. Non-blocking: comment on ioptron_slew_light says 'after indigo_update_coordinates()' while the on_change call is deliberately before the generated publication; MOUNT_STATE goes out just before the coordinates on that path; parked-guard refusal lags until the next poll (no dedicated case); build/bin/indigo_generator in the primary checkout is stale and must be rebuilt before regenerating there. Not verified: Linux, Windows, TCP suite, hardware.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "6ff9d2f3053be67706de08d27e3b091fdef1c1ed",
+        "tree": "872f7cd6bdc547ab42c6f62ee4ca5e52bf888e7e",
+        "at": "2026-11-23T14:29:22.674320Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T14:17:43.284193Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Cause: the status poll set MOUNT_STATE_SLEW_ITEM only from the controller's slew flag (BUSY while slewing, IDLE otherwise) and published MOUNT_STATE before indigo_update_coordinates(), so a refused GOTO, a failed sync, an aborted GOTO, a slew ended short of the target or a failing position readback left the coordinates ALERT (kept by the library) with an IDLE light. Fix (indigo_mount_ioptron.driver version 71 -> 72, regenerated .c with the unchanged generator, .h/_main.c unchanged): ioptron_slew_light() derives the light from the coordinates state (ALERT -> ALERT, BUSY or controller still slewing -> BUSY, else IDLE); ioptron_update_slew_light() sets it and publishes MOUNT_STATE only when its fingerprint changed. Called after indigo_update_coordinates() in the poll (MOUNT_STATE is now published after the coordinates instead of inside the polled loop, still only on change), at the end of the MOUNT_EQUATORIAL_COORDINATES on_change (the result follows the BUSY published by INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE, so the generated indigo_update_coordinates() publishes it unchanged) and after the 'Slew aborted' publication; ioptron_init_mount() sets the light from the coordinates state before MOUNT_STATE is defined. Behaviour change beyond IDLE->ALERT: after an abort during a slew the light is ALERT instead of BUSY while the mount decelerates. Known lag: the generator-inserted parked guard (indigo_reject_coordinates_change 'Mount is parked!') cannot call driver code, the light follows at the next poll (<= 1 s); not changed, not covered by a dedicated case. Tests (indigo_test/integration/test_mount_ioptron_simulator.c): new ioptron_slew_light_follows_coordinates_8406/_0205/_0300 (HC8406, V2.5, V3 protocols): (a) refused GOTO (injected MS/MS1 refusal) -> coordinates ALERT and light ALERT, held 2.5 s (>= 2 idle polls) with no other SLEW light published; same for a refused sync (injected Sd reply 0); (b) next accepted GOTO -> coordinates BUSY and a BUSY light publication, then OK with the light IDLE; next sync OK -> IDLE; (c) reconnect after the kept ALERT -> coordinates OK and light IDLE at connect. Adapted cases that asserted IDLE under a kept ALERT: ioptron_goto_progress_abort_and_restart, ioptron_goto_completion_follows_slew_status, ioptron_goto_ends_alert_when_position_readback_keeps_failing now wait for ALERT and assert the light is still ALERT after the idle wait. Proof of failure without the fix: the three new cases run (INDIGO_TEST_CASE_FILTER=slew_light) against the pre-fix driver (HEAD .driver/.c restored temporarily and rebuilt) fail 3/3 at wait_light(SLEW, ALERT) after the refused GOTO; with the fix 3/3 pass. Recorded run: python3 tools/run_driver_test.py mount_ioptron -> 2026-11-23 15:03 3.0.0.72 mac arm64 simulator 144/144 OK (README + TEST_SUMMARY written by the script). MIGRATION_STATUS mount_ioptron 144 -> 147 (144 serial cases + 3 opt-in TCP cases, not run here). flow check passed (whitespace; unit not selected). Not verified: Linux, Windows, opt-in TCP suite, sanitizer build, MountSim, hardware.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "719eae47d7b7d90747825b8035c690824338dca2",
+      "tree": "872f7cd6bdc547ab42c6f62ee4ca5e52bf888e7e",
+      "base": "master",
+      "at": "2026-11-23T14:29:22.875295Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-23T13:54:19.834744Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-23T13:54:20.011957Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 2098614.21,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 22,
+    "sha256": "47dd2316c707405d09ede4c7ef311c32034330b00ab8e3e30025b898eafd7f5c"
+  }
+}
