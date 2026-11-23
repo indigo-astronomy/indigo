@@ -1,0 +1,592 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a6f7e78d-f97f-4a70-8e74-ffd9b75b53f4",
+  "revision": 27,
+  "title": "indigo_mount_lx200: MOUNT_STATE slew light does not follow a kept coordinates ALERT; a GoTo handled before the first poll is published OK",
+  "description": "Audit in 1078b2c4 found the same order defect as in synscan (the light is computed before indigo_update_coordinates()). Second part, approved by the owner for this ticket: on the profiles decoded by meade_update_generic_state() a GoTo handled before the first poll of a session (or after a sync whose readback failed) is published OK by that poll while the mount is still slewing, because last_position_valid is false and there is nothing to compare with (review remark of 82634c3e). Fix by seeding lastRA/lastDec from a position read in meade_init_mount() (one extra round trip at connect) and after a failed sync readback as far as possible, with a simulator case. Owner's rule (decided 2026-11-22 for mount_synscan, ticket 1078b2c4, and extended to this driver on 2026-11-23): whenever MOUNT_EQUATORIAL_COORDINATES is in ALERT, the SLEW light of MOUNT_STATE is ALERT too; BUSY while the coordinates are BUSY; otherwise as before. The library keeps a coordinates ALERT until the next BUSY (indigo_update_coordinates() kept-ALERT rule, indigo_reject_coordinates_change()), so the light must be derived from the coordinates state after indigo_update_coordinates() has decided it, at every place the driver publishes the coordinates or MOUNT_STATE (poll, refusals, sync, abort, park/home, connect), not from the driver's own motion flags alone. Reference implementation: synscan_update_mount_state() and its call order in indigo_drivers/mount_synscan/indigo_mount_synscan.driver (commit 5f794cc15). Scope: the .driver source (version bump, regenerate with the unchanged generator), simulator-backed cases proving the light follows the coordinates state through a refused/failed request (ALERT kept while idle), the next accepted request (BUSY, then OK/IDLE) and connect, adaptation of existing cases that asserted IDLE under a kept ALERT, recorded run with tools/run_driver_test.py, MIGRATION_STATUS count. Refusals inserted by the generator (parked/homing guards) cannot call driver code; if the light lags there until the next poll, record it in the ticket note and do not change the generator.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-23T13:54:09.347437Z",
+  "status": "closed",
+  "branch": "ticket/a6f7e78d-f97f-4a70-8e74-ffd9b75b53f4",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "128128d9-c45a-4b67-b9f8-7565cade05be",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T13:54:15.218086Z",
+          "last_activity_at": "2026-11-23T15:47:51.531890Z",
+          "ended_at": "2026-11-23T15:47:51.531890Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 6816313.804,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1638f60e-6b0f-4689-96ee-89ddf1973336",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T15:56:03.099525Z",
+          "last_activity_at": "2026-11-23T16:28:28.305886Z",
+          "ended_at": "2026-11-23T16:28:28.305886Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1945206.361,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T13:54:15.218086Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/a6f7e78d-f97f-4a70-8e74-ffd9b75b53f4"
+        },
+        {
+          "at": "2026-11-23T15:47:51.531890Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-23T15:56:03.099525Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-23T16:28:28.305886Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 8761520.165,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "bf921a32-0d18-4a28-a96b-53b5bd576668",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "62d36de3-0904-45e8-bca3-99d87acd83a4",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-23T15:47:51.532047Z",
+          "last_activity_at": "2026-11-23T15:56:03.099420Z",
+          "ended_at": "2026-11-23T15:56:03.099420Z",
+          "outcome": {
+            "summary": "Part 1 (slew light) correct. Required: indigo_mount_lx200.driver:3526-3533 meade_seed_last_position() sets lastRA/lastDec and last_position_valid but leaves positionRA/positionDec stale (0 or the previous session); the poll copies positionRA into lastRA even when its readback failed (3802-3803), so 'seed OK, first poll read fails' makes the next good poll report a false slew (reproduced: head 1 BUSY, master 0). Fix: also set positionRA/positionDec in the seed; add a simulator case (seed OK, first poll readback fails, no BUSY over the following polls); repeat the recorded run. Non-blocking: after a sync handled while a poll lit BUSY the light stays BUSY under OK until the next poll (set IDLE in the sync success branch when not slewing - optional); poll publishing ALERT during a pending sync leaves the light IDLE until the next poll; AP with :GOS# whose status read fails falls back to position decoding without a seed; first variant of the goto-before-first-poll case does not tell connect seed from handler seed; classic-guiding refusal light untested.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 491567.373,
+          "tokens": null
+        },
+        {
+          "attempt_id": "52b5e9ab-9491-4521-8769-ac2f5e963aa3",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T16:28:28.306016Z",
+          "last_activity_at": "2026-11-23T19:34:37.484937Z",
+          "ended_at": "2026-11-23T19:34:37.484937Z",
+          "outcome": {
+            "summary": "Round 2 (head f813f64db): meade_seed_last_position() now sets positionRA/positionDec with lastRA/lastDec; new case lx200_generic_first_poll_readback_fails_after_the_connect_read passes on head and fails on the round-one driver (reviewer ran both); the sync-branch IDLE cannot switch off the light during real motion (slewing is the last poll's verdict on the same queue; a real slew makes the sync refused); generated files byte-identical; MIGRATION count 180 = 177 + 3 TCP, other rows as on master. Non-blocking: sync-branch IDLE has no dedicated case (timing-dependent window) and is published before the readback and the coordinates' OK; connect seed vs handler seed not covered separately.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 11169178.921,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T15:47:51.532047Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T15:56:03.099420Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "Part 1 (slew light) correct. Required: indigo_mount_lx200.driver:3526-3533 meade_seed_last_position() sets lastRA/lastDec and last_position_valid but leaves positionRA/positionDec stale (0 or the previous session); the poll copies positionRA into lastRA even when its readback failed (3802-3803), so 'seed OK, first poll read fails' makes the next good poll report a false slew (reproduced: head 1 BUSY, master 0). Fix: also set positionRA/positionDec in the seed; add a simulator case (seed OK, first poll readback fails, no BUSY over the following polls); repeat the recorded run. Non-blocking: after a sync handled while a poll lit BUSY the light stays BUSY under OK until the next poll (set IDLE in the sync success branch when not slewing - optional); poll publishing ALERT during a pending sync leaves the light IDLE until the next poll; AP with :GOS# whose status read fails falls back to position decoding without a seed; first variant of the goto-before-first-poll case does not tell connect seed from handler seed; classic-guiding refusal light untested."
+        },
+        {
+          "at": "2026-11-23T16:28:28.306016Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T19:34:37.484937Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Round 2 (head f813f64db): meade_seed_last_position() now sets positionRA/positionDec with lastRA/lastDec; new case lx200_generic_first_poll_readback_fails_after_the_connect_read passes on head and fails on the round-one driver (reviewer ran both); the sync-branch IDLE cannot switch off the light during real motion (slewing is the last poll's verdict on the same queue; a real slew makes the sync refused); generated files byte-identical; MIGRATION count 180 = 177 + 3 TCP, other rows as on master. Non-blocking: sync-branch IDLE has no dedicated case (timing-dependent window) and is published before the readback and the coordinates' OK; connect seed vs handler seed not covered separately."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 (head f813f64db): meade_seed_last_position() now sets positionRA/positionDec with lastRA/lastDec; new case lx200_generic_first_poll_readback_fails_after_the_connect_read passes on head and fails on the round-one driver (reviewer ran both); the sync-branch IDLE cannot switch off the light during real motion (slewing is the last poll's verdict on the same queue; a real slew makes the sync refused); generated files byte-identical; MIGRATION count 180 = 177 + 3 TCP, other rows as on master. Non-blocking: sync-branch IDLE has no dedicated case (timing-dependent window) and is published before the readback and the coordinates' OK; connect seed vs handler seed not covered separately.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 11660746.294,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "91fbbb78-7415-42c7-843d-eccc8f4b11b4",
+      "event": "ticket/created",
+      "at": "2026-11-23T13:54:09.348717Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "208d6966-e76a-4d2c-9b67-d401940d21f5",
+      "event": "ticket/confirmed",
+      "at": "2026-11-23T13:54:09.575138Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "95acb66f-4d8c-4b7d-b023-fd30c9165b44",
+      "event": "task/progress",
+      "at": "2026-11-23T13:54:15.218455Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Implementation started on branch ticket/a6f7e78d-f97f-4a70-8e74-ffd9b75b53f4"
+    },
+    {
+      "event_id": "ff070885-3c56-46ce-abef-96ff06c67dad",
+      "event": "ticket/started",
+      "at": "2026-11-23T13:54:15.220231Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/a6f7e78d-f97f-4a70-8e74-ffd9b75b53f4",
+      "base": "master"
+    },
+    {
+      "event_id": "f94a695c-7a9d-4505-9da0-a1188e4223ee",
+      "event": "task/progress",
+      "at": "2026-11-23T13:55:29.907494Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Implementer launched",
+      "attempt_id": "128128d9-c45a-4b67-b9f8-7565cade05be",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "fefa4e3d-6f0a-4500-9b3b-c4b35832e0d1",
+      "event": "task/progress",
+      "at": "2026-11-23T14:01:24.922804Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Editing the .driver: slew light after coordinates, position seed at connect"
+    },
+    {
+      "event_id": "f6d166e6-2d18-48d8-b0e5-364346d18b47",
+      "event": "task/progress",
+      "at": "2026-11-23T14:04:38.377854Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Writing simulator cases: slew light follows coordinates, goto before first poll"
+    },
+    {
+      "event_id": "ce3596a8-057a-4fdf-8a55-0b8fe6b87d4d",
+      "event": "task/progress",
+      "at": "2026-11-23T14:06:59.531208Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Running filtered lx200 cases: new slew light and goto-before-first-poll cases"
+    },
+    {
+      "event_id": "dca59ca3-927c-4469-aedf-1ab9cce0f19d",
+      "event": "task/progress",
+      "at": "2026-11-23T14:19:22.689284Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Running adapted lx200 cases filtered, and the new cases against the pre-change driver"
+    },
+    {
+      "event_id": "992c8973-3a91-49d8-8a8a-b8a6cbd78ee1",
+      "event": "task/progress",
+      "at": "2026-11-23T14:29:28.072286Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Recorded run: python3 tools/run_driver_test.py mount_lx200"
+    },
+    {
+      "event_id": "30584da1-5558-47b8-ae71-707c5fc83a60",
+      "event": "task/progress",
+      "at": "2026-11-23T14:58:15.896098Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Recorded run failed in sync_result (3 generic-decoded profiles): seed no longer writes published coordinates; rerunning"
+    },
+    {
+      "event_id": "add711d1-e5cc-497d-b0c7-3b31d038fd6d",
+      "event": "task/progress",
+      "at": "2026-11-23T15:01:45.611292Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Recorded run (second): python3 tools/run_driver_test.py mount_lx200"
+    },
+    {
+      "event_id": "56152a05-f84c-4b7d-a91a-5d0546a27a14",
+      "event": "task/progress",
+      "at": "2026-11-23T15:46:13.590177Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e8c49c2f-0fe7-4e64-8fd7-a977b82d9924",
+      "event": "task/progress",
+      "at": "2026-11-23T15:46:13.616839Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "393cb00a-f9ed-4fce-b544-84ce9e33569a",
+      "event": "check/passed",
+      "at": "2026-11-23T15:46:13.618363Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "8b6050156ae865afa4c4f277d31dcccf09fa30b3",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a0d2f1ec-33dd-4bde-a675-e2b672a80d0d",
+      "event": "ticket/note",
+      "at": "2026-11-23T15:46:58.607326Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementation (indigo_mount_lx200 version 89 -> 90, .driver edited, .c regenerated with the unchanged generator; the generated diff equals the .driver diff apart from indentation and DRIVER_VERSION 0x03000059 -> 0x0300005A; .h and _main.c unchanged).\n\nCause 1 (slew light): the poll published MOUNT_STATE before indigo_update_coordinates(), with the light its own branches chose (IDLE on the \"read OK\" branch, BUSY while decelerating after an abort), so under a coordinates ALERT kept by the library the light was IDLE/BUSY; the slew-failed, sync-failed and classic-guiding refusal paths never touched the light; the abort set it IDLE; a new session kept whatever light the last one ended with.\nFix 1: one profile-independent helper meade_update_slew_light(): coordinates ALERT -> light ALERT, BUSY -> BUSY, otherwise the caller's light, except that an ALERT light never outlives the coordinates ALERT (-> IDLE). Called (a) in the poll after indigo_update_coordinates(), MOUNT_STATE now published after the coordinates (still once per poll, as before); (b) in the abort handler after the \"Goto aborted\" ALERT; (c) after the classic-guiding indigo_reject_coordinates_change(); (d) at the end of the MOUNT_EQUATORIAL_COORDINATES on_change, before the generated indigo_update_coordinates(): the macro INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE published the request BUSY just before, so the result state is published unchanged (MOUNT_STATE published only when the light changed); (e) meade_init_mount() sets the light IDLE and derives it from the coordinates (OK at session start). The 8 places that assign MOUNT_STATE_SLEW_ITEM keep their values; the helper overrides them.\nConsequence: a poll that runs between the BUSY of a request and its handler now lights BUSY (coordinates BUSY) instead of waiting for the handler after :MS#; for a sync request in that window the light flashes BUSY for one poll.\nNot covered: refusals inserted by the generator (parked guard \"Mount is parked!\") cannot call ",
+      "tokens": null
+    },
+    {
+      "event_id": "2051b890-ca50-4870-956a-7068385af5e5",
+      "event": "task/progress",
+      "at": "2026-11-23T15:47:51.532109Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "bf921a32-0d18-4a28-a96b-53b5bd576668",
+      "text": "Review started"
+    },
+    {
+      "event_id": "39b5c026-0c21-4158-8500-62be14b4e3c6",
+      "event": "review/started",
+      "at": "2026-11-23T15:47:51.533244Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "4ca23c2f-8b3a-47dc-b668-f46ef4cac8fb",
+      "event": "task/progress",
+      "at": "2026-11-23T15:56:03.099519Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "bf921a32-0d18-4a28-a96b-53b5bd576668",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "a6ddf8d7-9ae0-4694-a718-18975eeb6d18",
+      "event": "task/progress",
+      "at": "2026-11-23T15:56:03.099545Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "09a75dfb-f65b-44f9-8c6d-49c35278cbf3",
+      "event": "review/changes_requested",
+      "at": "2026-11-23T15:56:03.100790Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "bf921a32-0d18-4a28-a96b-53b5bd576668",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "8b6050156ae865afa4c4f277d31dcccf09fa30b3"
+    },
+    {
+      "event_id": "6b2f484f-0392-4f03-af7b-40489739d453",
+      "event": "task/progress",
+      "at": "2026-11-23T15:56:08.155055Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Addressing review: seed sets positionRA/Dec, new seed-then-failed-poll case, sync light, merge master"
+    },
+    {
+      "event_id": "81bd8244-1958-465e-85c2-f4c51e0acf9e",
+      "event": "task/progress",
+      "at": "2026-11-23T16:00:11.455700Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Recorded run after review fixes: python3 tools/run_driver_test.py mount_lx200"
+    },
+    {
+      "event_id": "d142ae4c-7ad4-4aeb-9c2b-976c5c7332fa",
+      "event": "task/progress",
+      "at": "2026-11-23T16:27:51.053285Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "830f56e7-26d1-46a9-9e9c-27144159cdab",
+      "event": "task/progress",
+      "at": "2026-11-23T16:27:51.080748Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "67514584-9b23-41b6-b208-54bd4f0c1a66",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "dbfd674c-20f1-4390-97f1-6a4dbe969cdb",
+      "event": "check/passed",
+      "at": "2026-11-23T16:27:51.082740Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "f813f64dba5de18791736ddc4242abc6ac0f31d3",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "c194b14f-368e-4963-809c-88ba59c8849d",
+      "event": "ticket/note",
+      "at": "2026-11-23T16:28:02.476630Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Review round 1 (changes) addressed. Defect: meade_seed_last_position() set lastRA/lastDec and last_position_valid but left positionRA/positionDec stale (0 on a first connect, the previous session's last read otherwise); a poll whose readback fails copies positionRA/Dec into lastRA/Dec, so 'seed OK, first poll readback fails' made the next successful poll report a false slew (1 BUSY coordinates + 1 BUSY light). Fix: the seed sets positionRA/positionDec too (positionRA = lastRA = ra, positionDec = lastDec = dec); the goto handler uses the same function, so it is consistent. New case lx200_generic_first_poll_readback_fails_after_the_connect_read: generic profile, a fault on the next :GR# is armed from the log line of the seed's :GD#, so the first poll's readback fails (asserted 'fault GR'); over 3 complete polls no BUSY coordinates and no BUSY slew light, coordinates OK and light IDLE at the end. Without the fix line (generated .c with only the positionRA/positionDec assignments reverted, linked into the same test): 'after the failed readback: 1 BUSY coordinates, 1 BUSY slew lights', FAIL expected 0, got 1; with it PASS. Extra (a): in the sync success branch the light is set IDLE and MOUNT_STATE published when it was BUSY and the last poll saw no slew (a BUSY lit by a poll between the sync's admission and its handler no longer stays under OK until the next poll); no dedicated case (the window is timing-dependent), covered only by the existing sync cases. Extra (b) skipped: telling the connect seed from the handler seed in lx200_generic_goto_before_the_first_poll needs a new events-between helper (counting :GR#/:GD# between connect and :Sr#), more than a few lines; the read-fails variant already proves the handler seed by the asserted single 'fault GR'. Merged master (git merge, 5fbf21d11): conflict only in MIGRATION_STATUS.md, resolved with master's mount_ioptron 147 and lx200 180; TEST_SUMMARY auto-merged. MIGRATION_STATUS mount_lx200 now 180 / 35 (177 script-run case",
+      "tokens": null
+    },
+    {
+      "event_id": "54baf9fe-bc8a-4479-885d-3f32ef109470",
+      "event": "task/progress",
+      "at": "2026-11-23T16:28:28.306095Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "bf921a32-0d18-4a28-a96b-53b5bd576668",
+      "text": "Review started"
+    },
+    {
+      "event_id": "6dbed3c8-f7fa-44b7-943f-57087e5a3d77",
+      "event": "review/started",
+      "at": "2026-11-23T16:28:28.307363Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "34c86d54-9c2a-415d-8907-caf66ff0c21a",
+      "event": "task/progress",
+      "at": "2026-11-23T19:34:37.485035Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "bf921a32-0d18-4a28-a96b-53b5bd576668",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "21d62193-21c5-447d-abd6-88cc60601cf1",
+      "event": "review/passed",
+      "at": "2026-11-23T19:34:37.486650Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "bf921a32-0d18-4a28-a96b-53b5bd576668",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "f813f64dba5de18791736ddc4242abc6ac0f31d3"
+    },
+    {
+      "event_id": "2b24b292-e6ef-4311-b469-0b7d43d990f4",
+      "event": "ticket/closed",
+      "at": "2026-11-23T19:34:37.750504Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-23T19:34:37.750479Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "3c33cc6d4ef34a004b9b24b7fca7d050f4b2dfe9"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8b6050156ae865afa4c4f277d31dcccf09fa30b3",
+        "tree": "9c18c843c0dcf4656df9fc55cd6174fc6fbb64f2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T15:46:13.616178Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/a6f7e78d-f97f-4a70-8e74-ffd9b75b53f4/9c18c843c0dc-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f813f64dba5de18791736ddc4242abc6ac0f31d3",
+        "tree": "589ece7af94b056f1176dc56321b91df2438f6a0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T16:27:51.079854Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/a6f7e78d-f97f-4a70-8e74-ffd9b75b53f4/589ece7af94b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Part 1 (slew light) correct. Required: indigo_mount_lx200.driver:3526-3533 meade_seed_last_position() sets lastRA/lastDec and last_position_valid but leaves positionRA/positionDec stale (0 or the previous session); the poll copies positionRA into lastRA even when its readback failed (3802-3803), so 'seed OK, first poll read fails' makes the next good poll report a false slew (reproduced: head 1 BUSY, master 0). Fix: also set positionRA/positionDec in the seed; add a simulator case (seed OK, first poll readback fails, no BUSY over the following polls); repeat the recorded run. Non-blocking: after a sync handled while a poll lit BUSY the light stays BUSY under OK until the next poll (set IDLE in the sync success branch when not slewing - optional); poll publishing ALERT during a pending sync leaves the light IDLE until the next poll; AP with :GOS# whose status read fails falls back to position decoding without a seed; first variant of the goto-before-first-poll case does not tell connect seed from handler seed; classic-guiding refusal light untested.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "8b6050156ae865afa4c4f277d31dcccf09fa30b3",
+        "tree": "9c18c843c0dcf4656df9fc55cd6174fc6fbb64f2",
+        "at": "2026-11-23T15:56:03.099247Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 (head f813f64db): meade_seed_last_position() now sets positionRA/positionDec with lastRA/lastDec; new case lx200_generic_first_poll_readback_fails_after_the_connect_read passes on head and fails on the round-one driver (reviewer ran both); the sync-branch IDLE cannot switch off the light during real motion (slewing is the last poll's verdict on the same queue; a real slew makes the sync refused); generated files byte-identical; MIGRATION count 180 = 177 + 3 TCP, other rows as on master. Non-blocking: sync-branch IDLE has no dedicated case (timing-dependent window) and is published before the readback and the coordinates' OK; connect seed vs handler seed not covered separately.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "f813f64dba5de18791736ddc4242abc6ac0f31d3",
+        "tree": "589ece7af94b056f1176dc56321b91df2438f6a0",
+        "at": "2026-11-23T19:34:37.484644Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T15:46:58.606109Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementation (indigo_mount_lx200 version 89 -> 90, .driver edited, .c regenerated with the unchanged generator; the generated diff equals the .driver diff apart from indentation and DRIVER_VERSION 0x03000059 -> 0x0300005A; .h and _main.c unchanged).\n\nCause 1 (slew light): the poll published MOUNT_STATE before indigo_update_coordinates(), with the light its own branches chose (IDLE on the \"read OK\" branch, BUSY while decelerating after an abort), so under a coordinates ALERT kept by the library the light was IDLE/BUSY; the slew-failed, sync-failed and classic-guiding refusal paths never touched the light; the abort set it IDLE; a new session kept whatever light the last one ended with.\nFix 1: one profile-independent helper meade_update_slew_light(): coordinates ALERT -> light ALERT, BUSY -> BUSY, otherwise the caller's light, except that an ALERT light never outlives the coordinates ALERT (-> IDLE). Called (a) in the poll after indigo_update_coordinates(), MOUNT_STATE now published after the coordinates (still once per poll, as before); (b) in the abort handler after the \"Goto aborted\" ALERT; (c) after the classic-guiding indigo_reject_coordinates_change(); (d) at the end of the MOUNT_EQUATORIAL_COORDINATES on_change, before the generated indigo_update_coordinates(): the macro INDIGO_COPY_TARGETS_PROCESS_COORDINATES_CHANGE published the request BUSY just before, so the result state is published unchanged (MOUNT_STATE published only when the light changed); (e) meade_init_mount() sets the light IDLE and derives it from the coordinates (OK at session start). The 8 places that assign MOUNT_STATE_SLEW_ITEM keep their values; the helper overrides them.\nConsequence: a poll that runs between the BUSY of a request and its handler now lights BUSY (coordinates BUSY) instead of waiting for the handler after :MS#; for a sync request in that window the light flashes BUSY for one poll.\nNot covered: refusals inserted by the generator (parked guard \"Mount is parked!\") cannot call driver code; the light lags there until the next poll (<= 1 s), which then derives it. Edge: if a poll publishes ALERT (readback failures beyond retries or a Gemini stall) between the BUSY of a sync request and its handler, the OK of the sync is kept as ALERT by the library while the handler derives IDLE from OK; the next poll corrects the light.\n\nCause 2 (goto before the first poll): profiles decoded by meade_update_generic_state() (generic, classic, StarGO2, AP without :GOS#) had last_position_valid false until the first poll, so a goto handled before it was published OK by that poll while the mount slewed.\nFix 2: meade_seed_last_position() reads the controller position with meade_get_coordinates() (controller frame, like positionRA/positionDec) into lastRA/lastDec; it does not touch the published coordinates (a first attempt with meade_read_position() wrote them before the properties were defined, so the first poll published no fresh OK and lx200_sync_result_carries_the_reported_position failed for generic, classic and stargo2 in the first recorded run; fixed, see below). Called at the end of meade_init_mount() for those profiles only (one extra :GR#/:GD# round trip at connect, appended after the site read; other profiles' connect traces unchanged); a failed read leaves last_position_valid false as before (no false slew). Failed sync readback path: the goto handler (TRACK branch) of those profiles reads the start position the same way when last_position_valid is false, before :Sr#/:Sd#/:MS#; this also covers a failed read at connect. Remains: if that read fails too, the first poll after the goto still has nothing to compare with and publishes the goto OK; a goto started from the hand controller right after such a sync is seen one poll late, as before. No position is invented.\n\nTests (indigo_test/integration/test_mount_lx200_simulator.c):\n- New lx200_slew_light_follows_kept_coordinates_alert (generic = position-decoded, ZWO = native status): after connect OK/IDLE over a poll (c); :MS# refused by fault rule -> coordinates ALERT and light ALERT at once and after each of 2 complete polls of the idle mount (a); next goto -> BUSY light published, ends OK at target, light IDLE over 2 polls (b); a second refusal, disconnect, reconnect -> coordinates OK and light IDLE at definition and over 2 polls (c).\n- New lx200_generic_goto_before_the_first_poll: the client sends the goto from its own update callback when CONNECTION is published OK (queued ahead of the first poll); the coordinates must be published OK only at the target (RA 18, DEC -80), with >= 2 BUSY coordinate publications and a BUSY light, then OK/IDLE over 2 polls. Second variant: a fault rule written from the log line of :Gg# makes the connect seed read fail (asserted: exactly 1 \"fault GR\"), the goto handler's own read covers it.\n- Adapted: lx200_goto_abort_ends_alert_and_idle_abort_keeps_state (light ALERT after the abort and over the polls that keep the ALERT, waited for since MOUNT_STATE follows the coordinates; slew_light_precedes_the_next_poll() now requires the BUSY light before the first poll after :MS#, no longer after :MS#, because a poll between request and handler lights it with the coordinates BUSY; the IDLE light at the end of the next goto is taken from the MOUNT_STATE published after the coordinates' OK); lx200_goto_abort_keeps_alert_while_decelerating (light ALERT instead of BUSY while decelerating and instead of IDLE after the axes stood; IDLE after the next goto).\n- Proof without the fix: both new cases built against the pre-change driver object (master's indigo_mount_lx200.c) fail: slew light case \"expected 3, got 0\" (ALERT expected, IDLE published) for generic and zwo; goto case \"goto ended OK at RA 8.8183 DEC 16.9261 after 1 BUSY coordinates\", coordinates_at(18, -80) failed, and the read-fails variant failed.\n- Filtered runs with the fix: the 4 *_no_slew_without_motion cases, lx200_zwo_park_and_home_requests_during_poll, lx200_sync_result_carries_the_reported_position, classic guiding refusal, failed readback, busy overlap, generic polling progress, disconnect/reconnect: all PASS.\n- Recorded run: python3 tools/run_driver_test.py mount_lx200 -> \"2026-11-23 16:18 3.0.0.90 mac arm64 simulator 176/176 OK\" (first recorded run 176/175 Failed on the seed writing the published coordinates, fixed, record replaced). MIGRATION_STATUS mount_lx200: 177 -> 179 (176 script-run cases + 3 opt-in TCP cases). flow check (whitespace) passed.\nScenario mapping: (a) refused goto ALERT kept over polls -> slew_light_follows_kept (generic, zwo) and goto_abort_ends (onstep, abort path) and goto_abort_keeps_alert_while_decelerating (all status dialects); (b) next request BUSY then OK/IDLE -> same three; (c) connect -> slew_light_follows_kept (connect and reconnect after a kept ALERT); goto before first poll -> generic_goto_before_the_first_poll; settled_state untouched.\nNot verified: Linux, Windows, hardware (no hardware run), the opt-in TCP cases (not run by the script), the classic-guiding refusal light (path changed, only the existing case without light assertion ran).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T16:28:02.475392Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Review round 1 (changes) addressed. Defect: meade_seed_last_position() set lastRA/lastDec and last_position_valid but left positionRA/positionDec stale (0 on a first connect, the previous session's last read otherwise); a poll whose readback fails copies positionRA/Dec into lastRA/Dec, so 'seed OK, first poll readback fails' made the next successful poll report a false slew (1 BUSY coordinates + 1 BUSY light). Fix: the seed sets positionRA/positionDec too (positionRA = lastRA = ra, positionDec = lastDec = dec); the goto handler uses the same function, so it is consistent. New case lx200_generic_first_poll_readback_fails_after_the_connect_read: generic profile, a fault on the next :GR# is armed from the log line of the seed's :GD#, so the first poll's readback fails (asserted 'fault GR'); over 3 complete polls no BUSY coordinates and no BUSY slew light, coordinates OK and light IDLE at the end. Without the fix line (generated .c with only the positionRA/positionDec assignments reverted, linked into the same test): 'after the failed readback: 1 BUSY coordinates, 1 BUSY slew lights', FAIL expected 0, got 1; with it PASS. Extra (a): in the sync success branch the light is set IDLE and MOUNT_STATE published when it was BUSY and the last poll saw no slew (a BUSY lit by a poll between the sync's admission and its handler no longer stays under OK until the next poll); no dedicated case (the window is timing-dependent), covered only by the existing sync cases. Extra (b) skipped: telling the connect seed from the handler seed in lx200_generic_goto_before_the_first_poll needs a new events-between helper (counting :GR#/:GD# between connect and :Sr#), more than a few lines; the read-fails variant already proves the handler seed by the asserted single 'fault GR'. Merged master (git merge, 5fbf21d11): conflict only in MIGRATION_STATUS.md, resolved with master's mount_ioptron 147 and lx200 180; TEST_SUMMARY auto-merged. MIGRATION_STATUS mount_lx200 now 180 / 35 (177 script-run cases + 3 opt-in TCP). Filtered runs: new case, goto_before_the_first_poll, sync_result_carries, the 4 no_slew_without_motion cases PASS. Recorded run: '2026-11-23 17:00 3.0.0.90 mac arm64 simulator 177/177 OK' (replaces the 16:18 176/176 line). flow check (whitespace) passed at f813f64db. Reviewer's non-blocking remarks, recorded as known limits: a poll that publishes ALERT (readback failures beyond retries, Gemini stall) while a sync is pending leaves the light IDLE under the kept ALERT until the next poll; an AP with :GOS# whose status read fails falls back to position decoding at runtime without a seed (meade_slew_from_position() keys on ap_use_gos decided at connect); the light of the classic-guiding refusal path is not asserted by any case. Version stays 90.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "3c33cc6d4ef34a004b9b24b7fca7d050f4b2dfe9",
+      "tree": "589ece7af94b056f1176dc56321b91df2438f6a0",
+      "base": "master",
+      "at": "2026-11-23T19:34:37.677878Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-23T13:54:09.347437Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-23T13:54:09.575022Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 20422266.459,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 40,
+    "sha256": "cf3083f2892ca711abff1b8b5bf30ad25243badfb41320c16e8768f131c3e90f"
+  }
+}
