@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000047
+#define DRIVER_VERSION       0x03000048
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -1326,6 +1326,20 @@ static bool ioptron_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 
 // ---------------------------------------------------------------------  generic init & state update
 
+// The SLEW light is ALERT whenever MOUNT_EQUATORIAL_COORDINATES is, the ALERT that indigo_update_coordinates() keeps after
+// a refused or failed request included, BUSY while the coordinates are BUSY or the mount still moves, IDLE otherwise. It is
+// derived from the state that function published: call it after indigo_update_coordinates(), never between writing the
+// state and publishing it.
+static indigo_property_state ioptron_slew_light(indigo_device *device) {
+	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
+		return INDIGO_ALERT_STATE;
+	}
+	if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE || PRIVATE_DATA->slewing) {
+		return INDIGO_BUSY_STATE;
+	}
+	return INDIGO_IDLE_STATE;
+}
+
 static bool ioptron_init_mount(indigo_device *device) {
 	int guide_ra = 0, guide_dec = 0;
 	PRIVATE_DATA->last_slew_rate = -1;
@@ -1545,6 +1559,8 @@ static bool ioptron_init_mount(indigo_device *device) {
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 			MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
+		// MOUNT_STATE is defined after this, with the SLEW light of the coordinates it is defined with
+		MOUNT_STATE_SLEW_ITEM->light.value = ioptron_slew_light(device);
 	} else {
 		return false;
 	}
@@ -1673,6 +1689,14 @@ static bool ioptron_at_target(indigo_device *device) {
 	return ra_difference * 15 * cos(PRIVATE_DATA->goto_target_dec * M_PI / 180) <= RA_MIN_DIF && dec_difference <= DEC_MIN_DIF;
 }
 
+// Sets the SLEW light and publishes MOUNT_STATE when it differs from the fingerprint it had when it was last published.
+static void ioptron_update_slew_light(indigo_device *device, unsigned published) {
+	MOUNT_STATE_SLEW_ITEM->light.value = ioptron_slew_light(device);
+	if (ioptron_fingerprint(MOUNT_STATE_PROPERTY) != published) {
+		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+	}
+}
+
 static void ioptron_update_mount_state(indigo_device *device) {
 	indigo_property *polled[] = { MOUNT_STATE_PROPERTY, MOUNT_TRACKING_PROPERTY, MOUNT_PARK_PROPERTY, MOUNT_HOME_PROPERTY, MOUNT_SIDE_OF_PIER_PROPERTY };
 	unsigned fingerprints[5];
@@ -1699,7 +1723,6 @@ static void ioptron_update_mount_state(indigo_device *device) {
 	}
 	if (ioptron_get_state(device)) {
 		if (PRIVATE_DATA->slewing) {
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 			if (!PRIVATE_DATA->stopping) {
 				// a running slew (driver or hand controller initiated) completes when it stops, an aborted
 				// one keeps its ALERT while the mount decelerates
@@ -1710,7 +1733,6 @@ static void ioptron_update_mount_state(indigo_device *device) {
 			// a GOTO was accepted but its slew command has not been sent yet
 		} else {
 			PRIVATE_DATA->stopping = false;
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 				// the controller reports the end of the slew, the readback decides whether it reached the target
 				if (!coordinates_read && PRIVATE_DATA->position_failures <= POSITION_READ_RETRIES) {
@@ -1808,9 +1830,10 @@ static void ioptron_update_mount_state(indigo_device *device) {
 		indigo_timetoisogm(time(NULL) - PRIVATE_DATA->time_difference, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	// Changes are published once, an unchanged property is not republished by every poll.
+	// Changes are published once, an unchanged property is not republished by every poll. MOUNT_STATE follows the
+	// coordinates, its SLEW light shows the state indigo_update_coordinates() publishes.
 	const char *messages[] = { NULL, NULL, park_message, home_message, NULL };
-	for (int i = 0; i < 5; i++) {
+	for (int i = 1; i < 5; i++) {
 		if (messages[i] != NULL) {
 			indigo_update_property(device, polled[i], "%s", messages[i]);
 		} else if (ioptron_fingerprint(polled[i]) != fingerprints[i]) {
@@ -1819,6 +1842,7 @@ static void ioptron_update_mount_state(indigo_device *device) {
 	}
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 	indigo_update_coordinates(device, coordinates_message);
+	ioptron_update_slew_light(device, fingerprints[0]);
 }
 
 //- code
@@ -2109,6 +2133,8 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
+	// The result follows the BUSY of the request, the generated indigo_update_coordinates() below publishes it unchanged.
+	ioptron_update_slew_light(device, ioptron_fingerprint(MOUNT_STATE_PROPERTY));
 	//- mount.MOUNT_EQUATORIAL_COORDINATES.on_change
 	indigo_update_coordinates(device, NULL);
 }
@@ -2150,6 +2176,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 				// an aborted slew never reached its target, an abort while idle leaves the coordinates alone
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_coordinates(device, "Slew aborted");
+				ioptron_update_slew_light(device, ioptron_fingerprint(MOUNT_STATE_PROPERTY));
 			}
 		} else {
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;

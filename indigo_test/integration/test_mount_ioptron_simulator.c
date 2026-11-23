@@ -287,6 +287,8 @@ static atomic_uint_fast64_t abort_alerted;
 static atomic_int mount_coordinates_state;
 // The mount device, taken from its own publications, so a case can fence its queue.
 static _Atomic(indigo_device *) mount_device;
+// MOUNT_STATE publications of the mount counted by the state of their SLEW light, so a short BUSY is not missed.
+static atomic_int slew_lights[4];
 // Messages the mount sent, counted and the last one kept.
 static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char last_mount_message[INDIGO_VALUE_SIZE];
@@ -363,6 +365,12 @@ static indigo_result timed_client_update(indigo_client *client, indigo_device *d
 		if (property->state == INDIGO_OK_STATE) {
 			uint_fast64_t expected = 0;
 			atomic_compare_exchange_strong(&coordinates_ok_after, &expected, io_monotonic_ns());
+		}
+	} else if (!strcmp(property->device, ioptron_mount.device_name) && !strcmp(property->name, MOUNT_STATE_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, MOUNT_STATE_SLEW_ITEM_NAME) && property->items[i].light.value <= INDIGO_ALERT_STATE) {
+				atomic_fetch_add(slew_lights + property->items[i].light.value, 1);
+			}
 		}
 	}
 	return simulator_client_update_property(client, device, property, message);
@@ -462,6 +470,20 @@ static bool wait_light(const char *item, indigo_property_state value) {
 		indigo_usleep(100000);
 	}
 	return false;
+}
+
+// Samples the SLEW light and the coordinates state over milliseconds and requires both to stay ALERT, with no other SLEW
+// light published meanwhile.
+static bool slew_alert_stays(int milliseconds) {
+	int idle = atomic_load(slew_lights + INDIGO_IDLE_STATE), ok = atomic_load(slew_lights + INDIGO_OK_STATE), busy = atomic_load(slew_lights + INDIGO_BUSY_STATE);
+	for (int elapsed = 0; elapsed < milliseconds; elapsed += 100) {
+		if (light_value(MOUNT_STATE_SLEW_ITEM_NAME) != INDIGO_ALERT_STATE || find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state != INDIGO_ALERT_STATE) {
+			fprintf(stderr, "  SLEW light %d, coordinates %d after %d ms\n", light_value(MOUNT_STATE_SLEW_ITEM_NAME), find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state, elapsed);
+			return false;
+		}
+		indigo_usleep(100000);
+	}
+	return idle == atomic_load(slew_lights + INDIGO_IDLE_STATE) && ok == atomic_load(slew_lights + INDIGO_OK_STATE) && busy == atomic_load(slew_lights + INDIGO_BUSY_STATE);
 }
 
 static double number_value(const char *property, const char *item) {
@@ -1187,10 +1209,11 @@ static void ioptron_goto_progress_abort_and_restart(void) {
 	unsigned int ok_before = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&fixture.simulator, "Q", 0));
-	// An aborted GOTO ends ALERT, it never reports the target as reached.
+	// An aborted GOTO ends ALERT, it never reports the target as reached; the SLEW light shows the ALERT of the coordinates.
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates));
-	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_ALERT_STATE));
 	indigo_usleep(2500000);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, light_value(MOUNT_STATE_SLEW_ITEM_NAME));
 	SERIAL_CHECK_TRUE(number_stays(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 0.01, 1500));
 	SERIAL_CHECK_TRUE(number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) < 39.0);
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
@@ -1351,9 +1374,10 @@ static void ioptron_goto_completion_follows_slew_status(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates));
 	SERIAL_CHECK_TRUE(wait_mount_message(messages, "short of the target"));
 	SERIAL_CHECK_TRUE(DEC_VALUE() < 30.0);
-	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_ALERT_STATE));
 	indigo_usleep(1500000);
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, light_value(MOUNT_STATE_SLEW_ITEM_NAME));
 	SERIAL_CHECK_EQ_INT(ok_before, property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	// The next GOTO is accepted and completes.
 	SERIAL_CHECK_TRUE(io_goto(6.0, 22.0, INDIGO_BUSY_STATE));
@@ -1411,10 +1435,11 @@ static void ioptron_goto_ends_alert_when_position_readback_keeps_failing(void) {
 	unsigned int coordinates = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	SERIAL_CHECK_TRUE(inject(simulator, "GEP", "+12060000#", 0));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, coordinates));
-	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_ALERT_STATE));
 	double dec = DEC_VALUE();
 	indigo_usleep(1500000);
 	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, light_value(MOUNT_STATE_SLEW_ITEM_NAME));
 	SERIAL_CHECK_TRUE(dec > 13.0 && dec < 29.0);
 	SERIAL_CHECK_TRUE(fabs(DEC_VALUE() - dec) < 1e-6);
 	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)->number.target - 6.0) < 1e-6);
@@ -1423,6 +1448,53 @@ static void ioptron_goto_ends_alert_when_position_readback_keeps_failing(void) {
 cleanup:
 	io_close(&fixture);
 }
+
+// The SLEW light of MOUNT_STATE follows the coordinates state indigo_update_coordinates() publishes: a refused GOTO and a
+// failed sync leave both ALERT while the mount stays idle, a new session starts with the light of its coordinates, and the
+// next accepted request shows BUSY on both and ends OK with the light IDLE.
+static void check_slew_light(int index, const char *refusal) {
+	const ioptron_dialect *d = dialects + index;
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	const char *slow[] = { "--tracking", "--slew-rate", "5", NULL };
+	SERIAL_CHECK_TRUE(io_open_mount(&fixture, d->protocol, NULL, slow));
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_sync(6.5, -12.25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	// The controller refuses the GOTO, the mount stays where it is.
+	SERIAL_CHECK_TRUE(inject(simulator, d->goto_command, refusal, 1));
+	SERIAL_CHECK_TRUE(io_goto(8.5, 20.0, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(slew_alert_stays(2500));
+	// A new session starts without the ALERT of the previous one, with the light of its coordinates.
+	SERIAL_CHECK_TRUE(io_reconnect_mount(&fixture));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)->state);
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, light_value(MOUNT_STATE_SLEW_ITEM_NAME));
+	SERIAL_CHECK_TRUE(inject(simulator, d->goto_command, refusal, 1));
+	SERIAL_CHECK_TRUE(io_goto(8.5, 20.0, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_ALERT_STATE));
+	// The next GOTO is accepted: BUSY on both, then OK with the light IDLE.
+	int busy = atomic_load(slew_lights + INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(io_goto(6.5, -10.0, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(atomic_load(slew_lights + INDIGO_BUSY_STATE) > busy);
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, -10.0, 0.002));
+	// A sync the controller refuses leaves both ALERT too, the next sync ends OK with the light IDLE.
+	SERIAL_CHECK_TRUE(inject(simulator, d->sync_dec, "0", 1));
+	SERIAL_CHECK_TRUE(io_sync(6.5, -12.25, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(slew_alert_stays(2500));
+	SERIAL_CHECK_TRUE(io_sync(6.5, -12.25, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_light(MOUNT_STATE_SLEW_ITEM_NAME, INDIGO_IDLE_STATE));
+	SERIAL_CHECK_EQ_INT(0, protocol_violations(simulator));
+cleanup:
+	io_close(&fixture);
+}
+
+static void ioptron_slew_light_follows_coordinates_8406(void) { check_slew_light(I8406, "1"); }
+static void ioptron_slew_light_follows_coordinates_0205(void) { check_slew_light(I0205, "0"); }
+static void ioptron_slew_light_follows_coordinates_0300(void) { check_slew_light(I0300, "0"); }
 
 // An abort while nothing moves leaves position, tracking and the coordinate state alone.
 static void ioptron_idle_abort_keeps_position_and_tracking(void) {
@@ -3082,6 +3154,9 @@ int main(int argc, char **argv) {
 		{ "ioptron_goto_completion_follows_slew_status", ioptron_goto_completion_follows_slew_status },
 		{ "ioptron_goto_survives_failed_position_readback", ioptron_goto_survives_failed_position_readback },
 		{ "ioptron_goto_ends_alert_when_position_readback_keeps_failing", ioptron_goto_ends_alert_when_position_readback_keeps_failing },
+		{ "ioptron_slew_light_follows_coordinates_8406", ioptron_slew_light_follows_coordinates_8406 },
+		{ "ioptron_slew_light_follows_coordinates_0205", ioptron_slew_light_follows_coordinates_0205 },
+		{ "ioptron_slew_light_follows_coordinates_0300", ioptron_slew_light_follows_coordinates_0300 },
 		{ "ioptron_idle_abort_keeps_position_and_tracking", ioptron_idle_abort_keeps_position_and_tracking },
 		{ "ioptron_disconnect_during_motion_stops_mount", ioptron_disconnect_during_motion_stops_mount },
 		{ "ioptron_malformed_readback_8406", ioptron_malformed_readback_8406 },
