@@ -1,0 +1,686 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7f1e2a98-34b4-4e35-949e-13d9cb3fae07",
+  "revision": 35,
+  "title": "indigo_ccd_atik: Atik Infinity no longer connects since the generator migration (3.0-8+)",
+  "description": "User report: an Atik Infinity Color connects and works with INDIGO 3.0-1 but fails to connect with 3.0-9 and 3.0-11 (two clean upgrades from the 3.0-1 indigosky armhf image; Raspberry Pi 3 Model B, Raspbian 12 bookworm 32-bit, kernel 6.12.93+rpt-rpi-v7, usbfs buffer 192MiB). In the web UI and ain-imager the connection fails; in Ekos the user reports a crash on connect. Other devices on the same server (Player One Ceres 462M, SynScan mount, Moonlite focuser) keep working.\n\nAnalysis so far (code reading only, not reproduced): the driver was migrated to the code generator on 2026-09-12 (released in 3.0-8); the bundled armhf libatikcameras.so (2025.06.30.2074) is unchanged since November 2025, so the difference is in driver code. The hand-written driver ignored the results of ArtemisTemperatureSensorInfo, ArtemisCoolingInfo and ArtemisGetMaxBin (comment 'Temporary workaround for SDK_2020_06_23') and only set ALERT on the window heater and preset properties when their readout failed. atik_initialize_ccd() in indigo_ccd_atik.driver now fails the whole connection when: ArtemisTemperatureSensorInfo or ArtemisCoolingInfo returns anything other than ARTEMIS_OK or ARTEMIS_NOT_IMPLEMENTED; the camera reports cooling flags (flags & 3) == 3 with max <= min or without a temperature sensor; ArtemisGetMaxBin fails or returns out-of-range values; the window heater or preset/gain/offset readout fails. The migrated driver was hardware-tested with Atik Titan, Atik One and Atik 11000 only, not with an Infinity. Less likely alternative: atik_open() now locates the camera by serial number instead of by index and fails there.\n\nThe Ekos crash is not explained by the failed connection path (the generated handler calls atik_close only after a successful atik_open) and may be a separate defect.\n\nA debug log (indigo_server -vv, including the SDK debug callback output) of a connection attempt on 3.0-11 and of the Ekos crash has been requested from the reporter. Wait for it, or reproduce with the fake SDK, before fixing, so the fix targets the call that actually fails.\n\nProposed fix: a failure of an optional capability query (temperature sensor, cooling, window heater, presets/gain/offset) hides that capability instead of refusing the connection; keep a hard failure only for ArtemisProperties, sensor geometry and buffer allocation. Add fake SDK tests for an uncooled camera whose capability queries return error codes, and bump the driver version.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-20T18:20:17.166944Z",
+  "status": "closed",
+  "branch": "ticket/7f1e2a98-34b4-4e35-949e-13d9cb3fae07",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d22e910a-611d-401a-9cf0-8bac8cdddfc0",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-23T20:44:50.819789Z",
+          "last_activity_at": "2026-11-23T21:05:43.716854Z",
+          "ended_at": "2026-11-23T21:05:43.716854Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1252897.065,
+          "tokens": null
+        },
+        {
+          "attempt_id": "01ded29d-e309-4f72-b825-89181527d586",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T21:17:55.156676Z",
+          "last_activity_at": "2026-11-23T21:22:43.281917Z",
+          "ended_at": "2026-11-23T21:22:43.281917Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 288125.241,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T20:44:50.819789Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/7f1e2a98-34b4-4e35-949e-13d9cb3fae07"
+        },
+        {
+          "at": "2026-11-23T21:05:43.716854Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-23T21:17:55.156676Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-23T21:22:43.281917Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1541022.306,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "f15888fc-0de7-470e-a669-0fc8c4600a43",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "4c700b06-f7f6-4e12-8deb-1e5a7278d3ed",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-23T21:05:43.717028Z",
+          "last_activity_at": "2026-11-23T21:17:55.156561Z",
+          "ended_at": "2026-11-23T21:17:55.156561Z",
+          "outcome": {
+            "summary": "Round 1 (independent reviewer, claude-opus-5-5 high): code, generated output (byte-identical regeneration) and tests sound; new cases fail on 3.0.0.50 and pass on 3.0.0.51 (run). Required: the comment above uncooled_camera_with_failing_capability_queries (test_ccd_atik_sdk.c:1000-1005) presents the hypothesis as the reproduced cause and calls the Infinity uncooled; reword as a model of an unconfirmed hypothesis. Non-blocking: (1) the paths that still refuse the connection (atik_open serial lookup / ArtemisConnect NULL, ArtemisProperties failure or invalid geometry/pixel size) log nothing, so a reporter log would not decide between the remaining candidates; (2) .driver:128-131 comment should cite the old SDK_2020_06_23 workaround; (3) cooler log does not say the reason is the missing temperature sensor; (4) temperature hidden silently when TemperatureSensorInfo(1) returns NOT_IMPLEMENTED after sensors > 0; (5) branch TemperatureSensorInfo(0) OK and (1) failing not exercised separately; (6) the no-poll assertion of the uncooled case is weak. The --no-build record is valid (the test compiles the driver source itself).",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 731439.533,
+          "tokens": null
+        },
+        {
+          "attempt_id": "970a85fb-853d-4614-ab0f-f191537ba15c",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-23T21:22:43.282060Z",
+          "last_activity_at": "2026-11-23T21:28:29.850764Z",
+          "ended_at": "2026-11-23T21:28:29.850764Z",
+          "outcome": {
+            "summary": "Round 2 (same independent reviewer, claude-opus-5-5 high), head 7aa87c9ec: pass. Test comment no longer claims a confirmed cause; the new ERROR lines change no behaviour or return value, format specifiers correct also on 32-bit, none can repeat periodically; new sub-cases cover sensor count OK / read failing; no-poll assertion proven to depend on the change with a mutant; regeneration byte-identical; README only script record lines, TEST_SUMMARY matches make_test_summary, MIGRATION_STATUS 47 / 1. The hardware record made at e3d55ba66 stays valid: the delta is logging on refusal/hidden paths only. Non-blocking: a connect to an unplugged, not yet detached camera logs 'No camera with serial' at ERROR; both records carry 3.0.0.51 while logging changed between them.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 346568.704,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-23T21:05:43.717028Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T21:17:55.156561Z",
+          "status": "failed",
+          "actor": "human/Peter Polakovic",
+          "reason": "Round 1 (independent reviewer, claude-opus-5-5 high): code, generated output (byte-identical regeneration) and tests sound; new cases fail on 3.0.0.50 and pass on 3.0.0.51 (run). Required: the comment above uncooled_camera_with_failing_capability_queries (test_ccd_atik_sdk.c:1000-1005) presents the hypothesis as the reproduced cause and calls the Infinity uncooled; reword as a model of an unconfirmed hypothesis. Non-blocking: (1) the paths that still refuse the connection (atik_open serial lookup / ArtemisConnect NULL, ArtemisProperties failure or invalid geometry/pixel size) log nothing, so a reporter log would not decide between the remaining candidates; (2) .driver:128-131 comment should cite the old SDK_2020_06_23 workaround; (3) cooler log does not say the reason is the missing temperature sensor; (4) temperature hidden silently when TemperatureSensorInfo(1) returns NOT_IMPLEMENTED after sensors > 0; (5) branch TemperatureSensorInfo(0) OK and (1) failing not exercised separately; (6) the no-poll assertion of the uncooled case is weak. The --no-build record is valid (the test compiles the driver source itself)."
+        },
+        {
+          "at": "2026-11-23T21:22:43.282060Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-23T21:28:29.850764Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Round 2 (same independent reviewer, claude-opus-5-5 high), head 7aa87c9ec: pass. Test comment no longer claims a confirmed cause; the new ERROR lines change no behaviour or return value, format specifiers correct also on 32-bit, none can repeat periodically; new sub-cases cover sensor count OK / read failing; no-poll assertion proven to depend on the change with a mutant; regeneration byte-identical; README only script record lines, TEST_SUMMARY matches make_test_summary, MIGRATION_STATUS 47 / 1. The hardware record made at e3d55ba66 stays valid: the delta is logging on refusal/hidden paths only. Non-blocking: a connect to an unplugged, not yet detached camera logs 'No camera with serial' at ERROR; both records carry 3.0.0.51 while logging changed between them."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 (same independent reviewer, claude-opus-5-5 high), head 7aa87c9ec: pass. Test comment no longer claims a confirmed cause; the new ERROR lines change no behaviour or return value, format specifiers correct also on 32-bit, none can repeat periodically; new sub-cases cover sensor count OK / read failing; no-poll assertion proven to depend on the change with a mutant; regeneration byte-identical; README only script record lines, TEST_SUMMARY matches make_test_summary, MIGRATION_STATUS 47 / 1. The hardware record made at e3d55ba66 stays valid: the delta is logging on refusal/hidden paths only. Non-blocking: a connect to an unplugged, not yet detached camera logs 'No camera with serial' at ERROR; both records carry 3.0.0.51 while logging changed between them.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1078008.237,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "a1fd19af-ecac-42f8-add8-6c63f7ac9a66",
+      "event": "ticket/created",
+      "at": "2026-11-20T18:20:17.167648Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "high",
+      "profile": "simple"
+    },
+    {
+      "event_id": "81beb116-01ec-4281-91e8-975f59ad03df",
+      "event": "ticket/confirmed",
+      "at": "2026-11-20T18:20:45.741523Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "high",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "1e327ff4-444a-4616-8dbc-4e427e09db3b",
+      "event": "task/progress",
+      "at": "2026-11-23T20:44:50.820241Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Implementation started on branch ticket/7f1e2a98-34b4-4e35-949e-13d9cb3fae07"
+    },
+    {
+      "event_id": "e1c2383a-b29e-47e8-a12a-f30d5c70afa3",
+      "event": "ticket/started",
+      "at": "2026-11-23T20:44:50.822398Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/7f1e2a98-34b4-4e35-949e-13d9cb3fae07",
+      "base": "master"
+    },
+    {
+      "event_id": "0483e444-f679-49c2-bdc5-a77a92115ce7",
+      "event": "task/progress",
+      "at": "2026-11-23T20:45:19.855656Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Implementer launched",
+      "attempt_id": "d22e910a-611d-401a-9cf0-8bac8cdddfc0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "9b1cbec2-a619-43a9-a68b-762126cac0e3",
+      "event": "task/progress",
+      "at": "2026-11-23T20:48:44.614827Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Building library and generator in the worktree, baseline of the Atik fake SDK suite"
+    },
+    {
+      "event_id": "9e20b8e7-5705-4280-a732-39e6fe8b6d7a",
+      "event": "task/progress",
+      "at": "2026-11-23T20:50:26.139380Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Running baseline test_ccd_atik_sdk before changes"
+    },
+    {
+      "event_id": "81951914-a118-4eda-a2a1-753d5dabf966",
+      "event": "task/progress",
+      "at": "2026-11-23T20:51:49.338271Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Extending the fake SDK with capability query errors and writing the uncooled-camera cases"
+    },
+    {
+      "event_id": "0cb96481-62ff-4d75-95b6-f7d4dc8386c4",
+      "event": "task/progress",
+      "at": "2026-11-23T20:53:45.920123Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Running the new cases against the unfixed driver to show they fail"
+    },
+    {
+      "event_id": "692f0989-6e60-49bd-9162-34e2b33ae073",
+      "event": "task/progress",
+      "at": "2026-11-23T20:54:04.707941Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Fixing atik_initialize_ccd in the .driver: optional capability failures hide the capability"
+    },
+    {
+      "event_id": "cdbafa76-074c-48de-94d7-b149d115e80a",
+      "event": "task/progress",
+      "at": "2026-11-23T20:54:48.127555Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Running the new and changed cases against the fixed driver"
+    },
+    {
+      "event_id": "2c4093c9-304e-4b86-9141-c3850f8c669a",
+      "event": "task/progress",
+      "at": "2026-11-23T20:55:10.484719Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Recorded run: python3 tools/run_driver_test.py ccd_atik"
+    },
+    {
+      "event_id": "faa5dd5a-31f0-481f-bf12-0fc3defc525a",
+      "event": "ticket/note",
+      "at": "2026-11-23T20:55:22.373302Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Hardware reproduction attempt (coordinator, 2026-11-23 20:54 CET, owner-cleared host indigosky.local: Raspberry Pi, Debian 12 aarch64, kernel 6.12.87 rpi-2712, checkout e9457fa76 with binaries built 2026-10-25, indigo_server 3.0-9, indigo_ccd_atik 3.0.0.50, SDK 20250630): Atik VS (USB 20e7:dfbb, SDK description VS-60, SDK class AtikCameraSonySci, flags 2924, 'Has Temp Control', 'Cooling Initialise 1 31') attaches as 'ArtemisCCD VS' + guider and CONNECTION.CONNECTED=ON succeeds; CCD_TEMPERATURE is published (23.6 C). NOT reproduced. Limits: this camera has temperature control, so the optional-capability failure branches of atik_initialize_ccd() were not exercised; the reporter's platform is armhf on a Pi 3 with the armhf SDK build, which this arm64 host cannot run; whether the Infinity uses the same SDK class is not established. Attach took 4.8 s on the driver queue (SDK opens the device three times). Logs on the host: ~/atik_7f1e_run3.log, ~/atik_7f1e_props3.txt.",
+      "tokens": null
+    },
+    {
+      "event_id": "5141d602-3a5c-4590-9b18-b8f453a278dc",
+      "event": "task/progress",
+      "at": "2026-11-23T20:56:15.151995Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Driver build in the worktree fails at install_name_tool (path too long for the SDK dylib); recorded run with --no-build"
+    },
+    {
+      "event_id": "fe5f4523-0b60-43ce-b94b-24fabc53fa0a",
+      "event": "task/progress",
+      "at": "2026-11-23T20:57:42.222250Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "62563178-ba9c-45bd-8ad0-0b7257217b60",
+      "event": "task/progress",
+      "at": "2026-11-23T20:57:42.246549Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e3f5f229-d753-4b00-82de-d8f26d945f28",
+      "event": "check/passed",
+      "at": "2026-11-23T20:57:42.248347Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "e3d55ba66fe15880d58e8f3b1c04fcbc04dc9194",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "de815da8-e323-4e5d-87f4-faa4e28381e4",
+      "event": "ticket/note",
+      "at": "2026-11-23T20:58:34.928132Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementation note (fake SDK reproduction, no hardware touched).\n\nCAUSE (hypothesis, reproduced with the fake SDK only, NOT confirmed on an Atik Infinity): atik_initialize_ccd() of the generated driver (3.0.0.50) refuses the whole connection when an optional capability query fails or answers out of range. The pre-migration driver (4ff475376, ccd_connect_callback) ignored those results. A fake camera that is uncooled and answers ArtemisTemperatureSensorInfo, ArtemisCoolingInfo, ArtemisGetMaxBin, ArtemisGetWindowHeaterPower and ArtemisCameraSpecificOptionGetData with ARTEMIS_INVALID_FUNCTION fails to connect on 3.0.0.50 (CONNECTION ALERT) and connects on 3.0.0.51. The coordinator's hardware check (Atik VS, Raspberry Pi arm64, 3.0.0.50) connects fine; the VS has temperature control, so these failure branches were not exercised there. Which query the Infinity actually fails, if any, is unknown until a -vv log arrives; 3.0.0.51 logs every hidden capability with the SDK result code at INFO level (indigo_server -v).\n\nSTEP 1 - places where 3.0.0.50 refuses what the pre-migration driver accepted (connect path, call by call):\n1. Discovery/open: old plug attached every SDK index even when ArtemisDeviceSerial failed (serial \"\") and never called ArtemisDeviceIsCamera; old connect used ArtemisConnect(index) directly. New plug skips devices that are not cameras, have no NUL-terminated non-empty serial or no name; atik_open rescans ArtemisDeviceSerial and connects only on a serial match. Not changed: plug and open use the same lookup, the reporter's camera appeared, and the VS run proves the serial lookup works (\"65535 65535\").\n2. ArtemisProperties: both refuse a failed call. New also refuses nPixelsX/Y <= 0, non-finite or non-positive pixel size, and a buffer size overflow. Kept (required geometry).\n3. ArtemisGetMaxBin: old ignored the result and used an uninitialized stack variable (max_x_bin/max_y_bin), so its effective value on failure was undefined; new refused on failure or ",
+      "tokens": null
+    },
+    {
+      "event_id": "44c1644b-152d-4793-b74e-ebea0f1c7fb3",
+      "event": "ticket/note",
+      "at": "2026-11-23T20:58:59.243658Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Owner (2026-11-23): the Atik Infinity is an AtikCameraSonySci camera in the SDK, the same class as the Atik VS that connects fine with 3.0.0.50 on arm64. This weakens the optional-capability hypothesis (same SDK class, working here) and makes a platform difference (armhf SDK build / 32-bit, Raspberry Pi 3) or an Infinity-specific reply more likely. Not verified on armhf.",
+      "tokens": null
+    },
+    {
+      "event_id": "a900adb5-209c-4134-8b9e-b583b0b0a975",
+      "event": "task/progress",
+      "at": "2026-11-23T20:59:29.454581Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Owner follow-up: 32-bit/armhf scrutiny of the connect path"
+    },
+    {
+      "event_id": "4cea3e64-eac2-4c11-9c3d-5ce1fe02b534",
+      "event": "ticket/note",
+      "at": "2026-11-23T21:01:27.532264Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementer follow-up: 32-bit / armhf scrutiny of the connect and attach path (owner: the Infinity is an AtikCameraSonySci camera like the VS, which connects with 3.0.0.50 on arm64).\n\nCOMPILER CHECK of the regenerated indigo_ccd_atik.c (3.0.0.51), -fsyntax-only -Wall -Wextra -Wformat=2 -Wconversion -Wsign-conversion -funsigned-char (armhf char is unsigned), as ILP32 32-bit ARM (armv7k-apple-watchos, -DINDIGO_LINUX with a malloc.h stub), as ILP32 arm64_32, and native 64-bit (-DINDIGO_MACOS). No armhf Linux cross compiler or sysroot is available on this host, so this approximates armhf (ILP32, 32-bit long/size_t/pointers, unsigned char) and is not an armhf build. All three produce the same 24 warnings; none is specific to 32-bit. Warnings in the connect/attach path:\n- 162 atik_option: int id -> unsigned short argument of ArtemisCameraSpecificOptionGetData (ids 1/5/6, harmless).\n- 213 overflow guard: int nPixelsY -> size_t divisor (checked > 0 first, harmless).\n- 305 buffer_size = 2 * (size_t)nPixelsX * nPixelsY + FITS_HEADER_SIZE: int -> size_t (positive, harmless).\n- 306 indigo_alloc_blob_buffer(long size) takes the size_t buffer_size: on 32-bit long is 32-bit signed, so sizes between 2 GB and the SIZE_MAX guard would wrap. Latent only for sensors of about 1 Gpixel; the Infinity (1392 x 1040) needs about 2.9 MB. The old driver had the same long parameter.\nOther warnings are outside the connect path (exposure float/double/int conversions, unused callback parameters, the generated retry-handler cast).\n\nMANUAL REVIEW (new vs pre-migration driver, connect and attach):\n- struct ARTEMISPROPERTIES: only int, float and char[] fields, no packing pragma; identical layout on armhf and arm64. The new driver zero-initializes it (old did not).\n- BOOL is C bool in the SDK header for both driver versions; ArtemisDeviceIsCamera (new in plug) also returns BOOL. The device appeared for the reporter, so plug succeeded.\n- Serial and name buffers: new 100 bytes, as the SDK header document",
+      "tokens": null
+    },
+    {
+      "event_id": "2e7b8be6-825a-42ec-bcc8-e1a633116ff7",
+      "event": "ticket/note",
+      "at": "2026-11-23T21:05:43.625557Z",
+      "actor": "human/Peter Polakovic",
+      "text": "32-bit attempt on indigosky (coordinator, 2026-11-23): the released indigo3 3.0-11 armhf indigo_server, run with unpacked armhf libraries through ld-linux-armhf.so.3, does not start on the Pi 5: 'ELF load command address/offset not page-aligned' (4K-aligned binary, 16K-page kernel). Switching the Pi to the 4K kernel was declined by the owner, so the 32-bit path stays unverified. Nothing was installed on the host; the unpacked files were removed.",
+      "tokens": null
+    },
+    {
+      "event_id": "442b2ca2-59c4-4c6b-966d-1bb67094a6f3",
+      "event": "task/progress",
+      "at": "2026-11-23T21:05:43.717092Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f15888fc-0de7-470e-a669-0fc8c4600a43",
+      "text": "Review started"
+    },
+    {
+      "event_id": "7b0357ac-8f60-484a-9ab2-08ba35a3c3d5",
+      "event": "review/started",
+      "at": "2026-11-23T21:05:43.718276Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "ae62c847-29d3-45e5-a701-0c24140b9c56",
+      "event": "ticket/note",
+      "at": "2026-11-23T21:09:42.975503Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Recorded hardware run (owner's request, non-interactive, no hot-plug; coordinator): python3 tools/run_driver_test.py ccd_atik --hw on indigosky.local (Raspberry Pi 5, Debian 12 arm64), ticket branch at e3d55ba66, driver 3.0.0.51 rebuilt by the script, Atik VS (ArtemisCCD VS): 1/1 OK ('ATIK physical acceptance': exposures, abort, binning up to 16x16 with guarded-property refusals, cooler/temperature, guider pulses, reconnects, driver reload). Record line '2026-11-23 21:07 3.0.0.51 linux arm64 ArtemisCCD VS 1/1 OK' (the Pi clock is UTC) and its TEST_SUMMARY.md row were copied into the worktree as the script wrote them. No defect found. Hot-plug coverage was not established. The VS has temperature control, so the capability-hiding branches of the fix were exercised only with the fake SDK. Log on the host: ~/hw_atik_7f1e.log.",
+      "tokens": null
+    },
+    {
+      "event_id": "49539eaf-918c-40d5-a9b6-e1ead6d90cc1",
+      "event": "task/progress",
+      "at": "2026-11-23T21:17:55.156671Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f15888fc-0de7-470e-a669-0fc8c4600a43",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "7859a520-fd3e-481b-940f-b8afa61b1741",
+      "event": "task/progress",
+      "at": "2026-11-23T21:17:55.156699Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "71cee0fb-035b-41eb-b86e-5656558a9683",
+      "event": "review/changes_requested",
+      "at": "2026-11-23T21:17:55.158441Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f15888fc-0de7-470e-a669-0fc8c4600a43",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "21483e7d28e1eea3ec1bcf8cd4921fafe0598b89"
+    },
+    {
+      "event_id": "b65a5323-188d-4317-9167-bc60e8c26800",
+      "event": "task/progress",
+      "at": "2026-11-23T21:17:59.905144Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Review round 1: rewording, connect-refusal diagnostics, sensor(1) sub-case"
+    },
+    {
+      "event_id": "bf69a30d-a65e-4d6d-84b7-de0c00ceb9d1",
+      "event": "task/progress",
+      "at": "2026-11-23T21:19:52.478262Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Round 2: regenerating and running the changed cases"
+    },
+    {
+      "event_id": "3e22ab81-0183-4bc9-88aa-3f0136d49cb2",
+      "event": "task/progress",
+      "at": "2026-11-23T21:20:30.944104Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Round 2 recorded run: run_driver_test.py ccd_atik --no-build"
+    },
+    {
+      "event_id": "c063b5c1-2c3c-43ad-9bcb-50dae4f0634f",
+      "event": "task/progress",
+      "at": "2026-11-23T21:22:01.109509Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "861a79ed-23c3-47f1-85f9-38e4e3bbf3b2",
+      "event": "task/progress",
+      "at": "2026-11-23T21:22:01.133850Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "35e59a99-ac8d-4ae3-be79-1be4884fb28a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2bf6877e-7510-48f1-a46c-b149f74c36a1",
+      "event": "check/passed",
+      "at": "2026-11-23T21:22:01.136072Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "7aa87c9ec54eec34f4528d7561c30a323ab601e8",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "64324eef-f544-4a35-a783-9602f07a2387",
+      "event": "ticket/note",
+      "at": "2026-11-23T21:22:23.203976Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementer, review round 2 (version stays 3.0.0.51; head 7aa87c9ec).\n\nChanges:\n1. Test comment above uncooled_camera_with_failing_capability_queries reworded. It now says the case models the hypothesis for the Atik Infinity report (3.0-8 on; cause not confirmed). It no longer says the Infinity is uncooled or answers with error codes.\n2. Diagnostics on every path that still refuses a connection:\n   - atik_open: \"No camera with serial '<s>' among <n> SDK devices\" and \"ArtemisConnect(<index>) failed for serial '<s>'\".\n   - atik_initialize_ccd: \"ArtemisProperties() = <result>\", \"ArtemisProperties() reports a <w> x <h> pixel sensor\", \"ArtemisProperties() reports a <x> x <y> um pixel\", \"A <w> x <h> pixel sensor does not fit an image buffer\", \"Image buffer of <n> bytes not allocated\".\n   - Guider on_connect: \"ArtemisGuidePort(0) = <result>\".\n   All are logged with INDIGO_DRIVER_ERROR. The control flow of atik_open is unchanged; only the logging was added.\n3. The .driver comment now cites the old driver's SDK_2020_06_23 workaround: an earlier SDK answered the capability queries with an error code.\n4. When ArtemisCoolingInfo reports a usable cooler but the temperature is hidden, the cooler log line now says that the camera temperature is not available.\n5. The temperature log now also covers a counted sensor whose read returns ARTEMIS_NOT_IMPLEMENTED (or any error), with the result and the sensor count: \"ArtemisTemperatureSensorInfo() = <result>, <n> sensors, temperature not available\".\n6. Fake SDK:\n   - New per-camera sensor_error, which fails only the sensor reads.\n   - New uncooled_sensor: an uncooled camera that reports one sensor.\n   - query_error now leaves the sensor count answering and fails the sensor reads.\n   - optional_capability_failures_hide_only_that_capability gained two sub-cases (12 in total): sensor count OK with the read failing ARTEMIS_OPERATION_FAILED, and with ARTEMIS_NOT_IMPLEMENTED. Both hide CCD_TEMPERATURE, CCD_COOLER and CCD_COOLER_POWER and keep ",
+      "tokens": null
+    },
+    {
+      "event_id": "eb8dddc5-7b79-40fa-8318-434542a6ec59",
+      "event": "task/progress",
+      "at": "2026-11-23T21:22:43.282156Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f15888fc-0de7-470e-a669-0fc8c4600a43",
+      "text": "Review started"
+    },
+    {
+      "event_id": "0aed44a0-b0cb-4da1-b73f-fd005929e07f",
+      "event": "review/started",
+      "at": "2026-11-23T21:22:43.283703Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "d274926e-b477-4602-b6b5-e8c26b520e5b",
+      "event": "task/progress",
+      "at": "2026-11-23T21:28:29.850852Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f15888fc-0de7-470e-a669-0fc8c4600a43",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "60348d01-0279-4c0a-b27f-406225dcad34",
+      "event": "review/passed",
+      "at": "2026-11-23T21:28:29.852301Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f15888fc-0de7-470e-a669-0fc8c4600a43",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "7aa87c9ec54eec34f4528d7561c30a323ab601e8"
+    },
+    {
+      "event_id": "50c1917e-5d2b-4b13-95a6-baa36194252e",
+      "event": "ticket/closed",
+      "at": "2026-11-23T21:28:36.405940Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-23T21:28:36.405910Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "95cd8417a8ee0fe3321d24aa1fdf44a946c7bae1"
+  },
+  "priority": "medium",
+  "severity": "high",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e3d55ba66fe15880d58e8f3b1c04fcbc04dc9194",
+        "tree": "e088fdb4b1e8b41ee19cab5e8237290998eb5d4f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T20:57:42.245786Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/7f1e2a98-34b4-4e35-949e-13d9cb3fae07/e088fdb4b1e8-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7aa87c9ec54eec34f4528d7561c30a323ab601e8",
+        "tree": "795b2cc74f313509cd1f7f21cb05475f4c532ae6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-23T21:22:01.132822Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/7f1e2a98-34b4-4e35-949e-13d9cb3fae07/795b2cc74f31-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 1 (independent reviewer, claude-opus-5-5 high): code, generated output (byte-identical regeneration) and tests sound; new cases fail on 3.0.0.50 and pass on 3.0.0.51 (run). Required: the comment above uncooled_camera_with_failing_capability_queries (test_ccd_atik_sdk.c:1000-1005) presents the hypothesis as the reproduced cause and calls the Infinity uncooled; reword as a model of an unconfirmed hypothesis. Non-blocking: (1) the paths that still refuse the connection (atik_open serial lookup / ArtemisConnect NULL, ArtemisProperties failure or invalid geometry/pixel size) log nothing, so a reporter log would not decide between the remaining candidates; (2) .driver:128-131 comment should cite the old SDK_2020_06_23 workaround; (3) cooler log does not say the reason is the missing temperature sensor; (4) temperature hidden silently when TemperatureSensorInfo(1) returns NOT_IMPLEMENTED after sensors > 0; (5) branch TemperatureSensorInfo(0) OK and (1) failing not exercised separately; (6) the no-poll assertion of the uncooled case is weak. The --no-build record is valid (the test compiles the driver source itself).",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "21483e7d28e1eea3ec1bcf8cd4921fafe0598b89",
+        "tree": "fe982ebf2d73a8b6b33a0f94df70c5cf7d639692",
+        "at": "2026-11-23T21:17:55.156398Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 (same independent reviewer, claude-opus-5-5 high), head 7aa87c9ec: pass. Test comment no longer claims a confirmed cause; the new ERROR lines change no behaviour or return value, format specifiers correct also on 32-bit, none can repeat periodically; new sub-cases cover sensor count OK / read failing; no-poll assertion proven to depend on the change with a mutant; regeneration byte-identical; README only script record lines, TEST_SUMMARY matches make_test_summary, MIGRATION_STATUS 47 / 1. The hardware record made at e3d55ba66 stays valid: the delta is logging on refusal/hidden paths only. Non-blocking: a connect to an unplugged, not yet detached camera logs 'No camera with serial' at ERROR; both records carry 3.0.0.51 while logging changed between them.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "7aa87c9ec54eec34f4528d7561c30a323ab601e8",
+        "tree": "795b2cc74f313509cd1f7f21cb05475f4c532ae6",
+        "at": "2026-11-23T21:28:29.850601Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-23T20:55:22.371650Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Hardware reproduction attempt (coordinator, 2026-11-23 20:54 CET, owner-cleared host indigosky.local: Raspberry Pi, Debian 12 aarch64, kernel 6.12.87 rpi-2712, checkout e9457fa76 with binaries built 2026-10-25, indigo_server 3.0-9, indigo_ccd_atik 3.0.0.50, SDK 20250630): Atik VS (USB 20e7:dfbb, SDK description VS-60, SDK class AtikCameraSonySci, flags 2924, 'Has Temp Control', 'Cooling Initialise 1 31') attaches as 'ArtemisCCD VS' + guider and CONNECTION.CONNECTED=ON succeeds; CCD_TEMPERATURE is published (23.6 C). NOT reproduced. Limits: this camera has temperature control, so the optional-capability failure branches of atik_initialize_ccd() were not exercised; the reporter's platform is armhf on a Pi 3 with the armhf SDK build, which this arm64 host cannot run; whether the Infinity uses the same SDK class is not established. Attach took 4.8 s on the driver queue (SDK opens the device three times). Logs on the host: ~/atik_7f1e_run3.log, ~/atik_7f1e_props3.txt.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T20:58:34.926943Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementation note (fake SDK reproduction, no hardware touched).\n\nCAUSE (hypothesis, reproduced with the fake SDK only, NOT confirmed on an Atik Infinity): atik_initialize_ccd() of the generated driver (3.0.0.50) refuses the whole connection when an optional capability query fails or answers out of range. The pre-migration driver (4ff475376, ccd_connect_callback) ignored those results. A fake camera that is uncooled and answers ArtemisTemperatureSensorInfo, ArtemisCoolingInfo, ArtemisGetMaxBin, ArtemisGetWindowHeaterPower and ArtemisCameraSpecificOptionGetData with ARTEMIS_INVALID_FUNCTION fails to connect on 3.0.0.50 (CONNECTION ALERT) and connects on 3.0.0.51. The coordinator's hardware check (Atik VS, Raspberry Pi arm64, 3.0.0.50) connects fine; the VS has temperature control, so these failure branches were not exercised there. Which query the Infinity actually fails, if any, is unknown until a -vv log arrives; 3.0.0.51 logs every hidden capability with the SDK result code at INFO level (indigo_server -v).\n\nSTEP 1 - places where 3.0.0.50 refuses what the pre-migration driver accepted (connect path, call by call):\n1. Discovery/open: old plug attached every SDK index even when ArtemisDeviceSerial failed (serial \"\") and never called ArtemisDeviceIsCamera; old connect used ArtemisConnect(index) directly. New plug skips devices that are not cameras, have no NUL-terminated non-empty serial or no name; atik_open rescans ArtemisDeviceSerial and connects only on a serial match. Not changed: plug and open use the same lookup, the reporter's camera appeared, and the VS run proves the serial lookup works (\"65535 65535\").\n2. ArtemisProperties: both refuse a failed call. New also refuses nPixelsX/Y <= 0, non-finite or non-positive pixel size, and a buffer size overflow. Kept (required geometry).\n3. ArtemisGetMaxBin: old ignored the result and used an uninitialized stack variable (max_x_bin/max_y_bin), so its effective value on failure was undefined; new refused on failure or bx/by < 1 or > sensor size. FIXED: 1x1 (no binning) default.\n4. ArtemisTemperatureSensorInfo(0): old ignored the result (count initialized 0); new refused any result other than OK/NOT_IMPLEMENTED. FIXED: temperature hidden.\n5. ArtemisTemperatureSensorInfo(1) with sensors > 0: old ignored the result and published 0.0 C as OK; new refused. FIXED: temperature hidden (no invented value).\n6. ArtemisCoolingInfo: old ignored the result with flags uninitialized; new refused any result other than OK/NOT_IMPLEMENTED. FIXED: cooler hidden.\n7. Cooling flags (flags & 3) == 3 with max <= min: old exposed the cooler and divided by zero for the power; new refused. FIXED: cooler hidden.\n8. Cooling flags (flags & 3) == 3 without a temperature sensor: old exposed the cooler; new refused. FIXED: cooler hidden.\n9. ArtemisGetWindowHeaterPower failure: old showed X_WINDOW_HEATER in ALERT with an uninitialized value; new refused; out-of-range power 0..255 also refused. FIXED: window heater hidden.\n10. Preset readback (option 1) failure or short read: old showed X_PRESETS in ALERT; new refused. FIXED: presets, gain and offset hidden.\n11. Preset value > 3: old left the switch unchanged; new refused. FIXED: presets, gain and offset hidden.\n12. Preset 0 with gain/offset readback failing or out of range: old published ALERT then overwrote with OK and uninitialized ranges; new refused. FIXED: X_PRESETS shown on CUSTOM in ALERT, CCD_GAIN/CCD_OFFSET hidden (same as X_PRESETS.on_change).\n13. Buffer allocation failure: old asserted; new refuses. Kept.\n14. Guider device: old ignored ArtemisGuidePort(0) at connect; new refuses the guider connection when it fails. Not changed (out of scope, separate device; the Infinity reportedly has no guide port - not verified).\n15. Wheel device: both refuse a failed ArtemisFilterWheelInfo; new also validates count 1..64 and the position. Not changed.\n\nFIX (indigo_ccd_atik.driver, version 50 -> 51, regenerated with the unchanged generator built in the worktree; generated diff = only atik_initialize_ccd and DRIVER_VERSION 0x03000033, .h and _main.c unchanged; regeneration of the unchanged 3.0.0.50 source was byte-identical): only ArtemisProperties, sensor geometry and buffer allocation still refuse the connection; every optional query that fails or answers out of range hides that capability (MaxBin -> 1x1) and logs the SDK result with INDIGO_DRIVER_LOG. No out-of-range value reaches a property; all hidden properties stay hidden for the session, so the 5 s poll never queries a temperature or cooler that is not published.\n\nTESTS (indigo_test/integration/test_ccd_atik_sdk.c; fake SDK gained a per-camera query_error that makes the five optional queries return that code without touching their outputs):\n- uncooled_camera_with_failing_capability_queries: uncooled camera, all optional queries ARTEMIS_INVALID_FUNCTION -> connects; CCD_TEMPERATURE, CCD_COOLER, CCD_COOLER_POWER, X_WINDOW_HEATER, X_PRESETS, CCD_GAIN, CCD_OFFSET undefined; CCD_INFO max bin 1/1, CCD_BIN max 1, CCD_MODE = BIN_1x1 only; RAW exposure delivered with verified pixels and SDK bin 1x1; no ArtemisTemperatureSensorInfo call after connect over 3 poll periods; disconnect closes; with the queries answering again the same camera connects with all capabilities and max bin 4.\n- optional_capability_failures_hide_only_that_capability: 10 sub-cases (TemperatureSensorInfo fails; CoolingInfo fails; cooling max <= min; GetMaxBin fails; max bin 0; GetWindowHeaterPower fails; option GetData fails; short option read; preset 4; preset 0 with gain out of range) -> each connects, hides exactly the expected properties and keeps the others, max bin 1 or 4 as expected, X_PRESETS ALERT/CUSTOM for the gain case, exposure delivered, camera closed after disconnect; final clean connect shows all.\n- repeated_connect_during_a_failed_initialization: CONNECT gated inside ArtemisProperties, three more CONNECTION requests (CONNECTED, DISCONNECTED, CONNECTED) while BUSY are ignored; failure gives ALERT, one open and one close, no SDK call after close; next connect, exposure and disconnect work (2 opens, 2 closes).\n- Changed expectations: initialization_failures now covers only the hard failures ArtemisConnect and ArtemisProperties (the optional calls moved to the new case with the opposite, pre-migration expectation); malformed_initialization now covers zero sensor width and height (hard failure, camera closed, later connect and exposure work) instead of max bin 0 / cooling max 0 / short option, which moved to the new case.\n- Proof of failure without the fix: with the test changes and the 3.0.0.50 driver, uncooled_camera_with_failing_capability_queries failed at its connect (CONNECTION ALERT) and optional_capability_failures_hide_only_that_capability failed at its first sub-case (TemperatureSensorInfo, CONNECTION ALERT); repeated_connect_during_a_failed_initialization passed before and after (it probes the failed-connect path, no defect found). The baseline run of the unchanged suite against 3.0.0.50 was 44/44, with the old initialization_failures/malformed_initialization asserting a refused connection for every item of 3-12 above.\n\nScenario mapping: uncooled camera connects/hidden capabilities/exposure/reconnect -> uncooled_camera_with_failing_capability_queries; each optional query failure or invalid answer -> optional_capability_failures_hide_only_that_capability; hard failures refuse cleanly and a later connect works -> initialization_failures, malformed_initialization; repeated CONNECTION during a failing connect, balanced open/close, no SDK after close -> repeated_connect_during_a_failed_initialization (+ end_fixture checks of sdk_after_close, sdk_overlap, usb refs, updates after detach). Not covered: image buffer allocation failure (not injectable without a new framework replacement).\n\nRUNS (mac arm64, worktree): baseline make -C indigo_test test-ccd-atik-sdk 44/44 pass on 3.0.0.50; filtered runs of the new/changed cases fail/pass as stated; recorded run python3 tools/run_driver_test.py ccd_atik --no-build: 47/47 OK, record line \"2026-11-23 21:56 3.0.0.51 mac arm64 fake SDK 47/47 OK\" (README and TEST_SUMMARY.md written by the script). MIGRATION_STATUS.md ccd_atik 44 / 1 -> 47 / 1. flow check (whitespace) passed.\n--no-build reason: the plain recorded run failed in the driver build step after the driver compiled cleanly: Makefile.drv runs install_name_tool -id $(BUILD_LIB)/libatikcameras.dylib on the vendor dylib (install name \"bin/libatikcameras.dylib\", almost no header padding), and the ticket worktree path makes the new id too long (\"larger updated load commands do not fit\"). This is a macOS build limitation of long checkout paths, unrelated to this change (the primary checkout path is ~60 characters shorter); fixing Makefile.drv was not in scope. The test binary compiles the driver source itself and does not link the archive, so the verdict is unaffected; the partial build products were removed.\n\nEKOS CRASH: unexplained. Checked: the failed-connect path calls atik_close only after a successful atik_open and frees nothing twice (buffer is allocated only on success); CONNECTION requests during a running attempt are ignored by indigo_ignore_connection_change; driver properties are undefined after a failed connect so client changes cannot reach the SDK with a NULL handle (indigo_property_match_changeable requires defined); no timer is started on failure. No crash or invalid SDK use found in the driver; it may be a client-side crash or a separate defect, and needs the requested log.\n\nNOT VERIFIED: real Atik Infinity (cause is a hypothesis), armhf/Raspberry Pi 3 32-bit, Linux, Windows, the Ekos crash. Side finding for the attach time on the VS: the new plug block calls ArtemisDeviceIsCamera in addition to the old per-index ArtemisDeviceSerial/Name/HasGuidePort/HasFilterWheel, and atik_open rescans ArtemisDeviceSerial before ArtemisConnect where the old driver connected by index; whether any of these calls opens the device in the SDK cannot be determined from source, so there is no evidence that the old driver opened the device fewer times.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T20:58:59.242366Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Owner (2026-11-23): the Atik Infinity is an AtikCameraSonySci camera in the SDK, the same class as the Atik VS that connects fine with 3.0.0.50 on arm64. This weakens the optional-capability hypothesis (same SDK class, working here) and makes a platform difference (armhf SDK build / 32-bit, Raspberry Pi 3) or an Infinity-specific reply more likely. Not verified on armhf.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T21:01:27.529950Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementer follow-up: 32-bit / armhf scrutiny of the connect and attach path (owner: the Infinity is an AtikCameraSonySci camera like the VS, which connects with 3.0.0.50 on arm64).\n\nCOMPILER CHECK of the regenerated indigo_ccd_atik.c (3.0.0.51), -fsyntax-only -Wall -Wextra -Wformat=2 -Wconversion -Wsign-conversion -funsigned-char (armhf char is unsigned), as ILP32 32-bit ARM (armv7k-apple-watchos, -DINDIGO_LINUX with a malloc.h stub), as ILP32 arm64_32, and native 64-bit (-DINDIGO_MACOS). No armhf Linux cross compiler or sysroot is available on this host, so this approximates armhf (ILP32, 32-bit long/size_t/pointers, unsigned char) and is not an armhf build. All three produce the same 24 warnings; none is specific to 32-bit. Warnings in the connect/attach path:\n- 162 atik_option: int id -> unsigned short argument of ArtemisCameraSpecificOptionGetData (ids 1/5/6, harmless).\n- 213 overflow guard: int nPixelsY -> size_t divisor (checked > 0 first, harmless).\n- 305 buffer_size = 2 * (size_t)nPixelsX * nPixelsY + FITS_HEADER_SIZE: int -> size_t (positive, harmless).\n- 306 indigo_alloc_blob_buffer(long size) takes the size_t buffer_size: on 32-bit long is 32-bit signed, so sizes between 2 GB and the SIZE_MAX guard would wrap. Latent only for sensors of about 1 Gpixel; the Infinity (1392 x 1040) needs about 2.9 MB. The old driver had the same long parameter.\nOther warnings are outside the connect path (exposure float/double/int conversions, unused callback parameters, the generated retry-handler cast).\n\nMANUAL REVIEW (new vs pre-migration driver, connect and attach):\n- struct ARTEMISPROPERTIES: only int, float and char[] fields, no packing pragma; identical layout on armhf and arm64. The new driver zero-initializes it (old did not).\n- BOOL is C bool in the SDK header for both driver versions; ArtemisDeviceIsCamera (new in plug) also returns BOOL. The device appeared for the reporter, so plug succeeded.\n- Serial and name buffers: new 100 bytes, as the SDK header documents; the old driver used 64 bytes for the serial (smaller than documented). Comparisons use strcmp/memchr and do not depend on char signedness.\n- No pointer-to-int casts in the connect path; ArtemisHandle stays void *.\n- Uninitialized values: the old driver used uninitialized flags/level/min/max/set_point, max bin and window-heater power when the SDK did not write them. The new driver initializes all of them, and 3.0.0.51 does not use them after a failed query.\n- Timing: the new driver runs the first temperature/cooler poll right after connecting; the old driver waited 5 s. This does not refuse a connection and was not changed.\n\nREMAINING CANDIDATES (none confirmed on an Infinity or on armhf):\n1. Optional capability queries answered with an error code by the armhf SDK build. The old driver's \"Temporary workaround for SDK_2020_06_23\" comment shows that an earlier SDK returned errors from exactly ArtemisTemperatureSensorInfo/ArtemisCoolingInfo, and the VS on arm64 does not exclude a 32-bit-build difference. Fixed in 3.0.0.51.\n2. New ArtemisProperties pixel-size validation (non-finite or <= 0 refuses; the old driver accepted any value). Kept as a hard failure because it is part of ArtemisProperties. It would refuse only if the armhf SDK reported a zero or invalid pixel size.\n3. Open by serial (atik_open), instead of the old open by index. Proven on arm64 with the VS, not verified on armhf.\n4. If the Infinity reports a guide port: ArtemisGuidePort(0) failing now refuses the guider connection; the old driver ignored it. The CCD is not affected.\nNo 32-bit-specific defect was found. A -vv log from the reporter would decide between 1 to 3. 3.0.0.51 logs each hidden capability with its SDK result code at INFO level.\nNo code change came from this follow-up.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T21:05:43.623884Z",
+        "actor": "human/Peter Polakovic",
+        "text": "32-bit attempt on indigosky (coordinator, 2026-11-23): the released indigo3 3.0-11 armhf indigo_server, run with unpacked armhf libraries through ld-linux-armhf.so.3, does not start on the Pi 5: 'ELF load command address/offset not page-aligned' (4K-aligned binary, 16K-page kernel). Switching the Pi to the 4K kernel was declined by the owner, so the 32-bit path stays unverified. Nothing was installed on the host; the unpacked files were removed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T21:09:42.974152Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Recorded hardware run (owner's request, non-interactive, no hot-plug; coordinator): python3 tools/run_driver_test.py ccd_atik --hw on indigosky.local (Raspberry Pi 5, Debian 12 arm64), ticket branch at e3d55ba66, driver 3.0.0.51 rebuilt by the script, Atik VS (ArtemisCCD VS): 1/1 OK ('ATIK physical acceptance': exposures, abort, binning up to 16x16 with guarded-property refusals, cooler/temperature, guider pulses, reconnects, driver reload). Record line '2026-11-23 21:07 3.0.0.51 linux arm64 ArtemisCCD VS 1/1 OK' (the Pi clock is UTC) and its TEST_SUMMARY.md row were copied into the worktree as the script wrote them. No defect found. Hot-plug coverage was not established. The VS has temperature control, so the capability-hiding branches of the fix were exercised only with the fake SDK. Log on the host: ~/hw_atik_7f1e.log.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-23T21:22:23.202610Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementer, review round 2 (version stays 3.0.0.51; head 7aa87c9ec).\n\nChanges:\n1. Test comment above uncooled_camera_with_failing_capability_queries reworded. It now says the case models the hypothesis for the Atik Infinity report (3.0-8 on; cause not confirmed). It no longer says the Infinity is uncooled or answers with error codes.\n2. Diagnostics on every path that still refuses a connection:\n   - atik_open: \"No camera with serial '<s>' among <n> SDK devices\" and \"ArtemisConnect(<index>) failed for serial '<s>'\".\n   - atik_initialize_ccd: \"ArtemisProperties() = <result>\", \"ArtemisProperties() reports a <w> x <h> pixel sensor\", \"ArtemisProperties() reports a <x> x <y> um pixel\", \"A <w> x <h> pixel sensor does not fit an image buffer\", \"Image buffer of <n> bytes not allocated\".\n   - Guider on_connect: \"ArtemisGuidePort(0) = <result>\".\n   All are logged with INDIGO_DRIVER_ERROR. The control flow of atik_open is unchanged; only the logging was added.\n3. The .driver comment now cites the old driver's SDK_2020_06_23 workaround: an earlier SDK answered the capability queries with an error code.\n4. When ArtemisCoolingInfo reports a usable cooler but the temperature is hidden, the cooler log line now says that the camera temperature is not available.\n5. The temperature log now also covers a counted sensor whose read returns ARTEMIS_NOT_IMPLEMENTED (or any error), with the result and the sensor count: \"ArtemisTemperatureSensorInfo() = <result>, <n> sensors, temperature not available\".\n6. Fake SDK:\n   - New per-camera sensor_error, which fails only the sensor reads.\n   - New uncooled_sensor: an uncooled camera that reports one sensor.\n   - query_error now leaves the sensor count answering and fails the sensor reads.\n   - optional_capability_failures_hide_only_that_capability gained two sub-cases (12 in total): sensor count OK with the read failing ARTEMIS_OPERATION_FAILED, and with ARTEMIS_NOT_IMPLEMENTED. Both hide CCD_TEMPERATURE, CCD_COOLER and CCD_COOLER_POWER and keep everything else.\n   - uncooled_camera_with_failing_capability_queries now uses a camera that reports a sensor whose read fails, so its no-poll check depends on the sensor-read branch. A temporary mutant that published the temperature after a failed read failed this case (CCD_TEMPERATURE defined in ALERT). The generated source was then regenerated, and cmp confirmed it was byte-identical to the fixed version.\n\nGenerated diff: the regenerated .c matches the .driver edits exactly. The .h and _main.c are unchanged. Generator built from the unchanged source in the worktree.\n\nRuns (mac arm64):\n- Filtered runs of the changed cases pass.\n- Diagnostics observed in the test output: \"ArtemisConnect(0) failed for serial 'SERIAL-0'\", \"ArtemisProperties() = 7\", \"ArtemisProperties() reports a 0 x 480 pixel sensor\", \"ArtemisProperties() reports a 640 x 0 pixel sensor\".\n- Recorded run: python3 tools/run_driver_test.py ccd_atik --no-build, under the test lock: 47/47 OK. Record line \"2026-11-23 22:20 3.0.0.51 mac arm64 fake SDK 47/47 OK\"; it replaced only the 21:56 mac arm64 fake SDK line.\n- The coordinator's hardware record \"2026-11-23 21:07 3.0.0.51 linux arm64 ArtemisCCD VS 1/1 OK\" is kept in README.md and TEST_SUMMARY.md.\n- Case count unchanged at 47, so MIGRATION_STATUS.md is unchanged.\n- flow check (whitespace) passed.\n\nCorrection to the earlier notes: a reporter's -vv log can decide between the remaining candidate causes only with these new diagnostics. 3.0.0.50 refused silently on every path; the 3.0.0.51 build before this round logged only the hidden optional capabilities, not the remaining refusals.\n\nStill not verified: a real Atik Infinity, armhf/Raspberry Pi 3, Linux and Windows fake-SDK runs, and the Ekos crash, which remains unexplained.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "95cd8417a8ee0fe3321d24aa1fdf44a946c7bae1",
+      "tree": "795b2cc74f313509cd1f7f21cb05475f4c532ae6",
+      "base": "master",
+      "at": "2026-11-23T21:28:36.267848Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "high",
+    "profile": "simple",
+    "at": "2026-11-20T18:20:17.166944Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-20T18:20:45.741399Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 2619030.543,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 48,
+    "sha256": "a24c50ba48d1d8fa72edf252a5c4e8ada1031c950cc04c759de9aba4c5119017"
+  }
+}

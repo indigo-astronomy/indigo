@@ -20,7 +20,7 @@ driver atik {
 	label = "Atik Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 50;
+	version = 51;
 	max_devices = 16;
 	multi_device_support = true;
 	include {
@@ -70,13 +70,14 @@ driver atik {
 				char serial[100];
 				if (atik_serial(index, serial) && !strcmp(serial, PRIVATE_DATA->serial)) {
 					PRIVATE_DATA->handle = ArtemisConnect(index);
-					break;
+					if (!PRIVATE_DATA->handle) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "ArtemisConnect(%d) failed for serial '%s'", index, PRIVATE_DATA->serial);
+					}
+					return PRIVATE_DATA->handle != NULL;
 				}
 			}
-			if (!PRIVATE_DATA->handle) {
-				return false;
-			}
-			return true;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No camera with serial '%s' among %d SDK devices", PRIVATE_DATA->serial, count);
+			return false;
 		}
 
 		static void atik_close(indigo_device *device) {
@@ -125,11 +126,31 @@ driver atik {
 			return true;
 		}
 
+		// Only ArtemisProperties(), the sensor geometry and the image buffer are required; each refusal is
+		// logged with the SDK result and the values. The driver before the generator migration ignored the
+		// results of the capability queries as its workaround for SDK_2020_06_23, an earlier SDK that
+		// answered them with an error code, so a failed or out of range answer hides that capability
+		// instead of refusing the connection.
 		static bool atik_initialize_ccd(indigo_device *device) {
 			struct ARTEMISPROPERTIES info = { 0 };
 			int bx = 0, by = 0;
-			if (ArtemisProperties(PRIVATE_DATA->handle, &info) != ARTEMIS_OK || info.nPixelsX <= 0 || info.nPixelsY <= 0 || !isfinite(info.PixelMicronsX) || !isfinite(info.PixelMicronsY) || info.PixelMicronsX <= 0 || info.PixelMicronsY <= 0 || ArtemisGetMaxBin(PRIVATE_DATA->handle, &bx, &by) != ARTEMIS_OK || bx < 1 || by < 1 || bx > info.nPixelsX || by > info.nPixelsY) {
+			int result = ArtemisProperties(PRIVATE_DATA->handle, &info);
+			if (result != ARTEMIS_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ArtemisProperties() = %d", result);
 				return false;
+			}
+			if (info.nPixelsX <= 0 || info.nPixelsY <= 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ArtemisProperties() reports a %d x %d pixel sensor", info.nPixelsX, info.nPixelsY);
+				return false;
+			}
+			if (!isfinite(info.PixelMicronsX) || !isfinite(info.PixelMicronsY) || info.PixelMicronsX <= 0 || info.PixelMicronsY <= 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ArtemisProperties() reports a %g x %g um pixel", info.PixelMicronsX, info.PixelMicronsY);
+				return false;
+			}
+			result = ArtemisGetMaxBin(PRIVATE_DATA->handle, &bx, &by);
+			if (result != ARTEMIS_OK || bx < 1 || by < 1 || bx > info.nPixelsX || by > info.nPixelsY) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "ArtemisGetMaxBin() = %d, %d x %d, binning not available", result, bx, by);
+				bx = by = 1;
 			}
 			PRIVATE_DATA->has_shutter = (info.cameraflags & ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_SHUTTER) != 0;
 			// Preserve the 383-family active-area workaround.
@@ -138,6 +159,7 @@ driver atik {
 				info.nPixelsY = 2504;
 			}
 			if ((size_t)info.nPixelsX > (SIZE_MAX - FITS_HEADER_SIZE) / 2 / info.nPixelsY) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "A %d x %d pixel sensor does not fit an image buffer", info.nPixelsX, info.nPixelsY);
 				return false;
 			}
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = info.nPixelsX;
@@ -168,27 +190,28 @@ driver atik {
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 			PRIVATE_DATA->has_cooler = false;
 			int sensors = 0, temperature = 0;
-			int sensor_result = ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &sensors);
-			if (sensor_result != ARTEMIS_OK && sensor_result != ARTEMIS_NOT_IMPLEMENTED) {
-				return false;
-			}
-			if (sensor_result == ARTEMIS_OK && sensors > 0) {
-				if (ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature) != ARTEMIS_OK) {
-					return false;
+			result = ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 0, &sensors);
+			if (result == ARTEMIS_OK && sensors > 0) {
+				result = ArtemisTemperatureSensorInfo(PRIVATE_DATA->handle, 1, &temperature);
+				if (result == ARTEMIS_OK) {
+					CCD_TEMPERATURE_PROPERTY->hidden = false;
+					CCD_TEMPERATURE_ITEM->number.value = CCD_TEMPERATURE_ITEM->number.target = round(temperature / 10.0) / 10;
+					CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 				}
-				CCD_TEMPERATURE_PROPERTY->hidden = false;
-				CCD_TEMPERATURE_ITEM->number.value = CCD_TEMPERATURE_ITEM->number.target = round(temperature / 10.0) / 10;
-				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			// A sensor count without a readable sensor is logged even when the read is not implemented.
+			if (CCD_TEMPERATURE_PROPERTY->hidden && (sensors > 0 || (result != ARTEMIS_OK && result != ARTEMIS_NOT_IMPLEMENTED))) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "ArtemisTemperatureSensorInfo() = %d, %d sensors, temperature not available", result, sensors);
 			}
 			int flags = 0, level = 0, min = 0, max = 0, target = 0;
-			int cooling_result = ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min, &max, &target);
-			if (cooling_result != ARTEMIS_OK && cooling_result != ARTEMIS_NOT_IMPLEMENTED) {
-				return false;
-			}
-			if (cooling_result == ARTEMIS_OK && (flags & 3) == 3) {
-				if (max <= min || CCD_TEMPERATURE_PROPERTY->hidden) {
-					return false;
+			result = ArtemisCoolingInfo(PRIVATE_DATA->handle, &flags, &level, &min, &max, &target);
+			if (result != ARTEMIS_OK || (flags & 3) != 3 || max <= min || CCD_TEMPERATURE_PROPERTY->hidden) {
+				if (result == ARTEMIS_OK && (flags & 3) == 3 && max > min) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "ArtemisCoolingInfo() reports a cooler, but the camera temperature is not available, cooler not available");
+				} else if (result != ARTEMIS_NOT_IMPLEMENTED && (result != ARTEMIS_OK || (flags & 3) == 3)) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "ArtemisCoolingInfo() = %d, flags %d, levels %d to %d, cooler not available", result, flags, min, max);
 				}
+			} else {
 				PRIVATE_DATA->has_cooler = true;
 				CCD_COOLER_PROPERTY->hidden = CCD_COOLER_POWER_PROPERTY->hidden = false;
 				CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
@@ -202,27 +225,42 @@ driver atik {
 			}
 			if (info.cameraflags & ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_WINDOW_HEATER) {
 				int power = 0;
-				if (ArtemisGetWindowHeaterPower(PRIVATE_DATA->handle, &power) != ARTEMIS_OK || power < 0 || power > 255) {
-					return false;
+				result = ArtemisGetWindowHeaterPower(PRIVATE_DATA->handle, &power);
+				if (result == ARTEMIS_OK && power >= 0 && power <= 255) {
+					X_WINDOW_HEATER_PROPERTY->hidden = false;
+					X_WINDOW_HEATER_PROPERTY->state = INDIGO_OK_STATE;
+					X_WINDOW_HEATER_POWER_ITEM->number.value = X_WINDOW_HEATER_POWER_ITEM->number.target = power;
+				} else {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "ArtemisGetWindowHeaterPower() = %d, power %d, window heater not available", result, power);
 				}
-				X_WINDOW_HEATER_PROPERTY->hidden = false;
-				X_WINDOW_HEATER_PROPERTY->state = INDIGO_OK_STATE;
-				X_WINDOW_HEATER_POWER_ITEM->number.value = X_WINDOW_HEATER_POWER_ITEM->number.target = power;
 			}
 			if (ArtemisHasCameraSpecificOption(PRIVATE_DATA->handle, 1)) {
 				uint16_t preset = 0;
-				if (!atik_option(device, 1, &preset, sizeof(preset)) || preset > 3 || (preset == 0 && !atik_gain_offset(device))) {
-					return false;
+				if (atik_option(device, 1, &preset, sizeof(preset)) && preset <= 3) {
+					PRIVATE_DATA->preset = preset;
+					X_PRESETS_PROPERTY->hidden = false;
+					X_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_set_switch(X_PRESETS_PROPERTY, X_PRESETS_PROPERTY->items + preset, true);
+					// As in X_PRESETS.on_change, custom gain and offset are published only with a valid readback.
+					if (preset == 0) {
+						if (atik_gain_offset(device)) {
+							CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = false;
+						} else {
+							X_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+							INDIGO_DRIVER_LOG(DRIVER_NAME, "Gain and offset readback failed, gain and offset not available");
+						}
+					}
+				} else {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Preset readback failed, presets not available");
 				}
-				PRIVATE_DATA->preset = preset;
-				X_PRESETS_PROPERTY->hidden = false;
-				X_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_set_switch(X_PRESETS_PROPERTY, X_PRESETS_PROPERTY->items + preset, true);
-				CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = preset != 0;
 			}
 			PRIVATE_DATA->buffer_size = 2 * (size_t)info.nPixelsX * info.nPixelsY + FITS_HEADER_SIZE;
 			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
-			return PRIVATE_DATA->buffer != NULL;
+			if (PRIVATE_DATA->buffer == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Image buffer of %.0f bytes not allocated", (double)PRIVATE_DATA->buffer_size);
+				return false;
+			}
+			return true;
 		}
 
 		static void atik_exposure_failure(indigo_device *device, const char *message) {
@@ -617,7 +655,11 @@ driver atik {
 		attach_if = ccd_attached && private_data->has_guider;
 		on_connect {
 			indigo_lock_master_device(device);
-			connection_result = ArtemisGuidePort(PRIVATE_DATA->handle, 0) == ARTEMIS_OK;
+			int result = ArtemisGuidePort(PRIVATE_DATA->handle, 0);
+			connection_result = result == ARTEMIS_OK;
+			if (!connection_result) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ArtemisGuidePort(0) = %d", result);
+			}
 			PRIVATE_DATA->relay_mask = 0;
 			indigo_unlock_master_device(device);
 		}

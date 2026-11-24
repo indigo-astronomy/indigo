@@ -42,6 +42,12 @@ typedef struct {
 	atomic_int sensor_width, sensor_height, bx, by, left, top, width, height, preset, gain, offset, heater_power, temperature, target, relay, slot, wheel_target;
 	atomic_int opens, closes, starts, stops, dark_calls, wheel_wrap_reads, abort_readout_ms, drain_checks, temperature_in_drain;
 	atomic_int cooling_level, cooling_min, cooling_max, cooling_on;
+	// Error code every optional capability query (temperature sensor reads, cooling, maximum binning,
+	// window heater, camera specific options) returns without touching its outputs, 0 for a well behaved
+	// camera. The temperature sensor count still answers. sensor_error fails the sensor reads only.
+	atomic_int query_error, sensor_error;
+	// An uncooled camera that still reports one temperature sensor.
+	atomic_int uncooled_sensor;
 	double exposure, end, drain_end;
 	uint16_t *pixels;
 	size_t pixel_count;
@@ -516,6 +522,9 @@ int ArtemisProperties(ArtemisHandle h, struct ARTEMISPROPERTIES *p) {
 int ArtemisGetMaxBin(ArtemisHandle h, int *x, int *y) {
 	SDK_SCOPE;
 	mock_camera *c = camera(h);
+	if (c->query_error) {
+		return c->query_error;
+	}
 	*x = *y = c->malformed == 1 ? 0 : 4;
 	return failed(__func__);
 }
@@ -648,13 +657,19 @@ int ArtemisTemperatureSensorInfo(ArtemisHandle h, int sensor, int *value) {
 	if (sensor && c->drain_end > indigo_monotonic_time()) {
 		c->temperature_in_drain++;
 	}
-	*value = sensor ? c->temperature : c->cooler ? 1 : 0;
+	if (sensor && (c->query_error || c->sensor_error)) {
+		return c->query_error ? c->query_error : c->sensor_error;
+	}
+	*value = sensor ? c->temperature : c->cooler || c->uncooled_sensor ? 1 : 0;
 	return failed(__func__);
 }
 
 int ArtemisCoolingInfo(ArtemisHandle h, int *flags, int *level, int *min, int *max, int *target) {
 	SDK_SCOPE;
 	mock_camera *c = camera(h);
+	if (c->query_error) {
+		return c->query_error;
+	}
 	*flags = c->cooler ? 3 | (c->cooling_on ? ARTEMIS_COOLING_INFO_COOLINGON : 0) : 0;
 	*level = c->cooling_level;
 	*min = c->cooling_min;
@@ -684,6 +699,9 @@ int ArtemisCoolerWarmUp(ArtemisHandle h) {
 
 int ArtemisGetWindowHeaterPower(ArtemisHandle h, int *value) {
 	SDK_SCOPE;
+	if (camera(h)->query_error) {
+		return camera(h)->query_error;
+	}
 	*value = camera(h)->heater_power;
 	return failed(__func__);
 }
@@ -701,7 +719,7 @@ bool ArtemisHasCameraSpecificOption(ArtemisHandle h, unsigned short id) {
 	SDK_SCOPE;
 	return camera(h)->presets;
 }
-int ArtemisCameraSpecificOptionGetData(ArtemisHandle h, unsigned short id, unsigned char *data, int length, int *actual) { SDK_SCOPE; mock_camera *c = camera(h); uint16_t values[3] = { 0, id == 5 ? 60 : 511, id == 5 ? c->gain : c->offset }; *actual = id == 1 ? 2 : 6; if (id == 1) { values[0] = c->preset; } memcpy(data, values, *actual); if (c->short_option) { (*actual)--; } return failed(__func__); }
+int ArtemisCameraSpecificOptionGetData(ArtemisHandle h, unsigned short id, unsigned char *data, int length, int *actual) { SDK_SCOPE; mock_camera *c = camera(h); if (c->query_error) { return c->query_error; } uint16_t values[3] = { 0, id == 5 ? 60 : 511, id == 5 ? c->gain : c->offset }; *actual = id == 1 ? 2 : 6; if (id == 1) { values[0] = c->preset; } memcpy(data, values, *actual); if (c->short_option) { (*actual)--; } return failed(__func__); }
 
 int ArtemisCameraSpecificOptionSetData(ArtemisHandle h, unsigned short id, unsigned char *data, int length) {
 	SDK_SCOPE;
@@ -943,8 +961,10 @@ static void shared_lifecycle(void) {
 	}
 }
 
+// Only what the camera cannot work without refuses the connection: the camera itself and its
+// properties. Optional capability queries are covered by optional_capability_failures_hide_only_that_capability.
 static void initialization_failures(void) {
-	const char *calls[] = { "ArtemisConnect", "ArtemisProperties", "ArtemisGetMaxBin", "ArtemisTemperatureSensorInfo", "ArtemisCoolingInfo", "ArtemisGetWindowHeaterPower", "ArtemisCameraSpecificOptionGetData" };
+	const char *calls[] = { "ArtemisConnect", "ArtemisProperties" };
 	for (int i = 0; i < ARRAY_SIZE(calls); i++) {
 		fail_call = calls[i];
 		ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
@@ -963,19 +983,163 @@ static void initialization_failures(void) {
 	ASSERT_TRUE(number(1, "GUIDER_GUIDE_RA", "EAST", 10, INDIGO_OK_STATE));
 }
 
+// A sensor geometry the image buffer cannot be sized from refuses the connection and closes the camera.
 static void malformed_initialization(void) {
-	for (int malformed = 1; malformed <= 3; malformed += 2) {
-		cameras[0].malformed = malformed;
+	for (int i = 0; i < 2; i++) {
+		cameras[0].sensor_width = i ? 640 : 0;
+		cameras[0].sensor_height = i ? 0 : 480;
 		ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
 		ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
 		ASSERT_FALSE(cameras[0].opened);
 	}
-	cameras[0].malformed = 0;
-	cameras[0].short_option = 1;
-	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
-	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
-	cameras[0].short_option = 0;
+	cameras[0].sensor_width = 640;
+	cameras[0].sensor_height = 480;
 	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
+}
+
+static const char *optional_capabilities[] = { "CCD_TEMPERATURE", "CCD_COOLER", "CCD_COOLER_POWER", "X_WINDOW_HEATER", "X_PRESETS", "CCD_GAIN", "CCD_OFFSET" };
+
+// Models the hypothesis for the Atik Infinity report (3.0-8 on; cause not confirmed): an uncooled
+// camera that reports a temperature sensor and answers the sensor read and the other optional
+// capability queries with an error code other than ARTEMIS_NOT_IMPLEMENTED. The driver before the
+// generator migration ignored those results, the migrated one refused the connection. The camera must
+// connect without these capabilities, publish no temperature, cooler, heater or gain/offset
+// properties, never poll the sensor it could not read, use 1x1 binning and take an image. Once the
+// queries answer again it connects with all of them.
+static void uncooled_camera_with_failing_capability_queries(void) {
+	cameras[0].cooler = false;
+	cameras[0].uncooled_sensor = true;
+	cameras[0].query_error = ARTEMIS_INVALID_FUNCTION;
+	ASSERT_TRUE(connect_device(0, true));
+	for (int i = 0; i < ARRAY_SIZE(optional_capabilities); i++) {
+		ASSERT_EQ_INT(-1, state(0, optional_capabilities[i]));
+	}
+	ASSERT_EQ_INT(1, (int)value(0, "CCD_INFO", "MAX_HORIZONTAL_BIN"));
+	ASSERT_EQ_INT(1, (int)value(0, "CCD_INFO", "MAX_VERTICAL_BIN"));
+	indigo_property *property = snapshot(0, "CCD_BIN");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_EQ_INT(1, (int)property->items[0].number.max);
+	ASSERT_EQ_INT(1, (int)property->items[1].number.max);
+	indigo_release_property(property);
+	property = snapshot(0, "CCD_MODE");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_EQ_INT(1, property->count);
+	ASSERT_STREQ("BIN_1x1", property->items[0].name);
+	indigo_release_property(property);
+	int reads = atomic_load(&commands[command_index("ArtemisTemperatureSensorInfo")]);
+	ASSERT_TRUE(toggle(0, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, blobs);
+	ASSERT_EQ_INT(0, bad_blob);
+	ASSERT_EQ_INT(1, cameras[0].bx);
+	ASSERT_EQ_INT(1, cameras[0].by);
+	// The test runs the five-second poll every 100 ms.
+	indigo_usleep(300000);
+	ASSERT_EQ_INT(reads, atomic_load(&commands[command_index("ArtemisTemperatureSensorInfo")]));
+	ASSERT_TRUE(connect_device(0, false));
+	ASSERT_FALSE(cameras[0].opened);
+	cameras[0].cooler = true;
+	cameras[0].uncooled_sensor = false;
+	cameras[0].query_error = 0;
+	ASSERT_TRUE(connect_device(0, true));
+	for (int i = 0; i < ARRAY_SIZE(optional_capabilities); i++) {
+		ASSERT_TRUE(state(0, optional_capabilities[i]) >= 0);
+	}
+	ASSERT_EQ_INT(4, (int)value(0, "CCD_INFO", "MAX_HORIZONTAL_BIN"));
+}
+
+// Every optional capability query that fails or answers outside its range hides that capability
+// only, as the driver before the generator migration kept the connection; the image and all other
+// capabilities stay. A camera that keeps its maximum binning to itself is used without binning. A
+// sensor that is counted but cannot be read, with an error or as not implemented, hides the
+// temperature and with it the cooler.
+static void optional_capability_failures_hide_only_that_capability(void) {
+	const struct {
+		const char *call;
+		int malformed, short_option, preset, gain, sensor_error, max_bin;
+		const char *hidden[3];
+	} cases[] = {
+		{ "ArtemisTemperatureSensorInfo", 0, 0, 0, 0, 0, 4, { "CCD_TEMPERATURE", "CCD_COOLER", "CCD_COOLER_POWER" } },
+		{ NULL, 0, 0, 0, 0, ARTEMIS_OPERATION_FAILED, 4, { "CCD_TEMPERATURE", "CCD_COOLER", "CCD_COOLER_POWER" } },
+		{ NULL, 0, 0, 0, 0, ARTEMIS_NOT_IMPLEMENTED, 4, { "CCD_TEMPERATURE", "CCD_COOLER", "CCD_COOLER_POWER" } },
+		{ "ArtemisCoolingInfo", 0, 0, 0, 0, 0, 4, { "CCD_COOLER", "CCD_COOLER_POWER" } },
+		{ NULL, 3, 0, 0, 0, 0, 4, { "CCD_COOLER", "CCD_COOLER_POWER" } },
+		{ "ArtemisGetMaxBin", 0, 0, 0, 0, 0, 1, { NULL } },
+		{ NULL, 1, 0, 0, 0, 0, 1, { NULL } },
+		{ "ArtemisGetWindowHeaterPower", 0, 0, 0, 0, 0, 4, { "X_WINDOW_HEATER" } },
+		{ "ArtemisCameraSpecificOptionGetData", 0, 0, 0, 0, 0, 4, { "X_PRESETS", "CCD_GAIN", "CCD_OFFSET" } },
+		{ NULL, 0, 1, 0, 0, 0, 4, { "X_PRESETS", "CCD_GAIN", "CCD_OFFSET" } },
+		{ NULL, 0, 0, 4, 0, 0, 4, { "X_PRESETS", "CCD_GAIN", "CCD_OFFSET" } },
+		{ NULL, 0, 0, 0, 61, 0, 4, { "CCD_GAIN", "CCD_OFFSET" } }
+	};
+	for (int i = 0; i < ARRAY_SIZE(cases); i++) {
+		fail_call = cases[i].call;
+		cameras[0].malformed = cases[i].malformed;
+		cameras[0].short_option = cases[i].short_option;
+		cameras[0].preset = cases[i].preset;
+		cameras[0].gain = cases[i].gain;
+		cameras[0].sensor_error = cases[i].sensor_error;
+		int images = blobs;
+		bool connected = connect_device(0, true);
+		if (!connected) {
+			fprintf(stderr, "case %d (%s) did not connect\n", i, cases[i].call ? cases[i].call : "malformed reply or sensor read error");
+		}
+		ASSERT_TRUE(connected);
+		for (int j = 0; j < ARRAY_SIZE(optional_capabilities); j++) {
+			bool hidden = false;
+			for (int k = 0; k < ARRAY_SIZE(cases[i].hidden) && cases[i].hidden[k]; k++) {
+				hidden = hidden || !strcmp(cases[i].hidden[k], optional_capabilities[j]);
+			}
+			if (hidden != (state(0, optional_capabilities[j]) < 0)) {
+				fprintf(stderr, "%s is %s\n", optional_capabilities[j], hidden ? "visible" : "hidden");
+			}
+			ASSERT_EQ_INT(hidden, state(0, optional_capabilities[j]) < 0);
+		}
+		ASSERT_EQ_INT(cases[i].max_bin, (int)value(0, "CCD_INFO", "MAX_HORIZONTAL_BIN"));
+		ASSERT_EQ_INT(cases[i].max_bin, (int)value(0, "CCD_INFO", "MAX_VERTICAL_BIN"));
+		if (cases[i].gain > 60) {
+			// The preset is known, the gain and offset it would expose are not.
+			ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(0, "X_PRESETS"));
+			ASSERT_TRUE(switch_value(0, "X_PRESETS", "CUSTOM"));
+		}
+		ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
+		ASSERT_EQ_INT(images + 1, blobs);
+		ASSERT_TRUE(connect_device(0, false));
+		ASSERT_FALSE(cameras[0].opened);
+	}
+	fail_call = NULL;
+	cameras[0].malformed = cameras[0].short_option = cameras[0].preset = cameras[0].gain = cameras[0].sensor_error = 0;
+	ASSERT_TRUE(connect_device(0, true));
+	for (int i = 0; i < ARRAY_SIZE(optional_capabilities); i++) {
+		ASSERT_TRUE(state(0, optional_capabilities[i]) >= 0);
+	}
+}
+
+// CONNECTION requests that arrive while a connection attempt is still initializing are ignored, also
+// when that attempt fails: the failed attempt closes the camera once, the SDK is never used after the
+// close, and the next connection works.
+static void repeated_connect_during_a_failed_initialization(void) {
+	fail_call = "ArtemisProperties";
+	arm_gate("ArtemisProperties");
+	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
+	ASSERT_TRUE(wait_count(&gates_entered, 1));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, "CONNECTION"));
+	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
+	ASSERT_TRUE(set_switch(0, "CONNECTION", "DISCONNECTED", true));
+	ASSERT_TRUE(set_switch(0, "CONNECTION", "CONNECTED", true));
+	release_gate();
+	ASSERT_TRUE(wait_state(0, "CONNECTION", INDIGO_ALERT_STATE));
+	ASSERT_FALSE(cameras[0].opened);
+	ASSERT_EQ_INT(1, cameras[0].opens);
+	ASSERT_EQ_INT(1, cameras[0].closes);
+	ASSERT_EQ_INT(0, sdk_after_close);
+	fail_call = NULL;
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_EQ_INT(2, cameras[0].opens);
+	ASSERT_TRUE(number(0, "CCD_EXPOSURE", "EXPOSURE", .01, INDIGO_OK_STATE));
+	ASSERT_TRUE(connect_device(0, false));
+	ASSERT_EQ_INT(2, cameras[0].closes);
 }
 
 static void shutterless_acquisition(void) {
@@ -1800,6 +1964,9 @@ int main(int argc, char **argv) {
 		{ "shared_lifecycle", shared_lifecycle },
 		{ "initialization_failures", initialization_failures },
 		{ "malformed_initialization", malformed_initialization },
+		{ "uncooled_camera_with_failing_capability_queries", uncooled_camera_with_failing_capability_queries },
+		{ "optional_capability_failures_hide_only_that_capability", optional_capability_failures_hide_only_that_capability },
+		{ "repeated_connect_during_a_failed_initialization", repeated_connect_during_a_failed_initialization },
 		{ "acquisition_errors", acquisition_errors },
 		{ "geometry_and_payload", geometry_and_payload },
 		{ "durations_and_frame_types", durations_and_frame_types },
