@@ -1,0 +1,777 @@
+{
+  "schema_version": 1,
+  "ticket_id": "fbe9d6ea-c692-4b20-9b2c-d637d93bc408",
+  "revision": 33,
+  "title": "indigo_agent_scheduler: VISIBILITY plan starts at once like COMPACT, no wait for whole minutes between runs",
+  "description": "Owner request 2026-11-24: VISIBILITY (best visibility) plans start runs on whole UTC minutes (second 00). They should start like COMPACT: the first run at t0 exactly (now or the end of the running task/hook), without rounding to the minute, and a run that directly follows another starts at that run's end, so no time is wasted between tasks.\n\nCurrent behaviour (indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c): vis_prepare() rounds base = state->t up to a multiple of VIS_STEP (60 s), and run lengths are ceil(duration / 60) minutes, so every back-to-back run waits up to 59 s for its planned start (select_planned() waits until plan_runs[].start). Urgent pins are also rounded up to the minute.\n\nProposed: (1) use the unrounded t0 as the grid base, so minute g is t0 + g * 60 s and g = 0 is exactly t0, the same start as COMPACT; (2) when storing an arrangement (vis_store and indigo_scheduler_plan_order), start a run placed back-to-back after the previous run or hook at that previous end instead of the later grid point, provided all its constraints still hold over the shifted interval (checked in seconds as vis_valid does), otherwise keep the grid start; (3) urgent runs keep their exact COMPACT start. The DP stays a one-minute grid relative to t0, so its cost does not change. Update doc/SCHEDULER.md (Constraints section: 'a start on a whole UTC minute', 'rounded up to the minute'), the user guide if it states the rounding, and unit/integration tests that expect whole-minute starts; add tests for an exact first start and for back-to-back runs without gaps. Bump the agent version.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-24T16:15:31.016753Z",
+  "status": "closed",
+  "branch": "ticket/fbe9d6ea-c692-4b20-9b2c-d637d93bc408",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c9a81372-abe4-4753-93ce-fdf7eee14e44",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T16:17:41.725045Z",
+          "last_activity_at": "2026-11-24T16:49:21.998309Z",
+          "ended_at": "2026-11-24T16:49:21.998309Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1900273.264,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ac4c2337-a319-4595-8dd2-7b81b936531f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": null
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T16:51:37.871550Z",
+          "last_activity_at": "2026-11-24T17:04:37.377040Z",
+          "ended_at": "2026-11-24T17:04:37.377040Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 779505.49,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T16:17:41.725045Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/fbe9d6ea-c692-4b20-9b2c-d637d93bc408"
+        },
+        {
+          "at": "2026-11-24T16:49:21.998309Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-24T16:51:37.871550Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-24T17:04:37.377040Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2679778.754,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "bdffe1b1-c10f-4eb2-975f-89689e72d7e3",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": null
+          },
+          "status": "failed",
+          "started_at": "2026-11-24T16:49:21.998342Z",
+          "last_activity_at": "2026-11-24T16:51:37.871465Z",
+          "ended_at": "2026-11-24T16:51:37.871465Z",
+          "outcome": {
+            "summary": "1) Defect: vis_starts() (indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c:1093-1100) pulls a run up to 59 s earlier after checking only the hard constraints (indigo_scheduler_points_ok, delay/repeat, end), not the meridian-flip cost the DP optimised (vis_table, :479-484). A run the DP placed on the first whole minute after the meridian to avoid a flip is pulled back before the meridian and flips. Reproduced with a scratch harness over the unit test fixtures: 400 random 2-5 target nights around midnight, odd-second durations, now = noon+37 s, flip {enabled, offset 0, penalty 10 min}: 13 runs flip at their stored start but not at their DP grid start. This contradicts the guide's flip behaviour (INDIGO_SCHEDULER_GUIDE.md ~451, runs start just after the meridian and do not flip) and lowers the real J below info.value. Fix: for a non-pinned run only take the earlier start when indigo_scheduler_flip_loss(ctx->sky, task->target, task->header, target, task->duration, ctx->flip) is not greater than at the grid start (or the run does not flip there), and add a unit case with flip enabled and odd seconds. 2) Minor: test_visibility_flip_urgent_exempt (indigo_test/unit/test_agent_scheduler_plan.c ~1460) still asserts the urgent start rounded up to the minute; it only passes because the COMPACT start is a whole minute there; align it with the new rule (exact COMPACT start) as test_visibility_urgent was. Verified OK: hook ordering in vis_store (a pulled start is >= every hook end processed up to the grid start, so the same hooks precede it), repeat spacing/available_from checked against exact previous ends, pulling earlier never invalidates later runs, urgent pins use max(end, COMPACT start), plan_order callers/tests still valid, REASON HH:MM:SS and docs consistent, integration expectation change justified (Flats now starts at once), DRIVER_VERSION 0x03000023, formatting OK.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 135873.123,
+          "tokens": null
+        },
+        {
+          "attempt_id": "732194d5-ad3f-4ab4-b8f6-6c18e375edb9",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": null
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T17:04:37.377051Z",
+          "last_activity_at": "2026-11-24T17:04:37.377074Z",
+          "ended_at": "2026-11-24T17:04:37.377074Z",
+          "outcome": {
+            "summary": "Both earlier findings fixed. 1) vis_starts() (indigo_agent_scheduler_plan.c ~1097) now takes an earlier start for a non-pinned run only when indigo_scheduler_flip_loss there is <= the loss at its whole-minute start; with ctx->flip NULL (indigo_scheduler_plan_order) both sides are 0, so that path is unchanged. Rebuilt the archive and reran: unit test_agent_scheduler_plan all passed, including the new visibility_exact_starts_keep_flips (unit/test_agent_scheduler_plan.c ~1136; it resets random_state and checks that more than 100 runs moved). My independent repro over 400 random flip nights now reports 0 runs moved into a flip (13 before the fix). 2) test_visibility_flip_urgent_exempt (~1505) now expects the exact COMPACT start. SCHEDULER.md Constraints and test list describe the flip guard. Hook ordering, repeat spacing, urgent pins, REASON format, docs, integration expectation, DRIVER_VERSION 0x03000023 and formatting were rechecked against the full diff. No remaining findings.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.023,
+          "tokens": null
+        },
+        {
+          "attempt_id": "106e97e3-cc7b-4530-9aab-820e409532f3",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-24T17:37:14.427735Z",
+          "last_activity_at": "2026-11-24T17:37:14.427761Z",
+          "ended_at": "2026-11-24T17:37:14.427761Z",
+          "outcome": {
+            "summary": "Verified the owner-decided REASON revert against master. In indigo_agent_scheduler.c the only remaining change from master is DRIVER_VERSION 0x03000022 -> 0x03000023, so the select_planned() REASON is back to '%s starts at %02d:%02d UTC, planned for better visibility'. SCHEDULER_COMPARISON.md is identical to master. INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md say HH:MM again and keep only the exact-start and flip-guard text. The plan code and the unit and integration tests are unchanged since my previous pass (17e6aa126). The integration test still matches ' UTC, planned for better visibility'. git diff --check is clean. HH:MM stays accurate: a run that waits starts on a whole minute, and only a run starting at once or right after another run or hook gets seconds. No findings.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.026,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T16:49:21.998342Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T16:51:37.871465Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "1) Defect: vis_starts() (indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c:1093-1100) pulls a run up to 59 s earlier after checking only the hard constraints (indigo_scheduler_points_ok, delay/repeat, end), not the meridian-flip cost the DP optimised (vis_table, :479-484). A run the DP placed on the first whole minute after the meridian to avoid a flip is pulled back before the meridian and flips. Reproduced with a scratch harness over the unit test fixtures: 400 random 2-5 target nights around midnight, odd-second durations, now = noon+37 s, flip {enabled, offset 0, penalty 10 min}: 13 runs flip at their stored start but not at their DP grid start. This contradicts the guide's flip behaviour (INDIGO_SCHEDULER_GUIDE.md ~451, runs start just after the meridian and do not flip) and lowers the real J below info.value. Fix: for a non-pinned run only take the earlier start when indigo_scheduler_flip_loss(ctx->sky, task->target, task->header, target, task->duration, ctx->flip) is not greater than at the grid start (or the run does not flip there), and add a unit case with flip enabled and odd seconds. 2) Minor: test_visibility_flip_urgent_exempt (indigo_test/unit/test_agent_scheduler_plan.c ~1460) still asserts the urgent start rounded up to the minute; it only passes because the COMPACT start is a whole minute there; align it with the new rule (exact COMPACT start) as test_visibility_urgent was. Verified OK: hook ordering in vis_store (a pulled start is >= every hook end processed up to the grid start, so the same hooks precede it), repeat spacing/available_from checked against exact previous ends, pulling earlier never invalidates later runs, urgent pins use max(end, COMPACT start), plan_order callers/tests still valid, REASON HH:MM:SS and docs consistent, integration expectation change justified (Flats now starts at once), DRIVER_VERSION 0x03000023, formatting OK."
+        },
+        {
+          "at": "2026-11-24T17:04:37.377051Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T17:04:37.377074Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Both earlier findings fixed. 1) vis_starts() (indigo_agent_scheduler_plan.c ~1097) now takes an earlier start for a non-pinned run only when indigo_scheduler_flip_loss there is <= the loss at its whole-minute start; with ctx->flip NULL (indigo_scheduler_plan_order) both sides are 0, so that path is unchanged. Rebuilt the archive and reran: unit test_agent_scheduler_plan all passed, including the new visibility_exact_starts_keep_flips (unit/test_agent_scheduler_plan.c ~1136; it resets random_state and checks that more than 100 runs moved). My independent repro over 400 random flip nights now reports 0 runs moved into a flip (13 before the fix). 2) test_visibility_flip_urgent_exempt (~1505) now expects the exact COMPACT start. SCHEDULER.md Constraints and test list describe the flip guard. Hook ordering, repeat spacing, urgent pins, REASON format, docs, integration expectation, DRIVER_VERSION 0x03000023 and formatting were rechecked against the full diff. No remaining findings."
+        },
+        {
+          "at": "2026-11-24T17:37:14.427735Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T17:37:14.427761Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Verified the owner-decided REASON revert against master. In indigo_agent_scheduler.c the only remaining change from master is DRIVER_VERSION 0x03000022 -> 0x03000023, so the select_planned() REASON is back to '%s starts at %02d:%02d UTC, planned for better visibility'. SCHEDULER_COMPARISON.md is identical to master. INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md say HH:MM again and keep only the exact-start and flip-guard text. The plan code and the unit and integration tests are unchanged since my previous pass (17e6aa126). The integration test still matches ' UTC, planned for better visibility'. git diff --check is clean. HH:MM stays accurate: a run that waits starts on a whole minute, and only a run starting at once or right after another run or hook gets seconds. No findings."
+        }
+      ],
+      "result": {
+        "summary": "Verified the owner-decided REASON revert against master. In indigo_agent_scheduler.c the only remaining change from master is DRIVER_VERSION 0x03000022 -> 0x03000023, so the select_planned() REASON is back to '%s starts at %02d:%02d UTC, planned for better visibility'. SCHEDULER_COMPARISON.md is identical to master. INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md say HH:MM again and keep only the exact-start and flip-guard text. The plan code and the unit and integration tests are unchanged since my previous pass (17e6aa126). The integration test still matches ' UTC, planned for better visibility'. git diff --check is clean. HH:MM stays accurate: a run that waits starts on a whole minute, and only a run starting at once or right after another run or hook gets seconds. No findings.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 135873.172,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "b0d064e8-aea2-44f4-9002-e9e949bd4e7d",
+      "event": "ticket/created",
+      "at": "2026-11-24T16:15:31.017853Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "e7415fc1-77b3-4dfa-80ea-98d62c0a4016",
+      "event": "ticket/confirmed",
+      "at": "2026-11-24T16:17:30.443885Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "27d95daf-9489-4f2c-80ca-09d2126709fd",
+      "event": "task/progress",
+      "at": "2026-11-24T16:17:41.725220Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Implementation started on branch ticket/fbe9d6ea-c692-4b20-9b2c-d637d93bc408"
+    },
+    {
+      "event_id": "8d58dddf-6ef6-4472-b8cc-99c1a0510bd6",
+      "event": "ticket/started",
+      "at": "2026-11-24T16:17:41.726397Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/fbe9d6ea-c692-4b20-9b2c-d637d93bc408",
+      "base": "master"
+    },
+    {
+      "event_id": "9691bfd7-62ba-48b6-9789-ec9569ac282c",
+      "event": "task/progress",
+      "at": "2026-11-24T16:17:45.959992Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Implementer: exact VISIBILITY starts, reading plan code and tests",
+      "attempt_id": "c9a81372-abe4-4753-93ce-fdf7eee14e44",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "00332ab4-4b39-4c2b-8ee9-9ef445f5396a",
+      "event": "task/progress",
+      "at": "2026-11-24T16:41:03.382039Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Rerunning integration test_agent_scheduler"
+    },
+    {
+      "event_id": "7d0213e6-c47b-4cc5-9f77-ac8c206f2d1d",
+      "event": "task/progress",
+      "at": "2026-11-24T16:47:08.949668Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "30ffcf5c-2359-4ae6-8094-8666b610dbc1",
+      "event": "task/progress",
+      "at": "2026-11-24T16:47:08.988011Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "8d47f69b-4a7a-4572-9d9a-57ba304bb499",
+      "event": "task/progress",
+      "at": "2026-11-24T16:47:08.993001Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "d513ac10-84cd-4ff3-807c-73510ccfb2d4",
+      "event": "task/progress",
+      "at": "2026-11-24T16:49:10.304343Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "2a1c6022-377d-4fa9-8229-44691de67c60",
+      "event": "check/passed",
+      "at": "2026-11-24T16:49:10.309315Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e14ebf3fe2f70edc9ee0e2cb8ae889af6228f407",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "3047813b-6a29-4efe-8ffe-d0b665fadabf",
+      "event": "ticket/note",
+      "at": "2026-11-24T16:49:21.876614Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementation deviates from point (1) of the description: a DP grid anchored at unrounded t0 made a run that waits for a window or the 5-minute sky grid start up to 59 s late (integration case visibility_starts_at_the_planned_time failed), so the DP keeps whole UTC minutes and vis_starts() pulls a run placed within a minute after t0 or the previous run/hook end back to that exact end when its constraints hold (urgent pinned runs: max(end, COMPACT start)). Result: the first run starts at now like COMPACT, no gaps between back-to-back runs, waiting runs on whole minutes. Before: unit visibility_exact_starts/visibility_starts_now would fail (starts rounded to :00). Tests: test_agent_scheduler_plan all pass (2 new cases); integration test_agent_scheduler 170/170 pass after updating visibility_wait_lets_urgent_and_untargeted_tasks_run (Flats now starts at once instead of at the next whole minute); flow check whitespace+unit passed. REASON text now HH:MM:SS. Version 0x03000022 -> 0x03000023.",
+      "tokens": null
+    },
+    {
+      "event_id": "97f84616-5eb3-4db0-9766-29301470364f",
+      "event": "task/progress",
+      "at": "2026-11-24T16:49:21.998405Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "text": "Review started"
+    },
+    {
+      "event_id": "0e86cfaa-62e2-41c7-8871-79c5afb1b401",
+      "event": "review/started",
+      "at": "2026-11-24T16:49:21.998959Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "dee8b9dc-02e2-4db3-bce4-f3c9e299a565",
+      "event": "task/progress",
+      "at": "2026-11-24T16:49:43.358337Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "text": "Reviewing VISIBILITY exact-start diff",
+      "attempt_id": "bdffe1b1-c10f-4eb2-975f-89689e72d7e3",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": null
+      }
+    },
+    {
+      "event_id": "1e34c705-7b47-4e9e-9721-f0dff7ce46dd",
+      "event": "task/progress",
+      "at": "2026-11-24T16:51:37.871542Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "9b0f2c20-e9f0-4a0e-b12a-17a612809260",
+      "event": "task/progress",
+      "at": "2026-11-24T16:51:37.871577Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "15c3a0a2-b553-4f2b-be7a-d8a4248534e9",
+      "event": "review/changes_requested",
+      "at": "2026-11-24T16:51:37.872228Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "e14ebf3fe2f70edc9ee0e2cb8ae889af6228f407"
+    },
+    {
+      "event_id": "930aa82d-97fe-45ab-8e13-63782c64be59",
+      "event": "task/progress",
+      "at": "2026-11-24T16:56:07.056883Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Review fix: no earlier start into a meridian flip; rerunning integration and checks"
+    },
+    {
+      "event_id": "21afb33a-134b-49cb-b5fa-a36a9ca1a462",
+      "event": "task/progress",
+      "at": "2026-11-24T17:02:03.318711Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b6512f66-e875-42f9-9e18-9ab8871aa6a9",
+      "event": "task/progress",
+      "at": "2026-11-24T17:02:03.340469Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "53527be8-43d7-4f63-82ea-346087747905",
+      "event": "task/progress",
+      "at": "2026-11-24T17:02:03.345636Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "780bc761-4ada-4cff-88c1-1085e9636d60",
+      "event": "task/progress",
+      "at": "2026-11-24T17:03:46.421435Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "86367de5-6ef6-4fc0-867a-8422e59d6d60",
+      "event": "check/passed",
+      "at": "2026-11-24T17:03:46.427382Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "17e6aa126169cb8eff5d80195e527329c0b853f1",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "578cfbf4-82f6-41d0-9538-268b1dde7b4f",
+      "event": "task/progress",
+      "at": "2026-11-24T17:03:56.162999Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "127215e0-e952-43b1-8eed-5c877f16714f",
+      "text": "Re-reviewing flip guard and urgent test fix",
+      "attempt_id": "ac4c2337-a319-4595-8dd2-7b81b936531f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": null
+      }
+    },
+    {
+      "event_id": "165ff80c-500d-476e-ad6c-193caecd58ee",
+      "event": "task/progress",
+      "at": "2026-11-24T17:04:37.377138Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "08c0e2b8-9538-40b1-adbe-9793d922b1f6",
+      "event": "review/passed",
+      "at": "2026-11-24T17:04:37.377792Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "17e6aa126169cb8eff5d80195e527329c0b853f1"
+    },
+    {
+      "event_id": "170608c9-1d33-457d-acd1-e7886aed0f44",
+      "event": "ticket/note",
+      "at": "2026-11-24T17:30:52.866377Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner 2026-11-24: keep REASON at HH:MM, no seconds (the start is not that precise).",
+      "tokens": null
+    },
+    {
+      "event_id": "6d6d6557-9943-48ec-ab5b-a177337ae4e4",
+      "event": "task/progress",
+      "at": "2026-11-24T17:35:02.180311Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "8212a89b-0a0e-4672-8f38-aec92b0851d0",
+      "event": "task/progress",
+      "at": "2026-11-24T17:35:02.203675Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "95298a66-465f-4d30-943c-56413f0bc6fb",
+      "event": "task/progress",
+      "at": "2026-11-24T17:35:02.210971Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "0a67cdd9-e92b-4f4b-8477-0fe9bceaf948",
+      "event": "task/progress",
+      "at": "2026-11-24T17:36:52.583694Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "9745efd7-e373-4688-a66e-edb3c809d786",
+      "event": "check/passed",
+      "at": "2026-11-24T17:36:52.590090Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "8bc6e84a8a169af0dc2c7e269e7a06bf85d2392d",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "3106ce6d-a9fd-4918-afa2-350b3d0e574a",
+      "event": "task/progress",
+      "at": "2026-11-24T17:37:06.741622Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "text": "Re-reviewing REASON HH:MM revert",
+      "attempt_id": "732194d5-ad3f-4ab4-b8f6-6c18e375edb9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": null
+      }
+    },
+    {
+      "event_id": "0462730b-670e-4b16-8f70-ea4eaa99a6c2",
+      "event": "task/progress",
+      "at": "2026-11-24T17:37:14.427828Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "85a668cc-9d7c-4f86-ae82-82b600e5bec4",
+      "event": "review/passed",
+      "at": "2026-11-24T17:37:14.428574Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3460bb0f-46c0-44cf-84a1-d4f976311417",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "8bc6e84a8a169af0dc2c7e269e7a06bf85d2392d"
+    },
+    {
+      "event_id": "8cbcd2e3-b95c-4802-ac1a-13b1f4e9b260",
+      "event": "ticket/title_changed",
+      "at": "2026-11-24T17:38:53.083684Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: VISIBILITY plan starts at the exact time like COMPACT, no rounding to whole minutes and no gaps between back-to-back runs",
+      "title": "indigo_agent_scheduler: VISIBILITY plan starts at once like COMPACT, no wait for whole minutes between runs"
+    },
+    {
+      "event_id": "04df6a64-acc5-4e33-b06b-c6d912afd136",
+      "event": "ticket/closed",
+      "at": "2026-11-24T17:38:59.921504Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-24T17:38:59.921478Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "25fc433f0dd8c30f6e455f063d49c2cfd3eeea42"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-24T16:15:31.016753Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-24T16:17:30.443839Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2815651.926,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 46,
+    "sha256": "97faa1722a31a0f896da21de3f4bee5baf870fb2dd80837efa8a39c45ac8f676"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e14ebf3fe2f70edc9ee0e2cb8ae889af6228f407",
+        "tree": "e85884b80d3f2569c06b0431ea7072bf661e170d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T16:47:08.987296Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/fbe9d6ea-c692-4b20-9b2c-d637d93bc408/e85884b80d3f-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "e14ebf3fe2f70edc9ee0e2cb8ae889af6228f407",
+        "tree": "e85884b80d3f2569c06b0431ea7072bf661e170d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T16:49:10.303667Z",
+        "duration_s": 121.3,
+        "log": "/tmp/factory-flow/fbe9d6ea-c692-4b20-9b2c-d637d93bc408/e85884b80d3f-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "17e6aa126169cb8eff5d80195e527329c0b853f1",
+        "tree": "bf6d22da6a25db277436175bd305fc9f0822c521",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T17:02:03.339594Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/fbe9d6ea-c692-4b20-9b2c-d637d93bc408/bf6d22da6a25-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "17e6aa126169cb8eff5d80195e527329c0b853f1",
+        "tree": "bf6d22da6a25db277436175bd305fc9f0822c521",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T17:03:46.420494Z",
+        "duration_s": 103.1,
+        "log": "/tmp/factory-flow/fbe9d6ea-c692-4b20-9b2c-d637d93bc408/bf6d22da6a25-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8bc6e84a8a169af0dc2c7e269e7a06bf85d2392d",
+        "tree": "b59e26f46a42d7ed09e891dd1d40d6382261bbee",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T17:35:02.202393Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/fbe9d6ea-c692-4b20-9b2c-d637d93bc408/b59e26f46a42-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "8bc6e84a8a169af0dc2c7e269e7a06bf85d2392d",
+        "tree": "b59e26f46a42d7ed09e891dd1d40d6382261bbee",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T17:36:52.582418Z",
+        "duration_s": 110.4,
+        "log": "/tmp/factory-flow/fbe9d6ea-c692-4b20-9b2c-d637d93bc408/b59e26f46a42-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "1) Defect: vis_starts() (indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c:1093-1100) pulls a run up to 59 s earlier after checking only the hard constraints (indigo_scheduler_points_ok, delay/repeat, end), not the meridian-flip cost the DP optimised (vis_table, :479-484). A run the DP placed on the first whole minute after the meridian to avoid a flip is pulled back before the meridian and flips. Reproduced with a scratch harness over the unit test fixtures: 400 random 2-5 target nights around midnight, odd-second durations, now = noon+37 s, flip {enabled, offset 0, penalty 10 min}: 13 runs flip at their stored start but not at their DP grid start. This contradicts the guide's flip behaviour (INDIGO_SCHEDULER_GUIDE.md ~451, runs start just after the meridian and do not flip) and lowers the real J below info.value. Fix: for a non-pinned run only take the earlier start when indigo_scheduler_flip_loss(ctx->sky, task->target, task->header, target, task->duration, ctx->flip) is not greater than at the grid start (or the run does not flip there), and add a unit case with flip enabled and odd seconds. 2) Minor: test_visibility_flip_urgent_exempt (indigo_test/unit/test_agent_scheduler_plan.c ~1460) still asserts the urgent start rounded up to the minute; it only passes because the COMPACT start is a whole minute there; align it with the new rule (exact COMPACT start) as test_visibility_urgent was. Verified OK: hook ordering in vis_store (a pulled start is >= every hook end processed up to the grid start, so the same hooks precede it), repeat spacing/available_from checked against exact previous ends, pulling earlier never invalidates later runs, urgent pins use max(end, COMPACT start), plan_order callers/tests still valid, REASON HH:MM:SS and docs consistent, integration expectation change justified (Flats now starts at once), DRIVER_VERSION 0x03000023, formatting OK.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "e14ebf3fe2f70edc9ee0e2cb8ae889af6228f407",
+        "tree": "e85884b80d3f2569c06b0431ea7072bf661e170d",
+        "at": "2026-11-24T16:51:37.871441Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Both earlier findings fixed. 1) vis_starts() (indigo_agent_scheduler_plan.c ~1097) now takes an earlier start for a non-pinned run only when indigo_scheduler_flip_loss there is <= the loss at its whole-minute start; with ctx->flip NULL (indigo_scheduler_plan_order) both sides are 0, so that path is unchanged. Rebuilt the archive and reran: unit test_agent_scheduler_plan all passed, including the new visibility_exact_starts_keep_flips (unit/test_agent_scheduler_plan.c ~1136; it resets random_state and checks that more than 100 runs moved). My independent repro over 400 random flip nights now reports 0 runs moved into a flip (13 before the fix). 2) test_visibility_flip_urgent_exempt (~1505) now expects the exact COMPACT start. SCHEDULER.md Constraints and test list describe the flip guard. Hook ordering, repeat spacing, urgent pins, REASON format, docs, integration expectation, DRIVER_VERSION 0x03000023 and formatting were rechecked against the full diff. No remaining findings.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "17e6aa126169cb8eff5d80195e527329c0b853f1",
+        "tree": "bf6d22da6a25db277436175bd305fc9f0822c521",
+        "at": "2026-11-24T17:04:37.377020Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Verified the owner-decided REASON revert against master. In indigo_agent_scheduler.c the only remaining change from master is DRIVER_VERSION 0x03000022 -> 0x03000023, so the select_planned() REASON is back to '%s starts at %02d:%02d UTC, planned for better visibility'. SCHEDULER_COMPARISON.md is identical to master. INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md say HH:MM again and keep only the exact-start and flip-guard text. The plan code and the unit and integration tests are unchanged since my previous pass (17e6aa126). The integration test still matches ' UTC, planned for better visibility'. git diff --check is clean. HH:MM stays accurate: a run that waits starts on a whole minute, and only a run starting at once or right after another run or hook gets seconds. No findings.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "8bc6e84a8a169af0dc2c7e269e7a06bf85d2392d",
+        "tree": "b59e26f46a42d7ed09e891dd1d40d6382261bbee",
+        "at": "2026-11-24T17:37:14.427711Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-24T16:49:21.876074Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementation deviates from point (1) of the description: a DP grid anchored at unrounded t0 made a run that waits for a window or the 5-minute sky grid start up to 59 s late (integration case visibility_starts_at_the_planned_time failed), so the DP keeps whole UTC minutes and vis_starts() pulls a run placed within a minute after t0 or the previous run/hook end back to that exact end when its constraints hold (urgent pinned runs: max(end, COMPACT start)). Result: the first run starts at now like COMPACT, no gaps between back-to-back runs, waiting runs on whole minutes. Before: unit visibility_exact_starts/visibility_starts_now would fail (starts rounded to :00). Tests: test_agent_scheduler_plan all pass (2 new cases); integration test_agent_scheduler 170/170 pass after updating visibility_wait_lets_urgent_and_untargeted_tasks_run (Flats now starts at once instead of at the next whole minute); flow check whitespace+unit passed. REASON text now HH:MM:SS. Version 0x03000022 -> 0x03000023.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-24T17:30:52.865681Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner 2026-11-24: keep REASON at HH:MM, no seconds (the start is not that precise).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "25fc433f0dd8c30f6e455f063d49c2cfd3eeea42",
+      "tree": "b59e26f46a42d7ed09e891dd1d40d6382261bbee",
+      "base": "master",
+      "at": "2026-11-24T17:38:59.827667Z"
+    }
+  }
+}
