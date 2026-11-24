@@ -1,0 +1,486 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d442138f-989c-4b84-a4e3-b161a17cf8bb",
+  "revision": 18,
+  "title": "indigo_agent_scheduler: SCHEDULER_COMPARISON.md does not mention the global MIN_ALTITUDE and MAX_ALTITUDE settings",
+  "description": "Commit c913ed677 added the global MIN_ALTITUDE and MAX_ALTITUDE settings (and the UNREACHABLE task state) to the Scheduler Agent. indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md still says INDIGO has only a minimum altitude per task (section 5 'No horizon profile'). Update the wording: section 5, the constraint row of the feature table and the score notes should mention the global altitude band (with the ceiling for the zenith blind spot or a roof edge) and state that it is the same at every azimuth, so it is not a horizon profile. Scores stay unchanged: the constraint score is held at 2 by the missing azimuth-dependent horizon profile and per-filter limits, and the projected gains of a horizon profile stay as they are. Documentation only.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-24T07:48:48.510959Z",
+  "status": "closed",
+  "branch": "ticket/d442138f-989c-4b84-a4e3-b161a17cf8bb",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "0589089e-200c-4eff-8852-27bcae2ec209",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c253039a-6852-4e1c-a437-3ec12db3a6d7",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T07:51:07.103254Z",
+          "last_activity_at": "2026-11-24T07:51:32.021671Z",
+          "ended_at": "2026-11-24T07:51:32.021671Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 24918.417,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T07:51:07.103254Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/d442138f-989c-4b84-a4e3-b161a17cf8bb"
+        },
+        {
+          "at": "2026-11-24T07:51:32.021671Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 24918.417,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "c2bf4e5d-0acf-4118-a003-1a744f42957e",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "4481f432-f4c2-41f4-9c6f-82f3e3161617",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T07:51:32.021713Z",
+          "last_activity_at": "2026-11-24T07:52:07.662322Z",
+          "ended_at": "2026-11-24T07:52:07.662322Z",
+          "outcome": {
+            "summary": "Diff touches only indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md (+6/-5). Verified against c913ed677: item names MIN_ALTITUDE/MAX_ALTITUDE of AGENT_SCHEDULER_SETTINGS (indigo_names.h:1539,1552-1553); limits hold for the whole run like @altitude (INDIGO_SCHEDULER_GUIDE 'Global altitude limits'), so the section 3 bullet is correct; UNREACHABLE for targets that can never stand within the band matches the guide; the band is a pair of scalar altitudes, azimuth-independent, so 'not a horizon profile' is accurate; MAX_ALTITUDE purpose (zenith blind spot of alt-az/fork mount, roof or dome edge) matches the guide wording. Section 5, the professional feature-table constraint row (line 230) and all three score notes (277, 317, 355) are updated; no remaining statement says INDIGO has only a per-task minimum altitude. No score cell or total changed; horizon-profile gains (lines 293, 327, 376) unchanged as required. English, style and Markdown (table column count, list) are correct. Not in scope: a pre-existing typo 'frakvme counts' at line 308/309 of the capability table exists on master too.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 35640.609,
+          "tokens": null
+        },
+        {
+          "attempt_id": "2633012b-98b4-4a4c-b008-4d80f765aafe",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-24T08:04:13.607927Z",
+          "last_activity_at": "2026-11-24T08:04:13.607946Z",
+          "ended_at": "2026-11-24T08:04:13.607946Z",
+          "outcome": {
+            "summary": "Re-review after the approved typo fix. The diff master...HEAD (no uncommitted changes) touches only indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md: the global MIN_ALTITUDE/MAX_ALTITUDE band is mentioned in the constraint list, section 5, the professional capability table cell and the three score explanations, plus 'frakvme counts' -> 'frame counts'. No score or total changed; all modified table rows keep their column counts. Names match the source (AGENT_SCHEDULER_SETTINGS, MIN_ALTITUDE/MAX_ALTITUDE items, UNREACHABLE state). No defects.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.019,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T07:51:32.021713Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T07:52:07.662322Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Diff touches only indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md (+6/-5). Verified against c913ed677: item names MIN_ALTITUDE/MAX_ALTITUDE of AGENT_SCHEDULER_SETTINGS (indigo_names.h:1539,1552-1553); limits hold for the whole run like @altitude (INDIGO_SCHEDULER_GUIDE 'Global altitude limits'), so the section 3 bullet is correct; UNREACHABLE for targets that can never stand within the band matches the guide; the band is a pair of scalar altitudes, azimuth-independent, so 'not a horizon profile' is accurate; MAX_ALTITUDE purpose (zenith blind spot of alt-az/fork mount, roof or dome edge) matches the guide wording. Section 5, the professional feature-table constraint row (line 230) and all three score notes (277, 317, 355) are updated; no remaining statement says INDIGO has only a per-task minimum altitude. No score cell or total changed; horizon-profile gains (lines 293, 327, 376) unchanged as required. English, style and Markdown (table column count, list) are correct. Not in scope: a pre-existing typo 'frakvme counts' at line 308/309 of the capability table exists on master too."
+        },
+        {
+          "at": "2026-11-24T08:04:13.607927Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T08:04:13.607946Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review after the approved typo fix. The diff master...HEAD (no uncommitted changes) touches only indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md: the global MIN_ALTITUDE/MAX_ALTITUDE band is mentioned in the constraint list, section 5, the professional capability table cell and the three score explanations, plus 'frakvme counts' -> 'frame counts'. No score or total changed; all modified table rows keep their column counts. Names match the source (AGENT_SCHEDULER_SETTINGS, MIN_ALTITUDE/MAX_ALTITUDE items, UNREACHABLE state). No defects."
+        }
+      ],
+      "result": {
+        "summary": "Re-review after the approved typo fix. The diff master...HEAD (no uncommitted changes) touches only indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md: the global MIN_ALTITUDE/MAX_ALTITUDE band is mentioned in the constraint list, section 5, the professional capability table cell and the three score explanations, plus 'frakvme counts' -> 'frame counts'. No score or total changed; all modified table rows keep their column counts. Names match the source (AGENT_SCHEDULER_SETTINGS, MIN_ALTITUDE/MAX_ALTITUDE items, UNREACHABLE state). No defects.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 35640.628,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9cd96154-7b38-47ea-ae62-aa340bf98f1a",
+      "event": "ticket/created",
+      "at": "2026-11-24T07:48:48.513179Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "f4816d36-320b-4522-8132-994115b48c66",
+      "event": "ticket/confirmed",
+      "at": "2026-11-24T07:50:48.903893Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "8b5f4eb0-6309-422b-bc4b-5cad1a8de8f5",
+      "event": "task/progress",
+      "at": "2026-11-24T07:51:07.104307Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0589089e-200c-4eff-8852-27bcae2ec209",
+      "text": "Implementation started on branch ticket/d442138f-989c-4b84-a4e3-b161a17cf8bb"
+    },
+    {
+      "event_id": "c906a6be-feb6-4577-8ee5-facbbfd2b4ef",
+      "event": "ticket/started",
+      "at": "2026-11-24T07:51:07.106745Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/d442138f-989c-4b84-a4e3-b161a17cf8bb",
+      "base": "master"
+    },
+    {
+      "event_id": "2be5b28a-28e1-494b-96ae-0a96b7a93093",
+      "event": "task/progress",
+      "at": "2026-11-24T07:51:14.591122Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0589089e-200c-4eff-8852-27bcae2ec209",
+      "text": "Updating SCHEDULER_COMPARISON.md for the global altitude limits",
+      "attempt_id": "c253039a-6852-4e1c-a437-3ec12db3a6d7",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "1f3a263c-d99b-41bb-81ff-f87ff664689d",
+      "event": "task/progress",
+      "at": "2026-11-24T07:51:29.114810Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0589089e-200c-4eff-8852-27bcae2ec209",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "51944d63-fa55-4ece-8277-dd2c5a98ee7d",
+      "event": "task/progress",
+      "at": "2026-11-24T07:51:29.128350Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0589089e-200c-4eff-8852-27bcae2ec209",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "d0577793-6a52-464d-abed-1cf35c1fef83",
+      "event": "check/passed",
+      "at": "2026-11-24T07:51:29.132551Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "3d14571d92d409c682de63de3ca580073cba5b99",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "02431a81-bc1d-4601-b81e-c9eb72251080",
+      "event": "task/progress",
+      "at": "2026-11-24T07:51:32.021766Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c2bf4e5d-0acf-4118-a003-1a744f42957e",
+      "text": "Review started"
+    },
+    {
+      "event_id": "862e2de0-21a8-4792-afa4-4bb4cf5a1e83",
+      "event": "review/started",
+      "at": "2026-11-24T07:51:32.022106Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "207b5863-2227-4351-aee3-85a3ddeca1d6",
+      "event": "task/progress",
+      "at": "2026-11-24T07:51:46.147749Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c2bf4e5d-0acf-4118-a003-1a744f42957e",
+      "text": "Reviewing the SCHEDULER_COMPARISON.md diff",
+      "attempt_id": "4481f432-f4c2-41f4-9c6f-82f3e3161617",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "4a42b18c-5aa2-41f9-8d94-e76ddcda786f",
+      "event": "task/progress",
+      "at": "2026-11-24T07:52:07.662380Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c2bf4e5d-0acf-4118-a003-1a744f42957e",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b0b4c137-d1b7-4605-829b-95d7eb8aa24c",
+      "event": "review/passed",
+      "at": "2026-11-24T07:52:07.662691Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c2bf4e5d-0acf-4118-a003-1a744f42957e",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "3d14571d92d409c682de63de3ca580073cba5b99"
+    },
+    {
+      "event_id": "1aa67235-d522-47d8-931c-eeb4c176030f",
+      "event": "ticket/note",
+      "at": "2026-11-24T08:03:48.853162Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner approved adding the fix of the typo 'frakvme counts' -> 'frame counts' (capability table) to this ticket.",
+      "tokens": null
+    },
+    {
+      "event_id": "97d4c529-5b14-4375-bdf9-6bd4017934bb",
+      "event": "task/progress",
+      "at": "2026-11-24T08:03:49.249525Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "00b31a7c-b147-4a18-b167-3f12a8178f54",
+      "event": "task/progress",
+      "at": "2026-11-24T08:03:49.266453Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "61f1f79f-679f-4aaf-91ab-8cc26659c2f3",
+      "event": "check/passed",
+      "at": "2026-11-24T08:03:49.274435Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "21de47c14121a4063b26753221a5ad6afe9bc605",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "30e3d823-4faf-41af-b601-226ce41c0d41",
+      "event": "task/progress",
+      "at": "2026-11-24T08:04:05.346064Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c2bf4e5d-0acf-4118-a003-1a744f42957e",
+      "text": "Re-reviewing after the typo fix",
+      "attempt_id": "4481f432-f4c2-41f4-9c6f-82f3e3161617",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e3cc3ce6-30db-459b-aadf-387f6a0ed8cb",
+      "event": "task/progress",
+      "at": "2026-11-24T08:04:13.607997Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c2bf4e5d-0acf-4118-a003-1a744f42957e",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "83c73def-890f-4951-8ada-cedb70856168",
+      "event": "review/passed",
+      "at": "2026-11-24T08:04:13.608424Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c2bf4e5d-0acf-4118-a003-1a744f42957e",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "21de47c14121a4063b26753221a5ad6afe9bc605"
+    },
+    {
+      "event_id": "3d7f93fe-f177-48c3-b693-528bab16d8fe",
+      "event": "ticket/closed",
+      "at": "2026-11-24T08:04:33.619899Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-24T08:04:33.619880Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "efd77ff95e45136aa399491f9d599964f4c9a278"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "3d14571d92d409c682de63de3ca580073cba5b99",
+        "tree": "9432ba057bdbd5afdfb0fcc6ac2822a7bf450588",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T07:51:29.127962Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d442138f-989c-4b84-a4e3-b161a17cf8bb/9432ba057bdb-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "21de47c14121a4063b26753221a5ad6afe9bc605",
+        "tree": "f2ea73f2e4668f300b44e8ce9a051d643efb3313",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T08:03:49.265881Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d442138f-989c-4b84-a4e3-b161a17cf8bb/f2ea73f2e466-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Diff touches only indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md (+6/-5). Verified against c913ed677: item names MIN_ALTITUDE/MAX_ALTITUDE of AGENT_SCHEDULER_SETTINGS (indigo_names.h:1539,1552-1553); limits hold for the whole run like @altitude (INDIGO_SCHEDULER_GUIDE 'Global altitude limits'), so the section 3 bullet is correct; UNREACHABLE for targets that can never stand within the band matches the guide; the band is a pair of scalar altitudes, azimuth-independent, so 'not a horizon profile' is accurate; MAX_ALTITUDE purpose (zenith blind spot of alt-az/fork mount, roof or dome edge) matches the guide wording. Section 5, the professional feature-table constraint row (line 230) and all three score notes (277, 317, 355) are updated; no remaining statement says INDIGO has only a per-task minimum altitude. No score cell or total changed; horizon-profile gains (lines 293, 327, 376) unchanged as required. English, style and Markdown (table column count, list) are correct. Not in scope: a pre-existing typo 'frakvme counts' at line 308/309 of the capability table exists on master too.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "3d14571d92d409c682de63de3ca580073cba5b99",
+        "tree": "9432ba057bdbd5afdfb0fcc6ac2822a7bf450588",
+        "at": "2026-11-24T07:52:07.662260Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review after the approved typo fix. The diff master...HEAD (no uncommitted changes) touches only indigo_drivers/agent_scheduler/doc/SCHEDULER_COMPARISON.md: the global MIN_ALTITUDE/MAX_ALTITUDE band is mentioned in the constraint list, section 5, the professional capability table cell and the three score explanations, plus 'frakvme counts' -> 'frame counts'. No score or total changed; all modified table rows keep their column counts. Names match the source (AGENT_SCHEDULER_SETTINGS, MIN_ALTITUDE/MAX_ALTITUDE items, UNREACHABLE state). No defects.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "21de47c14121a4063b26753221a5ad6afe9bc605",
+        "tree": "f2ea73f2e4668f300b44e8ce9a051d643efb3313",
+        "at": "2026-11-24T08:04:13.607868Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-24T08:03:48.852810Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner approved adding the fix of the typo 'frakvme counts' -> 'frame counts' (capability table) to this ticket.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "efd77ff95e45136aa399491f9d599964f4c9a278",
+      "tree": "f2ea73f2e4668f300b44e8ce9a051d643efb3313",
+      "base": "master",
+      "at": "2026-11-24T08:04:33.445304Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-24T07:48:48.510959Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-24T07:50:48.903815Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 60559.045,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 26,
+    "sha256": "c532ed94574bc5b454982ffb8c66922734fae9861e8c75ab58977537fcfb0f73"
+  }
+}
