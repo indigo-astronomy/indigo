@@ -1222,10 +1222,10 @@ static void test_visibility_stable(void) {
 				same = runs[r].task == previous[first + 1 + r].task && runs[r].start == previous[first + 1 + r].start;
 			}
 			if (!same) {
-				// a new plan replaces the previous one only when it has more runs or a higher summed quality
+				// a new plan replaces the previous one only when it has more runs
 				int previous_counts[MAX_TASKS], counts[MAX_TASKS];
 				int previous_total = count_runs(previous + first + 1, previous_count - first - 1, previous_counts, count), total = count_runs(runs, planned, counts, count);
-				ASSERT_TRUE(total > previous_total || (total == previous_total && info.value > plan_value(previous + first + 1, previous_count - first - 1) + 1e-6));
+				ASSERT_TRUE(total > previous_total);
 				replaced++;
 			}
 			steps++;
@@ -1237,6 +1237,109 @@ static void test_visibility_stable(void) {
 	printf("    %d of %d plans kept the rest of the previous plan, %d replaced it by a better one\n", kept, steps, replaced);
 	ASSERT_EQ_INT(steps, kept + replaced);
 	ASSERT_TRUE(kept >= steps * 95 / 100);
+}
+
+// the first task run that is not running, -1 when there is none
+static int find_first_task_run(const scheduler_plan_run *result, int count) {
+	for (int r = 0; r < count; r++) {
+		if (!result[r].running && result[r].task >= 0) {
+			return r;
+		}
+	}
+	return -1;
+}
+
+// the first run of a plan stays while the scheduler waits for it and the plan is computed again, at odd seconds, at its start and a second later: random queues with every class, the previous plan passed as the agent passes it, as its runs in order with their starts
+static void test_visibility_wait_keeps_first_run(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, 42, 23, 0);
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	random_state = 11;
+	static scheduler_plan_run previous[512];
+	int waits = 0, kept = 0;
+	for (int queue = 0; queue < 60; queue++) {
+		int count = random_queue(false);
+		time_t now = T_VISIBILITY_NOON + 3600 * (int)(random_unit() * 8) + 17;
+		int planned = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, now, end, 1, 1, NULL, NULL, 0, runs, 512, NULL);
+		int first = find_first_task_run(runs, planned);
+		if (first < 0 || runs[first].start <= now + 120) {
+			continue;
+		}
+		waits++;
+		int task = runs[first].task;
+		time_t start = runs[first].start;
+		bool same = true;
+		// computed again every 1003 s during the wait, in its last minute, at the start and a second later
+		time_t times[64];
+		int time_count = 0;
+		for (time_t t = now + 1003; t < start - 60 && time_count < 60; t += 1003) {
+			times[time_count++] = t;
+		}
+		times[time_count++] = start - 23;
+		times[time_count++] = start;
+		times[time_count++] = start + 1;
+		for (int k = 0; k < time_count && same; k++) {
+			time_t t = times[k];
+			int previous_count = 0;
+			for (int r = 0; r < planned; r++) {
+				if (!runs[r].running && runs[r].task >= 0) {
+					memset(previous + previous_count, 0, sizeof(scheduler_plan_run));
+					previous[previous_count].task = runs[r].task;
+					previous[previous_count].hook = -1;
+					previous[previous_count].start = runs[r].start;
+					previous_count++;
+				}
+			}
+			planned = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, t, end, 1, 1, NULL, previous, previous_count, runs, 512, NULL);
+			ASSERT_TRUE(plan_constraints_hold(runs, planned, count, t, end));
+			int next = find_first_task_run(runs, planned);
+			// the run keeps its start, once it is due it starts at once
+			same = next >= 0 && runs[next].task == task && runs[next].start == (start > t ? start : t);
+			if (!same) {
+				printf("    queue %d at %+ld s: task %d at %+ld s became task %d at %+ld s\n", queue, (long)(t - now), task, (long)(start - now), next >= 0 ? runs[next].task : -1, next >= 0 ? (long)(runs[next].start - now) : 0L);
+			}
+		}
+		kept += same;
+	}
+	printf("    %d of %d waits kept their first run\n", kept, waits);
+	ASSERT_TRUE(waits > 20);
+	ASSERT_EQ_INT(waits, kept);
+}
+
+// a previous plan passed with its starts, while no input changed, is kept against a COMPACT plan with a higher value at the same runs; passed as an order alone, after a change, it is replaced as a new plan: the 39th random queue at the moment its COMPACT plan overtakes it
+static void test_visibility_kept_only_with_starts(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, 42, 23, 0);
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	random_state = 11;
+	int count = 0;
+	time_t now = 0;
+	for (int queue = 0; queue <= 38; queue++) {
+		count = random_queue(false);
+		now = T_VISIBILITY_NOON + 3600 * (int)(random_unit() * 8) + 17;
+	}
+	int planned = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, now, end, 1, 1, NULL, NULL, 0, runs, 512, NULL);
+	static scheduler_plan_run previous[512];
+	int previous_count = 0;
+	for (int r = 0; r < planned; r++) {
+		if (!runs[r].running && runs[r].task >= 0) {
+			previous[previous_count++] = runs[r];
+		}
+	}
+	ASSERT_TRUE(previous_count > 0);
+	time_t t = now + 3009;
+	scheduler_plan_info info;
+	planned = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, t, end, 1, 1, NULL, previous, previous_count, runs, 512, &info);
+	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
+	// the COMPACT plan has a higher value at the same runs now
+	ASSERT_TRUE(info.compact_value > info.value);
+	ASSERT_TRUE(same_runs(previous, previous_count, runs, planned));
+	time_t kept_start = previous[0].start;
+	for (int r = 0; r < previous_count; r++) {
+		previous[r].start = 0;
+	}
+	planned = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, t, end, 1, 1, NULL, previous, previous_count, runs, 512, &info);
+	ASSERT_TRUE(info.result != SCHEDULER_VISIBILITY_PLANNED || info.value > info.compact_value);
+	int first = find_first_task_run(runs, planned);
+	ASSERT_TRUE(first >= 0 && runs[first].start != kept_start);
 }
 
 // the same inputs give the same plan; the previous plan wins a tie
@@ -1617,6 +1720,8 @@ int main(void) {
 		{ "visibility_starts_now", test_visibility_starts_now },
 		{ "visibility_exact_starts_keep_flips", test_visibility_exact_starts_keep_flips },
 		{ "visibility_stable", test_visibility_stable },
+		{ "visibility_wait_keeps_first_run", test_visibility_wait_keeps_first_run },
+		{ "visibility_kept_only_with_starts", test_visibility_kept_only_with_starts },
 		{ "visibility_deterministic", test_visibility_deterministic },
 		{ "visibility_limits", test_visibility_limits },
 		{ "visibility_performance", test_visibility_performance },

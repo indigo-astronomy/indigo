@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000023
+#define DRIVER_VERSION 0x03000024
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -378,7 +378,10 @@ typedef struct {
 	time_t plan_first_run;
 	// the rest of the last VISIBILITY plan as the slots of its task runs in order, which seeds the next plan; empty with COMPACT
 	int visibility_slots[SCHEDULER_VISIBILITY_MAX_RUNS];
+	time_t visibility_starts[SCHEDULER_VISIBILITY_MAX_RUNS];
 	int visibility_count;
+	// an input of the plan changed since the last plan, not only the time or the progress of the runs: the last VISIBILITY plan seeds the next one but is not kept as it is
+	bool plan_changed;
 	// the plan end for which a VISIBILITY plan too large to arrange was told
 	time_t visibility_notice;
 	// the meridian flip the current plan was made with and the generation of MERIDIAN_FLIP it was read from
@@ -1190,7 +1193,7 @@ static void request_stop(indigo_device *device, indigo_property_state state, con
 	PRIVATE_DATA->automatic_stop = false;
 	PRIVATE_DATA->stop_state = state;
 	INDIGO_COPY_VALUE(PRIVATE_DATA->stop_text, text);
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 }
 
 // -------------------------------------------------------------------------------- Observation data
@@ -1489,7 +1492,7 @@ static void finish_stop(indigo_device *device) {
 	int slot = PRIVATE_DATA->current;
 	if (slot < 0) {
 		PRIVATE_DATA->phase = RUN_IDLE;
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 		return;
 	}
 	scheduler_task *task = PRIVATE_DATA->tasks + slot;
@@ -1513,7 +1516,7 @@ static void finish_stop(indigo_device *device) {
 	restore_context(device);
 	PRIVATE_DATA->phase = RUN_IDLE;
 	PRIVATE_DATA->current = -1;
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 	switch (PRIVATE_DATA->stop) {
 		case STOP_DELETE:
 			add_history(device, task, RESULT_ABORTED, "deleted");
@@ -1666,7 +1669,7 @@ static void refresh_sky(indigo_device *device, time_t now) {
 				PRIVATE_DATA->tasks[i].target.valid = false;
 				PRIVATE_DATA->tasks[i].points.valid = false;
 			}
-			PRIVATE_DATA->plan_dirty = true;
+			PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 		}
 		return;
 	}
@@ -1685,6 +1688,9 @@ static void refresh_sky(indigo_device *device, time_t now) {
 	}
 	if (!moved && visibility_plan_kept(device)) {
 		PRIVATE_DATA->plan_dirty = plan_dirty;
+	}
+	if (moved) {
+		PRIVATE_DATA->plan_changed = true;
 	}
 }
 
@@ -1975,7 +1981,7 @@ static void refresh_nights(indigo_device *device, time_t now) {
 	if (!known) {
 		if (nights->valid) {
 			nights->valid = false;
-			PRIVATE_DATA->plan_dirty = true;
+			PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 		}
 		return;
 	}
@@ -1989,6 +1995,7 @@ static void refresh_nights(indigo_device *device, time_t now) {
 	indigo_scheduler_nights_build(nights, now, latitude, longitude, elevation, limit, start_offset, end_offset);
 	if (changed || !visibility_plan_kept(device)) {
 		PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->plan_changed = PRIVATE_DATA->plan_changed || changed;
 	}
 }
 
@@ -2108,7 +2115,7 @@ static void evaluate_safety(indigo_device *device, time_t now) {
 	if (unsafe != PRIVATE_DATA->unsafe_now || unsafe_missing != PRIVATE_DATA->unsafe_missing) {
 		PRIVATE_DATA->unsafe_now = unsafe;
 		PRIVATE_DATA->unsafe_missing = unsafe_missing;
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 		schedule_save(device);
 	}
 }
@@ -2139,7 +2146,7 @@ static void enter_hold(indigo_device *device) {
 	PRIVATE_DATA->idle_since = 0;
 	PRIVATE_DATA->idle_hook_done = false;
 	PRIVATE_DATA->idle_hook_reported = false;
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 	schedule_save(device);
 	if (PRIVATE_DATA->phase == RUN_STARTING || PRIVATE_DATA->phase == RUN_RUNNING) {
 		run_kind kind = PRIVATE_DATA->kind;
@@ -2159,7 +2166,7 @@ static bool end_hold(indigo_device *device, time_t now) {
 	PRIVATE_DATA->idle_since = 0;
 	PRIVATE_DATA->idle_hook_done = false;
 	PRIVATE_DATA->idle_hook_reported = false;
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 	schedule_save(device);
 	if (PRIVATE_DATA->startup_pending || kind == HOLD_START) {
 		// a postponed start or a startup hook interrupted by the hold: the startup hook prepares, then the night start hook
@@ -2409,7 +2416,7 @@ static void process_estimation(indigo_device *device) {
 				indigo_send_message(device, NULL, "The duration of task '%s' cannot be estimated, %d minutes are assumed until it has run; set @duration", task->header.name, SCHEDULER_DEFAULT_DURATION);
 			}
 		}
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 		return;
 	}
 	if (!ready) {
@@ -2595,7 +2602,7 @@ static int plan_first_task_run(int runs) {
 	return -1;
 }
 
-// the rest of the last VISIBILITY plan with the task indexes of this plan, for its seed
+// the rest of the last VISIBILITY plan with the task indexes of this plan, for its seed, and its starts while no input changed, which keep it
 static int visibility_previous(indigo_device *device, int count, scheduler_plan_run *previous) {
 	int result = 0;
 	for (int k = 0; k < PRIVATE_DATA->visibility_count; k++) {
@@ -2604,6 +2611,7 @@ static int visibility_previous(indigo_device *device, int count, scheduler_plan_
 				memset(previous + result, 0, sizeof(scheduler_plan_run));
 				previous[result].task = i;
 				previous[result].hook = -1;
+				previous[result].start = PRIVATE_DATA->plan_changed ? 0 : PRIVATE_DATA->visibility_starts[k];
 				result++;
 				break;
 			}
@@ -2628,6 +2636,7 @@ static int plan_visibility(indigo_device *device, int count, int hook_count, tim
 	PRIVATE_DATA->visibility_count = 0;
 	for (int i = 0; i < runs && PRIVATE_DATA->visibility_count < SCHEDULER_VISIBILITY_MAX_RUNS; i++) {
 		if (!plan_runs[i].running && plan_runs[i].task >= 0) {
+			PRIVATE_DATA->visibility_starts[PRIVATE_DATA->visibility_count] = plan_runs[i].start;
 			PRIVATE_DATA->visibility_slots[PRIVATE_DATA->visibility_count++] = plan_slots[plan_runs[i].task];
 		}
 	}
@@ -2796,12 +2805,18 @@ static void update_plan(indigo_device *device, time_t now) {
 		join_label(labels[items], INDIGO_VALUE_SIZE, 6, columns);
 		states[items++] = INDIGO_ALERT_STATE;
 	}
+	PRIVATE_DATA->plan_changed = false;
 	publish_plan(device, labels, states, items);
 	update_current(device);
 }
 
 // VISIBILITY at a decision: the plan's first task run starts at its planned time; returns the slot to start, or -1 with the reason while the plan waits
 static int select_planned(indigo_device *device, time_t now, const bool *candidates, int best) {
+	// a planned run that is due starts when its task can start and no input of the plan changed, before the plan is computed again: a plan computed at its start or a second after it may move it later
+	int due = plan_first_task_run(plan_run_count);
+	if (!PRIVATE_DATA->plan_changed && due >= 0 && now >= plan_runs[due].start && candidates[plan_slots[plan_runs[due].task]]) {
+		return plan_slots[plan_runs[due].task];
+	}
 	// a planned run that cannot start when it is due, for example after a missed start, is planned once more; without a startable plan the best task starts
 	for (int attempt = 0; attempt < 2; attempt++) {
 		if (PRIVATE_DATA->plan_dirty) {
@@ -2857,7 +2872,7 @@ static void process(indigo_device *device) {
 	scheduler_observed *observed = &PRIVATE_DATA->observed;
 	pthread_mutex_lock(&observed->mutex);
 	if (observed->flip_generation != PRIVATE_DATA->plan_flip_generation) {
-		PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 	}
 	pthread_mutex_unlock(&observed->mutex);
 	bool plan = PRIVATE_DATA->plan_dirty || indigo_monotonic_time() >= PRIVATE_DATA->plan_due;
@@ -2954,7 +2969,7 @@ static void change_settings(indigo_device *device, indigo_property *request, boo
 			}
 		}
 	}
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 }
 
 static void add_task(indigo_device *device, indigo_property *request, bool config_reader) {
@@ -2992,7 +3007,7 @@ static void add_task(indigo_device *device, indigo_property *request, bool confi
 	}
 	ADD_TASK_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, ADD_TASK_PROPERTY, NULL);
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 }
 
 static void edit_task(indigo_device *device, int slot, indigo_property *request) {
@@ -3019,7 +3034,7 @@ static void edit_task(indigo_device *device, int slot, indigo_property *request)
 	}
 	replace_text(device, slot, text, &header);
 	schedule_save(device);
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 }
 
 static void delete_task(indigo_device *device, indigo_property *request) {
@@ -3043,7 +3058,7 @@ static void delete_task(indigo_device *device, indigo_property *request) {
 	}
 	DELETE_TASK_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, DELETE_TASK_PROPERTY, NULL);
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 }
 
 static void urgent_task(indigo_device *device, indigo_property *request) {
@@ -3072,7 +3087,7 @@ static void urgent_task(indigo_device *device, indigo_property *request) {
 	}
 	URGENT_TASK_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, URGENT_TASK_PROPERTY, PRIVATE_DATA->started ? NULL : "Urgent task queued, but the scheduler is not running");
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 }
 
 static bool task_is_running(indigo_device *device, int slot) {
@@ -3155,7 +3170,7 @@ static void task_command(indigo_device *device, indigo_property *request) {
 			delete_all_tasks(device);
 		}
 		schedule_save(device);
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 		return;
 	}
 	int slot = find_task(device, name);
@@ -3186,7 +3201,7 @@ static void task_command(indigo_device *device, indigo_property *request) {
 	TASK_COMMAND_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, TASK_COMMAND_PROPERTY, NULL);
 	schedule_save(device);
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 }
 
 static void control(indigo_device *device, indigo_property *request) {
@@ -3245,7 +3260,7 @@ static void control(indigo_device *device, indigo_property *request) {
 			stop_scheduler(device, INDIGO_ALERT_STATE, "Scheduler aborted");
 		}
 	}
-	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 }
 
 // stops the handler queue; requests that never ran are released and new ones are ignored
@@ -3310,7 +3325,7 @@ static void command_handler(indigo_device *device, void *data) {
 				update_reachability(device, PRIVATE_DATA->tasks + i);
 			}
 		}
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 	} else if (indigo_property_match_changeable(CLEAR_HISTORY_PROPERTY, request)) {
 		PRIVATE_DATA->history_count = 0;
 		PRIVATE_DATA->urgent_done = PRIVATE_DATA->urgent_failed = 0;
@@ -3335,7 +3350,7 @@ static void command_handler(indigo_device *device, void *data) {
 		if (!command->config_reader) {
 			schedule_save(device);
 		}
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 	} else if (indigo_property_match_changeable(STRATEGY_PROPERTY, request)) {
 		indigo_property_copy_values(STRATEGY_PROPERTY, request, false);
 		STRATEGY_PROPERTY->state = INDIGO_OK_STATE;
@@ -3344,7 +3359,7 @@ static void command_handler(indigo_device *device, void *data) {
 			schedule_save(device);
 		}
 		PRIVATE_DATA->visibility_count = 0;
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 	} else if (indigo_property_match_changeable(SAFETY_MISSING_PROPERTY, request)) {
 		indigo_property_copy_values(SAFETY_MISSING_PROPERTY, request, false);
 		SAFETY_MISSING_PROPERTY->state = INDIGO_OK_STATE;
@@ -3352,7 +3367,7 @@ static void command_handler(indigo_device *device, void *data) {
 		if (!command->config_reader) {
 			schedule_save(device);
 		}
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 	} else if (indigo_property_match_changeable(SETTINGS_PROPERTY, request)) {
 		change_settings(device, request, command->config_reader);
 	} else if (indigo_property_match_changeable(DATA_PROPERTY, request)) {
@@ -3578,7 +3593,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		PRIVATE_DATA->current = -1;
 		PRIVATE_DATA->estimate_slot = -1;
 		PRIVATE_DATA->chain_slot = -1;
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 		// the live properties are defined here, before any handler can change them
 		indigo_define_property(device, ADD_TASK_PROPERTY, NULL);
 		indigo_define_property(device, DELETE_TASK_PROPERTY, NULL);
