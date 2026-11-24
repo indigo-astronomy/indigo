@@ -88,6 +88,7 @@ All constraints must hold for the whole duration of the run, not only at its sta
 
 - `@window`;
 - `@altitude`, `@airmass` and `@ha`;
+- the global altitude limits `MIN_ALTITUDE` and `MAX_ALTITUDE`;
 - `@moon` and `@illumination`;
 - `@twilight`.
 
@@ -204,7 +205,7 @@ Ekos and Voyager, and N.I.N.A. through its framing tool, generate the panels of 
 
 ### 5. No horizon profile
 
-Ekos, N.I.N.A. Target Scheduler and ACP support a custom horizon for trees and buildings. INDIGO has only a minimum altitude per task (`@altitude > deg`).
+Ekos, N.I.N.A. Target Scheduler and ACP support a custom horizon for trees and buildings. INDIGO has a minimum altitude per task (`@altitude > deg`) and a global altitude band in `AGENT_SCHEDULER_SETTINGS`: `MIN_ALTITUDE` for every target, and `MAX_ALTITUDE` as a ceiling for the zenith blind spot of an alt-az or fork mount or the edge of a roof or dome opening. A target that can never stand within the band is marked `UNREACHABLE`. The band is the same at every azimuth, so it cannot follow trees or buildings in one direction and is not a horizon profile.
 
 ### 6. Open items
 
@@ -226,7 +227,7 @@ Professional observatories schedule at a different level from the tools above. T
 
 | Capability | Professional systems | INDIGO |
 |---|---|---|
-| Constraints on target position: altitude, airmass, HA, Moon, twilight, windows | all | yes, without a horizon profile or per-filter limits |
+| Constraints on target position: altitude, airmass, HA, Moon, twilight, windows | all | yes, with a global minimum and maximum altitude, without a horizon profile or per-filter limits |
 | Constraints on measured conditions: seeing, transparency, sky brightness, water vapour | ESO, Gemini, ALMA, Rubin, LCO | no |
 | Urgent targets interrupting the running observation | LCO, ESO, Gemini, RTS2; Rubin and ZTF for gravitational-wave follow-up | yes, `@priority urgent` or `AGENT_SCHEDULER_URGENT_TASK` |
 | Optimising a whole night or longer | LCO and ZTF (integer programming), Rubin (simulated over the whole survey) | yes, `VISIBILITY` plans the whole night |
@@ -273,7 +274,7 @@ The cost of slews and filter changes, several telescopes in one plan, and progra
 | Flexibility of a task | 1 | 1 | 1 | 1 | 1 | 1 | 2 | 3 |
 | **Total (max 24)** | **19** | **20** | **19** | **19** | **17** | **17** | **15** | **15** |
 
-INDIGO's target-position score is 2 because it has no horizon profile and no per-filter limits. Its flexibility scores 3 against 1 for the professional systems, whose tasks are declarative blocks run by fixed templates; see [A task is one plain-text document](#2-a-task-is-one-plain-text-document). Rubin and ZTF score 2 for urgent targets: both take gravitational-wave alerts into the scheduler and re-plan around them, but urgent follow-up is a small part of their operation and is driven by a fixed set of strategies.
+INDIGO's target-position score is 2 because it has no horizon profile and no per-filter limits; its global altitude band is the same at every azimuth. Its flexibility scores 3 against 1 for the professional systems, whose tasks are declarative blocks run by fixed templates; see [A task is one plain-text document](#2-a-task-is-one-plain-text-document). Rubin and ZTF score 2 for urgent targets: both take gravitational-wave alerts into the scheduler and re-plan around them, but urgent follow-up is a small part of their operation and is driven by a fixed set of strategies.
 
 By total:
 
@@ -305,7 +306,7 @@ The ranking scores each scheduler from 0 to 3 in eight areas of scheduling capab
 | Constraints: altitude, airmass, HA, Moon, twilight, windows, horizon | 2 | 3 | 3 | 3 | 2 | 1 | 1 |
 | Urgent targets interrupting the running work | 3 | 3 | 0 | 0 | 2 | 0 | 0 |
 | Safety and weather | 3 | 3 | 3 | 2 | 2 | 2 | 1 |
-| Progress towards goals: frakvme counts, grading | 1 | 2 | 3 | 3 | 2 | 1 | 0 |
+| Progress towards goals: frame counts, grading | 1 | 2 | 3 | 3 | 2 | 1 | 0 |
 | Flexibility of a task | 3 | 2 | 2 | 2 | 1 | 1 | 1 |
 | Night automation: startup, shutdown, idle, night events | 3 | 3 | 3 | 2 | 2 | 2 | 2 |
 | Headless operation and remote control | 3 | 2 | 2 | 1 | 1 | 1 | 0 |
@@ -313,7 +314,7 @@ The ranking scores each scheduler from 0 to 3 in eight areas of scheduling capab
 
 By capability:
 
-INDIGO's constraints score 2 because it has no horizon profile and no per-filter limits. Its flexibility scores 3 because a task is a full program with access to the whole bus, as explained in [A task is one plain-text document](#2-a-task-is-one-plain-text-document). Ekos scores 2 for urgent targets: its greedy scheduler interrupts a running job when a higher-priority job becomes eligible, although it has no explicit urgent class.
+INDIGO's constraints score 2 because it has no horizon profile and no per-filter limits; its global altitude band is the same at every azimuth. Its flexibility scores 3 because a task is a full program with access to the whole bus, as explained in [A task is one plain-text document](#2-a-task-is-one-plain-text-document). Ekos scores 2 for urgent targets: its greedy scheduler interrupts a running job when a higher-priority job becomes eligible, although it has no explicit urgent class.
 
 1. **INDIGO Scheduler Agent (21):** the most advanced planning, urgent handling, task flexibility and headless operation, with safety handling level with ACP and Voyager; held back by progress counted in runs rather than frames and by the missing horizon profile.
 2. **ACP Scheduler (20):** complete and balanced: urgent targets, safety, constraints and night automation, with no weak area.
@@ -351,7 +352,7 @@ Each area is scored from 0 to 3, where 3 is the most advanced among all fourteen
 
 Notes on individual scores:
 - INDIGO scores 3 for flexibility of a task, the only 3 in the table: a task is a full program with access to the whole bus, and the hooks use the same language. See [A task is one plain-text document](#2-a-task-is-one-plain-text-document).
-- INDIGO's target-position score is 2: it has no horizon profile and no per-filter limits.
+- INDIGO's target-position score is 2: it has no horizon profile and no per-filter limits. Its global minimum and maximum altitude are the same at every azimuth.
 - Voyager scores 1 for sky conditions: RoboTarget can use a sky-quality (SQM) limit.
 - N.I.N.A. Target Scheduler has no sky-condition constraints yet; its documentation lists them as planned.
 - Ekos scores 2 for urgent targets because its greedy scheduler interrupts a running job for a higher-priority one, and 0 for cadence because it repeats jobs without a revisit interval.
