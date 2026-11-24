@@ -3297,11 +3297,14 @@ static void visibility_short_wait_keeps_the_idle_hook(void) {
 static void visibility_wait_lets_urgent_and_untargeted_tasks_run(void) {
 	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
 	REQUIRE(upload_before_culmination("Target"));
-	// a task without @target has no visibility to wait for, the plan puts it where it fits
+	// a task without @target has no visibility to wait for, the plan puts it in the free time before the target and it starts at once, not at the next whole minute
 	REQUIRE(upload("// @task Flats\n// @priority low\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	time_t control_at = time(NULL);
+	time_t flats = wait_start("Flats", 1, 15);
+	ASSERT_TRUE(flats > 0 && flats <= control_at + 5);
+	ASSERT_TRUE(wait_message("Task 'Flats' completed", 1, 15));
 	ASSERT_TRUE(wait_reason(" UTC, planned for better visibility", 15));
-	ASSERT_TRUE(wait_plan_contains("Flats", true, 10));
 	// an urgent task starts at once
 	REQUIRE(urgent("// @task Now\n// @duration 5\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_message("Task 'Now' completed", 1, 15));

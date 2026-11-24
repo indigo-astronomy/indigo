@@ -368,7 +368,7 @@ int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const schedu
 
 // -------------------------------------------------------------------------------- VISIBILITY
 
-// the start times are whole minutes
+// the dynamic programme places the starts on whole minutes, which windows and the sky grid share; a run placed within a minute after t0 or the previous run or hook starts at its end
 #define VIS_STEP	60
 // the longest plan arranged, in minutes
 #define VIS_MAX_MINUTES	1440
@@ -382,10 +382,11 @@ int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const schedu
 // a minute before every start
 #define VIS_NO_MINUTE	-1000000
 
-// a task run in an order, pinned to the minute pin when it is not -1
+// a task run in an order, pinned to the minute pin when it is not -1, which holds its exact COMPACT start at
 typedef struct {
 	int task;
 	int pin;
+	time_t at;
 } vis_run;
 
 // task runs in an order with their best starts and the summed value, VIS_NONE when they have no feasible arrangement
@@ -1064,15 +1065,58 @@ static bool vis_previous_seed(vis_context *vc, const vis_order *compact, const s
 	return true;
 }
 
+// the exact starts of an arranged order: a run that follows t0 or the previous run or hook on the grid within a minute starts at the end of that run or hook instead of the later whole minute when all its constraints still hold there and its flip cost does not rise; a pinned urgent run starts at its exact COMPACT start, or at that end when it is later
+static void vis_starts(const vis_context *vc, const vis_order *order, time_t *starts) {
+	const plan_context *ctx = vc->ctx;
+	const scheduler_plan_hook *hooks = ctx->hooks;
+	time_t grid_x = vc->state->t, x = vc->state->t;
+	int grid_hook = vc->state->next_hook, next_hook = vc->state->next_hook;
+	time_t last_end[MAX_PLAN_TASKS];
+	bool seen[MAX_PLAN_TASKS] = { false };
+	for (int k = 0; k < order->count; k++) {
+		const vis_run *run = order->runs + k;
+		int i = run->task;
+		const scheduler_plan_task *task = ctx->tasks + i;
+		time_t grid = vc->base + (time_t)order->minutes[k] * VIS_STEP;
+		while (grid_hook < ctx->hook_count && hooks[grid_hook].time <= grid) {
+			grid_x = (hooks[grid_hook].time > grid_x ? hooks[grid_hook].time : grid_x) + hooks[grid_hook].duration;
+			grid_hook++;
+		}
+		while (next_hook < ctx->hook_count && hooks[next_hook].time <= grid) {
+			x = (hooks[next_hook].time > x ? hooks[next_hook].time : x) + hooks[next_hook].duration;
+			next_hook++;
+		}
+		time_t start = grid;
+		time_t target = x;
+		if (run->pin >= 0 && run->at > target) {
+			target = run->at;
+		}
+		if (target < grid && (run->pin >= 0 || grid - grid_x < VIS_STEP)) {
+			time_t from = seen[i] ? last_end[i] + task->header->repeat_every * 60 : vc->state->available_from[i];
+			const char *reason;
+			// an urgent run keeps its COMPACT start whatever the constraints say; another run does not start earlier into a meridian flip its whole minute avoids
+			if (target >= from && target < ctx->end && (run->pin >= 0 || (indigo_scheduler_points_ok(ctx->sky, task->points, task->header, target, target + task->duration, &reason) && indigo_scheduler_flip_loss(ctx->sky, task->target, task->header, target, task->duration, ctx->flip) <= indigo_scheduler_flip_loss(ctx->sky, task->target, task->header, grid, task->duration, ctx->flip)))) {
+				start = target;
+			}
+		}
+		starts[k] = start;
+		seen[i] = true;
+		last_end[i] = x = start + task->duration;
+		grid_x = grid + task->duration;
+	}
+}
+
 // stores the runs of an order with the hooks between them and after them
 static int vis_store(const vis_context *vc, const vis_order *order, scheduler_plan_run *runs, int stored, int max_runs) {
 	const plan_context *ctx = vc->ctx;
 	const scheduler_plan_hook *hooks = ctx->hooks;
 	plan_state *state = indigo_safe_malloc(sizeof(plan_state));
 	*state = *vc->state;
+	time_t starts[SCHEDULER_VISIBILITY_MAX_RUNS];
+	vis_starts(vc, order, starts);
 	for (int k = 0; k < order->count && stored < max_runs; k++) {
 		int i = order->runs[k].task;
-		time_t start = vc->base + (time_t)order->minutes[k] * VIS_STEP;
+		time_t start = starts[k];
 		while (state->next_hook < ctx->hook_count && hooks[state->next_hook].time <= start && stored < max_runs) {
 			time_t from = hooks[state->next_hook].time > state->t ? hooks[state->next_hook].time : state->t;
 			runs[stored].task = -1;
@@ -1162,6 +1206,7 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 			vis_run *run = compact->runs + k;
 			if (is_urgent_task(&ctx, run->task)) {
 				run->pin = vis_minute(vc, compact_start[k]);
+				run->at = compact_start[k];
 				pins_ok = pins_ok && run->pin >= 0 && run->pin < vc->minutes;
 			}
 		}
@@ -1255,9 +1300,7 @@ double indigo_scheduler_plan_order(const scheduler_sky_grid *sky, const schedule
 			vis_evaluate(vc, arranged);
 			if (arranged->value > VIS_NONE) {
 				result = arranged->value;
-				for (int k = 0; k < order_count; k++) {
-					starts[k] = vc->base + (time_t)arranged->minutes[k] * VIS_STEP;
-				}
+				vis_starts(vc, arranged, starts);
 			}
 		}
 		free(arranged);

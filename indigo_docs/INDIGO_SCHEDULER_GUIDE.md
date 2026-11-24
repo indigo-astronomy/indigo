@@ -1088,7 +1088,7 @@ See also: [Priorities](#priorities).
 - A target that sets early is still placed early, because it stands highest then.
 - Urgent tasks never wait. They start at once, even during a wait, and keep their `COMPACT` times in the plan.
 - Hooks are not blocked. A hook due during a run runs after it. A hook delays the next run by its duration.
-- Runs start on whole UTC minutes.
+- The plan starts at once, like `COMPACT`. A run that follows another run or a hook starts as soon as it ends, so no time is lost between runs. A run that waits for better visibility or a window starts on a whole UTC minute.
 
 **The weights under `VISIBILITY`.** `SETTING_WEIGHT` and `ALTITUDE_WEIGHT` do not move runs. They shape the `COMPACT` plan that `VISIBILITY` starts from. They also rank the tasks whenever the scheduler falls back to `COMPACT`.
 

@@ -999,7 +999,7 @@ static void test_visibility_urgent(void) {
 	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
 	int a = find_run(compact_runs, compact, 3), b = find_run(runs, count, 3);
 	ASSERT_TRUE(a >= 0 && b >= 0);
-	ASSERT_EQ_INT((int)((compact_runs[a].start + 59) / 60 * 60), (int)runs[b].start);
+	ASSERT_EQ_INT((int)compact_runs[a].start, (int)runs[b].start);
 	ASSERT_TRUE(plan_constraints_hold(runs, count, 6, T_VISIBILITY_NOON, end));
 	ASSERT_TRUE(mean_quality(runs, count) > mean_quality(compact_runs, compact));
 }
@@ -1085,6 +1085,85 @@ static void test_visibility_running_task(void) {
 	ASSERT_TRUE(runs[next].start >= now + 660 + 3600);
 }
 
+// a run the plan places within a minute after the previous run starts at its end, a run that waits starts on a whole minute: durations and the start time with odd seconds
+static void test_visibility_exact_starts(void) {
+	owner_night();
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	time_t now = T_VISIBILITY_NOON + 37;
+	for (int i = 0; i < 6; i++) {
+		tasks[i].duration += 17 + 6 * i;
+	}
+	scheduler_plan_info info;
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, now, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
+	print_plan("VISIBILITY with odd seconds", runs, count);
+	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
+	ASSERT_TRUE(plan_constraints_hold(runs, count, 6, now, end));
+	int adjacent = 0, odd = 0;
+	for (int r = 0; r < count; r++) {
+		time_t previous_end = r == 0 ? now : runs[r - 1].end;
+		ASSERT_TRUE(runs[r].start >= previous_end);
+		// no run waits less than a minute for a later whole minute
+		ASSERT_TRUE(runs[r].start == previous_end || runs[r].start - previous_end >= 60);
+		adjacent += r > 0 && runs[r].start == previous_end;
+		odd += runs[r].start % 60 != 0;
+	}
+	ASSERT_TRUE(adjacent > 0);
+	ASSERT_TRUE(odd > 0);
+	// a run that waits for a better start starts on a whole minute, as windows and the sky grid do
+	for (int r = 0; r < count; r++) {
+		if (runs[r].start != (r == 0 ? now : runs[r - 1].end)) {
+			ASSERT_EQ_INT(0, (int)(runs[r].start % 60));
+		}
+	}
+}
+
+// the first run of a plan that can start at once starts exactly now, as under COMPACT
+static void test_visibility_starts_now(void) {
+	owner_night();
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	for (int h = 0; h < 12; h++) {
+		time_t now = T_VISIBILITY_NOON + 5 * 3600 + h * 1200 + 29;
+		scheduler_plan_info info;
+		int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, now, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
+		ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
+		ASSERT_TRUE(count > 0);
+		ASSERT_EQ_INT((int)now, (int)runs[0].start);
+		ASSERT_TRUE(plan_constraints_hold(runs, count, 6, now, end));
+	}
+}
+
+// a run moved before its whole minute to follow the previous run never flips where its whole minute does not: random nights of targets around midnight with odd-second durations and the flip enabled
+static void test_visibility_exact_starts_keep_flips(void) {
+	random_state = 1;
+	int moved = 0;
+	for (int n = 0; n < 400; n++) {
+		indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
+		int k = (int)((T_VISIBILITY_NOON + 12 * 3600 - sky.start) / SCHEDULER_GRID_STEP);
+		int count = 2 + (int)(random_unit() * 4);
+		for (int i = 0; i < count; i++) {
+			double ra = fmod(sky.lst[k] + (random_unit() * 240 - 120) / 60.0 + 24, 24);
+			add_altitude_task(i, "T", ra, 20 + random_unit() * 50, 20 + (int)(random_unit() * 60));
+			build_task(i);
+			tasks[i].duration += (int)(random_unit() * 60);
+		}
+		time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+		scheduler_flip flip = { true, 0, 10 / 60.0 };
+		time_t now = T_VISIBILITY_NOON + 37;
+		int planned = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, now, end, 1, 1, &flip, NULL, 0, runs, 512, NULL);
+		ASSERT_TRUE(plan_constraints_hold(runs, planned, count, now, end));
+		for (int r = 0; r < planned; r++) {
+			int i = runs[r].task;
+			if (i < 0 || runs[r].start % 60 == 0) {
+				continue;
+			}
+			moved++;
+			time_t grid = (runs[r].start + 59) / 60 * 60;
+			ASSERT_TRUE(indigo_scheduler_run_flips(&sky, &targets[i], &headers[i], grid, tasks[i].duration, &flip) || !indigo_scheduler_run_flips(&sky, &targets[i], &headers[i], runs[r].start, tasks[i].duration, &flip));
+		}
+	}
+	ASSERT_TRUE(moved > 100);
+}
+
 // a task without a target has no quality; it is planned at its earliest start where a gap allows
 static void test_visibility_untargeted(void) {
 	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
@@ -1103,7 +1182,7 @@ static void test_visibility_untargeted(void) {
 	// the earliest start in its place: at dusk, or right after the run before it
 	time_t earliest = (dark_from(T_VISIBILITY_NOON) + 59) / 60 * 60;
 	if (flats > 0) {
-		earliest = (runs[flats - 1].end + 59) / 60 * 60;
+		earliest = runs[flats - 1].end;
 	}
 	ASSERT_EQ_INT((int)earliest, (int)runs[flats].start);
 	ASSERT_TRUE(labs((long)(runs[m45].start + 1800 - transit_near(0, runs[m45].start))) <= 20 * 60);
@@ -1423,7 +1502,7 @@ static void test_visibility_flip_urgent_exempt(void) {
 	ASSERT_EQ_INT(1, compact);
 	ASSERT_EQ_INT(1, count);
 	ASSERT_EQ_INT(1, count_flips(compact_runs, compact, &flip));
-	ASSERT_EQ_INT((int)((compact_runs[0].start + 59) / 60 * 60), (int)runs[0].start);
+	ASSERT_EQ_INT((int)compact_runs[0].start, (int)runs[0].start);
 	ASSERT_EQ_INT(1, count_flips(runs, count, &flip));
 	ASSERT_NEAR(plan_value(compact_runs, compact), info.compact_value, 1e-6);
 	ASSERT_NEAR(plan_value(runs, count), info.value, 1e-6);
@@ -1534,6 +1613,9 @@ int main(void) {
 		{ "visibility_hooks", test_visibility_hooks },
 		{ "visibility_running_task", test_visibility_running_task },
 		{ "visibility_untargeted", test_visibility_untargeted },
+		{ "visibility_exact_starts", test_visibility_exact_starts },
+		{ "visibility_starts_now", test_visibility_starts_now },
+		{ "visibility_exact_starts_keep_flips", test_visibility_exact_starts_keep_flips },
 		{ "visibility_stable", test_visibility_stable },
 		{ "visibility_deterministic", test_visibility_deterministic },
 		{ "visibility_limits", test_visibility_limits },
