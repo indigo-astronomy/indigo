@@ -39,11 +39,13 @@ extern "C" {
 #define SCHEDULER_GRID_POINTS			577
 #define SCHEDULER_SETTING_HORIZON	(12 * 3600)
 
-/** Sun, Moon and sidereal time for 48 hours at SCHEDULER_GRID_STEP intervals.
+/** Sun, Moon and sidereal time for 48 hours at SCHEDULER_GRID_STEP intervals, and the global altitude limits of the tasks with @target.
  */
 typedef struct {
 	bool valid;
 	double latitude, longitude, elevation;
+	// the global minimum and maximum target altitude in degrees, 0 and 90 (no limits) after indigo_scheduler_sky_build()
+	double min_altitude, max_altitude;
 	time_t start;
 	double sun_altitude[SCHEDULER_GRID_POINTS];
 	double moon_altitude[SCHEDULER_GRID_POINTS];
@@ -78,6 +80,16 @@ typedef struct {
 	int next_bad_step[SCHEDULER_GRID_POINTS + 1];
 } scheduler_task_points;
 
+/** Why a task with @target can never run within the altitude limits.
+ */
+typedef enum {
+	SCHEDULER_REACHABLE = 0,
+	SCHEDULER_UNREACHABLE_RANGE,
+	SCHEDULER_UNREACHABLE_HORIZON,
+	SCHEDULER_UNREACHABLE_LOW,
+	SCHEDULER_UNREACHABLE_HIGH
+} scheduler_reachability;
+
 /** Build the sky grid starting at the grid step at or before start.
  */
 extern void indigo_scheduler_sky_build(scheduler_sky_grid *sky, time_t start, double latitude, double longitude, double elevation);
@@ -97,6 +109,10 @@ extern double indigo_scheduler_moon_limit(double separation, double width, doubl
 /** Return true if the sky constraints of the task hold at the grid point index. Otherwise sets reason.
  */
 extern bool indigo_scheduler_sky_point_ok(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, int index, const char **reason);
+
+/** Whether the target of a task can ever stand within the altitude limits of the sky grid: SCHEDULER_UNREACHABLE_RANGE when the maximum altitude is not above the task's @altitude, SCHEDULER_UNREACHABLE_HORIZON when the upper culmination is at or below the horizon, SCHEDULER_UNREACHABLE_LOW when the upper culmination is below the effective minimum (the larger of the global minimum and @altitude), SCHEDULER_UNREACHABLE_HIGH when the lower culmination is above the maximum. The culminations need a valid sky grid. Writes the reason with the numbers to reason unless the task is reachable.
+ */
+extern scheduler_reachability indigo_scheduler_reachability(const scheduler_sky_grid *sky, const scheduler_header *header, char *reason, size_t size);
 
 /** Return true if the task window contains the whole interval from - to. Otherwise sets reason.
  */

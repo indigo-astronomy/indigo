@@ -23,6 +23,7 @@
  \file indigo_agent_scheduler_sky.c
  */
 
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 
@@ -101,6 +102,8 @@ void indigo_scheduler_sky_build(scheduler_sky_grid *sky, time_t start, double la
 	sky->latitude = latitude;
 	sky->longitude = longitude;
 	sky->elevation = elevation;
+	sky->min_altitude = 0;
+	sky->max_altitude = 90;
 	sky->start = start - start % SCHEDULER_GRID_STEP;
 	double sun_ra[2] = { 0, 0 }, sun_dec[2] = { 0, 0 }, moon_ra[2] = { 0, 0 }, moon_dec[2] = { 0, 0 };
 	solar_system(sky->start, sun_ra + 1, sun_dec + 1, moon_ra + 1, moon_dec + 1);
@@ -180,8 +183,12 @@ bool indigo_scheduler_sky_point_ok(const scheduler_sky_grid *sky, const schedule
 		*reason = "target below the horizon";
 		return false;
 	}
-	if (header->has_min_altitude && altitude < header->min_altitude) {
+	if (altitude < sky->min_altitude || (header->has_min_altitude && altitude < header->min_altitude)) {
 		*reason = "target below the altitude limit";
+		return false;
+	}
+	if (altitude > sky->max_altitude) {
+		*reason = "target above the altitude limit";
 		return false;
 	}
 	if (header->has_max_airmass && indigo_airmass(altitude) > header->max_airmass) {
@@ -208,6 +215,39 @@ bool indigo_scheduler_sky_point_ok(const scheduler_sky_grid *sky, const schedule
 		}
 	}
 	return true;
+}
+
+scheduler_reachability indigo_scheduler_reachability(const scheduler_sky_grid *sky, const scheduler_header *header, char *reason, size_t size) {
+	if (!header->has_target) {
+		return SCHEDULER_REACHABLE;
+	}
+	if (header->has_min_altitude && sky->max_altitude <= header->min_altitude) {
+		snprintf(reason, size, "maximum altitude %g° is not above the task's @altitude %g°", sky->max_altitude, header->min_altitude);
+		return SCHEDULER_UNREACHABLE_RANGE;
+	}
+	if (!sky->valid) {
+		return SCHEDULER_REACHABLE;
+	}
+	double ra = header->ra, dec = header->dec;
+	indigo_j2k_to_jnow(&ra, &dec);
+	// the altitudes at the upper and the lower culmination, in both hemispheres
+	double upper = 90 - fabs(sky->latitude - dec);
+	double lower = fabs(sky->latitude + dec) - 90;
+	bool own_floor = header->has_min_altitude && header->min_altitude > sky->min_altitude;
+	double minimum = own_floor ? header->min_altitude : sky->min_altitude;
+	if (upper <= 0) {
+		snprintf(reason, size, "never rises above the horizon");
+		return SCHEDULER_UNREACHABLE_HORIZON;
+	}
+	if (upper < minimum) {
+		snprintf(reason, size, "culminates at %.1f°, below the %s %g°", upper, own_floor ? "task's @altitude" : "minimum altitude", minimum);
+		return SCHEDULER_UNREACHABLE_LOW;
+	}
+	if (lower > sky->max_altitude) {
+		snprintf(reason, size, "never below %.1f°, above the maximum altitude %g°", lower, sky->max_altitude);
+		return SCHEDULER_UNREACHABLE_HIGH;
+	}
+	return SCHEDULER_REACHABLE;
 }
 
 // the occurrence of a nightly window containing t, false if t is outside of the window

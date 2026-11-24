@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000021
+#define DRIVER_VERSION 0x03000022
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -124,6 +124,8 @@
 #define SETTINGS_NIGHT_START_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 9)
 #define SETTINGS_NIGHT_END_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 10)
 #define SETTINGS_SAFE_DELAY_ITEM	(SETTINGS_PROPERTY->items + 11)
+#define SETTINGS_MIN_ALTITUDE_ITEM	(SETTINGS_PROPERTY->items + 12)
+#define SETTINGS_MAX_ALTITUDE_ITEM	(SETTINGS_PROPERTY->items + 13)
 #define DATA_PROPERTY							(PRIVATE_DATA->data_property)
 #define DATA_OBJECT_ITEM					(DATA_PROPERTY->items + 0)
 #define DATA_FITS_ITEM						(DATA_PROPERTY->items + 1)
@@ -249,6 +251,8 @@ typedef struct {
 	bool estimated;
 	int estimate;
 	bool script_error;
+	// why the target can never stand within the altitude limits, empty when it can
+	char unreachable[INDIGO_VALUE_SIZE];
 	scheduler_target_grid target;
 	scheduler_task_points points;
 	indigo_property *property;
@@ -447,6 +451,11 @@ static bool is_terminal_state(task_state state) {
 
 static bool is_enabled(scheduler_task *task) {
 	return task->header.enabled && !task->disabled;
+}
+
+// a task that can never run within the altitude limits; a running or finished task keeps its state
+static bool is_unreachable(scheduler_task *task) {
+	return *task->unreachable && task->state != TASK_RUNNING && !is_terminal_state(task->state);
 }
 
 // the hook a task serves, RUN_TASK for an ordinary task
@@ -863,6 +872,9 @@ static void save_config(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	// the settings and the hooks are restored before the tasks, which are then judged by the saved altitude limits and hook names
+	indigo_save_property(device, NULL, SETTINGS_PROPERTY);
+	indigo_save_property(device, NULL, HOOKS_PROPERTY);
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
 		scheduler_task *task = PRIVATE_DATA->tasks + PRIVATE_DATA->order[i];
 		if (!task->stored) {
@@ -876,10 +888,8 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, property);
 		indigo_release_property(property);
 	}
-	indigo_save_property(device, NULL, SETTINGS_PROPERTY);
 	indigo_save_property(device, NULL, DATA_PROPERTY);
 	indigo_save_property(device, NULL, DATA_DIR_PROPERTY);
-	indigo_save_property(device, NULL, HOOKS_PROPERTY);
 	indigo_save_property(device, NULL, NIGHT_PROPERTY);
 	indigo_save_property(device, NULL, STRATEGY_PROPERTY);
 	indigo_save_property(device, NULL, SAFETY_MISSING_PROPERTY);
@@ -930,7 +940,7 @@ static const char *task_priority_text(indigo_device *device, scheduler_task *tas
 }
 
 static void build_task_state_label(indigo_device *device, scheduler_task *task, char *label, size_t size) {
-	const char *state = is_hook(device, task) ? is_enabled(task) ? "HOOK" : "DISABLED" : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
+	const char *state = is_hook(device, task) ? is_enabled(task) ? "HOOK" : "DISABLED" : task->script_error ? "SCRIPT ERROR" : is_unreachable(task) ? "UNREACHABLE" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
 	char priority[48], runs[32] = "", retries[32] = "", duration[48] = "";
 	const char *priority_text = task_priority_text(device, task, priority, sizeof(priority));
 	if (!is_hook(device, task)) {
@@ -945,7 +955,7 @@ static void build_task_state_label(indigo_device *device, scheduler_task *task, 
 }
 
 static indigo_property_state task_light_state(indigo_device *device, scheduler_task *task) {
-	if (task->script_error) {
+	if (task->script_error || (is_unreachable(task) && !is_hook(device, task))) {
 		return INDIGO_ALERT_STATE;
 	}
 	if (!is_enabled(task) || is_hook(device, task)) {
@@ -1048,7 +1058,27 @@ static void refresh(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- Task store
 
-// the target grid and the table of failing points of a task
+// the global altitude limits of the settings, applied by the sky checks of every task with @target
+static void set_altitude_limits(indigo_device *device) {
+	PRIVATE_DATA->sky.min_altitude = SETTINGS_MIN_ALTITUDE_ITEM->number.value;
+	PRIVATE_DATA->sky.max_altitude = SETTINGS_MAX_ALTITUDE_ITEM->number.value;
+}
+
+// marks a task whose target can never stand within the altitude limits, told only when it becomes unreachable or its reason changes; a hook ignores the sky checks and is never marked
+static void update_reachability(indigo_device *device, scheduler_task *task) {
+	static const char *prefixes[] = { "", "", "the target ", "the target ", "the target is " };
+	char reason[INDIGO_VALUE_SIZE] = "";
+	scheduler_reachability reachability = is_hook(device, task) ? SCHEDULER_REACHABLE : indigo_scheduler_reachability(&PRIVATE_DATA->sky, &task->header, reason, sizeof(reason));
+	if (strcmp(reason, task->unreachable)) {
+		if (reachability != SCHEDULER_REACHABLE) {
+			indigo_send_message(device, NULL, "Task '%s' can never run: %s%s", task->header.name, prefixes[reachability], reason);
+		}
+		INDIGO_COPY_VALUE(task->unreachable, reason);
+		PRIVATE_DATA->dirty = true;
+	}
+}
+
+// the target grid, the table of failing points and the reachability of a task
 static void build_target(indigo_device *device, scheduler_task *task) {
 	if (task->header.has_target && PRIVATE_DATA->sky.valid) {
 		indigo_scheduler_target_build(&PRIVATE_DATA->sky, &task->header, &task->target);
@@ -1056,6 +1086,7 @@ static void build_target(indigo_device *device, scheduler_task *task) {
 		task->target.valid = false;
 	}
 	indigo_scheduler_points_build(&PRIVATE_DATA->sky, &task->target, &task->header, &task->points);
+	update_reachability(device, task);
 	PRIVATE_DATA->plan_dirty = true;
 }
 
@@ -1120,6 +1151,8 @@ static void replace_text(indigo_device *device, int slot, const char *text, sche
 	task->estimated = false;
 	task->estimate_needed = true;
 	task->script_error = false;
+	// an edited task that still cannot run is told again
+	task->unreachable[0] = 0;
 	// a result of the old text is ignored
 	if (PRIVATE_DATA->estimate_slot == slot) {
 		PRIVATE_DATA->estimate_slot = -1;
@@ -1644,6 +1677,7 @@ static void refresh_sky(indigo_device *device, time_t now) {
 	bool moved = !sky->valid || sky->latitude != latitude || sky->longitude != longitude || sky->elevation != elevation;
 	bool plan_dirty = PRIVATE_DATA->plan_dirty;
 	indigo_scheduler_sky_build(sky, now, latitude, longitude, elevation);
+	set_altitude_limits(device);
 	for (int i = 0; i < MAX_TASKS; i++) {
 		if (PRIVATE_DATA->tasks[i].used) {
 			build_target(device, PRIVATE_DATA->tasks + i);
@@ -1702,7 +1736,7 @@ static int select_urgent(indigo_device *device, time_t now) {
 		int slot = PRIVATE_DATA->order[i];
 		scheduler_task *task = PRIVATE_DATA->tasks + slot;
 		const char *reason;
-		if (is_urgent(task) && !is_hook(device, task) && !task->script_error && !estimate_pending(device, slot) && is_selectable_state(task->state) && is_enabled(task) && eligible_now(device, task, now, &reason)) {
+		if (is_urgent(task) && !is_hook(device, task) && !task->script_error && !is_unreachable(task) && !estimate_pending(device, slot) && is_selectable_state(task->state) && is_enabled(task) && eligible_now(device, task, now, &reason)) {
 			if (best < 0 || task->urgent_order < PRIVATE_DATA->tasks[best].urgent_order) {
 				best = slot;
 			}
@@ -1722,7 +1756,7 @@ static int select_task(indigo_device *device, time_t now) {
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
 		int slot = PRIVATE_DATA->order[i];
 		scheduler_task *task = PRIVATE_DATA->tasks + slot;
-		if (!is_selectable_state(task->state) || !is_enabled(task) || task->script_error || is_hook(device, task)) {
+		if (!is_selectable_state(task->state) || !is_enabled(task) || task->script_error || is_unreachable(task) || is_hook(device, task)) {
 			continue;
 		}
 		const char *reason = NULL;
@@ -1791,7 +1825,7 @@ static bool all_tasks_finished(indigo_device *device) {
 			continue;
 		}
 		any = true;
-		if (is_enabled(task) && !is_terminal_state(task->state) && !task->script_error) {
+		if (is_enabled(task) && !is_terminal_state(task->state) && !task->script_error && !is_unreachable(task)) {
 			return false;
 		}
 	}
@@ -2630,7 +2664,7 @@ static void update_plan(indigo_device *device, time_t now) {
 		plan_task->header = &task->header;
 		plan_task->target = &task->target;
 		plan_task->points = &task->points;
-		plan_task->selectable = is_enabled(task) && !task->script_error;
+		plan_task->selectable = is_enabled(task) && !task->script_error && !is_unreachable(task);
 		plan_task->duration = task_duration(task, NULL);
 		plan_task->runs_left = task->header.repeat - task->runs;
 		plan_task->available_from = (task->state == TASK_RETRY || task->state == TASK_REPEAT) ? task->delay_until : 0;
@@ -2736,8 +2770,12 @@ static void update_plan(indigo_device *device, time_t now) {
 		}
 		scheduler_task *task = PRIVATE_DATA->tasks + plan_slots[i];
 		const char *reason = NULL;
+		const char *state = "NOT TONIGHT";
 		if (task->script_error) {
 			reason = "script error";
+		} else if (is_unreachable(task)) {
+			state = "UNREACHABLE";
+			reason = task->unreachable;
 		} else if (!is_enabled(task)) {
 			reason = "disabled";
 		} else {
@@ -2749,7 +2787,7 @@ static void update_plan(indigo_device *device, time_t now) {
 		}
 		char runs[32], priority[48];
 		snprintf(runs, sizeof(runs), "run %d/%d", task->runs, task->header.repeat);
-		const char *columns[] = { "-", task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), "NOT TONIGHT", reason };
+		const char *columns[] = { "-", task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), state, reason };
 		join_label(labels[items], INDIGO_VALUE_SIZE, 6, columns);
 		states[items++] = INDIGO_ALERT_STATE;
 	}
@@ -2885,6 +2923,38 @@ static void reject(indigo_device *device, indigo_property *property, const char 
 	va_end(args);
 	property->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, property, "%s", message);
+}
+
+// a change of the altitude limits rebuilds the sky checks of all tasks; a minimum at or above the maximum refuses the whole change
+static void change_settings(indigo_device *device, indigo_property *request, bool config_reader) {
+	double min_altitude = SETTINGS_MIN_ALTITUDE_ITEM->number.value, max_altitude = SETTINGS_MAX_ALTITUDE_ITEM->number.value;
+	double new_min = min_altitude, new_max = max_altitude;
+	for (int i = 0; i < request->count; i++) {
+		if (!strcmp(request->items[i].name, SETTINGS_MIN_ALTITUDE_ITEM->name)) {
+			new_min = request->items[i].number.value;
+		} else if (!strcmp(request->items[i].name, SETTINGS_MAX_ALTITUDE_ITEM->name)) {
+			new_max = request->items[i].number.value;
+		}
+	}
+	if (new_min >= new_max) {
+		reject(device, SETTINGS_PROPERTY, "Settings rejected: the minimum altitude %g° must be lower than the maximum altitude %g°", new_min, new_max);
+		return;
+	}
+	indigo_property_copy_values(SETTINGS_PROPERTY, request, false);
+	SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, SETTINGS_PROPERTY, NULL);
+	if (!config_reader) {
+		schedule_save(device);
+	}
+	if (SETTINGS_MIN_ALTITUDE_ITEM->number.value != min_altitude || SETTINGS_MAX_ALTITUDE_ITEM->number.value != max_altitude) {
+		set_altitude_limits(device);
+		for (int i = 0; i < MAX_TASKS; i++) {
+			if (PRIVATE_DATA->tasks[i].used) {
+				build_target(device, PRIVATE_DATA->tasks + i);
+			}
+		}
+	}
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
 static void add_task(indigo_device *device, indigo_property *request, bool config_reader) {
@@ -3234,6 +3304,12 @@ static void command_handler(indigo_device *device, void *data) {
 		if (!command->config_reader) {
 			schedule_save(device);
 		}
+		// a task named as a hook, or no longer named, is judged again
+		for (int i = 0; i < MAX_TASKS; i++) {
+			if (PRIVATE_DATA->tasks[i].used) {
+				update_reachability(device, PRIVATE_DATA->tasks + i);
+			}
+		}
 		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	} else if (indigo_property_match_changeable(CLEAR_HISTORY_PROPERTY, request)) {
 		PRIVATE_DATA->history_count = 0;
@@ -3278,13 +3354,7 @@ static void command_handler(indigo_device *device, void *data) {
 		}
 		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	} else if (indigo_property_match_changeable(SETTINGS_PROPERTY, request)) {
-		indigo_property_copy_values(SETTINGS_PROPERTY, request, false);
-		SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, SETTINGS_PROPERTY, NULL);
-		if (!command->config_reader) {
-			schedule_save(device);
-		}
-		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		change_settings(device, request, command->config_reader);
 	} else if (indigo_property_match_changeable(DATA_PROPERTY, request)) {
 		indigo_property_copy_values(DATA_PROPERTY, request, false);
 		DATA_PROPERTY->state = INDIGO_OK_STATE;
@@ -3392,7 +3462,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_text_item(CURRENT_CURRENT_ITEM, AGENT_SCHEDULER_CURRENT_CURRENT_ITEM_NAME, "Running task", "");
 		indigo_init_text_item(CURRENT_REASON_ITEM, AGENT_SCHEDULER_CURRENT_REASON_ITEM_NAME, "Waiting because", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_SETTINGS
-		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 12);
+		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 14);
 		if (SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -3408,6 +3478,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(SETTINGS_NIGHT_START_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME, "Night start offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
 		indigo_init_number_item(SETTINGS_NIGHT_END_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, "Night end offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
 		indigo_init_number_item(SETTINGS_SAFE_DELAY_ITEM, AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, "Safe delay (min)", 0, 1440, 0.1, 10);
+		indigo_init_number_item(SETTINGS_MIN_ALTITUDE_ITEM, AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, "Minimum altitude (°)", 0, 90, 1, 20);
+		indigo_init_number_item(SETTINGS_MAX_ALTITUDE_ITEM, AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, "Maximum altitude (°)", 0, 90, 1, 90);
+		set_altitude_limits(device);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_DATA
 		DATA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_DATA_PROPERTY_NAME, SCHEDULER_GROUP, "Observation data", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
 		if (DATA_PROPERTY == NULL) {
