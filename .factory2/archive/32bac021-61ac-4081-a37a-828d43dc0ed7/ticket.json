@@ -1,0 +1,683 @@
+{
+  "schema_version": 1,
+  "ticket_id": "32bac021-61ac-4081-a37a-828d43dc0ed7",
+  "revision": 34,
+  "title": "indigo_agent_scheduler: global minimum and maximum target altitude settings",
+  "description": "Add two items to AGENT_SCHEDULER_SETTINGS: MIN_ALTITUDE (\"Minimum altitude (°)\", 0-90, default 20) and MAX_ALTITUDE (\"Maximum altitude (°)\", 0-90, default 90 = no ceiling). They apply to every task with @target (not to tasks without a target or hooks without a target). The effective floor is the larger of the global minimum and the task's own @altitude > N; the global maximum is a separate ceiling (zenith blind spot of alt-az/fork mounts, roof or dome opening). Behaviour change: with the default 20, a task whose @altitude is below 20 (or which has none) is held to 20; document it.\n\nThe limits are hard constraints like @altitude: a task starts only when the target stays within them for the whole run, otherwise it is WAITING with 'target below the altitude limit' or the new reason 'target above the altitude limit'; the plan shows NOT TONIGHT when no time of the night fits. VISIBILITY quality stays relative to the culmination; the limits only rule out times. A running task is not interrupted (as with @altitude). A change with minimum >= maximum is refused with ALERT and a message, keeping the old values. A change rebuilds the visibility points of all tasks, marks the plan dirty and is saved with the other settings.\n\nImplementation sketch: carry the two limits in the sky grid structure passed to indigo_scheduler_sky_point_ok() (indigo_agent_scheduler_sky.c), test them next to has_min_altitude, rebuild indigo_scheduler_points_build() for all tasks on change (as in indigo_agent_scheduler.c around line 1058). Add item names to indigo_names.h, bump the agent version.\n\nTests: unit tests of the sky check (global floor beats a lower @altitude, @altitude beats a lower global floor, ceiling rejects near-zenith points, tasks without @target unaffected); integration tests (WAITING with each reason, NOT TONIGHT and recovery after relaxing, min >= max refused, saved and restored). Docs: indigo_docs/PROPERTIES.md and INDIGO_SCHEDULER_GUIDE.md (global limits vs @altitude, the default 20 behaviour change).\n\nNot in scope: a per-task maximum (@altitude < N). Ain Imager (separate repository) follows separately: Settings page items, its settings test, and the global limits as dotted lines in the chart.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-24T00:32:07.075090Z",
+  "status": "closed",
+  "branch": "ticket/32bac021-61ac-4081-a37a-828d43dc0ed7",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "323cf87d-c521-4a4d-a1e2-919ee9f559d9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T00:38:59.650627Z",
+          "last_activity_at": "2026-11-24T01:05:15.646861Z",
+          "ended_at": "2026-11-24T01:05:15.646861Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1575996.234,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T00:38:59.650627Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/32bac021-61ac-4081-a37a-828d43dc0ed7"
+        },
+        {
+          "at": "2026-11-24T01:05:15.646861Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1575996.234,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "daa3d633-6e77-4179-8ec1-d78f77363053",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T01:05:15.646904Z",
+          "last_activity_at": "2026-11-24T01:15:22.402325Z",
+          "ended_at": "2026-11-24T01:15:22.402325Z",
+          "outcome": {
+            "summary": "Independent review of e902ee97f vs master. Acceptance criteria met: MIN_ALTITUDE/MAX_ALTITUDE items 12/13 (0-90, defaults 20/90), effective floor max(global, @altitude), ceiling in indigo_scheduler_sky_point_ok() so every path (select_task, select_urgent, COMPACT/VISIBILITY plan, points_next, time-to-set) sees them via the points table; rebuilt in change_settings and after every sky build (set_altitude_limits after indigo_scheduler_sky_build). Culminations correct in both hemispheres (upper 90-|lat-dec|, lower |lat+dec|-90 from sin(alt)=-cos(lat+dec)), JNow like target_build, geometric like indigo_radec_to_altaz; dec +-90, lat 0, limits 0/90 behave. min>=max refusal of the whole request matches the agent's other reject() refusals. Saving SETTINGS first is safe: indigo_save_property opens the file on the first call; old configs lack the two items so defaults apply. UNREACHABLE: task list state + Alert, plan state/reason, skipped in select_task/select_urgent/plan selectable, ignored by all_tasks_finished, messages de-duplicated by reason, recovery on limits/site/edit; tested. Degree sign in plan reasons is within the documented label contract (guide: names and reasons are UTF-8; cut_label is UTF-8 safe; Ain's scheduler_label_columns splits on ' | ' only); the ASCII check in check_columns was only an assumption about tested data. Adjusted tests not weakened. Tests: unit sky 18, plan 41, header 13, night 18 passed; integration test_agent_scheduler 169/169 passed (env -u LD_LIBRARY_PATH). Minor, non-blocking: (1) change_settings skips non-finite values (indigo_agent_scheduler.c:2932), a duplicate of framework finite-value validation that AGENTS.md asks not to add; (2) a hook task with an unreachable @target gets 'Task X can never run' although hooks ignore sky checks and still run; (3) doc/SCHEDULER.md night plan items (~line 759) and Testing section do not mention UNREACHABLE or the new tests; (4) with MIN_ALTITUDE 0 a never-rising target reads 'culminates at -4.0°, bel",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 606755.421,
+          "tokens": null
+        },
+        {
+          "attempt_id": "dcfa4ebe-d4f9-49cf-8212-03ff08fadb85",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T01:30:46.687671Z",
+          "last_activity_at": "2026-11-24T01:40:16.960193Z",
+          "ended_at": "2026-11-24T01:40:16.960193Z",
+          "outcome": {
+            "summary": "Round 2 review: all four owner fixes are correct. (1) isfinite() removed from change_settings (indigo_agent_scheduler.c:2929). (2) update_reachability (c:1068) treats is_hook() tasks as reachable, so they are never marked and get no message. The edit path (replace_text clears it, then build_target) and the HOOKS handler re-check (c:3307) cover both ways. The HOOKS handler does not validate names against tasks, so saving HOOKS before the tasks (c:877) is safe to restore. An old config (HOOKS after the tasks) can send at most one extra 'can never run' message for a hook task on its first restore, which is cleared when HOOKS loads and fixed by the next save. Nothing else depends on the save order. (3) SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md describe the horizon reason, UNREACHABLE in the plan items, the hook exemption and the new tests accurately. (4) SCHEDULER_UNREACHABLE_HORIZON (sky.c, upper <= 0) comes after RANGE and before LOW. The prefixes[] array in update_reachability matches the enum order. Test coverage is kept: the own @altitude wording is now checked at the equator (Polaris about 0.6 deg), the horizon case at 10 S, and the unit test checks horizon with minimum 0 and 25. The round-1 areas (formulas, point_ok limits, skipping in select/urgent/plan/all_tasks_finished, de-duplication, recovery, version 0x03000022, PROPERTIES.md, indigo_names.h) are unchanged and correct. git diff --check is clean and no README changed. Tests (env -u LD_LIBRARY_PATH): unit header 13, sky 18, plan 41, night 18, all pass; integration test_agent_scheduler 170 run, 170 passed, 0 failed. Optional cleanup: '&& !is_hook' in task_light_state (c:958) is now redundant.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 570272.522,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T01:05:15.646904Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T01:15:22.402325Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of e902ee97f vs master. Acceptance criteria met: MIN_ALTITUDE/MAX_ALTITUDE items 12/13 (0-90, defaults 20/90), effective floor max(global, @altitude), ceiling in indigo_scheduler_sky_point_ok() so every path (select_task, select_urgent, COMPACT/VISIBILITY plan, points_next, time-to-set) sees them via the points table; rebuilt in change_settings and after every sky build (set_altitude_limits after indigo_scheduler_sky_build). Culminations correct in both hemispheres (upper 90-|lat-dec|, lower |lat+dec|-90 from sin(alt)=-cos(lat+dec)), JNow like target_build, geometric like indigo_radec_to_altaz; dec +-90, lat 0, limits 0/90 behave. min>=max refusal of the whole request matches the agent's other reject() refusals. Saving SETTINGS first is safe: indigo_save_property opens the file on the first call; old configs lack the two items so defaults apply. UNREACHABLE: task list state + Alert, plan state/reason, skipped in select_task/select_urgent/plan selectable, ignored by all_tasks_finished, messages de-duplicated by reason, recovery on limits/site/edit; tested. Degree sign in plan reasons is within the documented label contract (guide: names and reasons are UTF-8; cut_label is UTF-8 safe; Ain's scheduler_label_columns splits on ' | ' only); the ASCII check in check_columns was only an assumption about tested data. Adjusted tests not weakened. Tests: unit sky 18, plan 41, header 13, night 18 passed; integration test_agent_scheduler 169/169 passed (env -u LD_LIBRARY_PATH). Minor, non-blocking: (1) change_settings skips non-finite values (indigo_agent_scheduler.c:2932), a duplicate of framework finite-value validation that AGENTS.md asks not to add; (2) a hook task with an unreachable @target gets 'Task X can never run' although hooks ignore sky checks and still run; (3) doc/SCHEDULER.md night plan items (~line 759) and Testing section do not mention UNREACHABLE or the new tests; (4) with MIN_ALTITUDE 0 a never-rising target reads 'culminates at -4.0°, bel"
+        },
+        {
+          "at": "2026-11-24T01:30:46.687671Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T01:40:16.960193Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2 review: all four owner fixes are correct. (1) isfinite() removed from change_settings (indigo_agent_scheduler.c:2929). (2) update_reachability (c:1068) treats is_hook() tasks as reachable, so they are never marked and get no message. The edit path (replace_text clears it, then build_target) and the HOOKS handler re-check (c:3307) cover both ways. The HOOKS handler does not validate names against tasks, so saving HOOKS before the tasks (c:877) is safe to restore. An old config (HOOKS after the tasks) can send at most one extra 'can never run' message for a hook task on its first restore, which is cleared when HOOKS loads and fixed by the next save. Nothing else depends on the save order. (3) SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md describe the horizon reason, UNREACHABLE in the plan items, the hook exemption and the new tests accurately. (4) SCHEDULER_UNREACHABLE_HORIZON (sky.c, upper <= 0) comes after RANGE and before LOW. The prefixes[] array in update_reachability matches the enum order. Test coverage is kept: the own @altitude wording is now checked at the equator (Polaris about 0.6 deg), the horizon case at 10 S, and the unit test checks horizon with minimum 0 and 25. The round-1 areas (formulas, point_ok limits, skipping in select/urgent/plan/all_tasks_finished, de-duplication, recovery, version 0x03000022, PROPERTIES.md, indigo_names.h) are unchanged and correct. git diff --check is clean and no README changed. Tests (env -u LD_LIBRARY_PATH): unit header 13, sky 18, plan 41, night 18, all pass; integration test_agent_scheduler 170 run, 170 passed, 0 failed. Optional cleanup: '&& !is_hook' in task_light_state (c:958) is now redundant."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 review: all four owner fixes are correct. (1) isfinite() removed from change_settings (indigo_agent_scheduler.c:2929). (2) update_reachability (c:1068) treats is_hook() tasks as reachable, so they are never marked and get no message. The edit path (replace_text clears it, then build_target) and the HOOKS handler re-check (c:3307) cover both ways. The HOOKS handler does not validate names against tasks, so saving HOOKS before the tasks (c:877) is safe to restore. An old config (HOOKS after the tasks) can send at most one extra 'can never run' message for a hook task on its first restore, which is cleared when HOOKS loads and fixed by the next save. Nothing else depends on the save order. (3) SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md describe the horizon reason, UNREACHABLE in the plan items, the hook exemption and the new tests accurately. (4) SCHEDULER_UNREACHABLE_HORIZON (sky.c, upper <= 0) comes after RANGE and before LOW. The prefixes[] array in update_reachability matches the enum order. Test coverage is kept: the own @altitude wording is now checked at the equator (Polaris about 0.6 deg), the horizon case at 10 S, and the unit test checks horizon with minimum 0 and 25. The round-1 areas (formulas, point_ok limits, skipping in select/urgent/plan/all_tasks_finished, de-duplication, recovery, version 0x03000022, PROPERTIES.md, indigo_names.h) are unchanged and correct. git diff --check is clean and no README changed. Tests (env -u LD_LIBRARY_PATH): unit header 13, sky 18, plan 41, night 18, all pass; integration test_agent_scheduler 170 run, 170 passed, 0 failed. Optional cleanup: '&& !is_hook' in task_light_state (c:958) is now redundant.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1177027.943,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "7fb813b7-1ffa-44b1-abd0-039991262a26",
+      "event": "ticket/created",
+      "at": "2026-11-24T00:32:07.075931Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "f5f04da4-cb96-4323-9219-061ce3d02e82",
+      "event": "ticket/note",
+      "at": "2026-11-24T00:34:45.019613Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner addition: detect tasks that can never run because of the altitude limits, and say so. Cases: (a) the global MAX_ALTITUDE is at or below the task's own @altitude minimum (empty range); (b) the target never rises to the effective minimum: its upper culmination altitude at the site (90 - |latitude - dec|) is below max(MIN_ALTITUDE, @altitude); (c) the target never sinks below MAX_ALTITUDE: its lower culmination altitude (circumpolar targets) is above the maximum. Such a task gets a message naming the task and the reason with the numbers (e.g. \"Task 'M31' can never run: the target culminates at 15°, below the minimum altitude 20°\"), sent when the task is added or changed and when the settings or the site change; the task list and the plan show it as not runnable at all (a permanent reason with an ALERT light, distinct from NOT TONIGHT), and it is skipped by the scheduler. When the limits or the site change so that it can run again, the mark is cleared. Tests cover each case and the recovery.",
+      "tokens": null
+    },
+    {
+      "event_id": "22bf92cb-0a6f-4369-8ad0-7621ff0d0468",
+      "event": "ticket/note",
+      "at": "2026-11-24T00:38:48.457591Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision: the state of a task that can never run because of the altitude limits is UNREACHABLE, in both the task list (a display state like SCRIPT ERROR, with an ALERT light) and the night plan (state column, instead of NOT TONIGHT); the reason column carries the details with the numbers, e.g. 'culminates at 15°, below the minimum altitude 20°', 'never below 50°, above the maximum altitude 45°', 'maximum altitude 30° is not above the task's @altitude 40°'. Add tests for each UNREACHABLE case (empty range, never rises to the minimum, never sinks below the maximum) and for recovery when the limits change.",
+      "tokens": null
+    },
+    {
+      "event_id": "aa15dd25-bc71-41fb-be19-39f20b0d6b56",
+      "event": "ticket/confirmed",
+      "at": "2026-11-24T00:38:48.576136Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "a142c333-2f31-48fb-8c4c-8423ce9b2a84",
+      "event": "task/progress",
+      "at": "2026-11-24T00:38:59.650723Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "text": "Implementation started on branch ticket/32bac021-61ac-4081-a37a-828d43dc0ed7"
+    },
+    {
+      "event_id": "dd54e88f-a7a8-409e-ae53-df22c1df2d14",
+      "event": "ticket/started",
+      "at": "2026-11-24T00:38:59.651468Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/32bac021-61ac-4081-a37a-828d43dc0ed7",
+      "base": "master"
+    },
+    {
+      "event_id": "9e14089f-2dc4-4bf2-b5e5-26c0f57cbe4a",
+      "event": "task/progress",
+      "at": "2026-11-24T00:39:22.788286Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "text": "Implementer launched",
+      "attempt_id": "323cf87d-c521-4a4d-a1e2-919ee9f559d9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "92ba5c5f-5de4-487a-af90-949a761b06b4",
+      "event": "task/progress",
+      "at": "2026-11-24T00:42:47.339867Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "text": "Adding global altitude limits and the reachability check to the sky module"
+    },
+    {
+      "event_id": "9acbe63b-84a5-4161-b37a-d3fec0052e19",
+      "event": "task/progress",
+      "at": "2026-11-24T00:46:30.422001Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "text": "Running scheduler integration suite on the new default limit: test_agent_scheduler"
+    },
+    {
+      "event_id": "d5d8d61f-bd3e-4fe2-a0ef-f30acb4eafc2",
+      "event": "task/progress",
+      "at": "2026-11-24T00:56:29.670315Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "text": "Running the new scheduler cases under ASan/UBSan and the full integration suite"
+    },
+    {
+      "event_id": "ec059923-d81d-46c5-84bb-6f0ec6c4df76",
+      "event": "task/progress",
+      "at": "2026-11-24T01:02:20.374726Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "642efda8-7aaa-4ccc-8613-8a3a6f6b598c",
+      "event": "task/progress",
+      "at": "2026-11-24T01:02:20.412376Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7248cc08-1e11-45ca-93ec-52c9c48e1cba",
+      "event": "task/progress",
+      "at": "2026-11-24T01:02:20.417427Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "149e7456-29c1-4203-9b61-e681676350da",
+      "event": "task/progress",
+      "at": "2026-11-24T01:04:24.626103Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e85948af-daab-48ab-a942-7325444c75f4",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "d2240132-231e-47d5-9c6e-50e2100712b3",
+      "event": "check/passed",
+      "at": "2026-11-24T01:04:24.631764Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e902ee97f23ae6840cc023b18c0f01e685f17aa0",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "76744568-35c6-4633-adce-a949650533a5",
+      "event": "ticket/note",
+      "at": "2026-11-24T01:04:46.878549Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementation notes and scenario-to-test mapping.\nDesign: MIN_ALTITUDE/MAX_ALTITUDE (items 12, 13 of AGENT_SCHEDULER_SETTINGS) are copied into scheduler_sky_grid.min_altitude/max_altitude (indigo_scheduler_sky_build() resets them to 0/90, the agent reapplies them after every build). indigo_scheduler_sky_point_ok() rejects altitude < global min or < @altitude ('target below the altitude limit') and altitude > max ('target above the altitude limit'), only for tasks with @target. New indigo_scheduler_reachability() returns RANGE (max <= @altitude, known without the site), LOW (upper culmination 90-|lat-dec| below max(MIN, @altitude)) or HIGH (lower culmination |lat+dec|-90 above MAX), with JNow dec, both hemispheres; all targets are fixed RA/Dec. The agent stores the reason per task (build_target() -> update_reachability()), sends 'Task NAME can never run: ...' only when the reason text changes to a non-empty one (an edit clears it first, so an edit tells it again); UNREACHABLE is shown in the task list (Alert) and in the plan instead of NOT TONIGHT, and such tasks are skipped like SCRIPT ERROR (not selectable, not planned, do not keep 'all tasks finished' from stopping). A never-rising target is UNREACHABLE too (owner case b with the effective minimum). Settings change: refused with Alert when min >= max (whole request, old values kept), otherwise rebuild of all tasks and plan dirty. Settings are now saved before the tasks so a restore judges tasks by the saved limits. Version 0x03000022.\nTests - unit test_agent_scheduler_sky: global_altitude_limits (global floor beats lower @altitude, @altitude beats lower floor, ceiling rejects, points table, task without @target unaffected), reachability (RANGE incl. without site, LOW with global/own floor naming, HIGH Polaris, southern hemisphere -30/-80, culminations vs grid). Integration test_agent_scheduler: global_altitude_limits_decide_and_recover (WAITING with both reasons, default 20 beats @altitude 10, recovery after rela",
+      "tokens": null
+    },
+    {
+      "event_id": "e090f592-48e6-48ee-b740-4219b80ab4d9",
+      "event": "task/progress",
+      "at": "2026-11-24T01:05:15.646976Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "text": "Review started"
+    },
+    {
+      "event_id": "8852c6fb-d10f-4580-b792-a136dc871070",
+      "event": "review/started",
+      "at": "2026-11-24T01:05:15.647645Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "99374e6f-8756-4548-ab5a-0d4dd7951d87",
+      "event": "task/progress",
+      "at": "2026-11-24T01:05:32.999552Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "text": "Reviewer launched",
+      "attempt_id": "daa3d633-6e77-4179-8ec1-d78f77363053",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "104a307b-d1dc-42b2-a7ae-b35f7d558abb",
+      "event": "task/progress",
+      "at": "2026-11-24T01:08:14.788178Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "text": "Running scheduler unit tests and integration test_agent_scheduler"
+    },
+    {
+      "event_id": "ec7449ae-a50c-4d58-87d5-ab9d375fd062",
+      "event": "task/progress",
+      "at": "2026-11-24T01:15:22.402402Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "facaa35d-222e-406f-a350-0382815707af",
+      "event": "review/passed",
+      "at": "2026-11-24T01:15:22.403061Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "e902ee97f23ae6840cc023b18c0f01e685f17aa0"
+    },
+    {
+      "event_id": "51bd0404-575a-44ab-a06a-811afae7a415",
+      "event": "ticket/note",
+      "at": "2026-11-24T01:19:11.302955Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision after review round 1 (pass with minor findings): fix all four. (1) drop the isfinite() check in the settings change handler (indigo_agent_scheduler.c ~2932), the framework validates finite values; (2) hook tasks are not marked UNREACHABLE and get no 'can never run' message (update_reachability ~1068), hooks ignore the sky checks; add a test; (3) indigo_drivers/agent_scheduler/doc/SCHEDULER.md: mention UNREACHABLE in the night plan items section (~759) and the new tests in the Testing section (~920+); (4) a target whose upper culmination is at or below 0 reads 'never rises above the horizon' instead of 'culminates at -4.0°, below the minimum altitude 0°' (message and plan reason); adjust tests.",
+      "tokens": null
+    },
+    {
+      "event_id": "000bf041-a2b9-42cc-8203-279ec966f9e3",
+      "event": "task/progress",
+      "at": "2026-11-24T01:19:45.147164Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Fixing review round 1 findings: isfinite, hooks, SCHEDULER.md, never rises text"
+    },
+    {
+      "event_id": "8fe2bdad-ec03-4011-b667-878e74c6fd28",
+      "event": "task/progress",
+      "at": "2026-11-24T01:21:35.036213Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bc3ff5ae-c694-4c65-b358-92bca22cc592",
+      "event": "task/progress",
+      "at": "2026-11-24T01:21:35.074612Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "435be784-c9ef-4dcd-9f17-90491004a60b",
+      "event": "task/progress",
+      "at": "2026-11-24T01:21:35.080459Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "acfa6267-3459-454d-9006-00483c7f1f52",
+      "event": "task/progress",
+      "at": "2026-11-24T01:23:15.234714Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "629a20c0-4a8a-4ed6-a91c-34564c62c40e",
+      "event": "check/passed",
+      "at": "2026-11-24T01:23:15.241175Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "12c773d9cf4b5cfb343087f2af64f587b6d78bed",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "58815187-2ebb-4fe3-a79a-f86f4021e5f8",
+      "event": "task/progress",
+      "at": "2026-11-24T01:23:21.531547Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Running full scheduler integration suite after review fixes"
+    },
+    {
+      "event_id": "03ff5bcf-a4d8-497f-b22d-5532acd5afae",
+      "event": "ticket/note",
+      "at": "2026-11-24T01:30:30.050073Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Review round 1 fixes: (1) isfinite() check removed from the AGENT_SCHEDULER_SETTINGS handler; (2) hook tasks (named in AGENT_SCHEDULER_HOOKS or @priority hook) are never marked UNREACHABLE and get no message; reachability is re-judged on a HOOKS change, and HOOKS is now saved before the tasks like SETTINGS so a restore does not message hook tasks; new integration case hook_tasks_are_never_unreachable (hook and @priority hook with an unreachable target keep HOOK/Idle, no message, the hook still runs, a task removed from the hooks becomes UNREACHABLE with its message); (3) SCHEDULER.md: UNREACHABLE in the night plan items, hook exemption, and the new unit/integration tests in Testing; (4) upper culmination <= 0 gives SCHEDULER_UNREACHABLE_HORIZON with the reason 'never rises above the horizon' (message 'the target never rises above the horizon'); unit reachability test extended, plan_lists_the_night expects it, unreachable_tasks_are_marked_and_skipped now checks the own @altitude floor at the equator and the horizon case at 10 S. Results: flow check passed (whitespace, unit); scheduler unit tests header/sky/plan/night all passed; integration test_agent_scheduler 170 run, 170 passed, 0 failed (env -u LD_LIBRARY_PATH).",
+      "tokens": null
+    },
+    {
+      "event_id": "37f444e6-7fba-4814-892a-1db570a32823",
+      "event": "task/progress",
+      "at": "2026-11-24T01:30:46.687766Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "text": "Review started"
+    },
+    {
+      "event_id": "26827183-40d5-451d-80f0-f320e88a9c7b",
+      "event": "review/started",
+      "at": "2026-11-24T01:30:46.688532Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "60655465-658f-47b1-a8e6-3eb2e994c9be",
+      "event": "task/progress",
+      "at": "2026-11-24T01:31:03.773085Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "text": "Reviewer launched (round 2)",
+      "attempt_id": "dcfa4ebe-d4f9-49cf-8212-03ff08fadb85",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5b92ae40-4c21-469b-b4e7-47d032b15e45",
+      "event": "task/progress",
+      "at": "2026-11-24T01:31:55.484567Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "text": "Running scheduler unit tests and test_agent_scheduler integration"
+    },
+    {
+      "event_id": "62854b03-31e9-43e8-8675-7ff7e189541a",
+      "event": "task/progress",
+      "at": "2026-11-24T01:40:16.960268Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "fb540c90-a4cd-4dbe-aa7a-8c977a3c99bb",
+      "event": "review/passed",
+      "at": "2026-11-24T01:40:16.960979Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "3c4a8964-e532-4db2-a863-891bdb61eb14",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "12c773d9cf4b5cfb343087f2af64f587b6d78bed"
+    },
+    {
+      "event_id": "0085f0ff-0b5e-4619-ba59-6ed94b358885",
+      "event": "ticket/closed",
+      "at": "2026-11-24T05:50:11.662720Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-24T05:50:11.662691Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "c913ed677552e5324428bb38953f9e56cd497027"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e902ee97f23ae6840cc023b18c0f01e685f17aa0",
+        "tree": "734113aa83f6dd3725eef37d984ce29f0de412da",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T01:02:20.411587Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/32bac021-61ac-4081-a37a-828d43dc0ed7/734113aa83f6-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "e902ee97f23ae6840cc023b18c0f01e685f17aa0",
+        "tree": "734113aa83f6dd3725eef37d984ce29f0de412da",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T01:04:24.625294Z",
+        "duration_s": 124.2,
+        "log": "/tmp/factory-flow/32bac021-61ac-4081-a37a-828d43dc0ed7/734113aa83f6-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "12c773d9cf4b5cfb343087f2af64f587b6d78bed",
+        "tree": "259b630c62abe2895c35a3a40ab5dfc32fcda9a3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T01:21:35.073557Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/32bac021-61ac-4081-a37a-828d43dc0ed7/259b630c62ab-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "12c773d9cf4b5cfb343087f2af64f587b6d78bed",
+        "tree": "259b630c62abe2895c35a3a40ab5dfc32fcda9a3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T01:23:15.233730Z",
+        "duration_s": 100.2,
+        "log": "/tmp/factory-flow/32bac021-61ac-4081-a37a-828d43dc0ed7/259b630c62ab-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of e902ee97f vs master. Acceptance criteria met: MIN_ALTITUDE/MAX_ALTITUDE items 12/13 (0-90, defaults 20/90), effective floor max(global, @altitude), ceiling in indigo_scheduler_sky_point_ok() so every path (select_task, select_urgent, COMPACT/VISIBILITY plan, points_next, time-to-set) sees them via the points table; rebuilt in change_settings and after every sky build (set_altitude_limits after indigo_scheduler_sky_build). Culminations correct in both hemispheres (upper 90-|lat-dec|, lower |lat+dec|-90 from sin(alt)=-cos(lat+dec)), JNow like target_build, geometric like indigo_radec_to_altaz; dec +-90, lat 0, limits 0/90 behave. min>=max refusal of the whole request matches the agent's other reject() refusals. Saving SETTINGS first is safe: indigo_save_property opens the file on the first call; old configs lack the two items so defaults apply. UNREACHABLE: task list state + Alert, plan state/reason, skipped in select_task/select_urgent/plan selectable, ignored by all_tasks_finished, messages de-duplicated by reason, recovery on limits/site/edit; tested. Degree sign in plan reasons is within the documented label contract (guide: names and reasons are UTF-8; cut_label is UTF-8 safe; Ain's scheduler_label_columns splits on ' | ' only); the ASCII check in check_columns was only an assumption about tested data. Adjusted tests not weakened. Tests: unit sky 18, plan 41, header 13, night 18 passed; integration test_agent_scheduler 169/169 passed (env -u LD_LIBRARY_PATH). Minor, non-blocking: (1) change_settings skips non-finite values (indigo_agent_scheduler.c:2932), a duplicate of framework finite-value validation that AGENTS.md asks not to add; (2) a hook task with an unreachable @target gets 'Task X can never run' although hooks ignore sky checks and still run; (3) doc/SCHEDULER.md night plan items (~line 759) and Testing section do not mention UNREACHABLE or the new tests; (4) with MIN_ALTITUDE 0 a never-rising target reads 'culminates at -4.0°, below the minimum altitude 0°'. Behaviour changes for the owner: default 20 deg floor for all targets; targets that never rise above the horizon are now UNREACHABLE instead of NOT TONIGHT/WAITING.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "e902ee97f23ae6840cc023b18c0f01e685f17aa0",
+        "tree": "734113aa83f6dd3725eef37d984ce29f0de412da",
+        "at": "2026-11-24T01:15:22.402299Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 review: all four owner fixes are correct. (1) isfinite() removed from change_settings (indigo_agent_scheduler.c:2929). (2) update_reachability (c:1068) treats is_hook() tasks as reachable, so they are never marked and get no message. The edit path (replace_text clears it, then build_target) and the HOOKS handler re-check (c:3307) cover both ways. The HOOKS handler does not validate names against tasks, so saving HOOKS before the tasks (c:877) is safe to restore. An old config (HOOKS after the tasks) can send at most one extra 'can never run' message for a hook task on its first restore, which is cleared when HOOKS loads and fixed by the next save. Nothing else depends on the save order. (3) SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md describe the horizon reason, UNREACHABLE in the plan items, the hook exemption and the new tests accurately. (4) SCHEDULER_UNREACHABLE_HORIZON (sky.c, upper <= 0) comes after RANGE and before LOW. The prefixes[] array in update_reachability matches the enum order. Test coverage is kept: the own @altitude wording is now checked at the equator (Polaris about 0.6 deg), the horizon case at 10 S, and the unit test checks horizon with minimum 0 and 25. The round-1 areas (formulas, point_ok limits, skipping in select/urgent/plan/all_tasks_finished, de-duplication, recovery, version 0x03000022, PROPERTIES.md, indigo_names.h) are unchanged and correct. git diff --check is clean and no README changed. Tests (env -u LD_LIBRARY_PATH): unit header 13, sky 18, plan 41, night 18, all pass; integration test_agent_scheduler 170 run, 170 passed, 0 failed. Optional cleanup: '&& !is_hook' in task_light_state (c:958) is now redundant.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "12c773d9cf4b5cfb343087f2af64f587b6d78bed",
+        "tree": "259b630c62abe2895c35a3a40ab5dfc32fcda9a3",
+        "at": "2026-11-24T01:40:16.960169Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-24T00:34:45.019108Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner addition: detect tasks that can never run because of the altitude limits, and say so. Cases: (a) the global MAX_ALTITUDE is at or below the task's own @altitude minimum (empty range); (b) the target never rises to the effective minimum: its upper culmination altitude at the site (90 - |latitude - dec|) is below max(MIN_ALTITUDE, @altitude); (c) the target never sinks below MAX_ALTITUDE: its lower culmination altitude (circumpolar targets) is above the maximum. Such a task gets a message naming the task and the reason with the numbers (e.g. \"Task 'M31' can never run: the target culminates at 15°, below the minimum altitude 20°\"), sent when the task is added or changed and when the settings or the site change; the task list and the plan show it as not runnable at all (a permanent reason with an ALERT light, distinct from NOT TONIGHT), and it is skipped by the scheduler. When the limits or the site change so that it can run again, the mark is cleared. Tests cover each case and the recovery.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-24T00:38:48.457070Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision: the state of a task that can never run because of the altitude limits is UNREACHABLE, in both the task list (a display state like SCRIPT ERROR, with an ALERT light) and the night plan (state column, instead of NOT TONIGHT); the reason column carries the details with the numbers, e.g. 'culminates at 15°, below the minimum altitude 20°', 'never below 50°, above the maximum altitude 45°', 'maximum altitude 30° is not above the task's @altitude 40°'. Add tests for each UNREACHABLE case (empty range, never rises to the minimum, never sinks below the maximum) and for recovery when the limits change.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-24T01:04:46.877950Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementation notes and scenario-to-test mapping.\nDesign: MIN_ALTITUDE/MAX_ALTITUDE (items 12, 13 of AGENT_SCHEDULER_SETTINGS) are copied into scheduler_sky_grid.min_altitude/max_altitude (indigo_scheduler_sky_build() resets them to 0/90, the agent reapplies them after every build). indigo_scheduler_sky_point_ok() rejects altitude < global min or < @altitude ('target below the altitude limit') and altitude > max ('target above the altitude limit'), only for tasks with @target. New indigo_scheduler_reachability() returns RANGE (max <= @altitude, known without the site), LOW (upper culmination 90-|lat-dec| below max(MIN, @altitude)) or HIGH (lower culmination |lat+dec|-90 above MAX), with JNow dec, both hemispheres; all targets are fixed RA/Dec. The agent stores the reason per task (build_target() -> update_reachability()), sends 'Task NAME can never run: ...' only when the reason text changes to a non-empty one (an edit clears it first, so an edit tells it again); UNREACHABLE is shown in the task list (Alert) and in the plan instead of NOT TONIGHT, and such tasks are skipped like SCRIPT ERROR (not selectable, not planned, do not keep 'all tasks finished' from stopping). A never-rising target is UNREACHABLE too (owner case b with the effective minimum). Settings change: refused with Alert when min >= max (whole request, old values kept), otherwise rebuild of all tasks and plan dirty. Settings are now saved before the tasks so a restore judges tasks by the saved limits. Version 0x03000022.\nTests - unit test_agent_scheduler_sky: global_altitude_limits (global floor beats lower @altitude, @altitude beats lower floor, ceiling rejects, points table, task without @target unaffected), reachability (RANGE incl. without site, LOW with global/own floor naming, HIGH Polaris, southern hemisphere -30/-80, culminations vs grid). Integration test_agent_scheduler: global_altitude_limits_decide_and_recover (WAITING with both reasons, default 20 beats @altitude 10, recovery after relaxing), global_minimum_altitude_rules_out_the_night (NOT TONIGHT with the altitude-limit reason, PLANNED after relaxing), crossed_altitude_limits_are_refused (two-item and one-item refusal, values kept, valid change), unreachable_tasks_are_marked_and_skipped (cases a/b/c with messages, task list state + Alert light, plan rows, skipped by START, no repeat on unrelated change, re-told on edit, recovery on limit change, site change both ways incl. own @altitude in the south), persistence_across_restart extended (limits saved/restored), strategy_defaults_to_compact extended (14 items, defaults/ranges).\nAdjusted existing tests: target_below_horizon_waits now uses a target 30 deg below the horizon that rises later (the dec -89 target is now UNREACHABLE); labels_have_uniform_columns uses a task with a window opening in 3 days for its NOT TONIGHT row (UNREACHABLE reason contains a degree sign, the ASCII check would fail); plan_lists_the_night expects the dec -89 task as UNREACHABLE (new behaviour); duration_must_fit_before_the_target_sets sets MIN_ALTITUDE 0 (its 7.5 deg targets are about the horizon).\nResults: flow check passed (whitespace, unit). Integration test_agent_scheduler full run 169 run, 169 passed, 0 failed (env -u LD_LIBRARY_PATH); new cases also pass under test_agent_scheduler_asan.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-24T01:19:11.302299Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision after review round 1 (pass with minor findings): fix all four. (1) drop the isfinite() check in the settings change handler (indigo_agent_scheduler.c ~2932), the framework validates finite values; (2) hook tasks are not marked UNREACHABLE and get no 'can never run' message (update_reachability ~1068), hooks ignore the sky checks; add a test; (3) indigo_drivers/agent_scheduler/doc/SCHEDULER.md: mention UNREACHABLE in the night plan items section (~759) and the new tests in the Testing section (~920+); (4) a target whose upper culmination is at or below 0 reads 'never rises above the horizon' instead of 'culminates at -4.0°, below the minimum altitude 0°' (message and plan reason); adjust tests.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-24T01:30:30.049306Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Review round 1 fixes: (1) isfinite() check removed from the AGENT_SCHEDULER_SETTINGS handler; (2) hook tasks (named in AGENT_SCHEDULER_HOOKS or @priority hook) are never marked UNREACHABLE and get no message; reachability is re-judged on a HOOKS change, and HOOKS is now saved before the tasks like SETTINGS so a restore does not message hook tasks; new integration case hook_tasks_are_never_unreachable (hook and @priority hook with an unreachable target keep HOOK/Idle, no message, the hook still runs, a task removed from the hooks becomes UNREACHABLE with its message); (3) SCHEDULER.md: UNREACHABLE in the night plan items, hook exemption, and the new unit/integration tests in Testing; (4) upper culmination <= 0 gives SCHEDULER_UNREACHABLE_HORIZON with the reason 'never rises above the horizon' (message 'the target never rises above the horizon'); unit reachability test extended, plan_lists_the_night expects it, unreachable_tasks_are_marked_and_skipped now checks the own @altitude floor at the equator and the horizon case at 10 S. Results: flow check passed (whitespace, unit); scheduler unit tests header/sky/plan/night all passed; integration test_agent_scheduler 170 run, 170 passed, 0 failed (env -u LD_LIBRARY_PATH).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "c913ed677552e5324428bb38953f9e56cd497027",
+      "tree": "259b630c62abe2895c35a3a40ab5dfc32fcda9a3",
+      "base": "master",
+      "at": "2026-11-24T05:50:11.573768Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-24T00:32:07.075090Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-24T00:38:48.576095Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2753024.177,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 44,
+    "sha256": "8b0b84ae1bd16c5420b0eff98baf2cf729d1c83d905bf5caa1dbc186c7e64ada"
+  }
+}

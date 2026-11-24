@@ -430,6 +430,151 @@ static void test_points_match_reference(void) {
 	sky.valid = true;
 }
 
+static void test_global_altitude_limits(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NIGHT, LATITUDE, LONGITUDE, 140);
+	// a new grid has no global limits
+	ASSERT_NEAR(0, sky.min_altitude, 1e-9);
+	ASSERT_NEAR(90, sky.max_altitude, 1e-9);
+	// Polaris stays between about 47 and 49 degrees
+	scheduler_header header = polaris();
+	const char *reason = NULL;
+	ASSERT_TRUE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
+	// the global floor beats a lower @altitude
+	header.has_min_altitude = true;
+	header.min_altitude = 30;
+	sky.min_altitude = 50;
+	ASSERT_FALSE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
+	ASSERT_STREQ("target below the altitude limit", reason);
+	// @altitude beats a lower global floor
+	header.min_altitude = 50;
+	sky.min_altitude = 40;
+	reason = NULL;
+	ASSERT_FALSE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
+	ASSERT_STREQ("target below the altitude limit", reason);
+	header.has_min_altitude = false;
+	ASSERT_TRUE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
+	// the ceiling rejects a target above it
+	sky.max_altitude = 45;
+	reason = NULL;
+	ASSERT_FALSE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
+	ASSERT_STREQ("target above the altitude limit", reason);
+	scheduler_task_points points;
+	indigo_scheduler_points_build(&sky, &target, &header, &points);
+	ASSERT_TRUE(points.valid);
+	ASSERT_EQ_INT(SCHEDULER_GRID_POINTS, points.next_good[0]);
+	ASSERT_STREQ("target above the altitude limit", points.reason[0]);
+	sky.max_altitude = 55;
+	ASSERT_TRUE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
+	indigo_scheduler_points_build(&sky, &target, &header, &points);
+	ASSERT_EQ_INT(0, points.next_good[0]);
+	ASSERT_EQ_INT(SCHEDULER_GRID_POINTS, points.next_bad[0]);
+	// a task without @target is not affected by limits no altitude can meet
+	scheduler_header plain = make_header();
+	plain.twilight = SCHEDULER_TWILIGHT_NAUTICAL;
+	sky.min_altitude = 89;
+	sky.max_altitude = 90;
+	ASSERT_TRUE(indigo_scheduler_sky_point_ok(&sky, &target, &plain, 0, &reason));
+	indigo_scheduler_points_build(&sky, NULL, &plain, &points);
+	ASSERT_TRUE(points.valid);
+	ASSERT_EQ_INT(0, points.next_good[0]);
+	sky.min_altitude = 0;
+	sky.max_altitude = 90;
+}
+
+// the number after prefix in the reason of indigo_scheduler_reachability()
+static double reason_number(const char *reason, const char *prefix) {
+	const char *s = strstr(reason, prefix);
+	double value = NAN;
+	if (s == NULL || sscanf(s + strlen(prefix), "%lf", &value) != 1) {
+		return NAN;
+	}
+	return value;
+}
+
+static void test_reachability(void) {
+	char reason[256] = "";
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NIGHT, LATITUDE, LONGITUDE, 140);
+	scheduler_header plain = make_header();
+	sky.min_altitude = 89;
+	ASSERT_EQ_INT(SCHEDULER_REACHABLE, indigo_scheduler_reachability(&sky, &plain, reason, sizeof(reason)));
+	sky.min_altitude = 20;
+	// an empty range: the maximum is not above the task's own minimum, known even without the site
+	scheduler_header header = make_header();
+	set_target(&header, 6, 30);
+	header.has_min_altitude = true;
+	header.min_altitude = 40;
+	sky.max_altitude = 40;
+	sky.valid = false;
+	ASSERT_EQ_INT(SCHEDULER_UNREACHABLE_RANGE, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	ASSERT_STREQ("maximum altitude 40° is not above the task's @altitude 40°", reason);
+	sky.valid = true;
+	sky.max_altitude = 41;
+	ASSERT_EQ_INT(SCHEDULER_REACHABLE, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	sky.max_altitude = 90;
+	// declination -20 at 48.15 N culminates at about 21.85 degrees
+	header = make_header();
+	set_target(&header, 6, -20);
+	ASSERT_EQ_INT(SCHEDULER_REACHABLE, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	sky.min_altitude = 25;
+	ASSERT_EQ_INT(SCHEDULER_UNREACHABLE_LOW, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	ASSERT_NEAR(21.85, reason_number(reason, "culminates at "), 0.3);
+	ASSERT_TRUE(strstr(reason, "°, below the minimum altitude 25°") != NULL);
+	// the task's own minimum is named when it is the higher one
+	header.has_min_altitude = true;
+	header.min_altitude = 30;
+	ASSERT_EQ_INT(SCHEDULER_UNREACHABLE_LOW, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	ASSERT_TRUE(strstr(reason, "below the task's @altitude 30°") != NULL);
+	header.min_altitude = 15;
+	sky.min_altitude = 15;
+	ASSERT_EQ_INT(SCHEDULER_REACHABLE, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	// a target that never rises is told so, whatever the minimum
+	scheduler_header south = make_header();
+	set_target(&south, 6, -50);
+	sky.min_altitude = 0;
+	ASSERT_EQ_INT(SCHEDULER_UNREACHABLE_HORIZON, indigo_scheduler_reachability(&sky, &south, reason, sizeof(reason)));
+	ASSERT_STREQ("never rises above the horizon", reason);
+	sky.min_altitude = 25;
+	ASSERT_EQ_INT(SCHEDULER_UNREACHABLE_HORIZON, indigo_scheduler_reachability(&sky, &south, reason, sizeof(reason)));
+	// without the site the culminations are unknown
+	sky.min_altitude = 25;
+	sky.valid = false;
+	ASSERT_EQ_INT(SCHEDULER_REACHABLE, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	sky.valid = true;
+	sky.min_altitude = 20;
+	// Polaris never sinks below about 47.4 degrees
+	header = polaris();
+	sky.max_altitude = 45;
+	ASSERT_EQ_INT(SCHEDULER_UNREACHABLE_HIGH, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	ASSERT_NEAR(47.4, reason_number(reason, "never below "), 0.3);
+	ASSERT_TRUE(strstr(reason, "°, above the maximum altitude 45°") != NULL);
+	sky.max_altitude = 50;
+	ASSERT_EQ_INT(SCHEDULER_REACHABLE, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	// southern hemisphere: declination -80 at 30 S culminates at 40 degrees and never sinks below 20 degrees
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NIGHT, -30, LONGITUDE, 140);
+	header = make_header();
+	set_target(&header, 6, -80);
+	sky.min_altitude = 20;
+	sky.max_altitude = 90;
+	ASSERT_EQ_INT(SCHEDULER_REACHABLE, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	sky.min_altitude = 45;
+	ASSERT_EQ_INT(SCHEDULER_UNREACHABLE_LOW, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	ASSERT_NEAR(40, reason_number(reason, "culminates at "), 0.3);
+	sky.min_altitude = 10;
+	sky.max_altitude = 15;
+	ASSERT_EQ_INT(SCHEDULER_UNREACHABLE_HIGH, indigo_scheduler_reachability(&sky, &header, reason, sizeof(reason)));
+	ASSERT_NEAR(20, reason_number(reason, "never below "), 0.3);
+	// the computed culminations agree with the altitudes on the grid
+	double highest = -90, lowest = 90;
+	for (int i = 0; i < 288; i++) {
+		highest = fmax(highest, target.altitude[i]);
+		lowest = fmin(lowest, target.altitude[i]);
+	}
+	ASSERT_NEAR(40, highest, 0.5);
+	ASSERT_NEAR(20, lowest, 0.5);
+	sky.min_altitude = 0;
+	sky.max_altitude = 90;
+}
+
 static void test_night_end(void) {
 	// by day the night ends at the sunrise after the next sunset, by night at the next sunrise
 	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
@@ -460,6 +605,8 @@ int main(void) {
 		{ "interval_next_eligible_and_time_to_set", test_interval_next_eligible_and_time_to_set },
 		{ "unknown_site", test_unknown_site },
 		{ "points_match_reference", test_points_match_reference },
+		{ "global_altitude_limits", test_global_altitude_limits },
+		{ "reachability", test_reachability },
 		{ "night_end", test_night_end },
 	};
 	return indigo_run_tests("test_agent_scheduler_sky", cases, sizeof(cases) / sizeof(cases[0]));

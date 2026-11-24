@@ -30,7 +30,7 @@ See also: [Sequencer.js](../indigo_drivers/agent_scripting/library/Sequencer.md)
 **When a task runs**
 
 - A task starts only when all its constraints hold for its whole run. See [Constraints](#constraints).
-- The constraints are target altitude, airmass, hour angle, Moon distance, also following the Moon phase, Moon illumination, twilight and time windows, absolute or nightly. See [Constraints](#constraints).
+- The constraints are target altitude, airmass, hour angle, Moon distance, also following the Moon phase, Moon illumination, twilight and time windows, absolute or nightly. Global minimum and maximum altitudes apply to every target. See [Constraints](#constraints).
 - Checkpoint steps in the body act at a time, an hour angle or a target altitude. They skip to the next `resume_point()`, or end the sequence when none follows. See [Constraints](#constraints).
 - The duration of a run comes from `@duration`, from the last successful run or from an estimate of the sequence. See [Task duration](#task-duration).
 - Every task has a priority class, `low`, `normal`, `high` or `urgent`, and a level. Within a class, a score adds bonuses for setting targets and for targets near culmination. See [Priorities](#priorities).
@@ -260,6 +260,12 @@ Suppose this target sinks below 30° two hours from now. The three-hour run cann
 - `@window` limits the time, in UTC.
 
 The Moon keys apply only while the Moon is above the horizon.
+
+**Global altitude limits.** Two settings limit the altitude of every task with `@target`: `MIN_ALTITUDE` (default 20°) and `MAX_ALTITUDE` (default 90°, no ceiling). The target must stay at or above the larger of `MIN_ALTITUDE` and the task's own `@altitude`, and at or below `MAX_ALTITUDE`, for the whole run. `@altitude` therefore only matters when it is higher than `MIN_ALTITUDE`. `MAX_ALTITUDE` keeps the targets out of the zenith blind spot of an alt-az or fork mount, or below the edge of a roof or dome opening. Tasks without `@target` are not affected. Like `@altitude`, the limits only rule out times: a running task is not interrupted, and the visibility quality is still measured against the culmination.
+
+The default `MIN_ALTITUDE` of 20° holds every target with a lower `@altitude`, or without one, at 20°. Set `MIN_ALTITUDE` to 0 to let such tasks run down to their own `@altitude` or to the horizon.
+
+A task whose target can never stand within the limits shows `UNREACHABLE`. This happens when `MAX_ALTITUDE` is not above the task's `@altitude`, when the target culminates below the effective minimum, or when a circumpolar target never sinks below `MAX_ALTITUDE`. A message says why, for example `Task 'M31' can never run: the target culminates at 15.3°, below the minimum altitude 20°`. The task is skipped until a change of the limits, the site or the task makes it reachable again. A target that never rises at all is reported as `never rises above the horizon`. A hook task is never marked: hooks ignore the sky constraints.
 
 **Time windows.** A window has a start, an end, or both:
 
@@ -513,6 +519,7 @@ The night plan `AGENT_SCHEDULER_PLAN` shows what the scheduler expects to do for
 2026-11-21 05:10-05:12 | Morning | - | hook night end | PLANNED | -
 - | M42 | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit
 - | NGC 891 | run 0/1 | normal 50 | NOT TONIGHT | disabled
+- | NGC 253 | run 0/1 | normal 50 | UNREACHABLE | culminates at 16.7°, below the minimum altitude 20°
 ```
 
 Each run shows its expected start and end in UTC, the task, the run number and the priority. The night hooks appear at their expected times, such as `Morning` above. A gap between two runs is idle time. With `COMPACT`, nothing can run in the gap. With `VISIBILITY`, the plan waits there for a better time. At the end come the tasks that will not run tonight, with the reason.
@@ -977,7 +984,7 @@ See also: [Tasks](#tasks).
 | `@task` | `name` | Name of the task, 1–40 bytes, without `\|`. Unique, not case-sensitive | required |
 | `@priority` | `urgent`, `high`, `normal` or `low`, optionally followed by a level 0–100, or `hook` without a level | The priority class and level | `normal 50` |
 | `@target` | `ra dec` | J2000 coordinates. RA in hours (`hh:mm:ss.s` or decimal), Dec in degrees (`±dd:mm:ss` or decimal). The target must also be above the horizon | none |
-| `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
+| `@altitude` | `> degrees` | Minimum target altitude, 0–90. The setting `MIN_ALTITUDE` applies when it is higher | off |
 | `@airmass` | `< value` | Maximum airmass, 1–100 | off |
 | `@ha` | `from .. to` | Allowed hour angle in hours, −12 to +12. When `from` is greater than `to`, the range wraps across 12h | off |
 | `@moon` | `> degrees`, optionally `width days` | Minimum distance from the Moon, 0–180°, with a width of 0.5–30 days | off |
@@ -1003,6 +1010,7 @@ See also: [Constraints](#constraints), [Priorities](#priorities), [Where the dat
 - **Whole run.** All constraints must hold from the start of a run until its expected end. The scheduler checks this when the task would start, with the expected duration.
 - **Five-minute grid.** The sky constraints are checked every five minutes. A task with `@twilight` may therefore start up to five minutes after the twilight limit.
 - **Horizon.** A task with `@target` needs the target above 0°, even without `@altitude`.
+- **Altitude limits.** A task with `@target` needs the target at or above the larger of `MIN_ALTITUDE` and `@altitude`, and at or below `MAX_ALTITUDE`. A task whose target can never meet them is `UNREACHABLE`: `MAX_ALTITUDE` is not above `@altitude`, the upper culmination `90° − |latitude − declination|` is below the effective minimum, or the lower culmination `|latitude + declination| − 90°` is above `MAX_ALTITUDE`.
 - **Hour angle.** `@ha 22 .. 2` is not valid, because the range is −12 to +12. Write `@ha 10 .. -10` for a range that wraps across 12h.
 - **The Moon.** `@moon` and `@illumination` are ignored while the Moon is below the horizon.
 - **Moon width.** With `width w`, the required distance is `d / (1 + (t / w)²)`. Here `d` is the distance in the header and `t` the days from full moon.
@@ -1356,6 +1364,10 @@ See also: [Tasks](#tasks).
 | `NIGHT_START_OFFSET` | min | 0 | −240–240 | Shift of the start of the scheduler night. Negative is earlier |
 | `NIGHT_END_OFFSET` | min | 0 | −240–240 | Shift of the end of the scheduler night. Negative is earlier |
 | `SAFE_DELAY` | min | 10 | 0–1440 | How long the conditions must be safe without interruption before the unsafe hold ends or a waiting `START` begins. Steps of 0.1 |
+| `MIN_ALTITUDE` | ° | 20 | 0–90 | The lowest altitude of every task with `@target`. A higher `@altitude` of a task wins. See [Constraints](#constraints) |
+| `MAX_ALTITUDE` | ° | 90 | 0–90 | The highest altitude of every task with `@target`. 90 is no ceiling |
+
+A change with `MIN_ALTITUDE` at or above `MAX_ALTITUDE` is rejected with Alert and a message, and the settings keep their old values.
 
 ```
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.IDLE_CHECK_INTERVAL=10;IDLE_HOOK_DELAY=20"
@@ -1449,6 +1461,7 @@ Park | HOOK | hook shutdown | - | - | -
 | `EXPIRED` | Alert | The end of its `@window` passed before it completed |
 | `DISABLED` | Idle | `@enabled no`, or disabled by command. A disabled hook task shows it too, with its hook in the priority column |
 | `SCRIPT ERROR` | Alert | The body has an error. Fix it with an edit |
+| `UNREACHABLE` | Alert | The target can never stand within the altitude limits. The night plan gives the reason. Change the limits or the task |
 | `HOOK` | Idle | The task is named in `AGENT_SCHEDULER_HOOKS` or has `@priority hook`. Its state is not tracked |
 
 ### Night plan items
@@ -1459,6 +1472,7 @@ The columns of `AGENT_SCHEDULER_PLAN` are when, name, run, priority, state and r
 - **Reasons.** The reason of a planned run is `-`, or `meridian flip` for a run that is expected to flip.
 - **Night hooks** have `-` as the run and `hook night start` or `hook night end` as the priority.
 - **Not tonight.** The tasks that will not run tonight have an Alert light, `-` as the time and the state `NOT TONIGHT`. Typical reasons are a constraint that never holds tonight, `disabled` and `script error`. `no time left tonight` marks a task that finds no room after the others.
+- **Unreachable.** A task whose target can never stand within the altitude limits has an Alert light, `-` as the time and the state `UNREACHABLE` instead of `NOT TONIGHT`. The reason gives the numbers: `never rises above the horizon`, `culminates at 15.3°, below the minimum altitude 20°` (or `below the task's @altitude 40°`), `never below 50.2°, above the maximum altitude 45°`, or `maximum altitude 30° is not above the task's @altitude 40°`.
 - **No night.** A day without night, with night hooks set, adds the item `- | - | - | - | NOT TONIGHT | no night at the night limit within a day, the night hooks do not run`.
 
 **Hook items.** A running hook of any kind is the first item, for example `2026-11-20 19:58-20:03 | Evening | - | hook night start | RUNNING | -`. Its end is its start plus its duration, but not earlier than a minute from now. The planned runs follow from that end. A running night hook replaces its planned item. Only the night hooks are forecast. `STARTUP`, `SHUTDOWN`, `IDLE` and `RESUME` show up only while they run.
@@ -1500,6 +1514,7 @@ The scheduler reports events as INDIGO messages of the device "Scheduler Agent".
 | `Task 'M31 LRGB' aborted`, `Task 'M31 LRGB' aborted and deleted` | `ABORT`, or a delete of the running task |
 | `Task 'M31 LRGB' expired` | Its window ended |
 | `Task 'M31 LRGB' has a script error: ...` | The estimate found an error in the body |
+| `Task 'M31' can never run: ...` | The target can never stand within the altitude limits. Sent when the task is added or edited, and when a change of the limits or the site makes it unreachable or changes the reason |
 | `The duration of task 'M31 LRGB' cannot be estimated, ...` | Set `@duration` |
 | `Starting hook 'Park'`, `Hook 'Park' completed` | A hook runs |
 | `The scheduler stops after the running task` | `STOP` while a task runs |
@@ -1527,7 +1542,8 @@ A rejected request puts the property you changed into the Alert state. A message
 | Reason | Meaning |
 |---|---|
 | `target below the horizon` | The target is below 0° |
-| `target below the altitude limit` | `@altitude` |
+| `target below the altitude limit` | `@altitude` or `MIN_ALTITUDE` |
+| `target above the altitude limit` | `MAX_ALTITUDE` |
 | `airmass too high` | `@airmass` |
 | `hour angle out of range` | `@ha` |
 | `too close to the moon` | `@moon` |
@@ -1569,6 +1585,8 @@ See also: [Starting, stopping and restarting](#starting-stopping-and-restarting)
 | My `high` task ran after a `normal` one | Under `COMPACT`, the `high` task could not run yet. Under `VISIBILITY`, the plan places runs by visibility, not by priority. See [Choosing a strategy](#choosing-a-strategy) |
 | Every task waits with `site coordinates unknown` | Load the Mount Agent on the same server as the Scheduler Agent, and set its site. See [Agents the scheduler depends on](#agents-the-scheduler-depends-on) |
 | The upload is rejected | The message of the Scheduler Agent names the line and the problem. See [Header keys](#header-keys) |
+| A task shows `UNREACHABLE` | Its target can never stand within `MIN_ALTITUDE`, `MAX_ALTITUDE` and its `@altitude` at this site. The night plan and the message give the numbers. Lower `MIN_ALTITUDE` or the task's `@altitude`, or raise `MAX_ALTITUDE` |
+| A low target waits with `target below the altitude limit`, although its `@altitude` is lower | `MIN_ALTITUDE` (default 20°) is higher. Lower it |
 | A task shows `SCRIPT ERROR` | The message names the JavaScript error. Fix the body with an edit. Or `RESET` the task after fixing an agent the body needed |
 | A task shows `1h00 default` | The duration cannot be estimated from the sequence. Set `@duration`. See [Task duration](#task-duration) |
 | `another sequence is running` | A sequence started by hand occupies the Scripting Agent. Stop it, or submit an urgent task, which aborts it |

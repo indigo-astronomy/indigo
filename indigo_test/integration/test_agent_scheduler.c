@@ -392,6 +392,14 @@ static bool set_setting(const char *item, double value) {
 	return wait_property_state(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
 }
 
+static bool set_altitude_limits(double min_altitude, double max_altitude, indigo_property_state expected, char *message) {
+	unsigned before = revision(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
+	const char *items[] = { AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME };
+	double values[] = { min_altitude, max_altitude };
+	indigo_change_number_property(&observer, AGENT, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, 2, items, values);
+	return wait_property_state(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, before, expected, message);
+}
+
 static indigo_property_state sequence_state(void) {
 	pthread_mutex_lock(&cache_mutex);
 	observation *entry = find(SCRIPTING_AGENT_NAME, "SEQUENCE_STATE");
@@ -1021,6 +1029,8 @@ static void cleanup(void) {
 
 // -------------------------------------------------------------------------------- Cases
 
+static bool upload_placed(const char *name, double hour_angle, double declination, const char *header);
+
 static void store_edit_and_delete(void) {
 	REQUIRE(upload("// @task Alpha\n// @priority high 70\n\n" BODY_WAIT(1)));
 	indigo_property *task = snapshot("AGENT_SCHEDULER_TASK_0");
@@ -1137,7 +1147,9 @@ static void window_wait_and_expiry(void) {
 }
 
 static void target_below_horizon_waits(void) {
-	REQUIRE(upload("// @task South\n// @target 06:00:00 -89:00:00\n// @duration 1\n" BODY_WAIT(1)));
+	// a target that never rises can never run and is UNREACHABLE (see plan_lists_the_night), this one is 30 degrees below the horizon and rises in four hours
+	set_site(0, 17.11);
+	REQUIRE(upload_placed("South", 8, 0, "// @duration 1\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("South", "WAITING", 5));
 	ASSERT_TRUE(wait_reason("target below the horizon", 5));
@@ -1319,6 +1331,7 @@ static void persistence_across_restart(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME, 2.5));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME, -30));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, 45));
+	REQUIRE(set_altitude_limits(25, 80, INDIGO_OK_STATE, NULL));
 	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
 	REQUIRE(set_night_hooks("Evening", "Morning", "Resume"));
 	REQUIRE(set_night_limit(AGENT_SCHEDULER_NIGHT_ASTRONOMICAL_ITEM_NAME));
@@ -1341,6 +1354,8 @@ static void persistence_across_restart(void) {
 	ASSERT_NEAR(2.5, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME)->number.value, 1e-9);
 	ASSERT_NEAR(-30, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME)->number.value, 1e-9);
 	ASSERT_NEAR(45, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME)->number.value, 1e-9);
+	ASSERT_NEAR(25, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME)->number.value, 1e-9);
+	ASSERT_NEAR(80, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME)->number.value, 1e-9);
 	indigo_release_property(settings);
 	indigo_property *strategy = snapshot(AGENT_SCHEDULER_STRATEGY_PROPERTY_NAME);
 	REQUIRE(strategy != NULL);
@@ -2690,6 +2705,189 @@ static void altitude_limit_decides_and_follows_the_sky(void) {
 	ASSERT_TRUE(wait_task_state("Steep", "DONE", 15));
 }
 
+// the global limits hold back every task with @target: the minimum beats a lower @altitude, the maximum is a ceiling, relaxing them lets the tasks run
+static void global_altitude_limits_decide_and_recover(void) {
+	set_site(0, 17.11);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, 80));
+	// 15 degrees high and rising, below the default minimum of 20 degrees although its own limit is lower
+	REQUIRE(upload_placed("Low", -5, 0, "// @priority high\n// @altitude > 10\n// @duration 5\n"));
+	// 82.5 degrees high, above the maximum
+	REQUIRE(upload_placed("Steep", -0.5, 0, "// @duration 5\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(waits_with_reason("Low", "target below the altitude limit"));
+	ASSERT_TRUE(wait_task_state("Steep", "WAITING", 5));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, 10));
+	ASSERT_TRUE(wait_task_state("Low", "DONE", 15));
+	ASSERT_TRUE(waits_with_reason("Steep", "target above the altitude limit"));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, 85));
+	ASSERT_TRUE(wait_task_state("Steep", "DONE", 15));
+	ASSERT_EQ_INT(0, count_messages("can never run"));
+}
+
+// a target above the minimum for only a few minutes around its culmination finds no time tonight, the plan follows a relaxed minimum
+static void global_minimum_altitude_rules_out_the_night(void) {
+	set_site(0, longitude_at_hour(20));
+	// 60 degrees high, culminating at the zenith in two hours
+	REQUIRE(upload_placed("Zenith", -2, 0, "// @duration 60\n"));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, 89));
+	ASSERT_TRUE(wait_plan_contains("- | Zenith | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit", true, 10));
+	ASSERT_EQ_INT(0, count_messages("can never run"));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, 20));
+	ASSERT_TRUE(wait_plan_contains(" | Zenith | run 1/1 | normal 50 | PLANNED | ", true, 10));
+	ASSERT_TRUE(wait_plan_contains("NOT TONIGHT", false, 5));
+}
+
+// a minimum at or above the maximum is refused and the old values are kept
+static void crossed_altitude_limits_are_refused(void) {
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(set_altitude_limits(60, 50, INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "the minimum altitude 60° must be lower than the maximum altitude 50°") != NULL);
+	indigo_property *settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
+	REQUIRE(settings != NULL);
+	ASSERT_NEAR(20, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME)->number.value, 1e-9);
+	ASSERT_NEAR(90, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME)->number.value, 1e-9);
+	indigo_release_property(settings);
+	// one item that reaches the other one
+	unsigned before = revision(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
+	const char *items[] = { AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME };
+	double values[] = { 20 };
+	indigo_change_number_property(&observer, AGENT, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, 1, items, values);
+	ASSERT_TRUE(wait_property_state(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, before, INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "the minimum altitude 20° must be lower than the maximum altitude 20°") != NULL);
+	settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
+	REQUIRE(settings != NULL);
+	ASSERT_NEAR(90, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME)->number.value, 1e-9);
+	indigo_release_property(settings);
+	ASSERT_TRUE(set_altitude_limits(30, 60, INDIGO_OK_STATE, NULL));
+	settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
+	REQUIRE(settings != NULL);
+	ASSERT_NEAR(30, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME)->number.value, 1e-9);
+	ASSERT_NEAR(60, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME)->number.value, 1e-9);
+	indigo_release_property(settings);
+}
+
+// the plan item of a task that can never run, with its reason
+static bool unreachable_in_plan(const char *name, const char *reason) {
+	char text[INDIGO_VALUE_SIZE];
+	snprintf(text, sizeof(text), "- | %s | run 0/1 | normal 50 | UNREACHABLE | %s", name, reason);
+	return wait_plan_contains(text, true, 5);
+}
+
+static bool task_light(const char *name, indigo_property_state expected) {
+	char label[INDIGO_VALUE_SIZE];
+	indigo_property_state state = INDIGO_IDLE_STATE;
+	CHECK(task_label(name, label, &state));
+	CHECK(state == expected);
+	return true;
+}
+
+// tasks that can never run within the altitude limits are UNREACHABLE, told once, skipped, and runnable again when the limits or the site allow it
+static void unreachable_tasks_are_marked_and_skipped(void) {
+	// the default site at 48.15 N
+	REQUIRE(upload("// @task Plain\n// @priority low\n" BODY_WAIT(1)));
+	// declination -30 culminates at about 11.9 degrees, below the default minimum of 20 degrees
+	REQUIRE(upload("// @task Low\n// @target 06:00:00 -30:00:00\n// @duration 5\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Low' can never run: the target culminates at 1", 1, 5));
+	ASSERT_EQ_INT(1, count_messages("°, below the minimum altitude 20°"));
+	ASSERT_TRUE(wait_task_state("Low", "Low | UNREACHABLE | normal 50 | run 0/1", 5));
+	ASSERT_TRUE(task_light("Low", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(unreachable_in_plan("Low", "culminates at 1"));
+	char labels[16][INDIGO_VALUE_SIZE], columns[6][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	int count = plan_items(labels, states, 16);
+	REQUIRE(count >= 1);
+	for (int i = 0; i < count; i++) {
+		if (strstr(labels[i], " | Low | ")) {
+			ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[i]);
+			ASSERT_TRUE(split_label(labels[i], columns));
+			ASSERT_TRUE(strstr(columns[5], "°, below the minimum altitude 20°") != NULL);
+		}
+	}
+	// Polaris never sinks below about 47.4 degrees
+	REQUIRE(upload("// @task Polar\n// @target 02:31:49 89:15:51\n// @altitude > 30\n// @duration 5\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_task_state("Polar", "Polar | QUEUED", 5));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, 45));
+	ASSERT_TRUE(wait_message("Task 'Polar' can never run: the target is never below 4", 1, 5));
+	ASSERT_EQ_INT(1, count_messages("°, above the maximum altitude 45°"));
+	ASSERT_TRUE(wait_task_state("Polar", "UNREACHABLE", 5));
+	ASSERT_TRUE(task_light("Polar", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(unreachable_in_plan("Polar", "never below 4"));
+	// an empty range: the maximum is not above the task's own @altitude
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, 30));
+	ASSERT_TRUE(wait_message("Task 'Polar' can never run: maximum altitude 30° is not above the task's @altitude 30°", 1, 5));
+	ASSERT_TRUE(unreachable_in_plan("Polar", "maximum altitude 30° is not above the task's @altitude 30°"));
+	// the reason of Low did not change, it was not told again
+	ASSERT_EQ_INT(1, count_messages("Task 'Low' can never run"));
+	// the scheduler skips both and finishes
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
+	ASSERT_TRUE(wait_task_state("Plain", "DONE", 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Low'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Polar'"));
+	// neither an unrelated change nor the plan checks repeat the messages
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME, 2));
+	indigo_usleep(2500000);
+	ASSERT_EQ_INT(1, count_messages("Task 'Low' can never run"));
+	ASSERT_EQ_INT(2, count_messages("Task 'Polar' can never run"));
+	// an edit tells it again
+	REQUIRE(change_text("AGENT_SCHEDULER_TASK_1", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, "// @task Low\n// @target 06:00:00 -30:00:00\n// @duration 10\n" BODY_WAIT(1), INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(wait_message("Task 'Low' can never run", 2, 5));
+	// relaxed limits make both runnable again
+	REQUIRE(set_altitude_limits(10, 90, INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(wait_task_state("Low", "Low | QUEUED", 5));
+	ASSERT_TRUE(wait_task_state("Polar", "Polar | QUEUED", 5));
+	ASSERT_TRUE(task_light("Low", INDIGO_IDLE_STATE));
+	ASSERT_TRUE(task_light("Polar", INDIGO_IDLE_STATE));
+	ASSERT_TRUE(wait_plan_contains("UNREACHABLE", false, 5));
+	// the default minimum again, then a site where the target culminates high, and back
+	REQUIRE(set_altitude_limits(20, 90, INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(wait_message("Task 'Low' can never run", 3, 5));
+	ASSERT_TRUE(wait_task_state("Low", "UNREACHABLE", 5));
+	// at the equator Low culminates at about 60 degrees, Polaris at about 0.7 degrees, below its own @altitude
+	set_site(0, 17.11);
+	ASSERT_TRUE(wait_task_state("Low", "Low | QUEUED", 5));
+	ASSERT_TRUE(wait_plan_contains(" | Low | run 0/1 | normal 50 | UNREACHABLE", false, 5));
+	ASSERT_TRUE(wait_message("Task 'Polar' can never run: the target culminates at 0.", 1, 5));
+	ASSERT_EQ_INT(1, count_messages("°, below the task's @altitude 30°"));
+	ASSERT_TRUE(wait_task_state("Polar", "UNREACHABLE", 5));
+	// at 10 S Polaris never rises
+	set_site(-10, 17.11);
+	ASSERT_TRUE(wait_message("Task 'Polar' can never run: the target never rises above the horizon", 1, 5));
+	ASSERT_TRUE(unreachable_in_plan("Polar", "never rises above the horizon"));
+	ASSERT_TRUE(wait_task_state("Low", "Low | QUEUED", 5));
+	set_site(48.15, 17.11);
+	ASSERT_TRUE(wait_message("Task 'Low' can never run", 4, 5));
+	ASSERT_TRUE(wait_task_state("Low", "UNREACHABLE", 5));
+	ASSERT_TRUE(wait_task_state("Polar", "Polar | QUEUED", 5));
+	ASSERT_EQ_INT(4, count_messages("Task 'Polar' can never run"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Low'"));
+}
+
+// a hook ignores the sky checks: a task named as a hook or with @priority hook is never UNREACHABLE and never told, until it is no longer a hook
+static void hook_tasks_are_never_unreachable(void) {
+	REQUIRE(set_hooks("", "Park", ""));
+	// declination -30 culminates at about 11.9 degrees at 48.15 N, below the default minimum of 20 degrees
+	REQUIRE(upload("// @task Park\n// @target 06:00:00 -30:00:00\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Spare\n// @priority hook\n// @target 06:00:00 -30:00:00\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_task_state("Park", "Park | HOOK | hook shutdown", 5));
+	ASSERT_TRUE(wait_task_state("Spare", "Spare | HOOK | hook", 5));
+	ASSERT_TRUE(task_light("Park", INDIGO_IDLE_STATE));
+	ASSERT_TRUE(task_light("Spare", INDIGO_IDLE_STATE));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(0, count_messages("can never run"));
+	ASSERT_TRUE(wait_plan_contains("UNREACHABLE", false, 5));
+	// the hook still runs
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	ASSERT_EQ_INT(0, count_messages("can never run"));
+	// no longer named as a hook, Park is an ordinary task that can never run
+	REQUIRE(set_hooks("", "", ""));
+	ASSERT_TRUE(wait_message("Task 'Park' can never run: the target culminates at 1", 1, 5));
+	ASSERT_TRUE(wait_task_state("Park", "Park | UNREACHABLE", 5));
+	ASSERT_EQ_INT(0, count_messages("Task 'Spare' can never run"));
+}
+
 static void airmass_limit_decides_and_follows_the_sky(void) {
 	set_site(0, 17.11);
 	// 30 degrees high, airmass 2
@@ -2823,6 +3021,8 @@ static void nightly_windows(void) {
 
 static void duration_must_fit_before_the_target_sets(void) {
 	set_site(0, 17.11);
+	// the case is about the horizon, the default minimum altitude of 20 degrees would hold both tasks
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, 0));
 	// 7.5 degrees high and setting, below the horizon in about 30 minutes
 	REQUIRE(upload_placed("Long look", 5.5, 0, "// @priority high\n// @duration 60\n"));
 	REQUIRE(upload_placed("Short look", 5.5, 0, "// @duration 10\n"));
@@ -2966,10 +3166,19 @@ static void strategy_defaults_to_compact(void) {
 	ASSERT_TRUE(indigo_get_item(strategy, AGENT_SCHEDULER_STRATEGY_COMPACT_ITEM_NAME)->sw.value);
 	ASSERT_FALSE(indigo_get_item(strategy, AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME)->sw.value);
 	indigo_release_property(strategy);
-	// the settings have no DEFER item any more; SAFE_DELAY is the last item
+	// the settings have no DEFER item any more; the altitude limits follow SAFE_DELAY
 	indigo_property *settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
 	REQUIRE(settings != NULL);
-	ASSERT_EQ_INT(12, settings->count);
+	ASSERT_EQ_INT(14, settings->count);
+	indigo_item *min_altitude = indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME);
+	indigo_item *max_altitude = indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME);
+	REQUIRE(min_altitude == settings->items + 12 && max_altitude == settings->items + 13);
+	ASSERT_NEAR(20, min_altitude->number.value, 1e-9);
+	ASSERT_NEAR(0, min_altitude->number.min, 1e-9);
+	ASSERT_NEAR(90, min_altitude->number.max, 1e-9);
+	ASSERT_NEAR(90, max_altitude->number.value, 1e-9);
+	ASSERT_NEAR(0, max_altitude->number.min, 1e-9);
+	ASSERT_NEAR(90, max_altitude->number.max, 1e-9);
 	ASSERT_TRUE(indigo_get_item(settings, "DEFER") == NULL);
 	// the meridian flip penalty of VISIBILITY follows the altitude weight
 	indigo_item *penalty = indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_VISIBILITY_FLIP_PENALTY_ITEM_NAME);
@@ -3332,7 +3541,11 @@ static void labels_have_uniform_columns(void) {
 	REQUIRE(upload("// @task Bad\n// @priority low\n// @duration 1\nif (!scheduler_task.estimate) { throw new Error(\"a | b \" + new Array(700).join(\"x\")); }\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Off\n// @duration 1\n" BODY_WAIT(1)));
 	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
-	REQUIRE(upload("// @task South\n// @target 06:00:00 -89:00:00\n// @duration 1\n" BODY_WAIT(1)));
+	// a window that opens in three days; a target that never rises would be UNREACHABLE with a reason in degrees, which is not ASCII
+	char window[32], later[256];
+	utc(time(NULL) + 3 * 86400, window);
+	snprintf(later, sizeof(later), "// @task Later\n// @window %s ..\n// @duration 1\n" BODY_WAIT(1), window);
+	REQUIRE(upload(later));
 	ASSERT_TRUE(wait_plan(5, "Good", 10));
 	// the task list
 	char label[INDIGO_VALUE_SIZE], columns[6][INDIGO_VALUE_SIZE];
@@ -3372,8 +3585,8 @@ static void labels_have_uniform_columns(void) {
 	ASSERT_STREQ("NOT TONIGHT", columns[4]);
 	ASSERT_STREQ("disabled", columns[5]);
 	ASSERT_TRUE(split_label(labels[4], columns));
-	ASSERT_STREQ("South", columns[1]);
-	ASSERT_STREQ("target below the horizon", columns[5]);
+	ASSERT_STREQ("Later", columns[1]);
+	ASSERT_STREQ("window not open yet", columns[5]);
 	// the history: a long reason with a separator is cut in the last column only
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Task 'Good' completed", 2, 30));
@@ -3444,7 +3657,7 @@ static void plan_lists_the_night(void) {
 	char labels[16][INDIGO_VALUE_SIZE];
 	indigo_property_state states[16];
 	REQUIRE(plan_items(labels, states, 16) == 7);
-	const char *expected[] = { " | High | run 1/1 | high 0 | PLANNED | -", " | Normal | run 1/1 | normal 10 | PLANNED | -", " | Low | run 1/1 | low 90 | PLANNED | -", " | Twice | run 1/2 | low 0 | PLANNED | -", " | Twice | run 2/2 | low 0 | PLANNED | -", "- | Off | run 0/1 | normal 50 | NOT TONIGHT | disabled", "- | South | run 0/1 | normal 50 | NOT TONIGHT | target below the horizon" };
+	const char *expected[] = { " | High | run 1/1 | high 0 | PLANNED | -", " | Normal | run 1/1 | normal 10 | PLANNED | -", " | Low | run 1/1 | low 90 | PLANNED | -", " | Twice | run 1/2 | low 0 | PLANNED | -", " | Twice | run 2/2 | low 0 | PLANNED | -", "- | Off | run 0/1 | normal 50 | NOT TONIGHT | disabled", "- | South | run 0/1 | normal 50 | UNREACHABLE | never rises above the horizon" };
 	const int durations[] = { 20, 5, 10, 1, 1 };
 	for (int i = 0; i < 7; i++) {
 		ASSERT_TRUE(strstr(labels[i], expected[i]) != NULL);
@@ -3472,7 +3685,7 @@ static void plan_lists_the_night(void) {
 	REQUIRE(urgent("// @task Rush\n// @priority low\n// @duration 1\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_plan(9, " | Rush | run 1/1 | urgent | ", 5));
 	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
-	ASSERT_TRUE(wait_plan_item(9, 8, "- | South | run 0/1 | normal 50 | NOT TONIGHT | ", 5));
+	ASSERT_TRUE(wait_plan_item(9, 8, "- | South | run 0/1 | normal 50 | UNREACHABLE | ", 5));
 	REQUIRE(plan_items(labels, states, 16) == 9);
 	ASSERT_TRUE(strstr(labels[0], " | Rush | run 1/1 | urgent | ") != NULL);
 	ASSERT_TRUE(strstr(labels[3], " | Off | run 1/1 | normal 50 | ") != NULL);
@@ -5139,6 +5352,11 @@ static const indigo_test_case cases[] = {
 	{ "reset_all_runs_finished_work_again", reset_all_runs_finished_work_again },
 	{ "delete_all_waits_for_the_shutdown_hook", delete_all_waits_for_the_shutdown_hook },
 	{ "altitude_limit_decides_and_follows_the_sky", altitude_limit_decides_and_follows_the_sky },
+	{ "global_altitude_limits_decide_and_recover", global_altitude_limits_decide_and_recover },
+	{ "global_minimum_altitude_rules_out_the_night", global_minimum_altitude_rules_out_the_night },
+	{ "crossed_altitude_limits_are_refused", crossed_altitude_limits_are_refused },
+	{ "unreachable_tasks_are_marked_and_skipped", unreachable_tasks_are_marked_and_skipped },
+	{ "hook_tasks_are_never_unreachable", hook_tasks_are_never_unreachable },
 	{ "airmass_limit_decides_and_follows_the_sky", airmass_limit_decides_and_follows_the_sky },
 	{ "hour_angle_ranges_including_wrapped", hour_angle_ranges_including_wrapped },
 	{ "twilight_limit_follows_the_sun", twilight_limit_follows_the_sun },
