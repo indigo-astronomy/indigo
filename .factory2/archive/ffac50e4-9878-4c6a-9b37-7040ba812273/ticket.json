@@ -1,0 +1,1049 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ffac50e4-9878-4c6a-9b37-7040ba812273",
+  "revision": 48,
+  "title": "indigo_agent_scheduler: tasks with @target default to @twilight astronomical",
+  "description": "Change the default of @twilight for tasks with @target (observed objects) from none to astronomical: a task with @target and without @twilight then needs the Sun below -18 degrees. An explicit @twilight (including none) still wins. Tasks without @target keep the default none, so they may still run in daylight and need no site coordinates. Night hooks reject @twilight and are not affected by the new default.\n\nImplementation: in indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c, after parsing, set header->twilight = SCHEDULER_TWILIGHT_ASTRONOMICAL when has_target and KEY_TWILIGHT was not found (check the hook path so a hook with @target is not given a twilight limit if that changes hook behaviour). Bump the driver version. Update indigo_docs/INDIGO_SCHEDULER_GUIDE.md: the @twilight row of the header key table (default), the Constraints text ('A task without @twilight may also run in daylight'), the five-minute grid note and any examples that rely on the old default. Update or add header-parser unit tests and the integration tests (indigo_test) that assume a @target task runs in daylight without @twilight.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-25T07:30:30.506296Z",
+  "status": "closed",
+  "branch": "ticket/ffac50e4-9878-4c6a-9b37-7040ba812273",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "816a3e1e-9cfa-464c-9ab6-3bc5aac1343a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T07:31:12.804256Z",
+          "last_activity_at": "2026-11-25T08:04:52.292567Z",
+          "ended_at": "2026-11-25T08:04:52.292567Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2019488.311,
+          "tokens": null
+        },
+        {
+          "attempt_id": "80395fb5-7b30-4812-82d6-982cadd8c4ff",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T08:06:25.424161Z",
+          "last_activity_at": "2026-11-25T08:07:07.867580Z",
+          "ended_at": "2026-11-25T08:07:07.867580Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 42443.419,
+          "tokens": null
+        },
+        {
+          "attempt_id": "6851f0c8-ddc0-4185-a771-bf89bd742a13",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T08:08:44.492947Z",
+          "last_activity_at": "2026-11-25T08:15:32.652439Z",
+          "ended_at": "2026-11-25T08:15:32.652439Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 408159.492,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T07:31:12.804256Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/ffac50e4-9878-4c6a-9b37-7040ba812273"
+        },
+        {
+          "at": "2026-11-25T08:04:52.292567Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-25T08:06:25.424161Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-25T08:07:07.867580Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-25T08:08:44.492947Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-25T08:15:32.652439Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 2470091.222,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    },
+    {
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "9aa97903-fe91-47a4-b628-243cc5eafeb3",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-25T08:04:52.292606Z",
+          "last_activity_at": "2026-11-25T08:06:25.424086Z",
+          "ended_at": "2026-11-25T08:06:25.424086Z",
+          "outcome": {
+            "summary": "Parser default (indigo_agent_scheduler_header.c:611-614) is correct: applied only with has_target, no @twilight and priority_class != hook. Tasks named as hooks via AGENT_SCHEDULER_HOOKS do get twilight=astronomical, but is_hook() excludes them from selection, eligible_now, the plan inputs and reachability (indigo_agent_scheduler.c:496, 1076, 1777, 2679), so it has no effect; if a task stops being named as a hook it becomes an ordinary target task and the default is then the intended one. requires-site/needs_sky (sky.c:168) already keys on has_target, so no change there. Version bump 0x03000026 -> 0x03000027 OK, unit test target_twilight_default covers default/explicit none/civil/no-target/hook, guide changes accurate, formatting OK. DEFECT (in scope: the ticket asks to update the indigo_test integration tests that assume a @target task runs in daylight without @twilight): indigo_test/integration/run_scheduler_simulators.py (opt-in test_agent_scheduler_simulators / make test-scheduler-simulators) was not updated. It uses the real site 48.15 N 17.11 E at the current time (lines 383-384) and uploads @target tasks without @twilight at lines 413, 419, 428, 432, 449, 454, 472, 579, 606, 607, 626, 628. Outside astronomical darkness these now wait with 'too bright (twilight)' and the cases time out (e.g. wait_task DONE 180/240 s). below_horizon (line 472-475) breaks deterministically in any non-dark hour: indigo_scheduler_sky_point_ok checks twilight (sky.c:174) before the horizon (sky.c:181), so REASON becomes 'too bright (twilight)' and the wait for 'target below the horizon' fails. Fix: add '// @twilight none' to those @target uploads (as done in test_agent_scheduler.c), and run the opt-in suite or state why not. Minor, optional: INDIGO_SCHEDULER_GUIDE.md:1597 'Give the tasks @twilight' is still valid advice but could mention that @target tasks already default to astronomical.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 93131.48,
+          "tokens": null
+        },
+        {
+          "attempt_id": "6435c66f-bc48-430c-b801-f653178bf0d5",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-25T08:07:07.867596Z",
+          "last_activity_at": "2026-11-25T08:08:44.492786Z",
+          "ended_at": "2026-11-25T08:08:44.492786Z",
+          "outcome": {
+            "summary": "Round 2. Round-1 finding fixed: all 12 @target uploads in indigo_test/integration/run_scheduler_simulators.py now carry '@twilight none' (py_compile ok); in indigo_test/integration/test_agent_scheduler.c every @target upload has an explicit @twilight except the hook case at 2870-2871 (named hook Park and @priority hook Spare), which deliberately keeps the default; named hooks are excluded from selection by is_hook() and reachability ignores twilight, so the case stays valid. Parser default (indigo_agent_scheduler_header.c:611-614) is correct: after the hook-conflict check, only when has_target, KEY_TWILIGHT not found and not @priority hook; explicit none wins. Version 0x03000026->0x03000027. Unit test target_twilight_default covers default, explicit none/civil, no target, hook. Benchmark and plan/sky unit tests set @twilight explicitly or build headers directly; tools/ uploads no @target tasks. INDIGO_SCHEDULER_GUIDE.md edits are accurate. Not running the opt-in simulator suite is acceptable for a header-only text change. FINDING (changes): indigo_drivers/agent_scheduler/doc/SCHEDULER.md is the maintained design doc ('implemented as described here'; the guide links it 'for the exact behaviour') and still states the old default: line 183 header-key table '@twilight ... | none' default -> change to ' with , otherwise ' (as in the guide); line 567 'every task keeps its own @twilight, and a task without one may also run outside the scheduler's night' -> e.g. 'a task with @target defaults to @twilight astronomical, and a task without @target and without @twilight may also run outside the scheduler's night'. Line 584 ('through its own @twilight') could mention the default too, optional.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 96625.19,
+          "tokens": null
+        },
+        {
+          "attempt_id": "13fcb040-361e-49e6-8368-92a740ef78f3",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-25T08:15:32.652455Z",
+          "last_activity_at": "2026-11-25T08:16:50.876240Z",
+          "ended_at": "2026-11-25T08:16:50.876240Z",
+          "outcome": {
+            "summary": "Round 3: pass. Round-2 SCHEDULER.md edits verified: key table default (line 183) now \"astronomical with @target, otherwise none\"; night-limit paragraph (567) and night-hook dawn rule (584) state the @target default. Searched SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md, PROPERTIES.md, tools/scheduler_sandbox*.py/txt, benchmark and unit/integration tests: no remaining statement made false by the new default (guide examples with @target and no @twilight make no daylight claim; site-coordinate requirement already covered @target). Parser change (indigo_agent_scheduler_header.c:611-614) applies only with has_target, no explicit @twilight and not @priority hook, after hook-key validation, so explicit none/civil win and @priority hook + @target stays legal with no twilight; named hooks get the default but hooks skip sky checks (integration hook_tasks_are_never_unreachable keeps the default deliberately). DRIVER_VERSION 0x03000026 -> 0x03000027. Unit target_twilight_default covers default, explicit none/civil (either order), no-target and @priority hook. Integration tests and run_scheduler_simulators.py add @twilight none to every @target upload testing other constraints. No defects. Minor, optional: tools/scheduler_sandbox.py help (lines 65-66) mentions only twilight= for the five-minute grid start delay; still true, not required. Note for close: configured unit check last ran at 3000d3f (known baseline failure 523e9999) and must be rerun on the final tree per the checks rule.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 78223.785,
+          "tokens": null
+        },
+        {
+          "attempt_id": "c6027e3e-1695-412d-ba4e-4e64039cbde4",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T09:51:48.528881Z",
+          "last_activity_at": "2026-11-25T09:52:25.873245Z",
+          "ended_at": "2026-11-25T09:52:25.873245Z",
+          "outcome": {
+            "summary": "Post-merge review of the whole candidate against master e19ce03b2 (git diff master, 7 files, +54/-32). Merge: the diff contains only this ticket hunks; indigo_agent_scheduler_sky.c, test_agent_scheduler_plan.c and test_agent_scheduler_sky.c from 523e9999 are identical to master, nothing lost or duplicated. SCHEDULER.md: 523e9999 changed only the indigo_j2k_to_eq line (line 74), this ticket the @twilight default row (183), the night-limit note (567) and the dawn rule (584); no overlap, consistent. Version: master 0x03000027, candidate 0x03000028 (indigo_agent_scheduler.c:28), higher. Implementation indigo_agent_scheduler_header.c:611-614 sets ASTRONOMICAL only for has_target, no KEY_TWILIGHT and non-hook; placed after the hook conflict check, so hooks remain unaffected. Interaction with 523e9999: every parser user outside the integration tests (test_agent_scheduler_plan.c owner_night at 749-756, bench_scheduler_plan.c 164 and 181-205) sets @twilight astronomical explicitly, so the new default changes none of their results; the new sky test builds headers directly. Unit test target_twilight_default covers default, explicit none/civil (either key order), no-target and hook. Integration tests and run_scheduler_simulators.py add @twilight none to @target uploads testing other constraints; INDIGO_SCHEDULER_GUIDE.md table, constraints, grid, troubleshooting and sandbox notes updated. No defects found. Limits: did not run the integration or simulator suites myself; relied on recorded whitespace/unit passes at 02029a793.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 37344.364,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T08:04:52.292606Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T08:06:25.424086Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Parser default (indigo_agent_scheduler_header.c:611-614) is correct: applied only with has_target, no @twilight and priority_class != hook. Tasks named as hooks via AGENT_SCHEDULER_HOOKS do get twilight=astronomical, but is_hook() excludes them from selection, eligible_now, the plan inputs and reachability (indigo_agent_scheduler.c:496, 1076, 1777, 2679), so it has no effect; if a task stops being named as a hook it becomes an ordinary target task and the default is then the intended one. requires-site/needs_sky (sky.c:168) already keys on has_target, so no change there. Version bump 0x03000026 -> 0x03000027 OK, unit test target_twilight_default covers default/explicit none/civil/no-target/hook, guide changes accurate, formatting OK. DEFECT (in scope: the ticket asks to update the indigo_test integration tests that assume a @target task runs in daylight without @twilight): indigo_test/integration/run_scheduler_simulators.py (opt-in test_agent_scheduler_simulators / make test-scheduler-simulators) was not updated. It uses the real site 48.15 N 17.11 E at the current time (lines 383-384) and uploads @target tasks without @twilight at lines 413, 419, 428, 432, 449, 454, 472, 579, 606, 607, 626, 628. Outside astronomical darkness these now wait with 'too bright (twilight)' and the cases time out (e.g. wait_task DONE 180/240 s). below_horizon (line 472-475) breaks deterministically in any non-dark hour: indigo_scheduler_sky_point_ok checks twilight (sky.c:174) before the horizon (sky.c:181), so REASON becomes 'too bright (twilight)' and the wait for 'target below the horizon' fails. Fix: add '// @twilight none' to those @target uploads (as done in test_agent_scheduler.c), and run the opt-in suite or state why not. Minor, optional: INDIGO_SCHEDULER_GUIDE.md:1597 'Give the tasks @twilight' is still valid advice but could mention that @target tasks already default to astronomical."
+        },
+        {
+          "at": "2026-11-25T08:07:07.867596Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T08:08:44.492786Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2. Round-1 finding fixed: all 12 @target uploads in indigo_test/integration/run_scheduler_simulators.py now carry '@twilight none' (py_compile ok); in indigo_test/integration/test_agent_scheduler.c every @target upload has an explicit @twilight except the hook case at 2870-2871 (named hook Park and @priority hook Spare), which deliberately keeps the default; named hooks are excluded from selection by is_hook() and reachability ignores twilight, so the case stays valid. Parser default (indigo_agent_scheduler_header.c:611-614) is correct: after the hook-conflict check, only when has_target, KEY_TWILIGHT not found and not @priority hook; explicit none wins. Version 0x03000026->0x03000027. Unit test target_twilight_default covers default, explicit none/civil, no target, hook. Benchmark and plan/sky unit tests set @twilight explicitly or build headers directly; tools/ uploads no @target tasks. INDIGO_SCHEDULER_GUIDE.md edits are accurate. Not running the opt-in simulator suite is acceptable for a header-only text change. FINDING (changes): indigo_drivers/agent_scheduler/doc/SCHEDULER.md is the maintained design doc ('implemented as described here'; the guide links it 'for the exact behaviour') and still states the old default: line 183 header-key table '@twilight ... | none' default -> change to ' with , otherwise ' (as in the guide); line 567 'every task keeps its own @twilight, and a task without one may also run outside the scheduler's night' -> e.g. 'a task with @target defaults to @twilight astronomical, and a task without @target and without @twilight may also run outside the scheduler's night'. Line 584 ('through its own @twilight') could mention the default too, optional."
+        },
+        {
+          "at": "2026-11-25T08:15:32.652455Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T08:16:50.876240Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 3: pass. Round-2 SCHEDULER.md edits verified: key table default (line 183) now \"astronomical with @target, otherwise none\"; night-limit paragraph (567) and night-hook dawn rule (584) state the @target default. Searched SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md, PROPERTIES.md, tools/scheduler_sandbox*.py/txt, benchmark and unit/integration tests: no remaining statement made false by the new default (guide examples with @target and no @twilight make no daylight claim; site-coordinate requirement already covered @target). Parser change (indigo_agent_scheduler_header.c:611-614) applies only with has_target, no explicit @twilight and not @priority hook, after hook-key validation, so explicit none/civil win and @priority hook + @target stays legal with no twilight; named hooks get the default but hooks skip sky checks (integration hook_tasks_are_never_unreachable keeps the default deliberately). DRIVER_VERSION 0x03000026 -> 0x03000027. Unit target_twilight_default covers default, explicit none/civil (either order), no-target and @priority hook. Integration tests and run_scheduler_simulators.py add @twilight none to every @target upload testing other constraints. No defects. Minor, optional: tools/scheduler_sandbox.py help (lines 65-66) mentions only twilight= for the five-minute grid start delay; still true, not required. Note for close: configured unit check last ran at 3000d3f (known baseline failure 523e9999) and must be rerun on the final tree per the checks rule."
+        },
+        {
+          "at": "2026-11-25T09:51:48.528881Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T09:52:25.873245Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Post-merge review of the whole candidate against master e19ce03b2 (git diff master, 7 files, +54/-32). Merge: the diff contains only this ticket hunks; indigo_agent_scheduler_sky.c, test_agent_scheduler_plan.c and test_agent_scheduler_sky.c from 523e9999 are identical to master, nothing lost or duplicated. SCHEDULER.md: 523e9999 changed only the indigo_j2k_to_eq line (line 74), this ticket the @twilight default row (183), the night-limit note (567) and the dawn rule (584); no overlap, consistent. Version: master 0x03000027, candidate 0x03000028 (indigo_agent_scheduler.c:28), higher. Implementation indigo_agent_scheduler_header.c:611-614 sets ASTRONOMICAL only for has_target, no KEY_TWILIGHT and non-hook; placed after the hook conflict check, so hooks remain unaffected. Interaction with 523e9999: every parser user outside the integration tests (test_agent_scheduler_plan.c owner_night at 749-756, bench_scheduler_plan.c 164 and 181-205) sets @twilight astronomical explicitly, so the new default changes none of their results; the new sky test builds headers directly. Unit test target_twilight_default covers default, explicit none/civil (either key order), no-target and hook. Integration tests and run_scheduler_simulators.py add @twilight none to @target uploads testing other constraints; INDIGO_SCHEDULER_GUIDE.md table, constraints, grid, troubleshooting and sandbox notes updated. No defects found. Limits: did not run the integration or simulator suites myself; relied on recorded whitespace/unit passes at 02029a793."
+        }
+      ],
+      "result": {
+        "summary": "Post-merge review of the whole candidate against master e19ce03b2 (git diff master, 7 files, +54/-32). Merge: the diff contains only this ticket hunks; indigo_agent_scheduler_sky.c, test_agent_scheduler_plan.c and test_agent_scheduler_sky.c from 523e9999 are identical to master, nothing lost or duplicated. SCHEDULER.md: 523e9999 changed only the indigo_j2k_to_eq line (line 74), this ticket the @twilight default row (183), the night-limit note (567) and the dawn rule (584); no overlap, consistent. Version: master 0x03000027, candidate 0x03000028 (indigo_agent_scheduler.c:28), higher. Implementation indigo_agent_scheduler_header.c:611-614 sets ASTRONOMICAL only for has_target, no KEY_TWILIGHT and non-hook; placed after the hook conflict check, so hooks remain unaffected. Interaction with 523e9999: every parser user outside the integration tests (test_agent_scheduler_plan.c owner_night at 749-756, bench_scheduler_plan.c 164 and 181-205) sets @twilight astronomical explicitly, so the new default changes none of their results; the new sky test builds headers directly. Unit test target_twilight_default covers default, explicit none/civil (either key order), no-target and hook. Integration tests and run_scheduler_simulators.py add @twilight none to @target uploads testing other constraints; INDIGO_SCHEDULER_GUIDE.md table, constraints, grid, troubleshooting and sandbox notes updated. No defects found. Limits: did not run the integration or simulator suites myself; relied on recorded whitespace/unit passes at 02029a793.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 305324.819,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 4
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "8ba95e13-3271-445b-8007-d128be8840d7",
+      "event": "ticket/created",
+      "at": "2026-11-25T07:30:30.507665Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "196bc17c-fee9-4a73-9a99-b305f4eefdba",
+      "event": "ticket/confirmed",
+      "at": "2026-11-25T07:30:57.707078Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "208400f9-67b2-4cde-bd0c-9dbecffb975b",
+      "event": "task/progress",
+      "at": "2026-11-25T07:31:12.807721Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Implementation started on branch ticket/ffac50e4-9878-4c6a-9b37-7040ba812273"
+    },
+    {
+      "event_id": "299646eb-468c-4915-a413-59bf20764939",
+      "event": "ticket/started",
+      "at": "2026-11-25T07:31:12.815632Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/ffac50e4-9878-4c6a-9b37-7040ba812273",
+      "base": "master"
+    },
+    {
+      "event_id": "88d81028-7301-44cc-8545-5961119b5fe9",
+      "event": "task/progress",
+      "at": "2026-11-25T07:31:17.167701Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Implementer started: header default and docs",
+      "attempt_id": "816a3e1e-9cfa-464c-9ab6-3bc5aac1343a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "9d49b57b-6a49-45b2-97f9-a8392712975d",
+      "event": "task/progress",
+      "at": "2026-11-25T07:31:42.507311Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "c47a4899-dc1e-4324-b287-f30684052d0d",
+      "event": "task/progress",
+      "at": "2026-11-25T07:32:58.510871Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Check unit failed: exit code 2"
+    },
+    {
+      "event_id": "692d23f8-fa65-4d79-8832-f44be1918963",
+      "event": "check/failed",
+      "at": "2026-11-25T07:32:58.519165Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "3000d3f262cd55d1928acc3ad8c04d875b394877",
+      "checks": "unit FAILED"
+    },
+    {
+      "event_id": "17b960be-1a56-48e2-839a-c4657ed6e2ca",
+      "event": "task/progress",
+      "at": "2026-11-25T07:33:20.743767Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Checking plan unit failure against the baseline parser"
+    },
+    {
+      "event_id": "d3cc4f5e-d605-4ad3-b8aa-f0e798ef598d",
+      "event": "task/progress",
+      "at": "2026-11-25T07:34:06.313845Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Running scheduler unit and integration tests by hand"
+    },
+    {
+      "event_id": "01803270-caf6-4212-bd28-4591ab10ba6e",
+      "event": "ticket/note",
+      "at": "2026-11-25T07:45:15.653448Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Results on the ticket tree: unit header (incl. new target_twilight_default), sky, night pass; integration test_agent_scheduler 173 run/173 passed (run 2026-11-25 07:34 UTC, daylight at the test site). Integration @target tasks that test other constraints got an explicit '@twilight none' so they stay time-of-day independent; the named-hook Park case keeps the default to cover hooks ignoring it. Baseline failure: unit test_agent_scheduler_plan visibility_kept_only_with_starts (test_agent_scheduler_plan.c:1393, info.compact_value > info.value) fails identically with the master header parser rebuilt into the archive; the test builds its headers directly, not through the parser. It blocks the configured 'unit' check.",
+      "tokens": null
+    },
+    {
+      "event_id": "d030546d-8131-48d3-85e0-2fef2c17ad56",
+      "event": "question/asked",
+      "at": "2026-11-25T07:45:15.743400Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "The unit check fails on a pre-existing failure unrelated to this ticket (test_agent_scheduler_plan visibility_kept_only_with_starts, also fails on master). Register it as a separate ticket and close this one with that known failure, or fix it here first?"
+    },
+    {
+      "event_id": "549eb99d-5ffa-4005-86a2-18ac5da8988c",
+      "event": "question/answered",
+      "at": "2026-11-25T08:04:47.259183Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner: register the visibility_kept_only_with_starts failure as a separate ticket and close this one with that known failure recorded."
+    },
+    {
+      "event_id": "0dc81afc-a79c-48c4-90c4-28c7f9b70b16",
+      "event": "task/progress",
+      "at": "2026-11-25T08:04:52.172215Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3ec1df7e-170e-4357-ae05-ab7244d42ef4",
+      "event": "task/progress",
+      "at": "2026-11-25T08:04:52.203088Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "893f7b13-349d-418a-8fc9-a63dd0cf6288",
+      "event": "check/passed",
+      "at": "2026-11-25T08:04:52.208458Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "c7be8a617c38a8356674404966834716ca87aee7",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7d6f54b1-f7b2-446d-9b7a-62e656f68198",
+      "event": "task/progress",
+      "at": "2026-11-25T08:04:52.292658Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Review started"
+    },
+    {
+      "event_id": "4e7a7a4b-cd7d-49a4-aa84-d3319ded21d4",
+      "event": "review/started",
+      "at": "2026-11-25T08:04:52.292971Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "a0a85e86-b1b4-4ea6-a648-2a321f6a63c8",
+      "event": "task/progress",
+      "at": "2026-11-25T08:05:06.320097Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Reviewer started",
+      "attempt_id": "9aa97903-fe91-47a4-b628-243cc5eafeb3",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "14d48bf6-7bea-48a4-b2bf-4b76990854cc",
+      "event": "task/progress",
+      "at": "2026-11-25T08:06:25.424156Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "50477a95-b6c2-4f2a-9d7d-4cf539c05f81",
+      "event": "task/progress",
+      "at": "2026-11-25T08:06:25.424175Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "4162e3ac-be92-4e0d-83ea-e58b87fd0fa2",
+      "event": "review/changes_requested",
+      "at": "2026-11-25T08:06:25.424566Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "c7be8a617c38a8356674404966834716ca87aee7"
+    },
+    {
+      "event_id": "3a66e66b-a538-4d45-8224-eca9bc39621d",
+      "event": "ticket/note",
+      "at": "2026-11-25T08:07:03.789543Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Review round 1 fixes: added '@twilight none' to all 12 @target uploads in indigo_test/integration/run_scheduler_simulators.py (opt-in test-scheduler-simulators), so its cases stay independent of the time of day; clarified the troubleshooting row of INDIGO_SCHEDULER_GUIDE.md. The opt-in simulator suite was not run: it needs a full top-level build (build/bin/indigo_server and dynamic drivers) in the worktree; verified only by py_compile and by review of the edited lines.",
+      "tokens": null
+    },
+    {
+      "event_id": "156fb31e-d094-4a62-98d3-03a2bf41b025",
+      "event": "task/progress",
+      "at": "2026-11-25T08:07:03.995722Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ee8180f8-468e-4941-95b1-d56d06268027",
+      "event": "task/progress",
+      "at": "2026-11-25T08:07:04.019561Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "445790cb-8e3b-495e-b381-77c956cb537a",
+      "event": "check/passed",
+      "at": "2026-11-25T08:07:04.024211Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "dbe7bb401a1ecbd307ab288c881262ccb66e382d",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "480b6e37-849b-41c9-9e2a-65fd1addbbdd",
+      "event": "task/progress",
+      "at": "2026-11-25T08:07:07.794463Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Reviewer round 2 started",
+      "attempt_id": "80395fb5-7b30-4812-82d6-982cadd8c4ff",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "698fe782-718e-4c17-b5f2-abe68bfeeed3",
+      "event": "task/progress",
+      "at": "2026-11-25T08:07:07.867629Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a087af04-77b3-4d4c-a608-fc159a0bef5f",
+      "event": "review/started",
+      "at": "2026-11-25T08:07:07.867879Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "d4c5c989-9521-44c1-a666-17de8148610d",
+      "event": "task/progress",
+      "at": "2026-11-25T08:08:44.492929Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "2d4d9222-533a-420b-88a7-b0a5ccff8506",
+      "event": "task/progress",
+      "at": "2026-11-25T08:08:44.492975Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "5b095535-b1e4-4bf9-a320-d933c00e41e9",
+      "event": "review/changes_requested",
+      "at": "2026-11-25T08:08:44.493976Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "dbe7bb401a1ecbd307ab288c881262ccb66e382d"
+    },
+    {
+      "event_id": "67df853e-6352-4459-bdca-9bc72e8361b5",
+      "event": "task/progress",
+      "at": "2026-11-25T08:08:49.189846Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Review note correction: SCHEDULER.md:183 default should read \"`astronomical` with `@target`, otherwise `none`\""
+    },
+    {
+      "event_id": "4c045735-7f0a-4a4f-8cad-b803c4fe5e93",
+      "event": "question/answered",
+      "at": "2026-11-25T08:15:17.421181Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner: make the three SCHEDULER.md edits (lines 183, 567, 584) and continue with a third review."
+    },
+    {
+      "event_id": "f64931d4-d0c6-4361-941e-15f292caf29c",
+      "event": "task/progress",
+      "at": "2026-11-25T08:15:29.320418Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b3d19daa-fbf8-4135-9fa9-437d0b2f294f",
+      "event": "task/progress",
+      "at": "2026-11-25T08:15:29.347965Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "723a807a-2b02-4c2c-a005-719bf0d3fe35",
+      "event": "check/passed",
+      "at": "2026-11-25T08:15:29.352672Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "1065da9530a25b83a72bdc6c055823eb8b4c2932",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "49ee25ad-8169-4b62-9812-ac02457082af",
+      "event": "task/progress",
+      "at": "2026-11-25T08:15:32.582082Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Reviewer round 3 started",
+      "attempt_id": "6851f0c8-ddc0-4185-a771-bf89bd742a13",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0d3142b7-acab-42c0-9100-1eb503b00760",
+      "event": "task/progress",
+      "at": "2026-11-25T08:15:32.652490Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Review started"
+    },
+    {
+      "event_id": "4bc79474-1792-49bb-a0dc-373237c9cda1",
+      "event": "review/started",
+      "at": "2026-11-25T08:15:32.652738Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "0ebadb49-1b65-417d-ae33-5edbe16f2477",
+      "event": "task/progress",
+      "at": "2026-11-25T08:16:50.876295Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b43f21f3-c760-4536-87de-41a37926c859",
+      "event": "review/passed",
+      "at": "2026-11-25T08:16:50.876682Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "1065da9530a25b83a72bdc6c055823eb8b4c2932"
+    },
+    {
+      "event_id": "b8f65926-5cf4-4fb6-8a4c-187f10ba3de9",
+      "event": "task/progress",
+      "at": "2026-11-25T08:17:07.227405Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "9896d3f4-da51-4bc2-9922-6e46dc36fd09",
+      "event": "task/progress",
+      "at": "2026-11-25T08:17:26.954296Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit failed: exit code 2"
+    },
+    {
+      "event_id": "8732f8b8-a746-400d-9a6a-dc706bb40e7c",
+      "event": "check/failed",
+      "at": "2026-11-25T08:17:26.963687Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "1065da9530a25b83a72bdc6c055823eb8b4c2932",
+      "checks": "unit FAILED"
+    },
+    {
+      "event_id": "71ce4452-e9b1-4e45-b388-fc03e62ea142",
+      "event": "task/progress",
+      "at": "2026-11-25T09:50:24.174333Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "fb16ffd2-4a99-498f-853a-1a96fd90f01b",
+      "text": "Merged master (523e9999), version to 0x03000028, re-running checks"
+    },
+    {
+      "event_id": "c9bdf526-34d1-44d4-9486-9011ea752934",
+      "event": "task/progress",
+      "at": "2026-11-25T09:50:24.392439Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "428a2aa2-c966-4d75-a6dd-ebfc7414897c",
+      "event": "task/progress",
+      "at": "2026-11-25T09:50:24.416707Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e3366429-8551-4105-ab46-0c970479a487",
+      "event": "task/progress",
+      "at": "2026-11-25T09:50:24.423816Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "b6afd9d4-4392-40ab-b919-7007ae93fa7c",
+      "event": "task/progress",
+      "at": "2026-11-25T09:51:31.703178Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "49e7981b-41de-4eb4-8887-3266310cb518",
+      "event": "check/passed",
+      "at": "2026-11-25T09:51:31.715474Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "02029a793ddd4e1ca88ac47c16d6bc00f29f93fe",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "61c16055-84de-4945-bebd-2f19703502b2",
+      "event": "task/progress",
+      "at": "2026-11-25T09:51:48.528995Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f1904df0-914a-41e0-9994-e637baff2bd1",
+      "event": "review/started",
+      "at": "2026-11-25T09:51:48.529463Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "31e379a7-c09e-415f-a30b-9e82b7f1001f",
+      "event": "task/progress",
+      "at": "2026-11-25T09:51:51.387394Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Reviewer (post-merge) started",
+      "attempt_id": "c6027e3e-1695-412d-ba4e-4e64039cbde4",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7ba70e22-f4ae-44b2-9427-06dcf57cbd62",
+      "event": "task/progress",
+      "at": "2026-11-25T09:52:25.873359Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "7ad13a37-221a-484a-be96-691c85a35922",
+      "event": "review/passed",
+      "at": "2026-11-25T09:52:25.873900Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ab11294-1bd9-44ab-98c6-74ca68a374c3",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "02029a793ddd4e1ca88ac47c16d6bc00f29f93fe"
+    },
+    {
+      "event_id": "c5951726-4ced-438e-8702-06d039f024bf",
+      "event": "ticket/note",
+      "at": "2026-11-25T10:02:07.447565Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "After merging master (523e9999) and setting DRIVER_VERSION 0x03000028: flow check whitespace and unit pass (visibility_kept_only_with_starts fixed by 523e9999); integration test_agent_scheduler result recorded in the owner report.",
+      "tokens": null
+    },
+    {
+      "event_id": "ae48e4ac-0c02-4b16-a1b6-19cb3a2a11aa",
+      "event": "ticket/closed",
+      "at": "2026-11-25T10:45:39.707451Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-25T10:45:39.707412Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "5a74e9894b428d6f75e9008da4e4828e8bb5e592"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "3000d3f262cd55d1928acc3ad8c04d875b394877",
+        "tree": "b4645c4e04a31a34796fedad25437345d4b65f0a",
+        "exit_code": 2,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-25T07:32:58.506414Z",
+        "duration_s": 76.0,
+        "log": "/tmp/factory-flow/ffac50e4-9878-4c6a-9b37-7040ba812273/b4645c4e04a3-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c7be8a617c38a8356674404966834716ca87aee7",
+        "tree": "dadd310f6a3156cd343cff14ac4f73a17d29a5df",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T08:04:52.202616Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ffac50e4-9878-4c6a-9b37-7040ba812273/dadd310f6a31-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "dbe7bb401a1ecbd307ab288c881262ccb66e382d",
+        "tree": "10c86a6dab332a09a565ec3a9466f262e2fa829d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T08:07:04.019103Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ffac50e4-9878-4c6a-9b37-7040ba812273/10c86a6dab33-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "1065da9530a25b83a72bdc6c055823eb8b4c2932",
+        "tree": "38f88f081d410f6db5a6b737ef0c6006ffe3c1b3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T08:15:29.347420Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ffac50e4-9878-4c6a-9b37-7040ba812273/38f88f081d41-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "1065da9530a25b83a72bdc6c055823eb8b4c2932",
+        "tree": "38f88f081d410f6db5a6b737ef0c6006ffe3c1b3",
+        "exit_code": 2,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-25T08:17:26.952183Z",
+        "duration_s": 19.7,
+        "log": "/tmp/factory-flow/ffac50e4-9878-4c6a-9b37-7040ba812273/38f88f081d41-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "02029a793ddd4e1ca88ac47c16d6bc00f29f93fe",
+        "tree": "47d2ead9b9da7c38a1c8b4d11a6544f6872cf454",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T09:50:24.416155Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ffac50e4-9878-4c6a-9b37-7040ba812273/47d2ead9b9da-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "02029a793ddd4e1ca88ac47c16d6bc00f29f93fe",
+        "tree": "47d2ead9b9da7c38a1c8b4d11a6544f6872cf454",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T09:51:31.700245Z",
+        "duration_s": 67.3,
+        "log": "/tmp/factory-flow/ffac50e4-9878-4c6a-9b37-7040ba812273/47d2ead9b9da-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Parser default (indigo_agent_scheduler_header.c:611-614) is correct: applied only with has_target, no @twilight and priority_class != hook. Tasks named as hooks via AGENT_SCHEDULER_HOOKS do get twilight=astronomical, but is_hook() excludes them from selection, eligible_now, the plan inputs and reachability (indigo_agent_scheduler.c:496, 1076, 1777, 2679), so it has no effect; if a task stops being named as a hook it becomes an ordinary target task and the default is then the intended one. requires-site/needs_sky (sky.c:168) already keys on has_target, so no change there. Version bump 0x03000026 -> 0x03000027 OK, unit test target_twilight_default covers default/explicit none/civil/no-target/hook, guide changes accurate, formatting OK. DEFECT (in scope: the ticket asks to update the indigo_test integration tests that assume a @target task runs in daylight without @twilight): indigo_test/integration/run_scheduler_simulators.py (opt-in test_agent_scheduler_simulators / make test-scheduler-simulators) was not updated. It uses the real site 48.15 N 17.11 E at the current time (lines 383-384) and uploads @target tasks without @twilight at lines 413, 419, 428, 432, 449, 454, 472, 579, 606, 607, 626, 628. Outside astronomical darkness these now wait with 'too bright (twilight)' and the cases time out (e.g. wait_task DONE 180/240 s). below_horizon (line 472-475) breaks deterministically in any non-dark hour: indigo_scheduler_sky_point_ok checks twilight (sky.c:174) before the horizon (sky.c:181), so REASON becomes 'too bright (twilight)' and the wait for 'target below the horizon' fails. Fix: add '// @twilight none' to those @target uploads (as done in test_agent_scheduler.c), and run the opt-in suite or state why not. Minor, optional: INDIGO_SCHEDULER_GUIDE.md:1597 'Give the tasks @twilight' is still valid advice but could mention that @target tasks already default to astronomical.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "c7be8a617c38a8356674404966834716ca87aee7",
+        "tree": "dadd310f6a3156cd343cff14ac4f73a17d29a5df",
+        "at": "2026-11-25T08:06:25.423985Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 2. Round-1 finding fixed: all 12 @target uploads in indigo_test/integration/run_scheduler_simulators.py now carry '@twilight none' (py_compile ok); in indigo_test/integration/test_agent_scheduler.c every @target upload has an explicit @twilight except the hook case at 2870-2871 (named hook Park and @priority hook Spare), which deliberately keeps the default; named hooks are excluded from selection by is_hook() and reachability ignores twilight, so the case stays valid. Parser default (indigo_agent_scheduler_header.c:611-614) is correct: after the hook-conflict check, only when has_target, KEY_TWILIGHT not found and not @priority hook; explicit none wins. Version 0x03000026->0x03000027. Unit test target_twilight_default covers default, explicit none/civil, no target, hook. Benchmark and plan/sky unit tests set @twilight explicitly or build headers directly; tools/ uploads no @target tasks. INDIGO_SCHEDULER_GUIDE.md edits are accurate. Not running the opt-in simulator suite is acceptable for a header-only text change. FINDING (changes): indigo_drivers/agent_scheduler/doc/SCHEDULER.md is the maintained design doc ('implemented as described here'; the guide links it 'for the exact behaviour') and still states the old default: line 183 header-key table '@twilight ... | none' default -> change to ' with , otherwise ' (as in the guide); line 567 'every task keeps its own @twilight, and a task without one may also run outside the scheduler's night' -> e.g. 'a task with @target defaults to @twilight astronomical, and a task without @target and without @twilight may also run outside the scheduler's night'. Line 584 ('through its own @twilight') could mention the default too, optional.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "dbe7bb401a1ecbd307ab288c881262ccb66e382d",
+        "tree": "10c86a6dab332a09a565ec3a9466f262e2fa829d",
+        "at": "2026-11-25T08:08:44.492640Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3: pass. Round-2 SCHEDULER.md edits verified: key table default (line 183) now \"astronomical with @target, otherwise none\"; night-limit paragraph (567) and night-hook dawn rule (584) state the @target default. Searched SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md, PROPERTIES.md, tools/scheduler_sandbox*.py/txt, benchmark and unit/integration tests: no remaining statement made false by the new default (guide examples with @target and no @twilight make no daylight claim; site-coordinate requirement already covered @target). Parser change (indigo_agent_scheduler_header.c:611-614) applies only with has_target, no explicit @twilight and not @priority hook, after hook-key validation, so explicit none/civil win and @priority hook + @target stays legal with no twilight; named hooks get the default but hooks skip sky checks (integration hook_tasks_are_never_unreachable keeps the default deliberately). DRIVER_VERSION 0x03000026 -> 0x03000027. Unit target_twilight_default covers default, explicit none/civil (either order), no-target and @priority hook. Integration tests and run_scheduler_simulators.py add @twilight none to every @target upload testing other constraints. No defects. Minor, optional: tools/scheduler_sandbox.py help (lines 65-66) mentions only twilight= for the five-minute grid start delay; still true, not required. Note for close: configured unit check last ran at 3000d3f (known baseline failure 523e9999) and must be rerun on the final tree per the checks rule.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "1065da9530a25b83a72bdc6c055823eb8b4c2932",
+        "tree": "38f88f081d410f6db5a6b737ef0c6006ffe3c1b3",
+        "at": "2026-11-25T08:16:50.876155Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Post-merge review of the whole candidate against master e19ce03b2 (git diff master, 7 files, +54/-32). Merge: the diff contains only this ticket hunks; indigo_agent_scheduler_sky.c, test_agent_scheduler_plan.c and test_agent_scheduler_sky.c from 523e9999 are identical to master, nothing lost or duplicated. SCHEDULER.md: 523e9999 changed only the indigo_j2k_to_eq line (line 74), this ticket the @twilight default row (183), the night-limit note (567) and the dawn rule (584); no overlap, consistent. Version: master 0x03000027, candidate 0x03000028 (indigo_agent_scheduler.c:28), higher. Implementation indigo_agent_scheduler_header.c:611-614 sets ASTRONOMICAL only for has_target, no KEY_TWILIGHT and non-hook; placed after the hook conflict check, so hooks remain unaffected. Interaction with 523e9999: every parser user outside the integration tests (test_agent_scheduler_plan.c owner_night at 749-756, bench_scheduler_plan.c 164 and 181-205) sets @twilight astronomical explicitly, so the new default changes none of their results; the new sky test builds headers directly. Unit test target_twilight_default covers default, explicit none/civil (either key order), no-target and hook. Integration tests and run_scheduler_simulators.py add @twilight none to @target uploads testing other constraints; INDIGO_SCHEDULER_GUIDE.md table, constraints, grid, troubleshooting and sandbox notes updated. No defects found. Limits: did not run the integration or simulator suites myself; relied on recorded whitespace/unit passes at 02029a793.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "02029a793ddd4e1ca88ac47c16d6bc00f29f93fe",
+        "tree": "47d2ead9b9da7c38a1c8b4d11a6544f6872cf454",
+        "at": "2026-11-25T09:52:25.873159Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-25T07:45:15.652338Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Results on the ticket tree: unit header (incl. new target_twilight_default), sky, night pass; integration test_agent_scheduler 173 run/173 passed (run 2026-11-25 07:34 UTC, daylight at the test site). Integration @target tasks that test other constraints got an explicit '@twilight none' so they stay time-of-day independent; the named-hook Park case keeps the default to cover hooks ignoring it. Baseline failure: unit test_agent_scheduler_plan visibility_kept_only_with_starts (test_agent_scheduler_plan.c:1393, info.compact_value > info.value) fails identically with the master header parser rebuilt into the archive; the test builds its headers directly, not through the parser. It blocks the configured 'unit' check.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-25T08:07:03.789175Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Review round 1 fixes: added '@twilight none' to all 12 @target uploads in indigo_test/integration/run_scheduler_simulators.py (opt-in test-scheduler-simulators), so its cases stay independent of the time of day; clarified the troubleshooting row of INDIGO_SCHEDULER_GUIDE.md. The opt-in simulator suite was not run: it needs a full top-level build (build/bin/indigo_server and dynamic drivers) in the worktree; verified only by py_compile and by review of the edited lines.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-25T10:02:07.447084Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "After merging master (523e9999) and setting DRIVER_VERSION 0x03000028: flow check whitespace and unit pass (visibility_kept_only_with_starts fixed by 523e9999); integration test_agent_scheduler result recorded in the owner report.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "The unit check fails on a pre-existing failure unrelated to this ticket (test_agent_scheduler_plan visibility_kept_only_with_starts, also fails on master). Register it as a separate ticket and close this one with that known failure, or fix it here first?",
+        "at": "2026-11-25T07:45:15.743041Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Owner: register the visibility_kept_only_with_starts failure as a separate ticket and close this one with that known failure recorded.",
+        "answered_at": "2026-11-25T08:04:47.258619Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      },
+      {
+        "text": null,
+        "at": "2026-11-25T08:15:17.419217Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Owner: make the three SCHEDULER.md edits (lines 183, 567, 584) and continue with a third review.",
+        "answered_at": "2026-11-25T08:15:17.419217Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "5a74e9894b428d6f75e9008da4e4828e8bb5e592",
+      "tree": "47d2ead9b9da7c38a1c8b4d11a6544f6872cf454",
+      "base": "master",
+      "at": "2026-11-25T10:45:39.568654Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-25T07:30:30.506296Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-25T07:30:57.706912Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2775416.041,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 7
+    }
+  },
+  "journal": {
+    "entries": 72,
+    "sha256": "76ddc6f9578ed74470739dab0973b9ab8a8332c333ebf6554b75fe3c0dcd3776"
+  }
+}
