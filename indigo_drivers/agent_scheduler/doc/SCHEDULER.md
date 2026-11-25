@@ -71,7 +71,7 @@ The scheduler is a separate C agent rather than a JavaScript library, for these 
 - The Scripting Agent has one shared Duktape heap, and the sequencer is a singleton. A C agent watches and aborts the sequence from outside it.
 - The agent keeps its task list in its own configuration and is not affected by script errors.
 - Constraints use the C ephemeris functions directly:
-  - `indigo_j2k_to_jnow()` converts the J2000 `@target` to the equinox of date;
+  - `indigo_j2k_to_eq()` converts the J2000 `@target` to the equinox of the start of the sky grid, not of the wall clock, so the same inputs give the same grid whenever it is built;
   - `indigo_radec_to_altaz()` and `indigo_airmass()` give the altitude and airmass;
   - `indigo_raise_set()` gives the rise, transit and set times;
   - `indigocat_sun_equatorial_coords()` and `indigocat_moon_equatorial_coords_coarse()` (`indigocat/indigocat_solar_system.h`) give the Sun and Moon positions in J2000, which the agent precesses to the equinox of the evaluated time with `indigo_precess()`. The coarse Moon call truncates the ELP2000/82 series at 1e-6 rad per term; it stays within about 3.5 arcsec of the full theory and is about 50 times faster.

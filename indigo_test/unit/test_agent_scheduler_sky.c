@@ -40,6 +40,7 @@
 #define T_NOVEMBER_NIGHT	1794524400	// 2026-11-12 23:00 UTC
 #define T_NOVEMBER_MIDNIGHT	1794441600	// 2026-11-12 00:00 UTC
 #define T_NOVEMBER_NOON		1794484800	// 2026-11-12 12:00 UTC
+#define T_2060_MIDNIGHT		2840140800	// 2060-01-01 00:00 UTC
 
 #define LATITUDE			48.15
 #define LONGITUDE			17.11
@@ -109,6 +110,19 @@ static void test_solar_system_in_coordinates_of_date(void) {
 		}
 	}
 	ASSERT_TRUE(worst < 0.1);
+}
+
+// a target is precessed to the date of the grid, not of the wall clock: in 2060 the declination of a target at 0h moves by about 0.33 degree from J2000, the same plan inputs then give the same grid whenever it is built
+static void test_target_in_coordinates_of_grid_date(void) {
+	indigo_scheduler_sky_build(&sky, T_2060_MIDNIGHT, LATITUDE, LONGITUDE, 140);
+	scheduler_header header = make_header();
+	set_target(&header, 0, 0);
+	double ra = 0, dec = 0;
+	indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(T_2060_MIDNIGHT)), &ra, &dec);
+	ASSERT_TRUE(fabs(dec) > 0.25);
+	ASSERT_NEAR(90 - fabs(LATITUDE - dec), target.transit_altitude, 0.001);
+	double hour_angle = fmod(sky.lst[0] - ra + 36, 24) - 12;
+	ASSERT_NEAR(hour_angle, target.hour_angle[0], 0.001);
 }
 
 static void test_grid_alignment_and_coverage(void) {
@@ -592,6 +606,7 @@ int main(void) {
 	indigo_test_case cases[] = {
 		{ "sun_at_equinox", test_sun_at_equinox },
 		{ "solar_system_in_coordinates_of_date", test_solar_system_in_coordinates_of_date },
+		{ "target_in_coordinates_of_grid_date", test_target_in_coordinates_of_grid_date },
 		{ "grid_alignment_and_coverage", test_grid_alignment_and_coverage },
 		{ "moon_phase", test_moon_phase },
 		{ "lorentzian_limit", test_lorentzian_limit },
