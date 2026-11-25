@@ -1,0 +1,668 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8d5617d2-f877-4170-bd4b-df0b0de916f2",
+  "revision": 31,
+  "title": "indigo_agent_scheduler: re-plan VISIBILITY when a run ends a minute or more off its planned end",
+  "description": "Owner request 2026-11-24, follow-up of ticket 667a9411 (commit 5ad8a0f16). Since that fix, a plan computed again after a run finishes is a kept plan (a finished run is progress, not an input change), and vis_exact_starts() in indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c keeps the previous starts exactly while they are still valid; it only moves runs that are less than a minute late, never earlier.\n\nCase 1 (the defect): a run ends earlier than its estimate and the next run, planned directly after its expected end, could start now. The next run keeps its old planned start and select_planned() waits for it. The lost time equals the difference between the estimate and the actual run; for a run that fails or is aborted early without a retry in the plan it is nearly the whole planned duration (e.g. a 2 h run ending after 10 min leaves about 1 h 50 min idle, with IDLE/RESUME hooks around the gap). Before 667a9411 the plan was re-arranged and such a run usually started at once.\n\nCase 3 (minor): a run overruns its estimate. While it runs, update_plan() assumes it ends a minute from now (indigo_agent_scheduler.c, running_end = now + 60), so the next run is re-planned about a minute ahead; when the task ends, the next run can still wait up to about 60 s.\n\nCases 2 and 4 (the next run cannot start before its planned start / must wait after an overrun) behave correctly and must stay so; a run placed later on purpose for better visibility or a window keeps waiting.\n\nProposed: when the plan is computed after a run or hook ends, a run planned directly after it (its planned start within a minute after the ended run's planned or assumed end) starts at the actual end, the same rule as the back-to-back pull of vis_starts(): only when all its constraints hold there and its meridian flip cost does not rise; the runs after it keep their starts unless they were back-to-back too (the chain moves up). Needs the planned or assumed end of the running entry in the previous plan passed to the planner (e.g. include the running entry of the previous plan in previous[], or pass the previous t), since previous[] carries only the runs that are not running. Check the interaction with hooks, the repeat spacing, urgent runs, night hooks (update_plan() computes two plans) and select_planned()'s due check.\n\nTests: unit cases for an early finish with the next run back-to-back (starts at the actual end), an early finish with the next run placed later on purpose (keeps its start), an overrun (next starts at the actual end), and a failed run without retry; an integration case where a task with a long @duration finishes early and the next planned task starts at once. Update doc/SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md, bump the agent version.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-24T20:36:31.933024Z",
+  "status": "closed",
+  "branch": "ticket/8d5617d2-f877-4170-bd4b-df0b0de916f2",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a3004c08-ac70-4562-ae24-5c54a526aeb2",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T20:39:22.146983Z",
+          "last_activity_at": "2026-11-24T21:21:56.354513Z",
+          "ended_at": "2026-11-24T21:21:56.354513Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2554207.53,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T20:39:22.146983Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/8d5617d2-f877-4170-bd4b-df0b0de916f2"
+        },
+        {
+          "at": "2026-11-24T21:21:56.354513Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2554207.53,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "a07eecf7-7c00-4635-963b-8f2919b72f06",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "8b23da3a-4c2c-4f4a-bf82-54f426194bb5",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T21:21:56.354560Z",
+          "last_activity_at": "2026-11-24T21:42:53.886047Z",
+          "ended_at": "2026-11-24T21:42:53.886047Z",
+          "outcome": {
+            "summary": "Net diff vs master reviewed. check_run_end() (indigo_agent_scheduler.c:1373) compares the end with run_start + task_duration(), the same value update_plan uses for the running task (2687-2696) and the running hook (2715-2716); finish_task calls it before measured is updated (1465 vs 1471), hook runs pass once through finish_hook (finish_task delegates at 1458). Other run ends (finish_stop for tasks, deletes, preempt, hand-started sequences) already set plan_changed. select_planned's due check (2827) is skipped after an off-plan end and update_plan clears the flag (2818), so the next plan is passed as an order alone, as the owner decided. Overrun: during an overrun the plan assumes now+60 (2697); an end within 60 s of run_start+duration keeps the plan (accepted wait < ~60 s), later ends re-plan. Verified: integration visibility_early_end_starts_the_next_run passes 3/3 with the change and fails without the two check_run_end calls (Second not DONE after 30 s, line 3288); unit test_agent_scheduler_plan all pass; diff --check clean; version 0x03000025; docs match. Non-blocking nit: the existing comment '// a hook runs outside the state machine of its task' (1371) now sits above check_run_end instead of finish_hook; move it down. Unit visibility_off_plan_end exercises only the unchanged planner (documents the order-alone outcome), the behavior change itself is covered by the integration case.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1257531.487,
+          "tokens": null
+        },
+        {
+          "attempt_id": "2e3f8d84-607b-486f-aac5-1c237a7a983a",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-24T21:45:25.336875Z",
+          "last_activity_at": "2026-11-24T21:45:25.336904Z",
+          "ended_at": "2026-11-24T21:45:25.336904Z",
+          "outcome": {
+            "summary": "Re-review: the only change since the previous pass is the comment fix; '// a hook runs outside the state machine of its task' is again directly above finish_hook() and check_run_end() keeps its own comment (indigo_agent_scheduler.c:1371-1379). Net diff vs master otherwise identical to the reviewed one (5 files, +90/-5); git diff --check clean; worktree has no uncommitted changes. Earlier findings stand: check_run_end uses the same planned end as update_plan, all run-end paths covered, integration case fails without the change and passes with it, docs and version bump correct.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.029,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T21:21:56.354560Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T21:42:53.886047Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Net diff vs master reviewed. check_run_end() (indigo_agent_scheduler.c:1373) compares the end with run_start + task_duration(), the same value update_plan uses for the running task (2687-2696) and the running hook (2715-2716); finish_task calls it before measured is updated (1465 vs 1471), hook runs pass once through finish_hook (finish_task delegates at 1458). Other run ends (finish_stop for tasks, deletes, preempt, hand-started sequences) already set plan_changed. select_planned's due check (2827) is skipped after an off-plan end and update_plan clears the flag (2818), so the next plan is passed as an order alone, as the owner decided. Overrun: during an overrun the plan assumes now+60 (2697); an end within 60 s of run_start+duration keeps the plan (accepted wait < ~60 s), later ends re-plan. Verified: integration visibility_early_end_starts_the_next_run passes 3/3 with the change and fails without the two check_run_end calls (Second not DONE after 30 s, line 3288); unit test_agent_scheduler_plan all pass; diff --check clean; version 0x03000025; docs match. Non-blocking nit: the existing comment '// a hook runs outside the state machine of its task' (1371) now sits above check_run_end instead of finish_hook; move it down. Unit visibility_off_plan_end exercises only the unchanged planner (documents the order-alone outcome), the behavior change itself is covered by the integration case."
+        },
+        {
+          "at": "2026-11-24T21:45:25.336875Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T21:45:25.336904Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review: the only change since the previous pass is the comment fix; '// a hook runs outside the state machine of its task' is again directly above finish_hook() and check_run_end() keeps its own comment (indigo_agent_scheduler.c:1371-1379). Net diff vs master otherwise identical to the reviewed one (5 files, +90/-5); git diff --check clean; worktree has no uncommitted changes. Earlier findings stand: check_run_end uses the same planned end as update_plan, all run-end paths covered, integration case fails without the change and passes with it, docs and version bump correct."
+        }
+      ],
+      "result": {
+        "summary": "Re-review: the only change since the previous pass is the comment fix; '// a hook runs outside the state machine of its task' is again directly above finish_hook() and check_run_end() keeps its own comment (indigo_agent_scheduler.c:1371-1379). Net diff vs master otherwise identical to the reviewed one (5 files, +90/-5); git diff --check clean; worktree has no uncommitted changes. Earlier findings stand: check_run_end uses the same planned end as update_plan, all run-end paths covered, integration case fails without the change and passes with it, docs and version bump correct.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1257531.516,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "bdc1e49b-2928-4ff5-9c50-720663243ca6",
+      "event": "ticket/created",
+      "at": "2026-11-24T20:36:31.933653Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "09e95127-fbe1-48f3-b35c-4b6d1eb26d28",
+      "event": "ticket/confirmed",
+      "at": "2026-11-24T20:39:11.509063Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "dc855424-ba09-4f31-be51-e2b4e547fb8d",
+      "event": "task/progress",
+      "at": "2026-11-24T20:39:22.147079Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Implementation started on branch ticket/8d5617d2-f877-4170-bd4b-df0b0de916f2"
+    },
+    {
+      "event_id": "101fcf6f-a92b-4358-8fcf-d075d1f22759",
+      "event": "ticket/started",
+      "at": "2026-11-24T20:39:22.147759Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/8d5617d2-f877-4170-bd4b-df0b0de916f2",
+      "base": "master"
+    },
+    {
+      "event_id": "be311d80-6377-4c5b-bcf9-217830486d23",
+      "event": "task/progress",
+      "at": "2026-11-24T20:39:22.307776Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Implementer: pull back-to-back runs to the actual end of the finished run",
+      "attempt_id": "a3004c08-ac70-4562-ae24-5c54a526aeb2",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "fb5382c6-4be0-40dc-a189-9bd4fbdfd414",
+      "event": "task/progress",
+      "at": "2026-11-24T20:55:04.507373Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "15343a04-61b2-4b4c-b9a7-c4eee7556af8",
+      "event": "task/progress",
+      "at": "2026-11-24T20:55:04.529325Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2e632870-7217-470f-8d89-7fea64c8fe84",
+      "event": "task/progress",
+      "at": "2026-11-24T20:55:04.534115Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "00f844af-0b65-45a2-ad62-07612040ff43",
+      "event": "task/progress",
+      "at": "2026-11-24T20:57:11.601836Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "45b47be3-4cec-4330-a16e-9a6bd89cf6b8",
+      "event": "check/passed",
+      "at": "2026-11-24T20:57:11.607136Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "81f8ab262ffd49acc33d0c23d01041fd0c968754",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "476c535f-2b18-4da3-b8be-3884840a2985",
+      "event": "ticket/note",
+      "at": "2026-11-24T21:10:39.929063Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision 2026-11-24: drop the chain pull. Instead, a run (or hook) whose actual end differs from its planned end by a minute or more counts as an input change (plan_changed): the plan is computed anew from that moment as before ticket 667a9411 (early end: next run starts at once when best for visibility, otherwise waits on purpose; overrun: rest of the night re-planned, runs that no longer fit dropped by priority). Waiting and runs ending within a minute of their plan keep the drift/stall fix.",
+      "tokens": null
+    },
+    {
+      "event_id": "65dff692-aace-49b8-a0b8-6cc945d5144e",
+      "event": "task/progress",
+      "at": "2026-11-24T21:20:03.792437Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "86bfa4a2-365a-4069-b273-06e2e49389f1",
+      "event": "task/progress",
+      "at": "2026-11-24T21:20:03.813763Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4367fc43-b0ed-4fb1-ba9f-bf6e78fee19f",
+      "event": "task/progress",
+      "at": "2026-11-24T21:20:03.818837Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "48b4c55d-8858-4136-a50a-1b183e71bb88",
+      "event": "task/progress",
+      "at": "2026-11-24T21:21:49.850594Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a46e98b6-0f8b-4f50-9343-47cc4255066c",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "b8353d7a-cd27-46e1-9ad8-0eb89a3d7b72",
+      "event": "check/passed",
+      "at": "2026-11-24T21:21:49.857039Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "54a75909c4b311dfb5d2bf67cb358e6cedbd4845",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "9c322760-aa37-4152-b577-9d93e9c01197",
+      "event": "ticket/note",
+      "at": "2026-11-24T21:21:56.210735Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Rework done: chain pull removed (planner identical to master); agent check_run_end() marks plan_changed when a task or hook ends >= 60 s before or after run_start + task_duration. Tests: integration visibility_early_end_starts_the_next_run fails on master (Second still QUEUED after 30 s) and passes now; unit visibility_off_plan_end documents the planner from the order alone after a 6 min early end and a 2 min overrun (next run at the real end, all runs kept). Unit all pass, integration 172/172, flow check passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "5e55b1a4-59ae-4674-a427-1369d92bc9cc",
+      "event": "task/progress",
+      "at": "2026-11-24T21:21:56.354647Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a07eecf7-7c00-4635-963b-8f2919b72f06",
+      "text": "Review started"
+    },
+    {
+      "event_id": "3d3cf1bd-253f-442b-85d9-ddb46709eb6b",
+      "event": "review/started",
+      "at": "2026-11-24T21:21:56.355317Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "d9b69dba-2b64-4663-b767-92b4010f9e18",
+      "event": "task/progress",
+      "at": "2026-11-24T21:22:14.537229Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a07eecf7-7c00-4635-963b-8f2919b72f06",
+      "text": "Reviewer launched: reading diff",
+      "attempt_id": "8b23da3a-4c2c-4f4a-bf82-54f426194bb5",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a3ff12be-b715-427e-9de4-a08cc5cfeaf2",
+      "event": "task/progress",
+      "at": "2026-11-24T21:23:47.357442Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a07eecf7-7c00-4635-963b-8f2919b72f06",
+      "text": "Building agent and scheduler tests; running visibility unit and integration cases"
+    },
+    {
+      "event_id": "357774c6-75d4-4d31-a9cb-b2b73fcea7ba",
+      "event": "task/progress",
+      "at": "2026-11-24T21:42:53.886139Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a07eecf7-7c00-4635-963b-8f2919b72f06",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "376e1aae-6fa1-43bb-b7b8-ea5284ad6b03",
+      "event": "review/passed",
+      "at": "2026-11-24T21:42:53.886818Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a07eecf7-7c00-4635-963b-8f2919b72f06",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "54a75909c4b311dfb5d2bf67cb358e6cedbd4845"
+    },
+    {
+      "event_id": "1d502b0e-b6ae-4c55-8d9f-8faf4bfecfa4",
+      "event": "task/progress",
+      "at": "2026-11-24T21:43:15.523167Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1230aad9-6b88-43e8-b2dc-a874b6fd6419",
+      "event": "task/progress",
+      "at": "2026-11-24T21:43:15.571524Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "99f498f4-9a39-48c8-bf05-e0a5850b8d3a",
+      "event": "task/progress",
+      "at": "2026-11-24T21:43:15.584894Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "300b71bf-d4de-4f9b-ad3b-d261496fa207",
+      "event": "task/progress",
+      "at": "2026-11-24T21:45:13.050051Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "2e0bf129-f745-475a-b924-f296996b9b52",
+      "event": "check/passed",
+      "at": "2026-11-24T21:45:13.058288Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e96aa467a4e3040a0470b177c55c536f36fac3b2",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "8c3ac098-7323-4710-8330-bce0f67df42c",
+      "event": "task/progress",
+      "at": "2026-11-24T21:45:25.167686Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a07eecf7-7c00-4635-963b-8f2919b72f06",
+      "text": "Re-review after comment fix",
+      "attempt_id": "8b23da3a-4c2c-4f4a-bf82-54f426194bb5",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "502989d3-07bb-4f9f-8b98-a08bcc587d28",
+      "event": "task/progress",
+      "at": "2026-11-24T21:45:25.336974Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a07eecf7-7c00-4635-963b-8f2919b72f06",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d99dd5d2-b460-48a2-a03b-d04c2f5ac20a",
+      "event": "review/passed",
+      "at": "2026-11-24T21:45:25.337704Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a07eecf7-7c00-4635-963b-8f2919b72f06",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "e96aa467a4e3040a0470b177c55c536f36fac3b2"
+    },
+    {
+      "event_id": "c982f1d3-5af1-4706-be63-e8abebcf669e",
+      "event": "ticket/title_changed",
+      "at": "2026-11-25T00:51:58.749610Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: VISIBILITY run planned right after a run that ends early, or after an overrun, waits for its old planned start instead of starting at once",
+      "title": "indigo_agent_scheduler: re-plan VISIBILITY when a run ends a minute or more off its planned end"
+    },
+    {
+      "event_id": "f5cddce9-49f6-4b11-af55-0551569c2a98",
+      "event": "ticket/note",
+      "at": "2026-11-25T00:51:58.883616Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Simulation before commit (scratch harness on bench_scheduler_plan's 1000 random nights, run lengths +-20 %, 10 % aborted early, recompute every 5 min while waiting): A rebuilt always 5600 runs / 417 first-plan runs not made / 951 order changes / 591 next-run moves while waiting / 80.6 %; B master 5543 / 446 / 930 / 22 / 80.3 %; C this ticket 5593 / 421 / 944 / 17 / 80.7 %. Order changes with nothing changed: C 75 (47 during waits, 28 after on-plan runs), traced: 33 local search reordering the kept plan, 13 kept plan rejected by the minute grid although its exact starts are valid (runs lost), the rest by the rules (higher-class run became plannable, runs added). The two defects go to a follow-up ticket.",
+      "tokens": null
+    },
+    {
+      "event_id": "838f2737-df2b-4dc5-aac7-0f0f525528fa",
+      "event": "ticket/closed",
+      "at": "2026-11-25T00:51:59.260628Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-25T00:51:59.260596Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "129d1a96de5c06e647bce446393b5a751c0473c5"
+  },
+  "priority": "high",
+  "severity": "medium",
+  "difficulty": "medium",
+  "proposal": {
+    "priority": "high",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-24T20:36:31.933024Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-24T20:39:11.509001Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 3811739.046,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 39,
+    "sha256": "f527a65f4b389420f0154d77be6683afe2eae413e58615193be0806876a5e675"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "81f8ab262ffd49acc33d0c23d01041fd0c968754",
+        "tree": "8e58045a4e01dba0408a54b9b84aff0144e0f014",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T20:55:04.528562Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/8d5617d2-f877-4170-bd4b-df0b0de916f2/8e58045a4e01-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "81f8ab262ffd49acc33d0c23d01041fd0c968754",
+        "tree": "8e58045a4e01dba0408a54b9b84aff0144e0f014",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T20:57:11.601170Z",
+        "duration_s": 127.1,
+        "log": "/tmp/factory-flow/8d5617d2-f877-4170-bd4b-df0b0de916f2/8e58045a4e01-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "54a75909c4b311dfb5d2bf67cb358e6cedbd4845",
+        "tree": "a37755de3f6f2c435673a9a353e29ccc1347f7a2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T21:20:03.812973Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/8d5617d2-f877-4170-bd4b-df0b0de916f2/a37755de3f6f-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "54a75909c4b311dfb5d2bf67cb358e6cedbd4845",
+        "tree": "a37755de3f6f2c435673a9a353e29ccc1347f7a2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T21:21:49.849821Z",
+        "duration_s": 106.0,
+        "log": "/tmp/factory-flow/8d5617d2-f877-4170-bd4b-df0b0de916f2/a37755de3f6f-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e96aa467a4e3040a0470b177c55c536f36fac3b2",
+        "tree": "537e41f16829e019d74ab5c9583f33deaa28bd08",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T21:43:15.570468Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/8d5617d2-f877-4170-bd4b-df0b0de916f2/537e41f16829-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "e96aa467a4e3040a0470b177c55c536f36fac3b2",
+        "tree": "537e41f16829e019d74ab5c9583f33deaa28bd08",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T21:45:13.049051Z",
+        "duration_s": 117.5,
+        "log": "/tmp/factory-flow/8d5617d2-f877-4170-bd4b-df0b0de916f2/537e41f16829-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Net diff vs master reviewed. check_run_end() (indigo_agent_scheduler.c:1373) compares the end with run_start + task_duration(), the same value update_plan uses for the running task (2687-2696) and the running hook (2715-2716); finish_task calls it before measured is updated (1465 vs 1471), hook runs pass once through finish_hook (finish_task delegates at 1458). Other run ends (finish_stop for tasks, deletes, preempt, hand-started sequences) already set plan_changed. select_planned's due check (2827) is skipped after an off-plan end and update_plan clears the flag (2818), so the next plan is passed as an order alone, as the owner decided. Overrun: during an overrun the plan assumes now+60 (2697); an end within 60 s of run_start+duration keeps the plan (accepted wait < ~60 s), later ends re-plan. Verified: integration visibility_early_end_starts_the_next_run passes 3/3 with the change and fails without the two check_run_end calls (Second not DONE after 30 s, line 3288); unit test_agent_scheduler_plan all pass; diff --check clean; version 0x03000025; docs match. Non-blocking nit: the existing comment '// a hook runs outside the state machine of its task' (1371) now sits above check_run_end instead of finish_hook; move it down. Unit visibility_off_plan_end exercises only the unchanged planner (documents the order-alone outcome), the behavior change itself is covered by the integration case.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "54a75909c4b311dfb5d2bf67cb358e6cedbd4845",
+        "tree": "a37755de3f6f2c435673a9a353e29ccc1347f7a2",
+        "at": "2026-11-24T21:42:53.886011Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review: the only change since the previous pass is the comment fix; '// a hook runs outside the state machine of its task' is again directly above finish_hook() and check_run_end() keeps its own comment (indigo_agent_scheduler.c:1371-1379). Net diff vs master otherwise identical to the reviewed one (5 files, +90/-5); git diff --check clean; worktree has no uncommitted changes. Earlier findings stand: check_run_end uses the same planned end as update_plan, all run-end paths covered, integration case fails without the change and passes with it, docs and version bump correct.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "e96aa467a4e3040a0470b177c55c536f36fac3b2",
+        "tree": "537e41f16829e019d74ab5c9583f33deaa28bd08",
+        "at": "2026-11-24T21:45:25.336845Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-24T21:10:39.928497Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision 2026-11-24: drop the chain pull. Instead, a run (or hook) whose actual end differs from its planned end by a minute or more counts as an input change (plan_changed): the plan is computed anew from that moment as before ticket 667a9411 (early end: next run starts at once when best for visibility, otherwise waits on purpose; overrun: rest of the night re-planned, runs that no longer fit dropped by priority). Waiting and runs ending within a minute of their plan keep the drift/stall fix.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-24T21:21:56.210108Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Rework done: chain pull removed (planner identical to master); agent check_run_end() marks plan_changed when a task or hook ends >= 60 s before or after run_start + task_duration. Tests: integration visibility_early_end_starts_the_next_run fails on master (Second still QUEUED after 30 s) and passes now; unit visibility_off_plan_end documents the planner from the order alone after a 6 min early end and a 2 min overrun (next run at the real end, all runs kept). Unit all pass, integration 172/172, flow check passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-25T00:51:58.882811Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Simulation before commit (scratch harness on bench_scheduler_plan's 1000 random nights, run lengths +-20 %, 10 % aborted early, recompute every 5 min while waiting): A rebuilt always 5600 runs / 417 first-plan runs not made / 951 order changes / 591 next-run moves while waiting / 80.6 %; B master 5543 / 446 / 930 / 22 / 80.3 %; C this ticket 5593 / 421 / 944 / 17 / 80.7 %. Order changes with nothing changed: C 75 (47 during waits, 28 after on-plan runs), traced: 33 local search reordering the kept plan, 13 kept plan rejected by the minute grid although its exact starts are valid (runs lost), the rest by the rules (higher-class run became plannable, runs added). The two defects go to a follow-up ticket.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "129d1a96de5c06e647bce446393b5a751c0473c5",
+      "tree": "537e41f16829e019d74ab5c9583f33deaa28bd08",
+      "base": "master",
+      "at": "2026-11-25T00:51:59.099236Z"
+    }
+  }
+}
