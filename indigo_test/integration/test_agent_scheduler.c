@@ -253,6 +253,32 @@ static bool wait_task_state(const char *name, const char *state_name, double tim
 	return false;
 }
 
+// the task list is published on the agent's next pass, after the reply or the message that announces a removal; the list is deleted and defined again when its labels change, so only a defined list without the task counts
+static bool wait_task_gone(const char *name, double timeout) {
+	char label[INDIGO_VALUE_SIZE] = "";
+	for (double t = 0; t < timeout; t += 0.01) {
+		indigo_property *property = snapshot(AGENT_SCHEDULER_TASK_STATE_PROPERTY_NAME);
+		if (property) {
+			bool found = false;
+			size_t length = strlen(name);
+			for (int i = 0; i < property->count && !found; i++) {
+				const char *item_label = property->items[i].label;
+				if (!strncmp(item_label, name, length) && !strncmp(item_label + length, " | ", 3)) {
+					found = true;
+					strcpy(label, item_label);
+				}
+			}
+			indigo_release_property(property);
+			if (!found) {
+				return true;
+			}
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for task '%s' to be removed, label '%s', messages:\n%s\n", name, label, messages);
+	return false;
+}
+
 static bool wait_scheduler_state(indigo_property_state state, double timeout) {
 	for (double t = 0; t < timeout; t += 0.01) {
 		indigo_property *property = snapshot(AGENT_SCHEDULER_STATE_PROPERTY_NAME);
@@ -1062,7 +1088,7 @@ static void store_edit_and_delete(void) {
 	ASSERT_FALSE(task_label("Alpha", label, NULL));
 	ASSERT_TRUE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Gamma", INDIGO_OK_STATE, NULL));
 	ASSERT_TRUE(snapshot("AGENT_SCHEDULER_TASK_0") == NULL);
-	ASSERT_FALSE(task_label("Gamma", label, NULL));
+	ASSERT_TRUE(wait_task_gone("Gamma", 5));
 	ASSERT_TRUE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Gamma", INDIGO_ALERT_STATE, message));
 	ASSERT_TRUE(strstr(message, "not found") != NULL);
 }
@@ -1205,7 +1231,7 @@ static void urgent_preempts_and_task_is_retried(void) {
 	// the unstored urgent task is gone, the preempted one runs again from the beginning without using a retry
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(wait_message("Starting task 'Long'", 2, 10));
-	ASSERT_FALSE(task_label("Flash", label, NULL));
+	ASSERT_TRUE(wait_task_gone("Flash", 5));
 	ASSERT_TRUE(task_label("Long", label, NULL));
 	ASSERT_TRUE(strstr(label, "retries left 1") != NULL);
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
@@ -1283,8 +1309,7 @@ static void abort_and_delete_running_task(void) {
 	ASSERT_TRUE(wait_task_state("Aborted", "RUNNING", 5));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Aborted", INDIGO_OK_STATE, NULL));
 	ASSERT_TRUE(wait_message("Task 'Aborted' aborted and deleted", 1, 10));
-	char label[INDIGO_VALUE_SIZE];
-	ASSERT_FALSE(task_label("Aborted", label, NULL));
+	ASSERT_TRUE(wait_task_gone("Aborted", 5));
 }
 
 static void edit_of_running_task_is_deferred(void) {
@@ -2501,7 +2526,7 @@ static void hook_priority_class_task_is_not_planned_or_counted(void) {
 	// DELETE_ALL keeps it
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
 	ASSERT_STREQ("Tasks deleted: 1, hook tasks kept: 1", message);
-	ASSERT_FALSE(task_label("Work", label, NULL));
+	ASSERT_TRUE(wait_task_gone("Work", 5));
 	ASSERT_TRUE(task_label("Hook only", label, NULL));
 	ASSERT_EQ_INT(1, task_count());
 }
@@ -2539,7 +2564,7 @@ static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
 	ASSERT_STREQ("Tasks deleted: 3, hook tasks kept: 3", message);
 	char label[INDIGO_VALUE_SIZE];
-	ASSERT_FALSE(task_label("Long", label, NULL));
+	ASSERT_TRUE(wait_task_gone("Long", 5));
 	ASSERT_FALSE(task_label("Other", label, NULL));
 	ASSERT_FALSE(task_label("Pending", label, NULL));
 	ASSERT_TRUE(task_label("Prepare", label, NULL));
