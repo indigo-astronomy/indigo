@@ -24,7 +24,7 @@ driver synscan {
 	label = "SynScan Mount";
 	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
 	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
-	version = 34;
+	version = 35;
 	serial {
 		configurable_speed = true;
 	}
@@ -78,6 +78,9 @@ driver synscan {
 		#define MOUNT_OPERATING_MODE_PROPERTY_NAME         "X_MOUNT_OPERATING_MODE"
 		#define POLAR_MODE_ITEM_NAME                       "POLAR"
 		#define ALTAZ_MODE_ITEM_NAME                       "ALTAZ"
+		#define MOUNT_STEP_POSITION_PROPERTY_NAME          "X_MOUNT_STEP_POSITION"
+		#define MOUNT_STEP_POSITION_RA_ITEM_NAME           "RA"
+		#define MOUNT_STEP_POSITION_DEC_ITEM_NAME          "DEC"
 		#define MOUNT_ENCODER_POSITION_PROPERTY_NAME       "X_MOUNT_ENCODER_POSITION"
 		#define MOUNT_ENCODER_POSITION_RA_ITEM_NAME        "RA"
 		#define MOUNT_ENCODER_POSITION_DEC_ITEM_NAME       "DEC"
@@ -1131,6 +1134,10 @@ driver synscan {
 			if (!synscan_update_axis_positions(device)) {
 				return false;
 			}
+			// Publish a pair only after both existing ':j' reads succeeded, never a partially refreshed axis pair.
+			MOUNT_STEP_POSITION_RA_ITEM->number.value = PRIVATE_DATA->ra_axis_position - 0x800000;
+			MOUNT_STEP_POSITION_DEC_ITEM->number.value = PRIVATE_DATA->dec_axis_position - 0x800000;
+			MOUNT_STEP_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 			double raw_ha = 0;
 			double raw_dec = 0;
@@ -1157,6 +1164,7 @@ driver synscan {
 			if (!IS_CONNECTED || !synscan_read_mount_coordinates(device)) {
 				return false;
 			}
+			indigo_update_property(device, MOUNT_STEP_POSITION_PROPERTY, NULL);
 			indigo_property_state coordinates_state = PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE && !PRIVATE_DATA->sync_pending ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 			MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = coordinates_state;
@@ -1578,6 +1586,7 @@ driver synscan {
 			}
 			// A bad first reading marks only the coordinates, the first poll reads them again; a lost port fails the connection
 			bool coordinates_read = synscan_read_mount_coordinates(device);
+			MOUNT_STEP_POSITION_PROPERTY->state = coordinates_read ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 			if (!coordinates_read) {
 				if (PRIVATE_DATA->handle == NULL) {
 					return false;
@@ -2146,6 +2155,7 @@ driver synscan {
 			if (synscan_update_mount_coordinates(device)) {
 				synscan_update_encoder_position(device);
 			} else if (PRIVATE_DATA->handle != NULL && IS_CONNECTED) {
+				INDIGO_UPDATE_PROPERTY_STATE(MOUNT_STEP_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				bool running = PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_IDLE || MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE;
 				PRIVATE_DATA->position_failures++;
 				synscan_set_coordinate_state(device, running && PRIVATE_DATA->position_failures <= POSITION_READ_RETRIES ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE);
@@ -2775,6 +2785,32 @@ driver synscan {
 				name = ALTAZ_MODE_ITEM_NAME;
 				label = "Alt/Az mode";
 				value = false;
+			}
+		}
+		number MOUNT_STEP_POSITION {
+			name = MOUNT_STEP_POSITION_PROPERTY_NAME;
+			group = MOUNT_ALIGNMENT_GROUP;
+			label = "Motor step position";
+			perm = INDIGO_RO_PERM;
+			// on_attach { }
+			// on_detach { }
+			item MOUNT_STEP_POSITION_RA {
+				name = MOUNT_STEP_POSITION_RA_ITEM_NAME;
+				label = "RA motor (steps)";
+				value = 0;
+				min = -8388608;
+				max = 8388607;
+				step = 1;
+				format = "%.0f";
+			}
+			item MOUNT_STEP_POSITION_DEC {
+				name = MOUNT_STEP_POSITION_DEC_ITEM_NAME;
+				label = "Dec motor (steps)";
+				value = 0;
+				min = -8388608;
+				max = 8388607;
+				step = 1;
+				format = "%.0f";
 			}
 		}
 		number MOUNT_ENCODER_POSITION {
