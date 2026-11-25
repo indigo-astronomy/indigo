@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000025
+#define DRIVER_VERSION 0x03000026
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -72,6 +72,8 @@
 #define SKY_REFRESH_INTERVAL			3600
 #define TICK_INTERVAL							0.5
 #define NIGHT_NOTICE_HORIZON			86400
+// a run or hook that ends this many seconds or more before or after its planned end changes the plan
+#define RUN_END_TOLERANCE					10
 
 #define AGENT_IMAGER_BUSY					0x01
 #define AGENT_MOUNT_BUSY					0x02
@@ -1368,10 +1370,10 @@ static void stop_scheduler(indigo_device *device, indigo_property_state state, c
 	set_scheduler_state(device, state, message);
 }
 
-// a run or hook that ends a minute or more before or after its planned end changes the plan, which is computed anew from its end; one that ends about on time keeps it
+// a run or hook that ends RUN_END_TOLERANCE or more before or after its planned end changes the plan, which is computed anew from its end; one that ends on time keeps it
 static void check_run_end(indigo_device *device, scheduler_task *task, time_t now) {
 	time_t planned = PRIVATE_DATA->run_start + task_duration(task, NULL);
-	if (labs((long)(now - planned)) >= 60) {
+	if (labs((long)(now - planned)) >= RUN_END_TOLERANCE) {
 		PRIVATE_DATA->plan_changed = true;
 	}
 }

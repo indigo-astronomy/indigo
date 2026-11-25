@@ -1274,8 +1274,8 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 		best->count = 0;
 		best->value = VIS_NONE;
 		// a previous plan with starts is kept unless a plan with more runs is found; with the same runs in the same order and its starts still valid it keeps them exactly
-		bool kept = false;
-		time_t kept_starts[SCHEDULER_VISIBILITY_MAX_RUNS];
+		bool kept = false, exact = false;
+		time_t kept_starts[SCHEDULER_VISIBILITY_MAX_RUNS], exact_starts[SCHEDULER_VISIBILITY_MAX_RUNS];
 		int kept_tasks[SCHEDULER_VISIBILITY_MAX_RUNS], kept_count = 0;
 		if (pins_ok && vc->minutes > 0) {
 			long budget = SCHEDULER_VISIBILITY_BUDGET;
@@ -1283,19 +1283,39 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 			long limit = budget / 3;
 			vc->limit = limit;
 			if (previous != NULL && previous_count > 0 && vis_previous_seed(vc, compact, previous, previous_count, seed, kept_tasks, kept_starts, &kept_count)) {
-				vis_search(vc, seed, limit);
-				*best = *seed;
 				// previous starts mean that no input changed: the plan is kept, an order alone only seeds the search
-				for (int k = 0; k < kept_count && !kept; k++) {
-					kept = kept_starts[k] > 0;
+				bool committed = false;
+				for (int k = 0; k < kept_count && !committed; k++) {
+					committed = kept_starts[k] > 0;
 				}
-				kept = kept && best->value > VIS_NONE;
+				if (committed) {
+					// with no run to insert and its starts still valid it is kept exactly, also where the grid of the dynamic programme cannot place it
+					bool same = seed->count == kept_count;
+					for (int k = 0; same && k < kept_count; k++) {
+						same = seed->runs[k].task == kept_tasks[k] && kept_starts[k] > 0;
+					}
+					memcpy(exact_starts, kept_starts, sizeof(time_t) * kept_count);
+					if (same && vis_exact_starts(vc, seed, exact_starts)) {
+						exact = true;
+						seed->value = vis_exact_value(vc, seed, exact_starts);
+					} else {
+						// the runs COMPACT leaves out are added where they fit, its order is not searched again
+						vc->limit = limit;
+						vc->exhausted = false;
+						vis_evaluate(vc, seed);
+						vis_add_left_out(vc, seed);
+					}
+				} else {
+					vis_search(vc, seed, limit);
+				}
+				*best = *seed;
+				kept = committed && best->value > VIS_NONE;
 			}
 			*seed = *compact;
 			vis_search(vc, seed, vc->work + (budget - vc->work) / 2);
 			if (vis_better(seed, best, kept)) {
 				*best = *seed;
-				kept = false;
+				kept = exact = false;
 			}
 			*seed = *compact;
 			for (int a = 1; a < seed->count; a++) {
@@ -1313,7 +1333,7 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 			vis_search(vc, seed, budget);
 			if (vis_better(seed, best, kept)) {
 				*best = *seed;
-				kept = false;
+				kept = exact = false;
 			}
 		}
 		if (compact->count == 0 && best->count == 0) {
@@ -1326,15 +1346,7 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 			info->result = SCHEDULER_VISIBILITY_PLANNED;
 			info->runs = best->count;
 			info->value = best->value;
-			bool exact = kept && best->count == kept_count;
-			for (int k = 0; exact && k < best->count; k++) {
-				exact = best->runs[k].task == kept_tasks[k] && kept_starts[k] > 0;
-			}
-			exact = exact && vis_exact_starts(vc, best, kept_starts);
-			if (exact) {
-				info->value = vis_exact_value(vc, best, kept_starts);
-			}
-			stored = vis_store(vc, best, exact ? kept_starts : NULL, runs, fixed, max_runs);
+			stored = vis_store(vc, best, exact ? exact_starts : NULL, runs, fixed, max_runs);
 		}
 		info->work = vc->work;
 		free(best);

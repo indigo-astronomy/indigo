@@ -3290,6 +3290,22 @@ static void visibility_early_end_starts_the_next_run(void) {
 	ASSERT_EQ_INT(1, count_messages("Starting task 'Second'"));
 }
 
+// a run that ends 30 s before its planned end lets the run planned right after it start at once
+static void visibility_slightly_early_end_starts_the_next_run(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	REQUIRE(upload("// @task First\n// @duration 1\n" BODY_WAIT(30)));
+	REQUIRE(upload("// @task Second\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	REQUIRE(wait_message("Task 'First' completed", 1, 90));
+	time_t completed = time(NULL);
+	time_t started = wait_start("Second", 1, 60);
+	REQUIRE(started > 0);
+	printf("First completed %ld, Second started %ld\n", (long)completed, (long)started);
+	// Second was planned for the end of First's planned minute, 30 s later
+	ASSERT_TRUE(started - completed <= 10);
+	ASSERT_TRUE(wait_task_state("Second", "DONE", 15));
+}
+
 static void visibility_wait_runs_the_idle_hook(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
@@ -5415,6 +5431,7 @@ static const indigo_test_case cases[] = {
 	{ "visibility_starts_at_the_planned_time", visibility_starts_at_the_planned_time },
 	{ "visibility_due_run_starts_after_a_run", visibility_due_run_starts_after_a_run },
 	{ "visibility_early_end_starts_the_next_run", visibility_early_end_starts_the_next_run },
+	{ "visibility_slightly_early_end_starts_the_next_run", visibility_slightly_early_end_starts_the_next_run },
 	{ "visibility_wait_runs_the_idle_hook", visibility_wait_runs_the_idle_hook },
 	{ "visibility_short_wait_keeps_the_idle_hook", visibility_short_wait_keeps_the_idle_hook },
 	{ "visibility_wait_lets_urgent_and_untargeted_tasks_run", visibility_wait_lets_urgent_and_untargeted_tasks_run },
