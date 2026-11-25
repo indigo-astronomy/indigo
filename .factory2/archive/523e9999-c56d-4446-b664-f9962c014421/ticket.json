@@ -1,0 +1,466 @@
+{
+  "schema_version": 1,
+  "ticket_id": "523e9999-c56d-4446-b664-f9962c014421",
+  "revision": 21,
+  "title": "indigo_agent_scheduler: precess targets to the date of the sky grid so plans do not depend on the wall clock, refresh the stale visibility_kept_only_with_starts fixture",
+  "description": "Found while working on ticket ffac50e4 (2026-11-25). indigo_test/build/unit/test_agent_scheduler_plan fails case visibility_kept_only_with_starts with 'unit/test_agent_scheduler_plan.c:1393: assertion failed: info.compact_value > info.value'. Reproduced with the master version of the scheduler sources (header parser rebuilt into the archive); the test builds its headers directly, so it is independent of the @twilight default change. Probably related to the latest VISIBILITY change 704bc478e (keep a VISIBILITY plan as it is while nothing changes, re-plan when a run ends 10 s off its planned end), which may have changed the moment the 39th random queue's COMPACT plan overtakes the kept plan; to confirm. Decide whether the code or the test's expectation (the chosen queue/time t = now + 3009) is wrong, and fix it. This failure makes the configured 'unit' flow check fail for every ticket.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-25T08:04:47.330756Z",
+  "status": "closed",
+  "branch": "ticket/523e9999-c56d-4446-b664-f9962c014421",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "6f45026c-ac03-4372-a684-eacc89c19071",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T08:27:16.055672Z",
+          "last_activity_at": "2026-11-25T09:30:25.277280Z",
+          "ended_at": "2026-11-25T09:30:25.277280Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 3789221.608,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T08:27:16.055672Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/523e9999-c56d-4446-b664-f9962c014421"
+        },
+        {
+          "at": "2026-11-25T09:30:25.277280Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 3789221.608,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "2c4c564e-e62f-4102-b5cc-efecf371e4b0",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "7e7ce4dc-3e94-40cc-bf5b-ed8a9913c05e",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-25T09:30:25.277308Z",
+          "last_activity_at": "2026-11-25T09:46:27.808801Z",
+          "ended_at": "2026-11-25T09:46:27.808801Z",
+          "outcome": {
+            "summary": "Reviewed diff master...HEAD (sky.c 2 lines, DRIVER_VERSION, SCHEDULER.md line, plan test fixture, new sky test). Rebuilt in scratch (no worktree changes): worktree unit binaries sky+plan pass. Code: target_build() and reachability() now precess @target with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(sky->start))), consistent with Sun/Moon per grid point; no other wall-clock input in sky/plan/night/header (plan.c uses indigo_monotonic_time only for info->seconds; budget is a work count). sky->start is the right epoch for both functions; live agent rebuilds the grid hourly at now, so the epoch moves by <= ~1 h (~0.01 arcsec), negligible, and target grids built between rebuilds are now consistent with the sky grid. Verified with an LD_PRELOAD time() shim: new code gives identical plan values at wall clocks 2023, 2026, 2060; old code drifts. New sky test target_in_coordinates_of_grid_date fails on master sky.c (unit/test_agent_scheduler_sky.c:123, 41.9998 vs 42.1840) and passes with the fix; 0.33 deg dec shift for 60 yr at RA 0 is correct; 2840140800 = 2060-01-01 00:00 UTC. Re-derived fixture: loop 0..66 = 67th queue; at now+13182 compact 220.50 < value 267.03 (fails), at 13183/13184 compact 269.74 > 267.03, so the comment (kept against a higher COMPACT at the moment it overtakes; replaced as order alone) still holds. SCHEDULER.md line accurate; formatting ok; git diff --check clean. FINDING (record accuracy, not code): the causal diagnosis in the 09:20 note is not supported. With master plan code the ORIGINAL fixture (39th queue, now+3009) fails at every wall-clock time I tried (scan 1.70e9..1.90e9 step 2e6 s and 1795300000..1795600000 step 600 s, plus 2000 and 2060), with compact_value ~352.6 vs value ~433.8, a gap of ~81 while the wall-clock effect is ~1e-3/day; with the epoch fix it still fails. The new fixture passes with the old sky code too. So the failure is a fixture stale against the plan code (the earlier passing check is unexplained, possibly a stale build; cl",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 962531.493,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T09:30:25.277308Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T09:46:27.808801Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Reviewed diff master...HEAD (sky.c 2 lines, DRIVER_VERSION, SCHEDULER.md line, plan test fixture, new sky test). Rebuilt in scratch (no worktree changes): worktree unit binaries sky+plan pass. Code: target_build() and reachability() now precess @target with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(sky->start))), consistent with Sun/Moon per grid point; no other wall-clock input in sky/plan/night/header (plan.c uses indigo_monotonic_time only for info->seconds; budget is a work count). sky->start is the right epoch for both functions; live agent rebuilds the grid hourly at now, so the epoch moves by <= ~1 h (~0.01 arcsec), negligible, and target grids built between rebuilds are now consistent with the sky grid. Verified with an LD_PRELOAD time() shim: new code gives identical plan values at wall clocks 2023, 2026, 2060; old code drifts. New sky test target_in_coordinates_of_grid_date fails on master sky.c (unit/test_agent_scheduler_sky.c:123, 41.9998 vs 42.1840) and passes with the fix; 0.33 deg dec shift for 60 yr at RA 0 is correct; 2840140800 = 2060-01-01 00:00 UTC. Re-derived fixture: loop 0..66 = 67th queue; at now+13182 compact 220.50 < value 267.03 (fails), at 13183/13184 compact 269.74 > 267.03, so the comment (kept against a higher COMPACT at the moment it overtakes; replaced as order alone) still holds. SCHEDULER.md line accurate; formatting ok; git diff --check clean. FINDING (record accuracy, not code): the causal diagnosis in the 09:20 note is not supported. With master plan code the ORIGINAL fixture (39th queue, now+3009) fails at every wall-clock time I tried (scan 1.70e9..1.90e9 step 2e6 s and 1795300000..1795600000 step 600 s, plus 2000 and 2060), with compact_value ~352.6 vs value ~433.8, a gap of ~81 while the wall-clock effect is ~1e-3/day; with the epoch fix it still fails. The new fixture passes with the old sky code too. So the failure is a fixture stale against the plan code (the earlier passing check is unexplained, possibly a stale build; cl"
+        }
+      ],
+      "result": {
+        "summary": "Reviewed diff master...HEAD (sky.c 2 lines, DRIVER_VERSION, SCHEDULER.md line, plan test fixture, new sky test). Rebuilt in scratch (no worktree changes): worktree unit binaries sky+plan pass. Code: target_build() and reachability() now precess @target with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(sky->start))), consistent with Sun/Moon per grid point; no other wall-clock input in sky/plan/night/header (plan.c uses indigo_monotonic_time only for info->seconds; budget is a work count). sky->start is the right epoch for both functions; live agent rebuilds the grid hourly at now, so the epoch moves by <= ~1 h (~0.01 arcsec), negligible, and target grids built between rebuilds are now consistent with the sky grid. Verified with an LD_PRELOAD time() shim: new code gives identical plan values at wall clocks 2023, 2026, 2060; old code drifts. New sky test target_in_coordinates_of_grid_date fails on master sky.c (unit/test_agent_scheduler_sky.c:123, 41.9998 vs 42.1840) and passes with the fix; 0.33 deg dec shift for 60 yr at RA 0 is correct; 2840140800 = 2060-01-01 00:00 UTC. Re-derived fixture: loop 0..66 = 67th queue; at now+13182 compact 220.50 < value 267.03 (fails), at 13183/13184 compact 269.74 > 267.03, so the comment (kept against a higher COMPACT at the moment it overtakes; replaced as order alone) still holds. SCHEDULER.md line accurate; formatting ok; git diff --check clean. FINDING (record accuracy, not code): the causal diagnosis in the 09:20 note is not supported. With master plan code the ORIGINAL fixture (39th queue, now+3009) fails at every wall-clock time I tried (scan 1.70e9..1.90e9 step 2e6 s and 1795300000..1795600000 step 600 s, plus 2000 and 2060), with compact_value ~352.6 vs value ~433.8, a gap of ~81 while the wall-clock effect is ~1e-3/day; with the epoch fix it still fails. The new fixture passes with the old sky code too. So the failure is a fixture stale against the plan code (the earlier passing check is unexplained, possibly a stale build; cl",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 962531.493,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "98f17bed-a760-43eb-b724-4c9791dd7931",
+      "event": "ticket/created",
+      "at": "2026-11-25T08:04:47.331052Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "94888389-20f8-434f-98e4-e3852b5c90cd",
+      "event": "ticket/confirmed",
+      "at": "2026-11-25T08:21:21.904203Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "e7c2b6a7-3a64-4c73-8e3d-5ebd654fb784",
+      "event": "task/progress",
+      "at": "2026-11-25T08:27:16.059486Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "text": "Implementation started on branch ticket/523e9999-c56d-4446-b664-f9962c014421"
+    },
+    {
+      "event_id": "1328823b-e5de-40d9-adbe-14003af472fd",
+      "event": "ticket/started",
+      "at": "2026-11-25T08:27:16.061455Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/523e9999-c56d-4446-b664-f9962c014421",
+      "base": "master"
+    },
+    {
+      "event_id": "c1e46bd6-af2a-4390-9d24-4fffa6ce7cf4",
+      "event": "task/progress",
+      "at": "2026-11-25T08:27:19.760678Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "text": "Implementer started: bisecting visibility_kept_only_with_starts",
+      "attempt_id": "6f45026c-ac03-4372-a684-eacc89c19071",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "2e30ad21-3ac0-4c87-ad61-6fdeaf8e849b",
+      "event": "task/progress",
+      "at": "2026-11-25T08:30:34.654744Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "text": "Cause: targets precessed to wall-clock epoch; switching to the sky grid epoch"
+    },
+    {
+      "event_id": "074b99e0-db02-4afa-aaa2-aa57bbd2aff7",
+      "event": "task/progress",
+      "at": "2026-11-25T08:48:58.327421Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "09cca83d-d128-4a02-8357-da599ff75b54",
+      "event": "task/progress",
+      "at": "2026-11-25T08:48:58.344519Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c6b1ffd5-20c1-4f63-8ed3-1e50519afcc1",
+      "event": "task/progress",
+      "at": "2026-11-25T08:48:58.349308Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a2fec08c-3017-4f04-a4a0-0ef8b2c1bb0f",
+      "event": "task/progress",
+      "at": "2026-11-25T08:50:25.077118Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "bd493a00-059c-4d7c-a4e8-afca12115039",
+      "event": "check/passed",
+      "at": "2026-11-25T08:50:25.092922Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "aa679711f5df75ce13093fca85f7e38cc0a04d4c",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "3ef348db-ab2b-42ab-879d-d45e1ba7ffc3",
+      "event": "task/progress",
+      "at": "2026-11-25T08:50:29.085103Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "text": "Running integration test_agent_scheduler by hand"
+    },
+    {
+      "event_id": "45e10d69-2a6c-47a8-8d73-9b42b0af90f9",
+      "event": "ticket/note",
+      "at": "2026-11-25T09:20:18.995276Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: test_agent_scheduler_plan visibility_kept_only_with_starts fails on master (also with the plan code of 704bc478e^), deterministically and when run alone, although the identical tree 0bb29906 passed the unit check at 2026-11-25 01:43 UTC. Cause: indigo_scheduler_target_build() and the reachability check precessed @target with indigo_j2k_to_jnow(), i.e. to the wall-clock epoch, so a plan for fixed inputs drifted with the time the tests ran and the knife-edge fixture (39th random queue, t = now + 3009) crossed its threshold. Fix: precess to the epoch of sky->start (indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(sky->start)))), as the Sun and Moon already are. The fixture is re-derived by a scan under the fixed epoch: the first queue/time where the kept plan is kept against a better COMPACT plan and replaced as an order alone is the 67th queue at now + 13183 s (scan of 120 queues at 30 s steps found only this one, refined to the second). New sky unit test target_in_coordinates_of_grid_date (grid in 2060) fails on the old code and passes with the fix. Driver version 0x03000026 -> 0x03000027 (same line as ticket ffac50e4, identical change). flow check whitespace+unit passed. Integration test_agent_scheduler: 1st run 172/173 (failed case not captured), then 173/173 twice; investigating whether it is a flake.",
+      "tokens": null
+    },
+    {
+      "event_id": "c76a2a43-2c06-4a51-b6c2-f2ae357b8792",
+      "event": "ticket/note",
+      "at": "2026-11-25T09:30:22.036622Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Integration test_agent_scheduler on the final tree: 4 runs, 3 x 173/173 and the first 172/173; the failing case of the first run was not captured and did not recur in three logged runs. Treated as an intermittent timing failure, not attributed to this change; not investigated further.",
+      "tokens": null
+    },
+    {
+      "event_id": "c03ec202-7022-4196-8272-b0ff8f875603",
+      "event": "task/progress",
+      "at": "2026-11-25T09:30:25.213897Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "22421b75-3535-4f22-871a-6a244c328c2d",
+      "text": "Reviewer started",
+      "attempt_id": "6f45026c-ac03-4372-a684-eacc89c19071",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "db99de0b-9177-4700-af0f-2a7ba58a1232",
+      "event": "task/progress",
+      "at": "2026-11-25T09:30:25.277344Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c4c564e-e62f-4102-b5cc-efecf371e4b0",
+      "text": "Review started"
+    },
+    {
+      "event_id": "5e8fa44f-aede-4579-bf6b-0d46ef75bc00",
+      "event": "review/started",
+      "at": "2026-11-25T09:30:25.277559Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "b301ecd8-bc4c-4df2-a180-42759abb2735",
+      "event": "task/progress",
+      "at": "2026-11-25T09:30:53.116188Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c4c564e-e62f-4102-b5cc-efecf371e4b0",
+      "text": "Building and running scheduler sky/plan unit tests in the worktree"
+    },
+    {
+      "event_id": "55cf9a73-a02f-4752-9e7d-fbf353a400fe",
+      "event": "task/progress",
+      "at": "2026-11-25T09:46:27.808884Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c4c564e-e62f-4102-b5cc-efecf371e4b0",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "c488ce76-c31a-4590-ab00-c1cc3e6d16c2",
+      "event": "review/passed",
+      "at": "2026-11-25T09:46:27.809284Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c4c564e-e62f-4102-b5cc-efecf371e4b0",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "aa679711f5df75ce13093fca85f7e38cc0a04d4c"
+    },
+    {
+      "event_id": "ca27bfb3-c371-422a-8dd9-4f7a01eb3cd1",
+      "event": "ticket/note",
+      "at": "2026-11-25T09:46:56.867856Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Correction (confirmed by review and by the implementer's own run after the epoch fix): wall-clock epoch drift did NOT cause the failure. The old fixture (39th queue, now + 3009) fails with and without the epoch fix and at every wall-clock time tried (gap about 81 against about 1e-3 per day of drift); the fixture was stale against the plan code, and re-deriving it (67th queue, now + 13183) repaired the test, which also passes with the old sky.c. Why tree 0bb29906 passed the unit check at 01:43 UTC stays unexplained (a stale incremental build is possible). The epoch change is a separate valid fix: plans for fixed inputs no longer depend on when they are computed (verified by the reviewer with a time() shim for 2023, 2026 and 2060). Version: ticket ffac50e4 makes the identical 0x03000027 change; whichever ticket closes second must go to 0x03000028.",
+      "tokens": null
+    },
+    {
+      "event_id": "3c2bdbac-1a07-4001-8d6e-10ff9c733f37",
+      "event": "ticket/title_changed",
+      "at": "2026-11-25T09:50:01.537334Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: unit test visibility_kept_only_with_starts fails on master",
+      "title": "indigo_agent_scheduler: precess targets to the date of the sky grid so plans do not depend on the wall clock, refresh the stale visibility_kept_only_with_starts fixture"
+    },
+    {
+      "event_id": "0ff2c8ee-ab72-48ce-93ed-655a897c59a7",
+      "event": "ticket/closed",
+      "at": "2026-11-25T09:50:08.107934Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-25T09:50:08.107888Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "7468290a95adc30a3698ae50d6af7c77f44beadc"
+  },
+  "priority": "high",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "aa679711f5df75ce13093fca85f7e38cc0a04d4c",
+        "tree": "656305a5d27bff9ea4f62412a1542ba5188ba64f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T08:48:58.344130Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/523e9999-c56d-4446-b664-f9962c014421/656305a5d27b-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "aa679711f5df75ce13093fca85f7e38cc0a04d4c",
+        "tree": "656305a5d27bff9ea4f62412a1542ba5188ba64f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T08:50:25.066026Z",
+        "duration_s": 86.7,
+        "log": "/tmp/factory-flow/523e9999-c56d-4446-b664-f9962c014421/656305a5d27b-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed diff master...HEAD (sky.c 2 lines, DRIVER_VERSION, SCHEDULER.md line, plan test fixture, new sky test). Rebuilt in scratch (no worktree changes): worktree unit binaries sky+plan pass. Code: target_build() and reachability() now precess @target with indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(sky->start))), consistent with Sun/Moon per grid point; no other wall-clock input in sky/plan/night/header (plan.c uses indigo_monotonic_time only for info->seconds; budget is a work count). sky->start is the right epoch for both functions; live agent rebuilds the grid hourly at now, so the epoch moves by <= ~1 h (~0.01 arcsec), negligible, and target grids built between rebuilds are now consistent with the sky grid. Verified with an LD_PRELOAD time() shim: new code gives identical plan values at wall clocks 2023, 2026, 2060; old code drifts. New sky test target_in_coordinates_of_grid_date fails on master sky.c (unit/test_agent_scheduler_sky.c:123, 41.9998 vs 42.1840) and passes with the fix; 0.33 deg dec shift for 60 yr at RA 0 is correct; 2840140800 = 2060-01-01 00:00 UTC. Re-derived fixture: loop 0..66 = 67th queue; at now+13182 compact 220.50 < value 267.03 (fails), at 13183/13184 compact 269.74 > 267.03, so the comment (kept against a higher COMPACT at the moment it overtakes; replaced as order alone) still holds. SCHEDULER.md line accurate; formatting ok; git diff --check clean. FINDING (record accuracy, not code): the causal diagnosis in the 09:20 note is not supported. With master plan code the ORIGINAL fixture (39th queue, now+3009) fails at every wall-clock time I tried (scan 1.70e9..1.90e9 step 2e6 s and 1795300000..1795600000 step 600 s, plus 2000 and 2060), with compact_value ~352.6 vs value ~433.8, a gap of ~81 while the wall-clock effect is ~1e-3/day; with the epoch fix it still fails. The new fixture passes with the old sky code too. So the failure is a fixture stale against the plan code (the earlier passing check is unexplained, possibly a stale build; clean rebuilds of 129d1a96d and 5ad8a0f16 also fail their own visibility tests here), and the test is fixed by the re-derived fixture, while the epoch change is a separate valid determinism fix. Please correct the note (flow note) and keep the close commit message from claiming the epoch drift caused the failure. Version: 0x03000027 collides with the identical bump in open ticket ffac50e4; whichever closes second must bump to 0x03000028.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "aa679711f5df75ce13093fca85f7e38cc0a04d4c",
+        "tree": "656305a5d27bff9ea4f62412a1542ba5188ba64f",
+        "at": "2026-11-25T09:46:27.808400Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-25T09:20:18.994319Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: test_agent_scheduler_plan visibility_kept_only_with_starts fails on master (also with the plan code of 704bc478e^), deterministically and when run alone, although the identical tree 0bb29906 passed the unit check at 2026-11-25 01:43 UTC. Cause: indigo_scheduler_target_build() and the reachability check precessed @target with indigo_j2k_to_jnow(), i.e. to the wall-clock epoch, so a plan for fixed inputs drifted with the time the tests ran and the knife-edge fixture (39th random queue, t = now + 3009) crossed its threshold. Fix: precess to the epoch of sky->start (indigo_j2k_to_eq(indigo_eq_of_date(UT2JD(sky->start)))), as the Sun and Moon already are. The fixture is re-derived by a scan under the fixed epoch: the first queue/time where the kept plan is kept against a better COMPACT plan and replaced as an order alone is the 67th queue at now + 13183 s (scan of 120 queues at 30 s steps found only this one, refined to the second). New sky unit test target_in_coordinates_of_grid_date (grid in 2060) fails on the old code and passes with the fix. Driver version 0x03000026 -> 0x03000027 (same line as ticket ffac50e4, identical change). flow check whitespace+unit passed. Integration test_agent_scheduler: 1st run 172/173 (failed case not captured), then 173/173 twice; investigating whether it is a flake.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-25T09:30:22.036218Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Integration test_agent_scheduler on the final tree: 4 runs, 3 x 173/173 and the first 172/173; the failing case of the first run was not captured and did not recur in three logged runs. Treated as an intermittent timing failure, not attributed to this change; not investigated further.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-25T09:46:56.867442Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Correction (confirmed by review and by the implementer's own run after the epoch fix): wall-clock epoch drift did NOT cause the failure. The old fixture (39th queue, now + 3009) fails with and without the epoch fix and at every wall-clock time tried (gap about 81 against about 1e-3 per day of drift); the fixture was stale against the plan code, and re-deriving it (67th queue, now + 13183) repaired the test, which also passes with the old sky.c. Why tree 0bb29906 passed the unit check at 01:43 UTC stays unexplained (a stale incremental build is possible). The epoch change is a separate valid fix: plans for fixed inputs no longer depend on when they are computed (verified by the reviewer with a time() shim for 2023, 2026 and 2060). Version: ticket ffac50e4 makes the identical 0x03000027 change; whichever ticket closes second must go to 0x03000028.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "7468290a95adc30a3698ae50d6af7c77f44beadc",
+      "tree": "656305a5d27bff9ea4f62412a1542ba5188ba64f",
+      "base": "master",
+      "at": "2026-11-25T09:50:07.985826Z"
+    }
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-25T08:04:47.330756Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-25T08:21:21.904105Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 4751753.101,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 27,
+    "sha256": "bd1d96985debcc1c0496499835e1e177128d846828434c04dd7f53ac61949ad3"
+  }
+}
