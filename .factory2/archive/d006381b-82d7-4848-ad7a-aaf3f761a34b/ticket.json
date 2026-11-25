@@ -1,0 +1,816 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d006381b-82d7-4848-ad7a-aaf3f761a34b",
+  "revision": 35,
+  "title": "indigo_agent_scheduler: with SAFETY_MISSING UNSAFE wait for the first safety information without starting SAFE_DELAY",
+  "description": "Found 2026-11-25 while identifying an intermittent failure of integration case unsafe_hold_survives_a_restart (test_agent_scheduler.c:5321, 'Scheduler started' not received; reproduced 2/12 runs under CPU load). Diagnosis with an instrumented scratch build: right after the agent attaches, evaluate_safety() (indigo_agent_scheduler.c ~2110) runs before the Auxiliary Agent's AGENT_AUX_SAFETY definition has reached it (observed->safety_defined == false). With AGENT_SCHEDULER_SAFETY_MISSING = UNSAFE, that counts as unsafe and sets last_unsafe = now, so a START within SAFE_DELAY of the restart is held for the full SAFE_DELAY (default 10 min) although the saved state was safe and the conditions are safe. The saved '#safety safe <t>' line was correct in the failing runs.\n\nOwner decision (2026-11-25): hold it until it becomes available. With SAFETY_MISSING = UNSAFE, until the first AGENT_AUX_SAFETY definition after the agent attaches, START is held (reason/message as for missing information) but the missing period is not recorded as an unsafe report (last_unsafe is not refreshed); once the property arrives its light decides together with the saved last_unsafe (a saved safe state older than SAFE_DELAY does not postpone the start, a saved unsafe state still counts until now as today). Missing information after the property has been seen (property deleted, agent gone, Idle/Busy light) keeps today's behaviour. With SAFETY_MISSING = SAFE nothing changes.\n\nTests: deterministic integration coverage of the startup window (e.g. the aux stand-in defines AGENT_AUX_SAFETY only after START: the start waits, then starts without SAFE_DELAY; and the saved-unsafe case still waits SAFE_DELAY); unsafe_hold_survives_a_restart must pass reliably under load. Update INDIGO_SCHEDULER_GUIDE.md (Unsafe conditions, restart) and agent_scheduler/doc/SCHEDULER.md; bump DRIVER_VERSION.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-25T12:47:21.567264Z",
+  "status": "closed",
+  "branch": "ticket/d006381b-82d7-4848-ad7a-aaf3f761a34b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "91306d44-7541-410a-aecc-f3f87f7bc8cb",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T12:53:34.578865Z",
+          "last_activity_at": "2026-11-25T13:22:28.374323Z",
+          "ended_at": "2026-11-25T13:22:28.374323Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1733795.458,
+          "tokens": null
+        },
+        {
+          "attempt_id": "f6e0b694-4ca4-4c0c-82e3-88cb34a0194e",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-25T13:24:49.158728Z",
+          "last_activity_at": "2026-11-25T13:42:30.183464Z",
+          "ended_at": "2026-11-25T13:42:30.183464Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1061024.736,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ecf66cfa-ecac-4079-94e0-55591e00cf3f",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-25T13:45:31.593462Z",
+          "last_activity_at": "2026-11-25T13:57:07.791474Z",
+          "ended_at": "2026-11-25T13:57:07.791474Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 696198.012,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T12:53:34.578865Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/d006381b-82d7-4848-ad7a-aaf3f761a34b"
+        },
+        {
+          "at": "2026-11-25T13:22:28.374323Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-25T13:24:49.158728Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-25T13:42:30.183464Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-25T13:45:31.593462Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-25T13:57:07.791474Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 3491018.206,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    },
+    {
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "62e5591c-3dec-4c2c-82bc-b6cb1824c146",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-25T13:22:28.374479Z",
+          "last_activity_at": "2026-11-25T13:24:49.158658Z",
+          "ended_at": "2026-11-25T13:24:49.158658Z",
+          "outcome": {
+            "summary": "Changes requested (one concrete defect).\n\n1. [defect] indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:2129-2139: the end of the await is not saved. While awaited, unsafe_now=true and unsafe_missing=true, and the save writes \"#safety safe <old>\" (line 814) or no #safety line when last_unsafe==0. When the first AGENT_AUX_SAFETY definition then has an Idle or Busy light (the real Auxiliary Agent defines it Idle until a weather source is selected and connected), seen becomes true and last_unsafe is refreshed every pass, but unsafe and unsafe_missing do not change, so schedule_save() is not called. If the await lasted longer than SAVE_DELAY (2 s), e.g. the Auxiliary Agent loaded after the scheduler, the history file keeps the stale safe state while the agent is reporting unsafe; a restart (shutdown saves only when save_due>0, line 3739) then loads it as safe, and a START with an Ok light after the restart does not wait SAFE_DELAY. On master the first missing pass saved \"unsafe\". This contradicts \"missing information after the property has been seen keeps today's behaviour\". Fix: compute the awaited flag into a local and add \"|| awaited != PRIVATE_DATA->safety_awaited\" to the change condition at line 2134 (or call schedule_save when the flag changes).\n\nMinor, non-blocking:\n2. Restart during the await after a loaded \"#safety unsafe\" line: load sets last_unsafe=time(NULL) (line 854), the await then saves \"safe <load time>\" (line 814), so a second restart before the property arrives no longer counts the downtime between the two restarts as unsafe (master would have saved \"unsafe\"). Small impact (only the time between the restarts is lost); the owner may accept it or keep the loaded unsafe state while awaited.\n3. Owner observation, not a defect against the decision: the real Auxiliary Agent defines AGENT_AUX_SAFETY with an Idle light at attach, which counts as seen-then-missing, so after a real server restart the SAFE_DELAY still applies; the fix helps only when the f",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 140784.179,
+          "tokens": null
+        },
+        {
+          "attempt_id": "4eefcdd0-9fa8-44cf-aa4a-909138a8b089",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-25T13:42:30.183547Z",
+          "last_activity_at": "2026-11-25T13:45:31.593393Z",
+          "ended_at": "2026-11-25T13:45:31.593393Z",
+          "outcome": {
+            "summary": "Round 2. Code verified correct: safety_seen set only on an Ok/Alert light under observed->mutex and never reset (indigo_agent_scheduler.c:3874-3876, per-attach private data); evaluate_safety (2118-2145) leaves last_unsafe untouched while awaited, and awaited is part of the change condition (2138), so the end of the wait schedules a save, including the case where the first Ok is followed by Idle/deletion before the next pass (unsafe and unsafe_missing unchanged); save keeps saved_unsafe while awaited (814-817), load sets saved_unsafe and last_unsafe=now for unsafe (857-858); START (3256-3260) and running hold (2911) use unsafe_now as before; DRIVER_VERSION 0x03000029 > 0x03000028; git diff --check clean. Test missing_safety_is_awaited_without_safe_delay discriminates both master (1 min delay after missing) and the round-1 definition-based variant (Idle definition step), runs in a fresh child per case; passed 3/3 here, plus unsafe_hold_survives_a_restart, missing_safety_counts_as_unsafe_when_selected, start_waits_for_safe_conditions passed. DEFECT (docs): indigo_docs/INDIGO_SCHEDULER_GUIDE.md:697 says that when the first Ok arrives the scheduler starts at once, without SAFE_DELAY. That is false when the saved state was unsafe (START waits SAFE_DELAY after the restart, as the same guide says at 1201 and in the restart section ~1574 and as SCHEDULER.md states) or when the saved last unsafe report is less than SAFE_DELAY old. Also after the scheduler starts reads as the START command, while the wait is counted from the agent being loaded (since the agent attached). Fix: e.g. ...holds START without counting the wait as an unsafe report: when the first Ok arrives, the wait adds no SAFE_DELAY of its own; an unsafe state saved before a restart, or an unsafe report less than SAFE_DELAY before it, still delays the start; and use since the agent was loaded / since the server started instead of after the scheduler starts. Non-blocking note: while awaited the plan hold_end (2685)",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 181409.846,
+          "tokens": null
+        },
+        {
+          "attempt_id": "56c4ad26-d9b2-411c-87ea-b739a8707474",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T13:57:07.791584Z",
+          "last_activity_at": "2026-11-25T13:57:44.308748Z",
+          "ended_at": "2026-11-25T13:57:44.308748Z",
+          "outcome": {
+            "summary": "Round 3: pass. The round-2 doc fix is correct: INDIGO_SCHEDULER_GUIDE.md:697 now says the wait before the first Ok or Alert since the agent was loaded adds no SAFE_DELAY of its own, and that a saved unsafe state or an unsafe report less than SAFE_DELAY before the restart still delays the start. This matches restore_history (indigo_agent_scheduler.c:857-858, last_unsafe = load time for a saved unsafe state, else the saved time) and hold_remaining/hold_safe (2148-2156). The Safety rules line (guide:1198) matches evaluate_safety (2118-2145): awaited = unsafe && !alerted && !seen does not refresh last_unsafe, and observe_property (3872-3878) sets safety_seen only on an Ok or Alert light and never resets it. SCHEDULER.md (Safety paragraph, test list) agrees with the guide and the code, including the save keeping the saved state while awaited (814-817) and the save scheduled when the wait ends (the awaited change at 2138). Re-checked the whole candidate: the code, the new integration case missing_safety_is_awaited_without_safe_delay (test_agent_scheduler.c:5233-5262, registered at 5568) and DRIVER_VERSION 0x03000028 -> 0x03000029. git diff --check master...HEAD is clean, and the last commit touches only the guide (2 lines). Non-blocking notes outside the ticket scope: guide:681 and the last sentence of guide:697 still say the current Auxiliary Agent never computes the safety, while SCHEDULER.md says it computes AGENT_AUX_SAFETY from AUX_WEATHER_SAFETY. Both texts were there before this change. Tests were not rerun by this reviewer; the code is unchanged since the 174/174 run.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 36517.164,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T13:22:28.374479Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T13:24:49.158658Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested (one concrete defect).\n\n1. [defect] indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:2129-2139: the end of the await is not saved. While awaited, unsafe_now=true and unsafe_missing=true, and the save writes \"#safety safe <old>\" (line 814) or no #safety line when last_unsafe==0. When the first AGENT_AUX_SAFETY definition then has an Idle or Busy light (the real Auxiliary Agent defines it Idle until a weather source is selected and connected), seen becomes true and last_unsafe is refreshed every pass, but unsafe and unsafe_missing do not change, so schedule_save() is not called. If the await lasted longer than SAVE_DELAY (2 s), e.g. the Auxiliary Agent loaded after the scheduler, the history file keeps the stale safe state while the agent is reporting unsafe; a restart (shutdown saves only when save_due>0, line 3739) then loads it as safe, and a START with an Ok light after the restart does not wait SAFE_DELAY. On master the first missing pass saved \"unsafe\". This contradicts \"missing information after the property has been seen keeps today's behaviour\". Fix: compute the awaited flag into a local and add \"|| awaited != PRIVATE_DATA->safety_awaited\" to the change condition at line 2134 (or call schedule_save when the flag changes).\n\nMinor, non-blocking:\n2. Restart during the await after a loaded \"#safety unsafe\" line: load sets last_unsafe=time(NULL) (line 854), the await then saves \"safe <load time>\" (line 814), so a second restart before the property arrives no longer counts the downtime between the two restarts as unsafe (master would have saved \"unsafe\"). Small impact (only the time between the restarts is lost); the owner may accept it or keep the loaded unsafe state while awaited.\n3. Owner observation, not a defect against the decision: the real Auxiliary Agent defines AGENT_AUX_SAFETY with an Idle light at attach, which counts as seen-then-missing, so after a real server restart the SAFE_DELAY still applies; the fix helps only when the f"
+        },
+        {
+          "at": "2026-11-25T13:42:30.183547Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T13:45:31.593393Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2. Code verified correct: safety_seen set only on an Ok/Alert light under observed->mutex and never reset (indigo_agent_scheduler.c:3874-3876, per-attach private data); evaluate_safety (2118-2145) leaves last_unsafe untouched while awaited, and awaited is part of the change condition (2138), so the end of the wait schedules a save, including the case where the first Ok is followed by Idle/deletion before the next pass (unsafe and unsafe_missing unchanged); save keeps saved_unsafe while awaited (814-817), load sets saved_unsafe and last_unsafe=now for unsafe (857-858); START (3256-3260) and running hold (2911) use unsafe_now as before; DRIVER_VERSION 0x03000029 > 0x03000028; git diff --check clean. Test missing_safety_is_awaited_without_safe_delay discriminates both master (1 min delay after missing) and the round-1 definition-based variant (Idle definition step), runs in a fresh child per case; passed 3/3 here, plus unsafe_hold_survives_a_restart, missing_safety_counts_as_unsafe_when_selected, start_waits_for_safe_conditions passed. DEFECT (docs): indigo_docs/INDIGO_SCHEDULER_GUIDE.md:697 says that when the first Ok arrives the scheduler starts at once, without SAFE_DELAY. That is false when the saved state was unsafe (START waits SAFE_DELAY after the restart, as the same guide says at 1201 and in the restart section ~1574 and as SCHEDULER.md states) or when the saved last unsafe report is less than SAFE_DELAY old. Also after the scheduler starts reads as the START command, while the wait is counted from the agent being loaded (since the agent attached). Fix: e.g. ...holds START without counting the wait as an unsafe report: when the first Ok arrives, the wait adds no SAFE_DELAY of its own; an unsafe state saved before a restart, or an unsafe report less than SAFE_DELAY before it, still delays the start; and use since the agent was loaded / since the server started instead of after the scheduler starts. Non-blocking note: while awaited the plan hold_end (2685)"
+        },
+        {
+          "at": "2026-11-25T13:57:07.791584Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T13:57:44.308748Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 3: pass. The round-2 doc fix is correct: INDIGO_SCHEDULER_GUIDE.md:697 now says the wait before the first Ok or Alert since the agent was loaded adds no SAFE_DELAY of its own, and that a saved unsafe state or an unsafe report less than SAFE_DELAY before the restart still delays the start. This matches restore_history (indigo_agent_scheduler.c:857-858, last_unsafe = load time for a saved unsafe state, else the saved time) and hold_remaining/hold_safe (2148-2156). The Safety rules line (guide:1198) matches evaluate_safety (2118-2145): awaited = unsafe && !alerted && !seen does not refresh last_unsafe, and observe_property (3872-3878) sets safety_seen only on an Ok or Alert light and never resets it. SCHEDULER.md (Safety paragraph, test list) agrees with the guide and the code, including the save keeping the saved state while awaited (814-817) and the save scheduled when the wait ends (the awaited change at 2138). Re-checked the whole candidate: the code, the new integration case missing_safety_is_awaited_without_safe_delay (test_agent_scheduler.c:5233-5262, registered at 5568) and DRIVER_VERSION 0x03000028 -> 0x03000029. git diff --check master...HEAD is clean, and the last commit touches only the guide (2 lines). Non-blocking notes outside the ticket scope: guide:681 and the last sentence of guide:697 still say the current Auxiliary Agent never computes the safety, while SCHEDULER.md says it computes AGENT_AUX_SAFETY from AUX_WEATHER_SAFETY. Both texts were there before this change. Tests were not rerun by this reviewer; the code is unchanged since the 174/174 run."
+        }
+      ],
+      "result": {
+        "summary": "Round 3: pass. The round-2 doc fix is correct: INDIGO_SCHEDULER_GUIDE.md:697 now says the wait before the first Ok or Alert since the agent was loaded adds no SAFE_DELAY of its own, and that a saved unsafe state or an unsafe report less than SAFE_DELAY before the restart still delays the start. This matches restore_history (indigo_agent_scheduler.c:857-858, last_unsafe = load time for a saved unsafe state, else the saved time) and hold_remaining/hold_safe (2148-2156). The Safety rules line (guide:1198) matches evaluate_safety (2118-2145): awaited = unsafe && !alerted && !seen does not refresh last_unsafe, and observe_property (3872-3878) sets safety_seen only on an Ok or Alert light and never resets it. SCHEDULER.md (Safety paragraph, test list) agrees with the guide and the code, including the save keeping the saved state while awaited (814-817) and the save scheduled when the wait ends (the awaited change at 2138). Re-checked the whole candidate: the code, the new integration case missing_safety_is_awaited_without_safe_delay (test_agent_scheduler.c:5233-5262, registered at 5568) and DRIVER_VERSION 0x03000028 -> 0x03000029. git diff --check master...HEAD is clean, and the last commit touches only the guide (2 lines). Non-blocking notes outside the ticket scope: guide:681 and the last sentence of guide:697 still say the current Auxiliary Agent never computes the safety, while SCHEDULER.md says it computes AGENT_AUX_SAFETY from AUX_WEATHER_SAFETY. Both texts were there before this change. Tests were not rerun by this reviewer; the code is unchanged since the 174/174 run.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 358711.189,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "8df20fba-18c5-4a13-98d7-d5dcc4cbe201",
+      "event": "ticket/created",
+      "at": "2026-11-25T12:47:21.568439Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "ba0a8777-953e-4b77-b158-6ad7ca7a8011",
+      "event": "ticket/confirmed",
+      "at": "2026-11-25T12:53:01.035719Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "51cc6166-c9d7-45ef-81ac-f905421434ff",
+      "event": "task/progress",
+      "at": "2026-11-25T12:53:34.582650Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Implementation started on branch ticket/d006381b-82d7-4848-ad7a-aaf3f761a34b"
+    },
+    {
+      "event_id": "42438a2b-c9b7-430a-9e06-2f877c4ae664",
+      "event": "ticket/started",
+      "at": "2026-11-25T12:53:34.596304Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/d006381b-82d7-4848-ad7a-aaf3f761a34b",
+      "base": "master"
+    },
+    {
+      "event_id": "91eebf77-0b5d-4670-8de5-b4d00bb7b332",
+      "event": "task/progress",
+      "at": "2026-11-25T12:53:35.179929Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Implementer started",
+      "attempt_id": "91306d44-7541-410a-aecc-f3f87f7bc8cb",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "1d3064b2-762a-44d0-a436-1c782ea8115b",
+      "event": "task/progress",
+      "at": "2026-11-25T13:00:29.997021Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Building; running the new safety case against new and master agent"
+    },
+    {
+      "event_id": "2019a66e-8e03-4829-909d-85a5c48d46f4",
+      "event": "task/progress",
+      "at": "2026-11-25T13:11:16.280990Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Docs updated; running full integration suite and checks"
+    },
+    {
+      "event_id": "0d58111f-94a6-4e13-bc98-63799a8e5320",
+      "event": "task/progress",
+      "at": "2026-11-25T13:22:04.486852Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f56227fd-169d-4546-ac5f-6098f97a772a",
+      "event": "task/progress",
+      "at": "2026-11-25T13:22:04.517265Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "acbc6f9b-8da1-41a0-9da8-7a0f9b411b7e",
+      "event": "check/passed",
+      "at": "2026-11-25T13:22:04.522802Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "507e2308254d022d9ba7b7dc687b685884ccf9d1",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "86253104-5862-4f85-bc4f-797743ec1a71",
+      "event": "ticket/note",
+      "at": "2026-11-25T13:22:24.603290Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implementation: observed->safety_seen is set on the first AGENT_AUX_SAFETY definition after attach and never reset; evaluate_safety() marks an unsafe that is only missing information before that (unsafe && !alerted && !seen) as safety_awaited: unsafe_now stays true (the start/hold waits, reason 'no safety information, treated as unsafe'), but last_unsafe is not refreshed, and save_history writes the state as 'safe' while awaited. A saved unsafe state still sets last_unsafe to the load time. DRIVER_VERSION 0x03000028 -> 0x03000029. Tests: new integration case missing_safety_is_awaited_without_safe_delay (SAFE_DELAY 1 min; START without the Auxiliary Agent waits; aux attached Ok -> 'Safe conditions, the scheduler starts' within 5 s; then property deleted after being seen -> hold, redefined Ok -> no start within 3 s) fails on the master agent at the 'scheduler starts' wait and passes 3/3 with the fix. unsafe_hold_survives_a_restart under 6 busy loops on 4 cores: master 2/12 failed, fix 0/24. Full integration suite 174/174; flow check whitespace passed. Docs: INDIGO_SCHEDULER_GUIDE.md (SAFETY_MISSING paragraph, safety rules) and SCHEDULER.md (Safety paragraph, test list).",
+      "tokens": null
+    },
+    {
+      "event_id": "ad93393d-4361-4811-8e5a-8ff006b79c6f",
+      "event": "task/progress",
+      "at": "2026-11-25T13:22:28.374553Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Review started"
+    },
+    {
+      "event_id": "340afd13-e378-4df8-8a4c-41395e62c756",
+      "event": "review/started",
+      "at": "2026-11-25T13:22:28.376276Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "dac8fa72-afd3-44b7-a6ef-8d9656ca1c1c",
+      "event": "task/progress",
+      "at": "2026-11-25T13:22:28.567673Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Reviewer started",
+      "attempt_id": "62e5591c-3dec-4c2c-82bc-b6cb1824c146",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "32eba0fa-cff7-4d6c-ac4b-b4595e00614c",
+      "event": "task/progress",
+      "at": "2026-11-25T13:23:51.174458Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Running the new integration case and unsafe_hold_survives_a_restart"
+    },
+    {
+      "event_id": "107fdd7d-da68-4305-a410-1285de1aec40",
+      "event": "task/progress",
+      "at": "2026-11-25T13:24:49.158723Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "4a3214fd-aace-41ce-8ca2-a3cbe49c4070",
+      "event": "task/progress",
+      "at": "2026-11-25T13:24:49.158741Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "6a231574-815c-4139-8b90-da67b19d634a",
+      "event": "review/changes_requested",
+      "at": "2026-11-25T13:24:49.159088Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "507e2308254d022d9ba7b7dc687b685884ccf9d1"
+    },
+    {
+      "event_id": "a23fc989-774c-40a9-9a64-1c9b0a3d4ebd",
+      "event": "ticket/note",
+      "at": "2026-11-25T13:26:17.535042Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision after review round 1 (2026-11-25): the wait ends at the first Ok or Alert light of AGENT_AUX_SAFETY.SAFE since the agent attached, not at the first definition (the real Auxiliary Agent defines it Idle until a weather source reports). Until then a missing property, Idle or Busy holds without being an unsafe report; afterwards missing information counts as today. While waiting after a saved unsafe state, the save keeps 'unsafe'. Also fix the review defect: the end of the wait must schedule a save.",
+      "tokens": null
+    },
+    {
+      "event_id": "cab25ee2-a7a8-4bf0-be17-0dc721fe3752",
+      "event": "task/progress",
+      "at": "2026-11-25T13:42:04.465847Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "78fe8565-8443-4728-92b3-df2e02e91edb",
+      "event": "task/progress",
+      "at": "2026-11-25T13:42:04.491143Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "be7dc6de-f278-4f32-aa80-a5d1aa52e89f",
+      "event": "check/passed",
+      "at": "2026-11-25T13:42:04.496258Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "9abfeb091d698de791361611a4f36b8c18400548",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "b7bb6fd9-7f58-43a8-9d3a-021c6c6f23f2",
+      "event": "task/progress",
+      "at": "2026-11-25T13:42:30.183617Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Review started"
+    },
+    {
+      "event_id": "9c0bb60f-c81d-4e55-b890-b0520d424b9d",
+      "event": "review/started",
+      "at": "2026-11-25T13:42:30.183983Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "d146b76a-e7d9-40b0-b085-68bd8916cd13",
+      "event": "task/progress",
+      "at": "2026-11-25T13:42:30.288744Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Reviewer round 2 started",
+      "attempt_id": "4eefcdd0-9fa8-44cf-aa4a-909138a8b089",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3ff607f3-726a-4e02-af75-d298b6048646",
+      "event": "task/progress",
+      "at": "2026-11-25T13:43:52.970699Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Building and running missing_safety_is_awaited_without_safe_delay and restart cases"
+    },
+    {
+      "event_id": "9e1c04a1-2a24-4daf-809e-0a50ed2a9cae",
+      "event": "task/progress",
+      "at": "2026-11-25T13:45:31.593457Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "d4870993-8e22-4f68-8e56-0402631e0566",
+      "event": "task/progress",
+      "at": "2026-11-25T13:45:31.593475Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "c0099343-5d27-4a8a-9abe-77be2c0b0103",
+      "event": "review/changes_requested",
+      "at": "2026-11-25T13:45:31.593809Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "82db6287b0a6c2af1fcbfaeb45f95b1d2d905044"
+    },
+    {
+      "event_id": "ab8c386c-6bf0-411f-a180-37962fcc7998",
+      "event": "task/progress",
+      "at": "2026-11-25T13:52:07.098499Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1ef78db8-70e0-487d-b93e-03c2228c3813",
+      "event": "task/progress",
+      "at": "2026-11-25T13:52:07.148283Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "424ba7dd-aeb9-4d73-bd10-5f65c1bd10c2",
+      "event": "check/passed",
+      "at": "2026-11-25T13:52:07.154643Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "82db6287b0a6c2af1fcbfaeb45f95b1d2d905044",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "15112c67-978a-4c80-a9d7-6b1f0cfe8ebe",
+      "event": "question/answered",
+      "at": "2026-11-25T13:57:03.637551Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner: make the proposed guide edit (line 697: the wait adds no SAFE_DELAY of its own; a saved unsafe state or a recent unsafe report still delays the start; counted since the agent was loaded) and continue with a third review."
+    },
+    {
+      "event_id": "ee79a766-efdf-482f-99d2-fb7b650a6e48",
+      "event": "task/progress",
+      "at": "2026-11-25T13:57:03.941461Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c2967c52-cb61-42da-81b2-1823f34d6bd1",
+      "event": "task/progress",
+      "at": "2026-11-25T13:57:03.965685Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "ae9ed6b3-813d-4218-9668-c70aba869beb",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "980142a6-fab7-4cc1-8246-e374f4196e37",
+      "event": "check/passed",
+      "at": "2026-11-25T13:57:03.974241Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "c7c6a11587619e39853899e5e4c84e7795dd1d1f",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "d2cda35a-b31a-4685-b725-64d842c4dbb5",
+      "event": "task/progress",
+      "at": "2026-11-25T13:57:07.791652Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Review started"
+    },
+    {
+      "event_id": "5c6fef22-5033-4a18-8abf-f3dd88977cb0",
+      "event": "review/started",
+      "at": "2026-11-25T13:57:07.792289Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "88b68a27-64fb-49c4-920a-1a84b95018ff",
+      "event": "task/progress",
+      "at": "2026-11-25T13:57:07.944901Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Reviewer round 3 started",
+      "attempt_id": "56c4ad26-d9b2-411c-87ea-b739a8707474",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "71dfd87f-3a6e-4f89-a01c-ecfbdb605cb4",
+      "event": "task/progress",
+      "at": "2026-11-25T13:57:44.308810Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "9a25c096-e694-4cc7-adf0-b000b80b12a9",
+      "event": "review/passed",
+      "at": "2026-11-25T13:57:44.309210Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a0f124c1-af10-4681-ac14-32a2dfd40888",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "c7c6a11587619e39853899e5e4c84e7795dd1d1f"
+    },
+    {
+      "event_id": "e4b647c5-423a-4ff8-a4f8-6a6122dcb508",
+      "event": "ticket/title_changed",
+      "at": "2026-11-25T13:59:43.925742Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: with SAFETY_MISSING=UNSAFE hold START until the safety property arrives after a restart instead of adding SAFE_DELAY",
+      "title": "indigo_agent_scheduler: with SAFETY_MISSING UNSAFE wait for the first safety information without starting SAFE_DELAY"
+    },
+    {
+      "event_id": "5fe3ea8d-e1d9-48ba-9a85-2d0049133672",
+      "event": "ticket/closed",
+      "at": "2026-11-25T13:59:44.221168Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-25T13:59:44.221143Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "7fa21b1545a6ee8482721244f862b6e32082ec9f"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "507e2308254d022d9ba7b7dc687b685884ccf9d1",
+        "tree": "28dcbd625cc0219d99930b5589fbd46735091722",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T13:22:04.516876Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d006381b-82d7-4848-ad7a-aaf3f761a34b/28dcbd625cc0-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9abfeb091d698de791361611a4f36b8c18400548",
+        "tree": "6f13a0beb9a2d85b36ca7253a3a2944e32168692",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T13:42:04.490685Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d006381b-82d7-4848-ad7a-aaf3f761a34b/6f13a0beb9a2-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "82db6287b0a6c2af1fcbfaeb45f95b1d2d905044",
+        "tree": "bd8caad67c08d9d203e65ac8550cf4ae71419c18",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T13:52:07.147526Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d006381b-82d7-4848-ad7a-aaf3f761a34b/bd8caad67c08-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c7c6a11587619e39853899e5e4c84e7795dd1d1f",
+        "tree": "80ce053717e9dacd68a10437c4a4acde2b8eae8c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T13:57:03.965179Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d006381b-82d7-4848-ad7a-aaf3f761a34b/80ce053717e9-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Changes requested (one concrete defect).\n\n1. [defect] indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:2129-2139: the end of the await is not saved. While awaited, unsafe_now=true and unsafe_missing=true, and the save writes \"#safety safe <old>\" (line 814) or no #safety line when last_unsafe==0. When the first AGENT_AUX_SAFETY definition then has an Idle or Busy light (the real Auxiliary Agent defines it Idle until a weather source is selected and connected), seen becomes true and last_unsafe is refreshed every pass, but unsafe and unsafe_missing do not change, so schedule_save() is not called. If the await lasted longer than SAVE_DELAY (2 s), e.g. the Auxiliary Agent loaded after the scheduler, the history file keeps the stale safe state while the agent is reporting unsafe; a restart (shutdown saves only when save_due>0, line 3739) then loads it as safe, and a START with an Ok light after the restart does not wait SAFE_DELAY. On master the first missing pass saved \"unsafe\". This contradicts \"missing information after the property has been seen keeps today's behaviour\". Fix: compute the awaited flag into a local and add \"|| awaited != PRIVATE_DATA->safety_awaited\" to the change condition at line 2134 (or call schedule_save when the flag changes).\n\nMinor, non-blocking:\n2. Restart during the await after a loaded \"#safety unsafe\" line: load sets last_unsafe=time(NULL) (line 854), the await then saves \"safe <load time>\" (line 814), so a second restart before the property arrives no longer counts the downtime between the two restarts as unsafe (master would have saved \"unsafe\"). Small impact (only the time between the restarts is lost); the owner may accept it or keep the loaded unsafe state while awaited.\n3. Owner observation, not a defect against the decision: the real Auxiliary Agent defines AGENT_AUX_SAFETY with an Idle light at attach, which counts as seen-then-missing, so after a real server restart the SAFE_DELAY still applies; the fix helps only when the first definition already carries Ok/Alert. INDIGO_SCHEDULER_GUIDE.md:697 \"for example after a server restart ... when the safety arrives Ok, the scheduler starts at once\" is accurate only in that sense. Also, the same await applies to a running scheduler switched from SAFE to UNSAFE without an aux agent: HOLD_RUN aborts the task and runs UNSAFE, and the hold ends without SAFE_DELAY once Ok arrives; consistent with \"not an unsafe report\", but the docs mention only START.\n\nVerified: safety_seen read under observed->mutex (2116-2121), written in observe_property under the same mutex (3802), never reset on delete (3943-3945); private data zeroed per INDIGO_DRIVER_INIT (3977), so seen is per attach. START path (3251-3254), enter_hold, process_hold and update_plan hold_end (2680) behave correctly while awaited; an Alert on first definition refreshes last_unsafe. Test missing_safety_is_awaited_without_safe_delay discriminates (master keeps refreshing last_unsafe, so with SAFE_DELAY 1 min the \"scheduler starts\" wait of 5 s fails) and its second part would fail if seen were reset on delete; timings are generous. Ran in the worktree: missing_safety_is_awaited_without_safe_delay, unsafe_hold_survives_a_restart, missing_safety_counts_as_unsafe_when_selected each 1/1 passed (single runs, no load test). DRIVER_VERSION 0x03000028 -> 0x03000029 correct. Formatting fine. SCHEDULER.md text accurate.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "507e2308254d022d9ba7b7dc687b685884ccf9d1",
+        "tree": "28dcbd625cc0219d99930b5589fbd46735091722",
+        "at": "2026-11-25T13:24:49.158604Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 2. Code verified correct: safety_seen set only on an Ok/Alert light under observed->mutex and never reset (indigo_agent_scheduler.c:3874-3876, per-attach private data); evaluate_safety (2118-2145) leaves last_unsafe untouched while awaited, and awaited is part of the change condition (2138), so the end of the wait schedules a save, including the case where the first Ok is followed by Idle/deletion before the next pass (unsafe and unsafe_missing unchanged); save keeps saved_unsafe while awaited (814-817), load sets saved_unsafe and last_unsafe=now for unsafe (857-858); START (3256-3260) and running hold (2911) use unsafe_now as before; DRIVER_VERSION 0x03000029 > 0x03000028; git diff --check clean. Test missing_safety_is_awaited_without_safe_delay discriminates both master (1 min delay after missing) and the round-1 definition-based variant (Idle definition step), runs in a fresh child per case; passed 3/3 here, plus unsafe_hold_survives_a_restart, missing_safety_counts_as_unsafe_when_selected, start_waits_for_safe_conditions passed. DEFECT (docs): indigo_docs/INDIGO_SCHEDULER_GUIDE.md:697 says that when the first Ok arrives the scheduler starts at once, without SAFE_DELAY. That is false when the saved state was unsafe (START waits SAFE_DELAY after the restart, as the same guide says at 1201 and in the restart section ~1574 and as SCHEDULER.md states) or when the saved last unsafe report is less than SAFE_DELAY old. Also after the scheduler starts reads as the START command, while the wait is counted from the agent being loaded (since the agent attached). Fix: e.g. ...holds START without counting the wait as an unsafe report: when the first Ok arrives, the wait adds no SAFE_DELAY of its own; an unsafe state saved before a restart, or an unsafe report less than SAFE_DELAY before it, still delays the start; and use since the agent was loaded / since the server started instead of after the scheduler starts. Non-blocking note: while awaited the plan hold_end (2685) is now + SAFE_DELAY, a pessimistic estimate that is replanned when the wait ends; no change required.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "82db6287b0a6c2af1fcbfaeb45f95b1d2d905044",
+        "tree": "bd8caad67c08d9d203e65ac8550cf4ae71419c18",
+        "at": "2026-11-25T13:45:31.593335Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3: pass. The round-2 doc fix is correct: INDIGO_SCHEDULER_GUIDE.md:697 now says the wait before the first Ok or Alert since the agent was loaded adds no SAFE_DELAY of its own, and that a saved unsafe state or an unsafe report less than SAFE_DELAY before the restart still delays the start. This matches restore_history (indigo_agent_scheduler.c:857-858, last_unsafe = load time for a saved unsafe state, else the saved time) and hold_remaining/hold_safe (2148-2156). The Safety rules line (guide:1198) matches evaluate_safety (2118-2145): awaited = unsafe && !alerted && !seen does not refresh last_unsafe, and observe_property (3872-3878) sets safety_seen only on an Ok or Alert light and never resets it. SCHEDULER.md (Safety paragraph, test list) agrees with the guide and the code, including the save keeping the saved state while awaited (814-817) and the save scheduled when the wait ends (the awaited change at 2138). Re-checked the whole candidate: the code, the new integration case missing_safety_is_awaited_without_safe_delay (test_agent_scheduler.c:5233-5262, registered at 5568) and DRIVER_VERSION 0x03000028 -> 0x03000029. git diff --check master...HEAD is clean, and the last commit touches only the guide (2 lines). Non-blocking notes outside the ticket scope: guide:681 and the last sentence of guide:697 still say the current Auxiliary Agent never computes the safety, while SCHEDULER.md says it computes AGENT_AUX_SAFETY from AUX_WEATHER_SAFETY. Both texts were there before this change. Tests were not rerun by this reviewer; the code is unchanged since the 174/174 run.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "c7c6a11587619e39853899e5e4c84e7795dd1d1f",
+        "tree": "80ce053717e9dacd68a10437c4a4acde2b8eae8c",
+        "at": "2026-11-25T13:57:44.308668Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-25T13:22:24.602634Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implementation: observed->safety_seen is set on the first AGENT_AUX_SAFETY definition after attach and never reset; evaluate_safety() marks an unsafe that is only missing information before that (unsafe && !alerted && !seen) as safety_awaited: unsafe_now stays true (the start/hold waits, reason 'no safety information, treated as unsafe'), but last_unsafe is not refreshed, and save_history writes the state as 'safe' while awaited. A saved unsafe state still sets last_unsafe to the load time. DRIVER_VERSION 0x03000028 -> 0x03000029. Tests: new integration case missing_safety_is_awaited_without_safe_delay (SAFE_DELAY 1 min; START without the Auxiliary Agent waits; aux attached Ok -> 'Safe conditions, the scheduler starts' within 5 s; then property deleted after being seen -> hold, redefined Ok -> no start within 3 s) fails on the master agent at the 'scheduler starts' wait and passes 3/3 with the fix. unsafe_hold_survives_a_restart under 6 busy loops on 4 cores: master 2/12 failed, fix 0/24. Full integration suite 174/174; flow check whitespace passed. Docs: INDIGO_SCHEDULER_GUIDE.md (SAFETY_MISSING paragraph, safety rules) and SCHEDULER.md (Safety paragraph, test list).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-25T13:26:17.534638Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision after review round 1 (2026-11-25): the wait ends at the first Ok or Alert light of AGENT_AUX_SAFETY.SAFE since the agent attached, not at the first definition (the real Auxiliary Agent defines it Idle until a weather source reports). Until then a missing property, Idle or Busy holds without being an unsafe report; afterwards missing information counts as today. While waiting after a saved unsafe state, the save keeps 'unsafe'. Also fix the review defect: the end of the wait must schedule a save.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": null,
+        "at": "2026-11-25T13:57:03.636725Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Owner: make the proposed guide edit (line 697: the wait adds no SAFE_DELAY of its own; a saved unsafe state or a recent unsafe report still delays the start; counted since the agent was loaded) and continue with a third review.",
+        "answered_at": "2026-11-25T13:57:03.636725Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "7fa21b1545a6ee8482721244f862b6e32082ec9f",
+      "tree": "80ce053717e9dacd68a10437c4a4acde2b8eae8c",
+      "base": "master",
+      "at": "2026-11-25T13:59:44.075869Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-25T12:47:21.567264Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-25T12:53:01.035662Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 3849729.395,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 6
+    }
+  },
+  "journal": {
+    "entries": 55,
+    "sha256": "cc5eebccd63f96e81de196b61b83555fc53d58192a76ef7e21cb8164751add9d"
+  }
+}
