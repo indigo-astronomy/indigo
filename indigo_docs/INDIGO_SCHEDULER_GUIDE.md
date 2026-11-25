@@ -678,7 +678,7 @@ A session then runs like this:
 
 The safety needs the Auxiliary Agent (`indigo_agent_auxiliary`), loaded on the same server as the Scheduler Agent. The scheduler can follow a safety signal, for example from a weather station or a cloud sensor. It reads the light `AGENT_AUX_SAFETY` of the Auxiliary Agent: item `SAFE` Ok means safe, Alert means unsafe, Idle means no information. The scheduler only reads the light.
 
-> **Note:** The current Auxiliary Agent defines `AGENT_AUX_SAFETY` but does not compute it yet, so the light always stays Idle, which is no information. `AGENT_SCHEDULER_SAFETY_MISSING`, below, then decides. Keep it at `SAFE` until the Auxiliary Agent computes the safety.
+> **Note:** The Auxiliary Agent computes `AGENT_AUX_SAFETY` from `AUX_WEATHER_SAFETY` of the weather devices selected in its `FILTER_AUX_1_LIST` to `FILTER_AUX_4_LIST`: Alert if any of them reports unsafe, otherwise Ok if at least one reports safe. Until a weather source is selected, and again after every source is lost, the light is Idle, which is no information, and `AGENT_SCHEDULER_SAFETY_MISSING`, below, decides. See the Auxiliary agent section of [PROPERTIES.md](PROPERTIES.md#auxiliary-agent).
 
 When the conditions become unsafe while the scheduler runs, it enters the **unsafe hold** at once:
 
@@ -694,7 +694,7 @@ The hold ends when the conditions have been safe for `SAFE_DELAY` minutes withou
 
 `START` while the conditions are unsafe does not start right away. The state message is `Unsafe conditions, the start waits for safe conditions`, and `STARTUP` runs once the conditions have been safe for `SAFE_DELAY`. `STOP` and `ABORT` work during the hold as usual, and run `SHUTDOWN`.
 
-`AGENT_SCHEDULER_SAFETY_MISSING` decides what happens when there is no safety information: no Auxiliary Agent, no `AGENT_AUX_SAFETY`, or an Idle light. `SAFE` (the default) ignores it, so a setup without a safety signal works as before. `UNSAFE` holds the scheduler until a safe signal arrives. Until the first Ok or Alert since the agent was loaded, for example after a server restart while the Auxiliary Agent is still Idle, or when it is loaded later, `UNSAFE` holds `START` without counting the wait as an unsafe report: the wait adds no `SAFE_DELAY` of its own. An unsafe state saved before a restart, or an unsafe report less than `SAFE_DELAY` before it, still delays the start as usual. With the current Auxiliary Agent no safe signal ever arrives, so `UNSAFE` holds the scheduler permanently.
+`AGENT_SCHEDULER_SAFETY_MISSING` decides what happens when there is no safety information: no Auxiliary Agent, no `AGENT_AUX_SAFETY`, or an Idle light. `SAFE` (the default) ignores it, so a setup without a safety signal works as before. `UNSAFE` holds the scheduler until a safe signal arrives. Until the first Ok or Alert since the agent was loaded, for example after a server restart while the Auxiliary Agent is still Idle, or when it is loaded later, `UNSAFE` holds `START` without counting the wait as an unsafe report: the wait adds no `SAFE_DELAY` of its own. An unsafe state saved before a restart, or an unsafe report less than `SAFE_DELAY` before it, still delays the start as usual. Without a selected weather source the Auxiliary Agent stays Idle, so `UNSAFE` holds the scheduler until a source is selected and reports safe conditions.
 
 **Example: close on rain.** Add two hooks to the observatory above. `Close` parks the mount and closes the dome, `Open` opens it again:
 
