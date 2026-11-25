@@ -1,0 +1,370 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9782dc45-2a0d-4c01-a03f-449c003d7df8",
+  "revision": 13,
+  "title": "indigo_docs: describe how the Auxiliary Agent computes AGENT_AUX_SAFETY in the scheduler guide",
+  "description": "Found 2026-11-25 in review of ticket d006381b. INDIGO_SCHEDULER_GUIDE.md has two outdated statements: the note at ~line 681 ('The current Auxiliary Agent defines AGENT_AUX_SAFETY but does not compute it yet, so the light always stays Idle ... Keep it at SAFE until the Auxiliary Agent computes the safety') and the last sentence of the AGENT_SCHEDULER_SAFETY_MISSING paragraph at ~line 697 ('With the current Auxiliary Agent no safe signal ever arrives, so UNSAFE holds the scheduler permanently'). indigo_agent_auxiliary now computes AGENT_AUX_SAFETY from AUX_WEATHER_SAFETY of the aux devices selected in FILTER_AUX_1_LIST..FILTER_AUX_4_LIST (see indigo_drivers/agent_auxiliary and the Safety paragraph of indigo_drivers/agent_scheduler/doc/SCHEDULER.md and the Auxiliary agent section of PROPERTIES.md): Idle until a weather source is selected and again after every source is lost. Rewrite both passages to describe the current behaviour consistently with SCHEDULER.md; documentation only.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-25T14:00:31.868076Z",
+  "status": "closed",
+  "branch": "ticket/9782dc45-2a0d-4c01-a03f-449c003d7df8",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "639650e5-6fb0-4ade-bd0c-ac147fe34528",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "17c0b467-bcab-426a-af5d-e7173706d18d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T14:01:20.205403Z",
+          "last_activity_at": "2026-11-25T14:02:12.945833Z",
+          "ended_at": "2026-11-25T14:02:12.945833Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 52740.43,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T14:01:20.205403Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/9782dc45-2a0d-4c01-a03f-449c003d7df8"
+        },
+        {
+          "at": "2026-11-25T14:02:12.945833Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 52740.43,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "40d60980-bb5c-4210-8c29-56d4606d28fb",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "44ccbe6e-8a15-4fef-ab90-a89fa3c2aab7",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T14:02:12.945915Z",
+          "last_activity_at": "2026-11-25T14:02:30.310823Z",
+          "ended_at": "2026-11-25T14:02:30.310823Z",
+          "outcome": {
+            "summary": "Pass. Documentation-only diff in indigo_docs/INDIGO_SCHEDULER_GUIDE.md:681 and :697. Verified against indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c: compute_safety() (152-227) combines AUX_WEATHER_SAFETY of the FILTER_AUX_1..4 slots with combine_light() (91-96, ALERT over OK over IDLE), the SAFE light stays IDLE without a source and after the last source is lost (property ALERT, message \"Weather safety source lost\"), matching the new note. Wording consistent with indigo_docs/PROPERTIES.md:579 and indigo_drivers/agent_scheduler/doc/SCHEDULER.md:608. Link PROPERTIES.md#auxiliary-agent resolves to \"### Auxiliary agent\" (PROPERTIES.md:568), relative path correct from indigo_docs/. No other stale \"does not compute\"/\"permanently\" statement remains in the guide (checked lines 49, 64, 94, 679, 947, 1193, 1594). Style matches surrounding plain English. whitespace check passed. No defects.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 17364.908,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T14:02:12.945915Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T14:02:30.310823Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Documentation-only diff in indigo_docs/INDIGO_SCHEDULER_GUIDE.md:681 and :697. Verified against indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c: compute_safety() (152-227) combines AUX_WEATHER_SAFETY of the FILTER_AUX_1..4 slots with combine_light() (91-96, ALERT over OK over IDLE), the SAFE light stays IDLE without a source and after the last source is lost (property ALERT, message \"Weather safety source lost\"), matching the new note. Wording consistent with indigo_docs/PROPERTIES.md:579 and indigo_drivers/agent_scheduler/doc/SCHEDULER.md:608. Link PROPERTIES.md#auxiliary-agent resolves to \"### Auxiliary agent\" (PROPERTIES.md:568), relative path correct from indigo_docs/. No other stale \"does not compute\"/\"permanently\" statement remains in the guide (checked lines 49, 64, 94, 679, 947, 1193, 1594). Style matches surrounding plain English. whitespace check passed. No defects."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Documentation-only diff in indigo_docs/INDIGO_SCHEDULER_GUIDE.md:681 and :697. Verified against indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c: compute_safety() (152-227) combines AUX_WEATHER_SAFETY of the FILTER_AUX_1..4 slots with combine_light() (91-96, ALERT over OK over IDLE), the SAFE light stays IDLE without a source and after the last source is lost (property ALERT, message \"Weather safety source lost\"), matching the new note. Wording consistent with indigo_docs/PROPERTIES.md:579 and indigo_drivers/agent_scheduler/doc/SCHEDULER.md:608. Link PROPERTIES.md#auxiliary-agent resolves to \"### Auxiliary agent\" (PROPERTIES.md:568), relative path correct from indigo_docs/. No other stale \"does not compute\"/\"permanently\" statement remains in the guide (checked lines 49, 64, 94, 679, 947, 1193, 1594). Style matches surrounding plain English. whitespace check passed. No defects.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 17364.908,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "2ce64e40-7b73-4e3d-947d-442918027946",
+      "event": "ticket/created",
+      "at": "2026-11-25T14:00:31.868759Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "0b92dc35-41ec-4749-99e7-c5eccbaecf6e",
+      "event": "ticket/confirmed",
+      "at": "2026-11-25T14:01:00.925177Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "3cc2a06a-8b63-4e57-bd8f-3a6bd4056f53",
+      "event": "task/progress",
+      "at": "2026-11-25T14:01:20.206303Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "639650e5-6fb0-4ade-bd0c-ac147fe34528",
+      "text": "Implementation started on branch ticket/9782dc45-2a0d-4c01-a03f-449c003d7df8"
+    },
+    {
+      "event_id": "7a93d389-0eb4-4011-92e2-65f341536e72",
+      "event": "ticket/started",
+      "at": "2026-11-25T14:01:20.210170Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/9782dc45-2a0d-4c01-a03f-449c003d7df8",
+      "base": "master"
+    },
+    {
+      "event_id": "fe389d83-73ea-40b9-98ea-795f5583f21f",
+      "event": "task/progress",
+      "at": "2026-11-25T14:01:20.466535Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "639650e5-6fb0-4ade-bd0c-ac147fe34528",
+      "text": "Implementer started",
+      "attempt_id": "17c0b467-bcab-426a-af5d-e7173706d18d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "097f516f-7bb0-4e14-a1b7-17412388c00f",
+      "event": "task/progress",
+      "at": "2026-11-25T14:02:09.112386Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "639650e5-6fb0-4ade-bd0c-ac147fe34528",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f0e054d2-f464-431b-a776-7f351d956219",
+      "event": "task/progress",
+      "at": "2026-11-25T14:02:09.133206Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "639650e5-6fb0-4ade-bd0c-ac147fe34528",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f7bdf9f3-c5b6-4531-8652-b2929777fe6f",
+      "event": "check/passed",
+      "at": "2026-11-25T14:02:09.137827Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "32dd57c634ee2a579e8b36302ab430687494d0f7",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "ac487be8-b486-4099-aaec-0510326ffb8d",
+      "event": "task/progress",
+      "at": "2026-11-25T14:02:12.945989Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "40d60980-bb5c-4210-8c29-56d4606d28fb",
+      "text": "Review started"
+    },
+    {
+      "event_id": "65889bc3-bdad-4975-b8f7-c8b0f7fcbd82",
+      "event": "review/started",
+      "at": "2026-11-25T14:02:12.946304Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "f85fb9d3-902a-4625-91f4-d60cdf713129",
+      "event": "task/progress",
+      "at": "2026-11-25T14:02:13.160483Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "40d60980-bb5c-4210-8c29-56d4606d28fb",
+      "text": "Reviewer started",
+      "attempt_id": "44ccbe6e-8a15-4fef-ab90-a89fa3c2aab7",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "c841e203-8456-41a3-b43f-6834321a456b",
+      "event": "task/progress",
+      "at": "2026-11-25T14:02:30.310908Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "40d60980-bb5c-4210-8c29-56d4606d28fb",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "a0e5edef-477c-4833-b49d-a1d4aab0dd74",
+      "event": "review/passed",
+      "at": "2026-11-25T14:02:30.312093Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "40d60980-bb5c-4210-8c29-56d4606d28fb",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "32dd57c634ee2a579e8b36302ab430687494d0f7"
+    },
+    {
+      "event_id": "aa89e302-fdc9-431c-bb99-e3b6727f5093",
+      "event": "ticket/title_changed",
+      "at": "2026-11-25T14:10:34.843981Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_docs: INDIGO_SCHEDULER_GUIDE.md still says the Auxiliary Agent does not compute AGENT_AUX_SAFETY",
+      "title": "indigo_docs: describe how the Auxiliary Agent computes AGENT_AUX_SAFETY in the scheduler guide"
+    },
+    {
+      "event_id": "580c2f4c-b625-4193-9293-d129ab440564",
+      "event": "ticket/closed",
+      "at": "2026-11-25T14:10:35.151150Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-25T14:10:35.151119Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "4b5d6598eddf58ee02a5d66ce8af6fc37f215801"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "32dd57c634ee2a579e8b36302ab430687494d0f7",
+        "tree": "f1bc167e408c5e02c3717a761fed1ab655582f87",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T14:02:09.132844Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/9782dc45-2a0d-4c01-a03f-449c003d7df8/f1bc167e408c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Documentation-only diff in indigo_docs/INDIGO_SCHEDULER_GUIDE.md:681 and :697. Verified against indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c: compute_safety() (152-227) combines AUX_WEATHER_SAFETY of the FILTER_AUX_1..4 slots with combine_light() (91-96, ALERT over OK over IDLE), the SAFE light stays IDLE without a source and after the last source is lost (property ALERT, message \"Weather safety source lost\"), matching the new note. Wording consistent with indigo_docs/PROPERTIES.md:579 and indigo_drivers/agent_scheduler/doc/SCHEDULER.md:608. Link PROPERTIES.md#auxiliary-agent resolves to \"### Auxiliary agent\" (PROPERTIES.md:568), relative path correct from indigo_docs/. No other stale \"does not compute\"/\"permanently\" statement remains in the guide (checked lines 49, 64, 94, 679, 947, 1193, 1594). Style matches surrounding plain English. whitespace check passed. No defects.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "32dd57c634ee2a579e8b36302ab430687494d0f7",
+        "tree": "f1bc167e408c5e02c3717a761fed1ab655582f87",
+        "at": "2026-11-25T14:02:30.310757Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "4b5d6598eddf58ee02a5d66ce8af6fc37f215801",
+      "tree": "f1bc167e408c5e02c3717a761fed1ab655582f87",
+      "base": "master",
+      "at": "2026-11-25T14:10:35.023401Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-25T14:00:31.868076Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-25T14:01:00.925097Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 70105.338,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 19,
+    "sha256": "06f0a753ddef839923223e9df22dd29c57e56b9e493f21511d05e4ae1c8cbd21"
+  }
+}
