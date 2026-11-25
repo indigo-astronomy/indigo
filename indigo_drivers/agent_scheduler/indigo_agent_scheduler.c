@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000024
+#define DRIVER_VERSION 0x03000025
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -1368,11 +1368,20 @@ static void stop_scheduler(indigo_device *device, indigo_property_state state, c
 	set_scheduler_state(device, state, message);
 }
 
+// a run or hook that ends a minute or more before or after its planned end changes the plan, which is computed anew from its end; one that ends about on time keeps it
+static void check_run_end(indigo_device *device, scheduler_task *task, time_t now) {
+	time_t planned = PRIVATE_DATA->run_start + task_duration(task, NULL);
+	if (labs((long)(now - planned)) >= 60) {
+		PRIVATE_DATA->plan_changed = true;
+	}
+}
+
 // a hook runs outside the state machine of its task
 static void finish_hook(indigo_device *device, run_result result, const char *message) {
 	int slot = PRIVATE_DATA->current;
 	scheduler_task *task = PRIVATE_DATA->tasks + slot;
 	run_kind kind = PRIVATE_DATA->kind;
+	check_run_end(device, task, time(NULL));
 	restore_context(device);
 	add_history(device, task, result, message);
 	PRIVATE_DATA->phase = RUN_IDLE;
@@ -1453,6 +1462,7 @@ static void finish_task(indigo_device *device, bool success, const char *message
 	int slot = PRIVATE_DATA->current;
 	scheduler_task *task = PRIVATE_DATA->tasks + slot;
 	time_t now = time(NULL);
+	check_run_end(device, task, now);
 	restore_context(device);
 	add_history(device, task, success ? RESULT_SUCCEEDED : RESULT_FAILED, message);
 	if (success) {

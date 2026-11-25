@@ -1164,6 +1164,66 @@ static void test_visibility_exact_starts_keep_flips(void) {
 	ASSERT_TRUE(moved > 100);
 }
 
+static int find_first_task_run(const scheduler_plan_run *result, int count);
+
+// the owner's night with Pleiades running until now + 660 s and repeated after an hour, planned at now
+static int running_night(time_t now, scheduler_plan_run *result) {
+	owner_night();
+	headers[3].repeat = 2;
+	headers[3].repeat_every = 60;
+	tasks[3].runs_left = 2;
+	tasks[3].running = true;
+	tasks[3].running_start = now - 600;
+	tasks[3].running_end = now + 660;
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	return indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, now, end, 1, 1, NULL, NULL, 0, result, 512, NULL);
+}
+
+// Pleiades ends at t: the run made, its repeat after an hour; the agent passes the rest of the plan as an order alone, the end a minute or more off its plan is a change
+static int finish_pleiades(time_t t, scheduler_plan_run *previous, int previous_count) {
+	tasks[3].running = false;
+	tasks[3].runs_left = 1;
+	tasks[3].available_from = t + 3600;
+	int count = 0;
+	for (int r = 0; r < previous_count; r++) {
+		if (!previous[r].running && previous[r].task >= 0) {
+			previous[count] = previous[r];
+			previous[count].start = previous[count].end = 0;
+			count++;
+		}
+	}
+	return count;
+}
+
+// a running task that ends early or late gives a new plan from its end: the run right after it starts at once here, where its target stands best, and the plan keeps its runs
+static void test_visibility_off_plan_end(void) {
+	time_t now = T_VISIBILITY_NOON + 9 * 3600;
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
+	static scheduler_plan_run before[512];
+	time_t ends[] = { now + 300, now + 780 };
+	const char *labels[] = { "VISIBILITY after Pleiades ended 6 min early", "VISIBILITY after Pleiades ran 2 min over" };
+	for (int c = 0; c < 2; c++) {
+		int before_count = running_night(now, before);
+		int first = find_first_task_run(before, before_count);
+		ASSERT_TRUE(first > 0);
+		ASSERT_EQ_INT((int)(now + 660), (int)before[first].start);
+		int task = before[first].task, planned = 0;
+		for (int r = 0; r < before_count; r++) {
+			planned += !before[r].running && before[r].task >= 0;
+		}
+		int previous_count = finish_pleiades(ends[c], before, before_count);
+		scheduler_plan_info info;
+		int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, ends[c], end, 1, 1, NULL, before, previous_count, runs, 512, &info);
+		print_plan(labels[c], runs, count);
+		ASSERT_TRUE(plan_constraints_hold(runs, count, 6, ends[c], end));
+		int next = find_first_task_run(runs, count);
+		ASSERT_TRUE(next >= 0);
+		ASSERT_EQ_INT(task, runs[next].task);
+		ASSERT_EQ_INT((int)ends[c], (int)runs[next].start);
+		ASSERT_EQ_INT(planned, count);
+	}
+}
+
 // a task without a target has no quality; it is planned at its earliest start where a gap allows
 static void test_visibility_untargeted(void) {
 	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
@@ -1722,6 +1782,7 @@ int main(void) {
 		{ "visibility_stable", test_visibility_stable },
 		{ "visibility_wait_keeps_first_run", test_visibility_wait_keeps_first_run },
 		{ "visibility_kept_only_with_starts", test_visibility_kept_only_with_starts },
+		{ "visibility_off_plan_end", test_visibility_off_plan_end },
 		{ "visibility_deterministic", test_visibility_deterministic },
 		{ "visibility_limits", test_visibility_limits },
 		{ "visibility_performance", test_visibility_performance },
