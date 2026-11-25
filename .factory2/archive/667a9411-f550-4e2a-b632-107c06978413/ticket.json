@@ -1,0 +1,742 @@
+{
+  "schema_version": 1,
+  "ticket_id": "667a9411-f550-4e2a-b632-107c06978413",
+  "revision": 35,
+  "title": "indigo_agent_scheduler: fix VISIBILITY plan moving its next run while waiting and at its start",
+  "description": "Owner report 2026-11-24: when a VISIBILITY plan is recomputed while the scheduler waits for its next run, the first run can move to a different time, earlier, later or even an hour away (drift), and rarely gets pushed back at the very moment it was due to start (stall). Cause: the planner rebuilds its set of runs from a greedy COMPACT plan, which changes when the current time shifts by a few seconds.\n\nCode (indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c, indigo_scheduler_plan_visibility()): every recomputation first computes indigo_scheduler_plan_with_hooks() at the current now; that COMPACT plan decides which runs are planned at least (the required run set, urgent pins, the lowest kept class) and two of the three seeds (COMPACT order, best-quality order). The previous plan (visibility_previous() in indigo_agent_scheduler.c) is only one seed, with the COMPACT runs it lacks inserted; a lacking run of a higher class or an urgent run that fits nowhere drops that seed, and a better COMPACT-based seed replaces it. Recomputations happen whenever plan_dirty is set or plan_due passes and visibility_plan_valid() fails, and select_planned() recomputes again at the due moment when the planned run cannot start (the stall).\n\nExpected: while nothing that changes the inputs (tasks, constraints, hooks, settings, flip, a run's outcome) has happened, a recomputed plan keeps the first run's start and the rest of the plan; a tiny change of now must not change the run set. At its due moment a planned run that is eligible starts; it is not moved later by a recomputation.\n\nTo do: reproduce first with a unit test that recomputes the plan of random queues at now, now + a few seconds, and along the wait (as test_visibility_stable does, but between runs and at odd seconds), counting first-run moves and moves at the due moment, and with an integration case for the stall at the due moment. Then fix in the planner, e.g. make the previous plan's run set the commitment and take the COMPACT run set only as a lower bound on runs per priority class that is stable under small time shifts, or compute the required run set once per input change instead of per recomputation. Keep the guarantees in doc/SCHEDULER.md (never fewer runs than COMPACT, never a higher class or urgent run dropped) or update them with owner approval. Update doc/SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md if user-visible behaviour changes, bump the agent version.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-24T17:43:20.329420Z",
+  "status": "closed",
+  "branch": "ticket/667a9411-f550-4e2a-b632-107c06978413",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "23ac4777-8110-4daa-a3a0-0a860876fe72",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T17:45:57.628782Z",
+          "last_activity_at": "2026-11-24T19:13:02.922784Z",
+          "ended_at": "2026-11-24T19:13:02.922784Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 5225294.002,
+          "tokens": null
+        },
+        {
+          "attempt_id": "77074404-e184-4161-9154-a1c3dd0e4c33",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-24T19:20:20.458156Z",
+          "last_activity_at": "2026-11-24T19:45:19.638930Z",
+          "ended_at": "2026-11-24T19:45:19.638930Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1499180.774,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T17:45:57.628782Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/667a9411-f550-4e2a-b632-107c06978413"
+        },
+        {
+          "at": "2026-11-24T19:13:02.922784Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-24T19:20:20.458156Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-24T19:45:19.638930Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 6724474.776,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "e8100f3c-7538-48e6-bf8c-588c0773c103",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "12921557-5e16-4967-a3e1-58818f7a0aae",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-24T19:13:02.922820Z",
+          "last_activity_at": "2026-11-24T19:20:20.458058Z",
+          "ended_at": "2026-11-24T19:20:20.458058Z",
+          "outcome": {
+            "summary": "Planner/agent logic reviewed; plan_dirty site classification checked (all input sites set plan_changed; run/hook start-finish, delays ending, night start/end, select retry, hourly sky/night rebuild do not). Double plan_visibility with night hooks is consistent (plan_changed stays set through update_plan, so plan #2 of a new plan gets no starts). Unit test_agent_scheduler_plan passes; integration 'visibility' cases 10/10 pass. Changes requested: (1) indigo_test/unit/test_agent_scheduler_plan.c:1341 asserts runs[first].start != previous[0].start after line 1336 zeroed every previous start, so it is always true; the 'replaced when passed as an order alone' half of test_visibility_kept_only_with_starts verifies nothing. Compare against the saved start of the kept plan instead. (2) The ticket asks for an integration case for the stall at the due moment; none was added, and the agent-side change (plan_changed classification, select_planned starting a due run before recomputing, indigo_agent_scheduler.c:2815-2819) has no test at all; the unit tests exercise only the planner. Add an integration case where the plan is recomputed (plan_due/plan_dirty without input change) at and just after the planned start and the planned task starts at its time. Minor, fix or justify: (3) indigo_agent_scheduler_plan.c:1124-1133 vis_exact_starts advances hooks by the original start, then may shift the start up to 59 s later; a hook whose time lies in (old start, new start] is not applied before the run, but vis_store places it before the run (hook time <= start), giving an overlapping run. Advance the hooks again after the shift or reject the exact path. Notes for owner (not blocking): COMPACT fallback plans are stored into visibility_slots/starts too, so after a NOT_BETTER fallback the COMPACT order becomes the kept plan and no J-better VISIBILITY plan replaces it until an input changes; a run finishing updates task->measured (duration) without plan_changed although the docs list a duration",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 437535.238,
+          "tokens": null
+        },
+        {
+          "attempt_id": "a66fe7c9-df34-4519-b075-4585f3cec9e2",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-24T19:45:19.638941Z",
+          "last_activity_at": "2026-11-24T19:45:19.638965Z",
+          "ended_at": "2026-11-24T19:45:19.638965Z",
+          "outcome": {
+            "summary": "Round 2 re-review of git diff master...HEAD at 20a98167a. All three earlier findings fixed: (1) test_agent_scheduler_plan.c:1335/1342 saves the kept start before zeroing and compares against it, so the order-alone replacement is now really checked; (2) new integration case visibility_due_run_starts_after_a_run (test_agent_scheduler.c:3252) covers the agent path end to end, with timeout 480; it does not discriminate against the old agent code, as the implementer recorded in a ticket note; the discriminating evidence is the planner unit test (visibility_wait_keeps_first_run); I know of no reliable real-clock scenario that discriminates, because the planner's exact-start pull already keeps the run; (3) indigo_agent_scheduler_plan.c:1134-1137 refuses the exact path when a hook falls due at or before the shifted start, so there is no overlap with vis_store. Re-verified: unit test_agent_scheduler_plan all pass; integration visibility_due_run_starts_after_a_run passes (planned 1795549500, started +1 s); the earlier visibility cases passed 10/10 in round 1. Non-blocking owner notes from round 1 stand (COMPACT fallback becomes the kept plan; a finished run's measured duration is not treated as an input change).",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.024,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-24T19:13:02.922820Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T19:20:20.458058Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Planner/agent logic reviewed; plan_dirty site classification checked (all input sites set plan_changed; run/hook start-finish, delays ending, night start/end, select retry, hourly sky/night rebuild do not). Double plan_visibility with night hooks is consistent (plan_changed stays set through update_plan, so plan #2 of a new plan gets no starts). Unit test_agent_scheduler_plan passes; integration 'visibility' cases 10/10 pass. Changes requested: (1) indigo_test/unit/test_agent_scheduler_plan.c:1341 asserts runs[first].start != previous[0].start after line 1336 zeroed every previous start, so it is always true; the 'replaced when passed as an order alone' half of test_visibility_kept_only_with_starts verifies nothing. Compare against the saved start of the kept plan instead. (2) The ticket asks for an integration case for the stall at the due moment; none was added, and the agent-side change (plan_changed classification, select_planned starting a due run before recomputing, indigo_agent_scheduler.c:2815-2819) has no test at all; the unit tests exercise only the planner. Add an integration case where the plan is recomputed (plan_due/plan_dirty without input change) at and just after the planned start and the planned task starts at its time. Minor, fix or justify: (3) indigo_agent_scheduler_plan.c:1124-1133 vis_exact_starts advances hooks by the original start, then may shift the start up to 59 s later; a hook whose time lies in (old start, new start] is not applied before the run, but vis_store places it before the run (hook time <= start), giving an overlapping run. Advance the hooks again after the shift or reject the exact path. Notes for owner (not blocking): COMPACT fallback plans are stored into visibility_slots/starts too, so after a NOT_BETTER fallback the COMPACT order becomes the kept plan and no J-better VISIBILITY plan replaces it until an input changes; a run finishing updates task->measured (duration) without plan_changed although the docs list a duration"
+        },
+        {
+          "at": "2026-11-24T19:45:19.638941Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-24T19:45:19.638965Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2 re-review of git diff master...HEAD at 20a98167a. All three earlier findings fixed: (1) test_agent_scheduler_plan.c:1335/1342 saves the kept start before zeroing and compares against it, so the order-alone replacement is now really checked; (2) new integration case visibility_due_run_starts_after_a_run (test_agent_scheduler.c:3252) covers the agent path end to end, with timeout 480; it does not discriminate against the old agent code, as the implementer recorded in a ticket note; the discriminating evidence is the planner unit test (visibility_wait_keeps_first_run); I know of no reliable real-clock scenario that discriminates, because the planner's exact-start pull already keeps the run; (3) indigo_agent_scheduler_plan.c:1134-1137 refuses the exact path when a hook falls due at or before the shifted start, so there is no overlap with vis_store. Re-verified: unit test_agent_scheduler_plan all pass; integration visibility_due_run_starts_after_a_run passes (planned 1795549500, started +1 s); the earlier visibility cases passed 10/10 in round 1. Non-blocking owner notes from round 1 stand (COMPACT fallback becomes the kept plan; a finished run's measured duration is not treated as an input change)."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 re-review of git diff master...HEAD at 20a98167a. All three earlier findings fixed: (1) test_agent_scheduler_plan.c:1335/1342 saves the kept start before zeroing and compares against it, so the order-alone replacement is now really checked; (2) new integration case visibility_due_run_starts_after_a_run (test_agent_scheduler.c:3252) covers the agent path end to end, with timeout 480; it does not discriminate against the old agent code, as the implementer recorded in a ticket note; the discriminating evidence is the planner unit test (visibility_wait_keeps_first_run); I know of no reliable real-clock scenario that discriminates, because the planner's exact-start pull already keeps the run; (3) indigo_agent_scheduler_plan.c:1134-1137 refuses the exact path when a hook falls due at or before the shifted start, so there is no overlap with vis_store. Re-verified: unit test_agent_scheduler_plan all pass; integration visibility_due_run_starts_after_a_run passes (planned 1795549500, started +1 s); the earlier visibility cases passed 10/10 in round 1. Non-blocking owner notes from round 1 stand (COMPACT fallback becomes the kept plan; a finished run's measured duration is not treated as an input change).",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 437535.262,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "b0287420-8d83-48ee-ba7c-bb94e9d8eebb",
+      "event": "ticket/created",
+      "at": "2026-11-24T17:43:20.330976Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "a7e8f256-53d2-4417-85cc-5eca21fb66a0",
+      "event": "ticket/confirmed",
+      "at": "2026-11-24T17:45:46.247353Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "9d504c5b-5b94-435b-b22b-332e82202cb9",
+      "event": "task/progress",
+      "at": "2026-11-24T17:45:57.628910Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Implementation started on branch ticket/667a9411-f550-4e2a-b632-107c06978413"
+    },
+    {
+      "event_id": "bb734890-4776-43f5-a9e6-b82a4784d0c0",
+      "event": "ticket/started",
+      "at": "2026-11-24T17:45:57.629714Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/667a9411-f550-4e2a-b632-107c06978413",
+      "base": "master"
+    },
+    {
+      "event_id": "ad92f1c0-076f-4950-a28e-30738d90ec7e",
+      "event": "task/progress",
+      "at": "2026-11-24T17:46:01.194875Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Implementer: reading the VISIBILITY replanning path",
+      "attempt_id": "23ac4777-8110-4daa-a3a0-0a860876fe72",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "4ddf3db4-ad06-452d-845b-55db68c70b26",
+      "event": "question/asked",
+      "at": "2026-11-24T18:06:23.236982Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Remaining drift after keeping the previous plan unless another seed has more runs: the final fallback to COMPACT when COMPACT's J at the same run count is >= the plan's J (doc guarantee 'never a lower J at the same runs than COMPACT'). COMPACT's J changes with now, so a kept waiting plan can be replaced by the COMPACT plan and its first run jumps to now (measured: 1 of 200 normal queues, 2 of 200 crowded, moves of 10-48 min earlier). Option A: a kept previous plan is replaced only for more runs (other seed or COMPACT); the J guarantee applies to a new plan, not to a kept one. Option B: keep the guarantee, accept these rare switches to COMPACT."
+    },
+    {
+      "event_id": "3ac1641a-6fba-4867-b48d-9074436921be",
+      "event": "question/answered",
+      "at": "2026-11-24T18:29:26.645314Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Option A: a kept previous plan is replaced only for more runs (another seed or COMPACT); the J guarantee against COMPACT applies to a new plan, not to a kept one."
+    },
+    {
+      "event_id": "9a03e42a-70d2-4f97-9a31-64708b96f050",
+      "event": "task/progress",
+      "at": "2026-11-24T18:35:34.404214Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Running unit and integration scheduler tests"
+    },
+    {
+      "event_id": "c20a56e5-353c-4f12-b0c0-f193509d7969",
+      "event": "task/progress",
+      "at": "2026-11-24T18:52:15.297069Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9a503c57-a67b-44f1-b90c-78412e03f718",
+      "event": "task/progress",
+      "at": "2026-11-24T18:52:15.318316Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "11fa7b9a-626b-47a2-9914-a1c6bc17f4e7",
+      "event": "task/progress",
+      "at": "2026-11-24T18:52:15.323534Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "0a201018-eee7-449b-b6ec-16021d691a4c",
+      "event": "task/progress",
+      "at": "2026-11-24T18:54:21.391675Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "93a32e50-5547-41d0-98f7-efadfde6318f",
+      "event": "check/passed",
+      "at": "2026-11-24T18:54:21.396980Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "3a85d45e50ee38b7b02e1a05d782b615381bd714",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "0d829ffb-f5c5-400c-93e5-8431cf12d075",
+      "event": "task/progress",
+      "at": "2026-11-24T19:11:17.162970Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "6f0ba7f0-b439-4751-bbe9-81d0d84f29cd",
+      "event": "task/progress",
+      "at": "2026-11-24T19:11:17.184279Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "47d1ab7e-e21d-4b6d-b0f9-18bf27e57ec0",
+      "event": "task/progress",
+      "at": "2026-11-24T19:11:17.189253Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "aef33fbe-01a6-428b-9079-a4d57c4226c5",
+      "event": "task/progress",
+      "at": "2026-11-24T19:13:02.650568Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "0bbc55fc-bde0-4f46-9a18-7395af7fb14d",
+      "event": "check/passed",
+      "at": "2026-11-24T19:13:02.656251Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "cd2068041839a2944e01679dcf888e74777793b5",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "77d0be0b-2d93-4c16-a19e-f6bdab49bf5a",
+      "event": "ticket/note",
+      "at": "2026-11-24T19:13:02.800164Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction (scratch harness, 400 random queues of the unit fixtures, plan recomputed every 97 s of each wait and at the due moment, previous plan passed as the agent passes it): before, 42 first-run moves (one +70 min: queue 38, the COMPACT run set changed from {2,2,3,5} to {2,3,2,3} when now moved 97 s, and a COMPACT-based seed with a higher J replaced the kept plan), plus J-only fallbacks to COMPACT moving the run 10-48 min earlier; unit test also showed stalls at start+1 s (run pushed 300 s later by re-optimisation). After: 0 drift, 0 stall, all 29608 recomputes planned. Fix: previous plan passed with starts (agent: while no input changed, plan_changed flag) is kept unless a plan with more runs is found (no J-only replacement, no NOT_BETTER fallback, owner option A); same runs in same order keep exact starts, a run <1 min late starts at once; agent starts a due planned run before recomputing when no input changed. Tests: unit test_agent_scheduler_plan all pass (new visibility_wait_keeps_first_run fails on the original planner, 25/40; visibility_kept_only_with_starts; visibility_stable tightened to more-runs replacement); integration test_agent_scheduler 170/170; flow check whitespace+unit passed. Version 0x03000024.",
+      "tokens": null
+    },
+    {
+      "event_id": "bd99817e-04a8-4432-8080-fef2144a0971",
+      "event": "task/progress",
+      "at": "2026-11-24T19:13:02.922887Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e8100f3c-7538-48e6-bf8c-588c0773c103",
+      "text": "Review started"
+    },
+    {
+      "event_id": "7ecd086c-9c1c-4dfe-8619-1a5e8d301aec",
+      "event": "review/started",
+      "at": "2026-11-24T19:13:02.923482Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "49fedb51-4114-43a6-b4cc-c9bab0e59ec2",
+      "event": "task/progress",
+      "at": "2026-11-24T19:13:23.719978Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e8100f3c-7538-48e6-bf8c-588c0773c103",
+      "text": "Reviewer launched: reading the diff",
+      "attempt_id": "12921557-5e16-4967-a3e1-58818f7a0aae",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "353385d8-c14d-4aac-9054-467422436b4a",
+      "event": "task/progress",
+      "at": "2026-11-24T19:15:19.623879Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e8100f3c-7538-48e6-bf8c-588c0773c103",
+      "text": "Building agent_scheduler and running unit test_agent_scheduler_plan"
+    },
+    {
+      "event_id": "110e8a08-4149-405a-9ffb-9d2d9b856648",
+      "event": "task/progress",
+      "at": "2026-11-24T19:16:18.887051Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e8100f3c-7538-48e6-bf8c-588c0773c103",
+      "text": "Running integration test_agent_scheduler visibility cases"
+    },
+    {
+      "event_id": "cf069b7b-5e52-4c9b-8735-811b8c2fc0d0",
+      "event": "task/progress",
+      "at": "2026-11-24T19:20:20.458147Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e8100f3c-7538-48e6-bf8c-588c0773c103",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "557a9e71-cc67-4a45-9585-707a50d22b05",
+      "event": "task/progress",
+      "at": "2026-11-24T19:20:20.458185Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "6a85403f-d100-4887-af89-888e7279f6f0",
+      "event": "review/changes_requested",
+      "at": "2026-11-24T19:20:20.458821Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e8100f3c-7538-48e6-bf8c-588c0773c103",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "cd2068041839a2944e01679dcf888e74777793b5"
+    },
+    {
+      "event_id": "2f94ccf6-372f-42f2-ad05-73f986796cb8",
+      "event": "task/progress",
+      "at": "2026-11-24T19:36:09.689712Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f398d2d2-c924-4b1c-bf34-d3ff4a8ddaac",
+      "event": "task/progress",
+      "at": "2026-11-24T19:36:09.712429Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "82d2fd80-4db8-4bc0-9285-b7f2e17e35e6",
+      "event": "task/progress",
+      "at": "2026-11-24T19:36:09.717780Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "47041b89-54bb-4844-8c4b-3e458744c7c4",
+      "event": "task/progress",
+      "at": "2026-11-24T19:37:54.577116Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "ecfdfff2-33d1-44d9-9f81-df9960fb18ad",
+      "event": "check/passed",
+      "at": "2026-11-24T19:37:54.584323Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "20a98167a562623dd232b20b258b2a2c38ab6ad5",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "7b7296a3-aeb7-4d6f-a099-1a76d71b333b",
+      "event": "ticket/note",
+      "at": "2026-11-24T19:38:08.019375Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Review round 1 fixes: (1) test_visibility_kept_only_with_starts compares with the saved kept start; (2) integration case visibility_due_run_starts_after_a_run added (a task without target runs until a second after Target's planned start, the plan is computed again without input change, Target starts within 5 s; passed, started 2 s after). Limitation: with the agent-side changes disabled the case still passes, because the earlier exact-start pull already starts the run at once in this setup; it covers the agent path end to end but does not discriminate. The discriminating evidence is the planner unit test visibility_wait_keeps_first_run (fails on the original planner, incl. a 300 s push at start+1). A real-clock integration case where re-optimisation pushes the run later could not be built reliably. (3) vis_exact_starts refuses the exact path when a late run moved later would pass a hook's time. Results: unit all pass, integration 171/171, flow check passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "fbc391fb-e04b-4d59-b8ca-c98f2cb5d86c",
+      "event": "task/progress",
+      "at": "2026-11-24T19:38:11.376394Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Re-review round 2: checking fixes",
+      "attempt_id": "77074404-e184-4161-9154-a1c3dd0e4c33",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "446d33cd-70b6-42c3-b054-7f7255140637",
+      "event": "task/progress",
+      "at": "2026-11-24T19:38:19.523811Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6b4c8093-c11b-4fb9-b8eb-acba85071911",
+      "text": "Running unit plan test and integration visibility_due_run_starts_after_a_run"
+    },
+    {
+      "event_id": "fcb63980-9f2f-440a-9cfc-349ceb6aa56b",
+      "event": "task/progress",
+      "at": "2026-11-24T19:45:19.639038Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e8100f3c-7538-48e6-bf8c-588c0773c103",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "c6ddcc68-5d87-4226-a25d-52fd988b1afd",
+      "event": "review/passed",
+      "at": "2026-11-24T19:45:19.639749Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e8100f3c-7538-48e6-bf8c-588c0773c103",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "20a98167a562623dd232b20b258b2a2c38ab6ad5"
+    },
+    {
+      "event_id": "60fd3cc5-bf06-478e-9b6d-2d167bbda36d",
+      "event": "ticket/title_changed",
+      "at": "2026-11-24T19:53:32.842983Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: a recomputed VISIBILITY plan moves its first run while the scheduler waits for it (drift) and can push it back at its start (stall)",
+      "title": "indigo_agent_scheduler: fix VISIBILITY plan moving its next run while waiting and at its start"
+    },
+    {
+      "event_id": "8a7b16f0-f950-4fda-959a-2289bd2b8198",
+      "event": "ticket/closed",
+      "at": "2026-11-24T19:53:33.127567Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-24T19:53:33.127533Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "5ad8a0f16f12e91bfc5d59557832c3c78f4921a1"
+  },
+  "priority": "high",
+  "severity": "medium",
+  "difficulty": "high",
+  "proposal": {
+    "priority": "high",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-24T17:43:20.329420Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-24T17:45:46.247325Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 7162010.038,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 46,
+    "sha256": "be1c8f529b723e04f69a795e9b65bea28391ccb99000189a39b96cf859def6b0"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "3a85d45e50ee38b7b02e1a05d782b615381bd714",
+        "tree": "bae36f490e25fa65d5b4af41c37d5b430a6fada4",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T18:52:15.317560Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/667a9411-f550-4e2a-b632-107c06978413/bae36f490e25-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "3a85d45e50ee38b7b02e1a05d782b615381bd714",
+        "tree": "bae36f490e25fa65d5b4af41c37d5b430a6fada4",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T18:54:21.390966Z",
+        "duration_s": 126.1,
+        "log": "/tmp/factory-flow/667a9411-f550-4e2a-b632-107c06978413/bae36f490e25-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "cd2068041839a2944e01679dcf888e74777793b5",
+        "tree": "bc061a5f84c0c26d89ceedb3c805f7efef80a367",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T19:11:17.183529Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/667a9411-f550-4e2a-b632-107c06978413/bc061a5f84c0-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "cd2068041839a2944e01679dcf888e74777793b5",
+        "tree": "bc061a5f84c0c26d89ceedb3c805f7efef80a367",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T19:13:02.649782Z",
+        "duration_s": 105.5,
+        "log": "/tmp/factory-flow/667a9411-f550-4e2a-b632-107c06978413/bc061a5f84c0-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "20a98167a562623dd232b20b258b2a2c38ab6ad5",
+        "tree": "b04d343cc279a7a43c385e073e18b93ee7c611b8",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T19:36:09.711467Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/667a9411-f550-4e2a-b632-107c06978413/b04d343cc279-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "20a98167a562623dd232b20b258b2a2c38ab6ad5",
+        "tree": "b04d343cc279a7a43c385e073e18b93ee7c611b8",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-24T19:37:54.576005Z",
+        "duration_s": 104.9,
+        "log": "/tmp/factory-flow/667a9411-f550-4e2a-b632-107c06978413/b04d343cc279-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Planner/agent logic reviewed; plan_dirty site classification checked (all input sites set plan_changed; run/hook start-finish, delays ending, night start/end, select retry, hourly sky/night rebuild do not). Double plan_visibility with night hooks is consistent (plan_changed stays set through update_plan, so plan #2 of a new plan gets no starts). Unit test_agent_scheduler_plan passes; integration 'visibility' cases 10/10 pass. Changes requested: (1) indigo_test/unit/test_agent_scheduler_plan.c:1341 asserts runs[first].start != previous[0].start after line 1336 zeroed every previous start, so it is always true; the 'replaced when passed as an order alone' half of test_visibility_kept_only_with_starts verifies nothing. Compare against the saved start of the kept plan instead. (2) The ticket asks for an integration case for the stall at the due moment; none was added, and the agent-side change (plan_changed classification, select_planned starting a due run before recomputing, indigo_agent_scheduler.c:2815-2819) has no test at all; the unit tests exercise only the planner. Add an integration case where the plan is recomputed (plan_due/plan_dirty without input change) at and just after the planned start and the planned task starts at its time. Minor, fix or justify: (3) indigo_agent_scheduler_plan.c:1124-1133 vis_exact_starts advances hooks by the original start, then may shift the start up to 59 s later; a hook whose time lies in (old start, new start] is not applied before the run, but vis_store places it before the run (hook time <= start), giving an overlapping run. Advance the hooks again after the shift or reject the exact path. Notes for owner (not blocking): COMPACT fallback plans are stored into visibility_slots/starts too, so after a NOT_BETTER fallback the COMPACT order becomes the kept plan and no J-better VISIBILITY plan replaces it until an input changes; a run finishing updates task->measured (duration) without plan_changed although the docs list a duration estimate change as an input change.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "cd2068041839a2944e01679dcf888e74777793b5",
+        "tree": "bc061a5f84c0c26d89ceedb3c805f7efef80a367",
+        "at": "2026-11-24T19:20:20.458032Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 re-review of git diff master...HEAD at 20a98167a. All three earlier findings fixed: (1) test_agent_scheduler_plan.c:1335/1342 saves the kept start before zeroing and compares against it, so the order-alone replacement is now really checked; (2) new integration case visibility_due_run_starts_after_a_run (test_agent_scheduler.c:3252) covers the agent path end to end, with timeout 480; it does not discriminate against the old agent code, as the implementer recorded in a ticket note; the discriminating evidence is the planner unit test (visibility_wait_keeps_first_run); I know of no reliable real-clock scenario that discriminates, because the planner's exact-start pull already keeps the run; (3) indigo_agent_scheduler_plan.c:1134-1137 refuses the exact path when a hook falls due at or before the shifted start, so there is no overlap with vis_store. Re-verified: unit test_agent_scheduler_plan all pass; integration visibility_due_run_starts_after_a_run passes (planned 1795549500, started +1 s); the earlier visibility cases passed 10/10 in round 1. Non-blocking owner notes from round 1 stand (COMPACT fallback becomes the kept plan; a finished run's measured duration is not treated as an input change).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "20a98167a562623dd232b20b258b2a2c38ab6ad5",
+        "tree": "b04d343cc279a7a43c385e073e18b93ee7c611b8",
+        "at": "2026-11-24T19:45:19.638909Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-24T19:13:02.799580Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction (scratch harness, 400 random queues of the unit fixtures, plan recomputed every 97 s of each wait and at the due moment, previous plan passed as the agent passes it): before, 42 first-run moves (one +70 min: queue 38, the COMPACT run set changed from {2,2,3,5} to {2,3,2,3} when now moved 97 s, and a COMPACT-based seed with a higher J replaced the kept plan), plus J-only fallbacks to COMPACT moving the run 10-48 min earlier; unit test also showed stalls at start+1 s (run pushed 300 s later by re-optimisation). After: 0 drift, 0 stall, all 29608 recomputes planned. Fix: previous plan passed with starts (agent: while no input changed, plan_changed flag) is kept unless a plan with more runs is found (no J-only replacement, no NOT_BETTER fallback, owner option A); same runs in same order keep exact starts, a run <1 min late starts at once; agent starts a due planned run before recomputing when no input changed. Tests: unit test_agent_scheduler_plan all pass (new visibility_wait_keeps_first_run fails on the original planner, 25/40; visibility_kept_only_with_starts; visibility_stable tightened to more-runs replacement); integration test_agent_scheduler 170/170; flow check whitespace+unit passed. Version 0x03000024.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-24T19:38:08.018691Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Review round 1 fixes: (1) test_visibility_kept_only_with_starts compares with the saved kept start; (2) integration case visibility_due_run_starts_after_a_run added (a task without target runs until a second after Target's planned start, the plan is computed again without input change, Target starts within 5 s; passed, started 2 s after). Limitation: with the agent-side changes disabled the case still passes, because the earlier exact-start pull already starts the run at once in this setup; it covers the agent path end to end but does not discriminate. The discriminating evidence is the planner unit test visibility_wait_keeps_first_run (fails on the original planner, incl. a 300 s push at start+1). A real-clock integration case where re-optimisation pushes the run later could not be built reliably. (3) vis_exact_starts refuses the exact path when a late run moved later would pass a hook's time. Results: unit all pass, integration 171/171, flow check passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Remaining drift after keeping the previous plan unless another seed has more runs: the final fallback to COMPACT when COMPACT's J at the same run count is >= the plan's J (doc guarantee 'never a lower J at the same runs than COMPACT'). COMPACT's J changes with now, so a kept waiting plan can be replaced by the COMPACT plan and its first run jumps to now (measured: 1 of 200 normal queues, 2 of 200 crowded, moves of 10-48 min earlier). Option A: a kept previous plan is replaced only for more runs (other seed or COMPACT); the J guarantee applies to a new plan, not to a kept one. Option B: keep the guarantee, accept these rare switches to COMPACT.",
+        "at": "2026-11-24T18:06:23.236456Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Option A: a kept previous plan is replaced only for more runs (another seed or COMPACT); the J guarantee against COMPACT applies to a new plan, not to a kept one.",
+        "answered_at": "2026-11-24T18:29:26.644516Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "5ad8a0f16f12e91bfc5d59557832c3c78f4921a1",
+      "tree": "b04d343cc279a7a43c385e073e18b93ee7c611b8",
+      "base": "master",
+      "at": "2026-11-24T19:53:33.046565Z"
+    }
+  }
+}

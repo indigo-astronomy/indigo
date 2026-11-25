@@ -1080,7 +1080,7 @@ See also: [Priorities](#priorities).
 **What `VISIBILITY` keeps.**
 
 - It never plans fewer runs in total than `COMPACT`.
-- When it plans again, it prefers the runs it planned before. To keep them, it may drop a run that `COMPACT` would make. It does so only when that run's class is not higher than the lowest class of the kept runs. It never leaves out a run of a higher class or an urgent run.
+- When it plans again and nothing changed but the time and the runs made, it keeps the plan it made before, with the same start times while they still work, unless a plan with more runs is found. A slightly better quality alone does not move the planned runs, so the next run does not drift while you wait for it. A run that ends 10 seconds or more earlier or later than planned counts as a change: the rest of the night is planned anew from its real end, so the next run starts at once when its target stands best then, and a run that no longer fits tonight is left out by its priority. After you change a task, the settings, the hooks, the site or the meridian flip, it plans anew from the previous plan and takes a better one. To keep its runs, it may drop a run that `COMPACT` would make. It does so only when that run's class is not higher than the lowest class of the kept runs. It never leaves out a run of a higher class or an urgent run.
 - It adds the runs `COMPACT` leaves out where they still fit, by the quality they gain, not by priority.
 - Every run keeps all its constraints for its whole duration.
 - `@repeat … every` keeps its spacing, even when other runs come between two runs of a task. Repeat and retry delays are kept.
@@ -1088,13 +1088,13 @@ See also: [Priorities](#priorities).
 - A target that sets early is still placed early, because it stands highest then.
 - Urgent tasks never wait. They start at once, even during a wait, and keep their `COMPACT` times in the plan.
 - Hooks are not blocked. A hook due during a run runs after it. A hook delays the next run by its duration.
-- Runs start on whole UTC minutes.
+- The plan starts at once, like `COMPACT`. A run that follows another run or a hook starts as soon as it ends, so no time is lost between runs. A run that waits for better visibility or a window starts on a whole UTC minute.
 
 **The weights under `VISIBILITY`.** `SETTING_WEIGHT` and `ALTITUDE_WEIGHT` do not move runs. They shape the `COMPACT` plan that `VISIBILITY` starts from. They also rank the tasks whenever the scheduler falls back to `COMPACT`.
 
 **Fallbacks to `COMPACT`.** The scheduler uses the `COMPACT` plan in these cases:
 
-- no `VISIBILITY` plan is better than `COMPACT`;
+- a new `VISIBILITY` plan is not better than `COMPACT`; a plan kept from before stays unless `COMPACT` has more runs;
 - the night has more than 64 runs, or the plan reaches more than 24 hours ahead;
 - a planned run cannot start at its time, even after the night is planned again.
 

@@ -1,0 +1,662 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c4387c59-6a52-454b-9c59-fd5e5a731c40",
+  "revision": 31,
+  "title": "indigo_agent_scheduler: keep a VISIBILITY plan as it is while nothing changes, re-plan when a run ends 10 s off its planned end",
+  "description": "Found 2026-11-25 by tracing the order changes of the remaining runs when nothing changed (owner request), after tickets 667a9411 and 8d5617d2. Scratch simulation on bench_scheduler_plan's 1000 random nights (run lengths +-20 %, 10 % aborted early, plan recomputed every 5 min while waiting, the agent's rules for passing the previous plan with or without starts): 75 order changes with nothing changed (47 during waits, 28 after a run or hook ending within a minute of its plan). Traced in indigo_scheduler_plan_visibility() (indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c):\n\n1. 33 cases (most at the first recompute after the night's first plan): the kept previous seed wins, but vis_search() runs vis_improve() on it, and the local search moves runs when J rises (night 88: run 7 moved from mid-night to the end; night 92: runs 7 and 2 swapped). The previous plan is not a local optimum of this seed because it came from another seed or budget. Fix: for a previous plan passed with starts (kept), evaluate it and insert the runs COMPACT has that it lacks, but do not run the local improvement on it.\n\n2. 13 cases: the kept plan is valid at its exact starts, but the dynamic programme on whole minutes finds no feasible arrangement (a run that fits only at an exact second, e.g. right after a run that ended 51 s late, or one that just fits its window), so the seed value is VIS_NONE, kept becomes false and a fresh plan is made, which can lose runs (night 135 dropped run 6; night 269 dropped a 55-minute run). Fix: before the grid search, check the kept order (no runs to insert) against its exact starts with vis_exact_starts(); when valid, keep it without depending on the dynamic programme.\n\nThe remaining about 29 cases are wanted by the rules: a run of a higher priority class became plannable and COMPACT selects it (rule: never drop a higher class run), or a run COMPACT finds is inserted (more runs).\n\nExpected after the fix: order changes with nothing changed about 29 per 1000 nights instead of 75, and no run lost to the grid. Tests: unit cases reproducing both (a kept plan that the local search would reorder keeps its order; a kept plan valid only at odd-second starts is kept), the existing stability tests, the 1000-night simulation figures recorded in the ticket. Update doc/SCHEDULER.md (algorithm), bump the agent version.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-25T00:52:10.988210Z",
+  "status": "closed",
+  "branch": "ticket/c4387c59-6a52-454b-9c59-fd5e5a731c40",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "04797487-2896-4d4a-91d0-a3687b09aa5c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T00:54:04.658080Z",
+          "last_activity_at": "2026-11-25T01:34:11.056168Z",
+          "ended_at": "2026-11-25T01:34:11.056168Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2406398.088,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T00:54:04.658080Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/c4387c59-6a52-454b-9c59-fd5e5a731c40"
+        },
+        {
+          "at": "2026-11-25T01:34:11.056168Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2406398.088,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "bfb28be5-6b68-4713-90cf-f250298dd6d6",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T01:34:11.056207Z",
+          "last_activity_at": "2026-11-25T01:41:30.348038Z",
+          "ended_at": "2026-11-25T01:41:30.348038Z",
+          "outcome": {
+            "summary": "Independent review of git diff master...HEAD (claude-opus-5-5). Exact-first path is correct: vc->limit/exhausted are not needed on it (only vis_previous_seed's evaluate ran; the COMPACT seed search resets limit=work+(budget-work)/2 and exhausted, so the other seeds only get more budget); seed->minutes is not read afterwards on the exact path (vis_store gets exact_starts, info/vis_better/final checks use count and value only); exact value is finite so kept stays true and the NOT_BETTER/NO_ARRANGEMENT checks behave as before; exact is reset whenever another seed wins; urgent COMPACT pins are inserted by vis_previous_seed so seed->count != kept_count and exact is skipped; the DP is no longer a safety net for the exact path, but vis_exact_starts checks overlap, hooks, delays (available_from), repeat spacing, night end and constraints in seconds, which covers what the DP enforces. RUN_END_TOLERANCE 10 s is the owner's decision; with the now+60 running_end clamp a run in its last minute still keeps the plan via the less-than-a-minute-late rule. Verified: both new unit tests fail when linked against master's indigo_agent_scheduler_plan.c and pass on the branch; unit suite test_agent_scheduler_plan all pass; integration visibility_* 13/13 pass (new case: Second started 0 s after First completed). Non-blocking notes: (1) indigo_agent_scheduler_plan.c:1315-1318: the exact path skips vis_add_left_out, so if room for an extra run appears while nothing changed (e.g. the plan end moves later) the kept plan loses to a fully re-searched seed with more runs instead of gaining the run in its own order as on master; allowed by the more-runs rule, rare. (2) SCHEDULER.md integration coverage list (around line 966) does not mention the new 30 s early end case.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 439291.831,
+          "tokens": null
+        },
+        {
+          "attempt_id": "826f406e-37e7-4608-aa25-0287ad78524c",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-25T01:44:04.219453Z",
+          "last_activity_at": "2026-11-25T01:44:04.219478Z",
+          "ended_at": "2026-11-25T01:44:04.219478Z",
+          "outcome": {
+            "summary": "Re-review (claude-opus-5-5): the only change since ba4961f3cd is one phrase in the SCHEDULER.md integration coverage list naming the 30 s early-end case, which matches visibility_slightly_early_end_starts_the_next_run; git diff --check clean. Code unchanged, so the earlier analysis and test results stand. Note 1 (exact path does not add left-out runs) remains non-blocking and goes to the owner.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.025,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T01:34:11.056207Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T01:41:30.348038Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of git diff master...HEAD (claude-opus-5-5). Exact-first path is correct: vc->limit/exhausted are not needed on it (only vis_previous_seed's evaluate ran; the COMPACT seed search resets limit=work+(budget-work)/2 and exhausted, so the other seeds only get more budget); seed->minutes is not read afterwards on the exact path (vis_store gets exact_starts, info/vis_better/final checks use count and value only); exact value is finite so kept stays true and the NOT_BETTER/NO_ARRANGEMENT checks behave as before; exact is reset whenever another seed wins; urgent COMPACT pins are inserted by vis_previous_seed so seed->count != kept_count and exact is skipped; the DP is no longer a safety net for the exact path, but vis_exact_starts checks overlap, hooks, delays (available_from), repeat spacing, night end and constraints in seconds, which covers what the DP enforces. RUN_END_TOLERANCE 10 s is the owner's decision; with the now+60 running_end clamp a run in its last minute still keeps the plan via the less-than-a-minute-late rule. Verified: both new unit tests fail when linked against master's indigo_agent_scheduler_plan.c and pass on the branch; unit suite test_agent_scheduler_plan all pass; integration visibility_* 13/13 pass (new case: Second started 0 s after First completed). Non-blocking notes: (1) indigo_agent_scheduler_plan.c:1315-1318: the exact path skips vis_add_left_out, so if room for an extra run appears while nothing changed (e.g. the plan end moves later) the kept plan loses to a fully re-searched seed with more runs instead of gaining the run in its own order as on master; allowed by the more-runs rule, rare. (2) SCHEDULER.md integration coverage list (around line 966) does not mention the new 30 s early end case."
+        },
+        {
+          "at": "2026-11-25T01:44:04.219453Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T01:44:04.219478Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review (claude-opus-5-5): the only change since ba4961f3cd is one phrase in the SCHEDULER.md integration coverage list naming the 30 s early-end case, which matches visibility_slightly_early_end_starts_the_next_run; git diff --check clean. Code unchanged, so the earlier analysis and test results stand. Note 1 (exact path does not add left-out runs) remains non-blocking and goes to the owner."
+        }
+      ],
+      "result": {
+        "summary": "Re-review (claude-opus-5-5): the only change since ba4961f3cd is one phrase in the SCHEDULER.md integration coverage list naming the 30 s early-end case, which matches visibility_slightly_early_end_starts_the_next_run; git diff --check clean. Code unchanged, so the earlier analysis and test results stand. Note 1 (exact path does not add left-out runs) remains non-blocking and goes to the owner.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 439291.856,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "975afa41-6862-45ae-aa36-a2be58bfea29",
+      "event": "ticket/created",
+      "at": "2026-11-25T00:52:10.988839Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "9a18d6de-7603-4c4c-afbc-2d4e78b0e658",
+      "event": "ticket/confirmed",
+      "at": "2026-11-25T00:53:53.671110Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "ffa62124-8b21-487d-af5c-3b94ea40d565",
+      "event": "task/progress",
+      "at": "2026-11-25T00:54:04.658197Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Implementation started on branch ticket/c4387c59-6a52-454b-9c59-fd5e5a731c40"
+    },
+    {
+      "event_id": "9f9b62d2-a96c-41a0-91a4-8918e5ae4777",
+      "event": "ticket/started",
+      "at": "2026-11-25T00:54:04.659058Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/c4387c59-6a52-454b-9c59-fd5e5a731c40",
+      "base": "master"
+    },
+    {
+      "event_id": "f56fc4be-0496-4a2e-9280-d035b6baea4e",
+      "event": "task/progress",
+      "at": "2026-11-25T00:54:04.835503Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Implementer: keep path without local search, exact starts before the grid",
+      "attempt_id": "04797487-2896-4d4a-91d0-a3687b09aa5c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f1759a42-46ba-4815-8def-934235c27d8a",
+      "event": "task/progress",
+      "at": "2026-11-25T01:11:04.195705Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "4eebff91-ef09-405d-994e-1b729bb87db5",
+      "event": "task/progress",
+      "at": "2026-11-25T01:11:04.217203Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "229c84f3-aca7-476e-93a2-bec2279cfc12",
+      "event": "task/progress",
+      "at": "2026-11-25T01:11:04.221701Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "96e41e0a-9d21-48d7-8654-4863b318d40e",
+      "event": "task/progress",
+      "at": "2026-11-25T01:13:11.645367Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "191298ea-f38a-4211-94e0-4e6545ebf8ab",
+      "event": "check/passed",
+      "at": "2026-11-25T01:13:11.651151Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "07727b1b4eb668f7b37b718724ae2a527d647846",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "61f88e0f-b5fb-45a7-85ed-c43f76bb4dd0",
+      "event": "ticket/note",
+      "at": "2026-11-25T01:15:15.563989Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner 2026-11-25: lower the off-plan run end threshold of check_run_end() (ticket 8d5617d2) from 60 s to about 10 s in this ticket, with an integration test for a run that ends 30 s early.",
+      "tokens": null
+    },
+    {
+      "event_id": "f5487803-75ff-41d1-bef8-31c4d8a3eded",
+      "event": "task/progress",
+      "at": "2026-11-25T01:26:04.200053Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "8ecf46b1-0d14-46fe-875e-87773c9690c1",
+      "event": "task/progress",
+      "at": "2026-11-25T01:26:04.221270Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "cc8a8e31-73a8-4cba-8e75-12b192ea426b",
+      "event": "task/progress",
+      "at": "2026-11-25T01:26:04.226020Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "ac133933-64f0-4eac-b6f1-3cab7f8e7bdf",
+      "event": "task/progress",
+      "at": "2026-11-25T01:27:48.638839Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c8dee864-1587-43c9-a2f0-6feaaeb225b1",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "a2c3b37e-8306-467d-a73f-e4b7c549daa4",
+      "event": "check/passed",
+      "at": "2026-11-25T01:27:48.644353Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "ba4961f3cd77f9ef86148732baa67d3163a64044",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "00a912c0-6c25-4be8-959d-87e2703ca37c",
+      "event": "ticket/note",
+      "at": "2026-11-25T01:34:10.909563Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Implemented: (1) a kept plan (previous with starts) is not searched again: kept exactly when no run is inserted and vis_exact_starts() holds, also off the minute grid; otherwise evaluated, missing runs inserted, left-out runs added, no vis_improve(). (2) RUN_END_TOLERANCE 10 s in check_run_end() (owner). Tests: unit visibility_kept_order_not_searched and visibility_kept_off_grid fail on the master planner and pass now; integration visibility_slightly_early_end_starts_the_next_run fails with 60 s (Second waited 30 s) and passes with 10 s. Unit all pass, integration 173/173, flow check passed. Simulation, 1000 nights, mode C: order changes with nothing changed 75 before -> 32 with (1) -> 14 with (1)+(2) (12 during waits, 2 after on-plan runs); runs 5592, first-plan runs not made 421, next-run moves while waiting 11, quality 80.7 %. Version 0x03000026.",
+      "tokens": null
+    },
+    {
+      "event_id": "871ec406-a959-492d-ae72-1aae5edcd435",
+      "event": "task/progress",
+      "at": "2026-11-25T01:34:11.056275Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "5a4a293e-a6ba-4d6b-9840-a237a520546e",
+      "event": "review/started",
+      "at": "2026-11-25T01:34:11.056863Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "b9d14b51-4a01-4a0b-b1ea-8d1df461ad63",
+      "event": "task/progress",
+      "at": "2026-11-25T01:34:39.867066Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "text": "Reviewer launched: reading diff",
+      "attempt_id": "bfb28be5-6b68-4713-90cf-f250298dd6d6",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b34aba9f-1570-4753-aa6e-a6bcd0bd97b8",
+      "event": "task/progress",
+      "at": "2026-11-25T01:36:05.267389Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "text": "Building and running unit test_agent_scheduler_plan"
+    },
+    {
+      "event_id": "b63df28d-86b8-44fa-be6d-a1e0a34073dc",
+      "event": "task/progress",
+      "at": "2026-11-25T01:37:18.493666Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "text": "Running integration cases visibility_* of test_agent_scheduler"
+    },
+    {
+      "event_id": "c4088cd9-80eb-481f-a827-45f510269d4b",
+      "event": "task/progress",
+      "at": "2026-11-25T01:41:30.348115Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "2ba864f8-d799-49b4-b082-1c83a122672a",
+      "event": "review/passed",
+      "at": "2026-11-25T01:41:30.348746Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "ba4961f3cd77f9ef86148732baa67d3163a64044"
+    },
+    {
+      "event_id": "a9b07921-4ac7-4ed7-964d-8f76c7bbbcb8",
+      "event": "task/progress",
+      "at": "2026-11-25T01:42:06.895358Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "fcc5481f-763e-48ec-9b27-39da2bca8a61",
+      "event": "task/progress",
+      "at": "2026-11-25T01:42:06.917394Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "3468ed0b-be45-4a99-b1fb-8d6698f553e6",
+      "event": "task/progress",
+      "at": "2026-11-25T01:42:06.922547Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a0537a80-6f6d-44b9-9389-25bac3b11049",
+      "event": "task/progress",
+      "at": "2026-11-25T01:43:50.238491Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "e8ec82d6-4d2d-452a-ba21-85a12413b3a1",
+      "event": "check/passed",
+      "at": "2026-11-25T01:43:50.244565Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "065ea538f776ab749a8f2c1427bd67b0c9d5de1a",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "1d6e797c-3250-4dfd-806e-ca8eac112bae",
+      "event": "task/progress",
+      "at": "2026-11-25T01:43:56.970943Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "text": "Re-review after doc update",
+      "attempt_id": "bfb28be5-6b68-4713-90cf-f250298dd6d6",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6fd39663-6c26-4c60-a41b-519dc56dd48a",
+      "event": "task/progress",
+      "at": "2026-11-25T01:44:04.219542Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "4900923c-dce1-402e-9db2-5c5ebb870c7e",
+      "event": "review/passed",
+      "at": "2026-11-25T01:44:04.220248Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "6ecc1288-4a4f-44e2-907c-e148dc192cf2",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "065ea538f776ab749a8f2c1427bd67b0c9d5de1a"
+    },
+    {
+      "event_id": "b329c2ea-c658-4f33-af13-72a50baac94d",
+      "event": "ticket/title_changed",
+      "at": "2026-11-25T04:09:46.713116Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: a kept VISIBILITY plan is reordered by the local search and rejected by the minute grid although nothing changed",
+      "title": "indigo_agent_scheduler: keep a VISIBILITY plan as it is while nothing changes, re-plan when a run ends 10 s off its planned end"
+    },
+    {
+      "event_id": "ab06ee0c-2c6a-47b8-b547-90463ebce029",
+      "event": "ticket/closed",
+      "at": "2026-11-25T04:09:46.955202Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-25T04:09:46.955176Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "704bc478eb0122df7ca0d0365bad2569185d1473"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-25T00:52:10.988210Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-25T00:53:53.671078Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2845689.944,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 39,
+    "sha256": "421929af033f44353a59cff10a5cf34dcc611c32c5e5c5ed52d84ca8fda6228b"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "07727b1b4eb668f7b37b718724ae2a527d647846",
+        "tree": "72dd36789bd669653ae5560e17013363ed9bb353",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T01:11:04.216523Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/c4387c59-6a52-454b-9c59-fd5e5a731c40/72dd36789bd6-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "07727b1b4eb668f7b37b718724ae2a527d647846",
+        "tree": "72dd36789bd669653ae5560e17013363ed9bb353",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T01:13:11.644465Z",
+        "duration_s": 127.4,
+        "log": "/tmp/factory-flow/c4387c59-6a52-454b-9c59-fd5e5a731c40/72dd36789bd6-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ba4961f3cd77f9ef86148732baa67d3163a64044",
+        "tree": "c114d73b32494155e9b6f8b8114a2d2375d213f3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T01:26:04.220527Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/c4387c59-6a52-454b-9c59-fd5e5a731c40/c114d73b3249-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "ba4961f3cd77f9ef86148732baa67d3163a64044",
+        "tree": "c114d73b32494155e9b6f8b8114a2d2375d213f3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T01:27:48.638022Z",
+        "duration_s": 104.4,
+        "log": "/tmp/factory-flow/c4387c59-6a52-454b-9c59-fd5e5a731c40/c114d73b3249-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "065ea538f776ab749a8f2c1427bd67b0c9d5de1a",
+        "tree": "0bb29906a6383d4163f07e16431a6b952a5ce446",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T01:42:06.916471Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/c4387c59-6a52-454b-9c59-fd5e5a731c40/0bb29906a638-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "065ea538f776ab749a8f2c1427bd67b0c9d5de1a",
+        "tree": "0bb29906a6383d4163f07e16431a6b952a5ce446",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T01:43:50.237488Z",
+        "duration_s": 103.3,
+        "log": "/tmp/factory-flow/c4387c59-6a52-454b-9c59-fd5e5a731c40/0bb29906a638-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of git diff master...HEAD (claude-opus-5-5). Exact-first path is correct: vc->limit/exhausted are not needed on it (only vis_previous_seed's evaluate ran; the COMPACT seed search resets limit=work+(budget-work)/2 and exhausted, so the other seeds only get more budget); seed->minutes is not read afterwards on the exact path (vis_store gets exact_starts, info/vis_better/final checks use count and value only); exact value is finite so kept stays true and the NOT_BETTER/NO_ARRANGEMENT checks behave as before; exact is reset whenever another seed wins; urgent COMPACT pins are inserted by vis_previous_seed so seed->count != kept_count and exact is skipped; the DP is no longer a safety net for the exact path, but vis_exact_starts checks overlap, hooks, delays (available_from), repeat spacing, night end and constraints in seconds, which covers what the DP enforces. RUN_END_TOLERANCE 10 s is the owner's decision; with the now+60 running_end clamp a run in its last minute still keeps the plan via the less-than-a-minute-late rule. Verified: both new unit tests fail when linked against master's indigo_agent_scheduler_plan.c and pass on the branch; unit suite test_agent_scheduler_plan all pass; integration visibility_* 13/13 pass (new case: Second started 0 s after First completed). Non-blocking notes: (1) indigo_agent_scheduler_plan.c:1315-1318: the exact path skips vis_add_left_out, so if room for an extra run appears while nothing changed (e.g. the plan end moves later) the kept plan loses to a fully re-searched seed with more runs instead of gaining the run in its own order as on master; allowed by the more-runs rule, rare. (2) SCHEDULER.md integration coverage list (around line 966) does not mention the new 30 s early end case.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "ba4961f3cd77f9ef86148732baa67d3163a64044",
+        "tree": "c114d73b32494155e9b6f8b8114a2d2375d213f3",
+        "at": "2026-11-25T01:41:30.348013Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review (claude-opus-5-5): the only change since ba4961f3cd is one phrase in the SCHEDULER.md integration coverage list naming the 30 s early-end case, which matches visibility_slightly_early_end_starts_the_next_run; git diff --check clean. Code unchanged, so the earlier analysis and test results stand. Note 1 (exact path does not add left-out runs) remains non-blocking and goes to the owner.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "065ea538f776ab749a8f2c1427bd67b0c9d5de1a",
+        "tree": "0bb29906a6383d4163f07e16431a6b952a5ce446",
+        "at": "2026-11-25T01:44:04.219429Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-25T01:15:15.563412Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner 2026-11-25: lower the off-plan run end threshold of check_run_end() (ticket 8d5617d2) from 60 s to about 10 s in this ticket, with an integration test for a run that ends 30 s early.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-25T01:34:10.908945Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Implemented: (1) a kept plan (previous with starts) is not searched again: kept exactly when no run is inserted and vis_exact_starts() holds, also off the minute grid; otherwise evaluated, missing runs inserted, left-out runs added, no vis_improve(). (2) RUN_END_TOLERANCE 10 s in check_run_end() (owner). Tests: unit visibility_kept_order_not_searched and visibility_kept_off_grid fail on the master planner and pass now; integration visibility_slightly_early_end_starts_the_next_run fails with 60 s (Second waited 30 s) and passes with 10 s. Unit all pass, integration 173/173, flow check passed. Simulation, 1000 nights, mode C: order changes with nothing changed 75 before -> 32 with (1) -> 14 with (1)+(2) (12 during waits, 2 after on-plan runs); runs 5592, first-plan runs not made 421, next-run moves while waiting 11, quality 80.7 %. Version 0x03000026.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "704bc478eb0122df7ca0d0365bad2569185d1473",
+      "tree": "0bb29906a6383d4163f07e16431a6b952a5ce446",
+      "base": "master",
+      "at": "2026-11-25T04:09:46.885439Z"
+    }
+  }
+}

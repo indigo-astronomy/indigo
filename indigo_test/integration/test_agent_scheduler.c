@@ -3249,6 +3249,63 @@ static void visibility_starts_at_the_planned_time(void) {
 	ASSERT_TRUE(wait_task_state("Target", "DONE", 15));
 }
 
+// a run that ends a second after the planned start of the next one computes the plan again without a change of its inputs: the planned run starts at once, it is not moved later
+static void visibility_due_run_starts_after_a_run(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	set_site(0, longitude_at_hour(20));
+	// as in visibility_starts_at_the_planned_time, the best start of Target is the next point of the sky grid, at least two minutes ahead
+	time_t now = time(NULL);
+	time_t best = now - now % 300 + 300;
+	if (best < now + 120) {
+		best += 300;
+	}
+	char end[32], header[128], text[512];
+	utc(best + 120, end);
+	snprintf(header, sizeof(header), "// @duration 1\n// @window .. %s\n", end);
+	REQUIRE(upload_placed("Target", -2, 0, header));
+	// a task without @target, planned for a minute before Target, that runs until a second after its planned start
+	snprintf(text, sizeof(text), "// @task Before\n// @duration 1\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(%d);\nsequence.start();\n", (int)(best + 1 - time(NULL)));
+	REQUIRE(upload(text));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	REQUIRE(wait_start("Before", 1, 15) > 0);
+	time_t started = wait_start("Target", 1, 400);
+	REQUIRE(started > 0);
+	printf("planned %ld, started %ld\n", (long)best, (long)started);
+	ASSERT_TRUE(started >= best && started <= best + 5);
+	ASSERT_TRUE(started_before("Before", "Target"));
+	ASSERT_TRUE(wait_task_state("Target", "DONE", 15));
+	ASSERT_EQ_INT(1, count_messages("Starting task 'Target'"));
+}
+
+// a run that ends long before its @duration lets the run planned right after it start at once, not at its planned start
+static void visibility_early_end_starts_the_next_run(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	REQUIRE(upload("// @task First\n// @duration 10\n" BODY_WAIT(2)));
+	REQUIRE(upload("// @task Second\n// @duration 10\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	// both runs are made within seconds, the second does not wait for the 10 minutes the first was planned for
+	ASSERT_TRUE(wait_task_state("First", "DONE", 30));
+	ASSERT_TRUE(wait_task_state("Second", "DONE", 30));
+	ASSERT_EQ_INT(1, count_messages("Starting task 'First'"));
+	ASSERT_EQ_INT(1, count_messages("Starting task 'Second'"));
+}
+
+// a run that ends 30 s before its planned end lets the run planned right after it start at once
+static void visibility_slightly_early_end_starts_the_next_run(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	REQUIRE(upload("// @task First\n// @duration 1\n" BODY_WAIT(30)));
+	REQUIRE(upload("// @task Second\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	REQUIRE(wait_message("Task 'First' completed", 1, 90));
+	time_t completed = time(NULL);
+	time_t started = wait_start("Second", 1, 60);
+	REQUIRE(started > 0);
+	printf("First completed %ld, Second started %ld\n", (long)completed, (long)started);
+	// Second was planned for the end of First's planned minute, 30 s later
+	ASSERT_TRUE(started - completed <= 10);
+	ASSERT_TRUE(wait_task_state("Second", "DONE", 15));
+}
+
 static void visibility_wait_runs_the_idle_hook(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
 	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
@@ -3297,11 +3354,14 @@ static void visibility_short_wait_keeps_the_idle_hook(void) {
 static void visibility_wait_lets_urgent_and_untargeted_tasks_run(void) {
 	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
 	REQUIRE(upload_before_culmination("Target"));
-	// a task without @target has no visibility to wait for, the plan puts it where it fits
+	// a task without @target has no visibility to wait for, the plan puts it in the free time before the target and it starts at once, not at the next whole minute
 	REQUIRE(upload("// @task Flats\n// @priority low\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	time_t control_at = time(NULL);
+	time_t flats = wait_start("Flats", 1, 15);
+	ASSERT_TRUE(flats > 0 && flats <= control_at + 5);
+	ASSERT_TRUE(wait_message("Task 'Flats' completed", 1, 15));
 	ASSERT_TRUE(wait_reason(" UTC, planned for better visibility", 15));
-	ASSERT_TRUE(wait_plan_contains("Flats", true, 10));
 	// an urgent task starts at once
 	REQUIRE(urgent("// @task Now\n// @duration 5\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_message("Task 'Now' completed", 1, 15));
@@ -5369,6 +5429,9 @@ static const indigo_test_case cases[] = {
 	{ "strategy_defaults_to_compact", strategy_defaults_to_compact },
 	{ "visibility_waits_for_the_plan", visibility_waits_for_the_plan },
 	{ "visibility_starts_at_the_planned_time", visibility_starts_at_the_planned_time },
+	{ "visibility_due_run_starts_after_a_run", visibility_due_run_starts_after_a_run },
+	{ "visibility_early_end_starts_the_next_run", visibility_early_end_starts_the_next_run },
+	{ "visibility_slightly_early_end_starts_the_next_run", visibility_slightly_early_end_starts_the_next_run },
 	{ "visibility_wait_runs_the_idle_hook", visibility_wait_runs_the_idle_hook },
 	{ "visibility_short_wait_keeps_the_idle_hook", visibility_short_wait_keeps_the_idle_hook },
 	{ "visibility_wait_lets_urgent_and_untargeted_tasks_run", visibility_wait_lets_urgent_and_untargeted_tasks_run },
@@ -5465,7 +5528,7 @@ static bool case_selected(int index) {
 
 static unsigned case_timeout(int index) {
 	// the planned start lies up to 5.5 minutes ahead
-	if (!strcmp(cases[index].name, "visibility_starts_at_the_planned_time")) {
+	if (!strcmp(cases[index].name, "visibility_starts_at_the_planned_time") || !strcmp(cases[index].name, "visibility_due_run_starts_after_a_run")) {
 		return 480;
 	}
 	return 150;

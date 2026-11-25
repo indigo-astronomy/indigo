@@ -375,11 +375,24 @@ class Flow:
     def branch_exists(self, branch):
         return not git(self.primary, "show-ref", "--verify", "--quiet", "refs/heads/" + branch, check=False).returncode
 
-    def snapshot(self, document):
+    def snapshot(self, document, check_whitespace=False):
         """Commit pending work on the ticket branch and return (commit, tree)."""
         tree = self.worktree(document)
         if not tree.is_dir():
             fail("NOT_STARTED", "Run 'flow start " + document["ticket_id"] + "' first.")
+        if check_whitespace:
+            # Check both views before snapshot stages everything: a working-tree fix must not hide an index error.
+            whitespace = []
+            for options in ((), ("--cached",)):
+                result = git(tree, "diff", "--check", *options, check=False)
+                if result.returncode not in (0, 2):
+                    fail("GIT_FAILED", "git diff --check failed in " + str(tree) + ":\n"
+                         + (result.stderr or result.stdout).strip())
+                if result.returncode:
+                    whitespace.append(("Staged" if options else "Unstaged") + ":\n"
+                                      + (result.stderr or result.stdout).strip())
+            if whitespace:
+                fail("WHITESPACE_ERROR", "\n".join(whitespace) + "\nFix both diffs and run 'flow check' again.")
         if git(tree, "status", "--porcelain"):
             git(tree, "add", "-A")
             git(tree, "commit", "-q", "--no-verify", "-m", "wip: " + document["title"])
@@ -454,7 +467,7 @@ class Flow:
         document = self.load(ticket_id)
         if names:
             self.selected_checks(document, commands, names)  # A refusal happens before anything is committed.
-        commit, tree_hash = self.snapshot(document)
+        commit, tree_hash = self.snapshot(document, check_whitespace=True)
         checks = self.selected_checks(document, commands, names)
         # The checks a plain run would choose for this tree; stored so that close needs no Git to judge them.
         selected = None if commands else [c["name"] for c in self.selected_checks(document, None)]

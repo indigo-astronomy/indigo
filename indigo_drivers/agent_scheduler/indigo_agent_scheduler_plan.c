@@ -368,7 +368,7 @@ int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const schedu
 
 // -------------------------------------------------------------------------------- VISIBILITY
 
-// the start times are whole minutes
+// the dynamic programme places the starts on whole minutes, which windows and the sky grid share; a run placed within a minute after t0 or the previous run or hook starts at its end
 #define VIS_STEP	60
 // the longest plan arranged, in minutes
 #define VIS_MAX_MINUTES	1440
@@ -382,10 +382,11 @@ int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const schedu
 // a minute before every start
 #define VIS_NO_MINUTE	-1000000
 
-// a task run in an order, pinned to the minute pin when it is not -1
+// a task run in an order, pinned to the minute pin when it is not -1, which holds its exact COMPACT start at
 typedef struct {
 	int task;
 	int pin;
+	time_t at;
 } vis_run;
 
 // task runs in an order with their best starts and the summed value, VIS_NONE when they have no feasible arrangement
@@ -1004,19 +1005,19 @@ static void vis_search(vis_context *vc, vis_order *order, long limit) {
 	vis_improve(vc, order);
 }
 
-// a better candidate: more task runs, then a higher value
-static bool vis_better(const vis_order *order, const vis_order *other) {
+// a better candidate: more task runs, then a higher value; a kept previous plan is replaced only by more task runs, so a plan computed again while nothing changes does not move its runs for a value found from a COMPACT plan that differs only by the time
+static bool vis_better(const vis_order *order, const vis_order *other, bool kept) {
 	if (order->value <= VIS_NONE) {
 		return false;
 	}
 	if (other->value <= VIS_NONE) {
 		return true;
 	}
-	return order->count > other->count || (order->count == other->count && order->value > other->value + QUALITY_EPSILON);
+	return order->count > other->count || (!kept && order->count == other->count && order->value > other->value + QUALITY_EPSILON);
 }
 
-// the seed from the previous plan: its runs that can still run, and the COMPACT runs it lacks inserted where they fit best; a lacking run that fits nowhere is left out when its priority class is not above the class of a run of the previous plan, so the plan keeps the runs it promised; false when such a run of a higher class or an urgent run fits nowhere
-static bool vis_previous_seed(vis_context *vc, const vis_order *compact, const scheduler_plan_run *previous, int previous_count, vis_order *seed) {
+// the seed from the previous plan: its runs that can still run, also returned as their tasks and previous starts, and the COMPACT runs it lacks inserted where they fit best; a lacking run that fits nowhere is left out when its priority class is not above the class of a run of the previous plan, so the plan keeps the runs it promised; false when such a run of a higher class or an urgent run fits nowhere
+static bool vis_previous_seed(vis_context *vc, const vis_order *compact, const scheduler_plan_run *previous, int previous_count, vis_order *seed, int *tasks, time_t *starts, int *kept_count) {
 	const plan_context *ctx = vc->ctx;
 	int extra[MAX_PLAN_TASKS] = { 0 };
 	seed->count = 0;
@@ -1041,8 +1042,11 @@ static bool vis_previous_seed(vis_context *vc, const vis_order *compact, const s
 		}
 		seed->runs[seed->count].task = i;
 		seed->runs[seed->count].pin = -1;
+		tasks[seed->count] = i;
+		starts[seed->count] = previous[k].start;
 		seed->count++;
 	}
+	*kept_count = seed->count;
 	vis_evaluate(vc, seed);
 	int lowest = SCHEDULER_PRIORITY_HOOK;
 	for (int k = 0; k < seed->count; k++) {
@@ -1064,15 +1068,114 @@ static bool vis_previous_seed(vis_context *vc, const vis_order *compact, const s
 	return true;
 }
 
-// stores the runs of an order with the hooks between them and after them
-static int vis_store(const vis_context *vc, const vis_order *order, scheduler_plan_run *runs, int stored, int max_runs) {
+// the exact starts of an arranged order: a run that follows t0 or the previous run or hook on the grid within a minute starts at the end of that run or hook instead of the later whole minute when all its constraints still hold there and its flip cost does not rise; a pinned urgent run starts at its exact COMPACT start, or at that end when it is later
+static void vis_starts(const vis_context *vc, const vis_order *order, time_t *starts) {
+	const plan_context *ctx = vc->ctx;
+	const scheduler_plan_hook *hooks = ctx->hooks;
+	time_t grid_x = vc->state->t, x = vc->state->t;
+	int grid_hook = vc->state->next_hook, next_hook = vc->state->next_hook;
+	time_t last_end[MAX_PLAN_TASKS];
+	bool seen[MAX_PLAN_TASKS] = { false };
+	for (int k = 0; k < order->count; k++) {
+		const vis_run *run = order->runs + k;
+		int i = run->task;
+		const scheduler_plan_task *task = ctx->tasks + i;
+		time_t grid = vc->base + (time_t)order->minutes[k] * VIS_STEP;
+		while (grid_hook < ctx->hook_count && hooks[grid_hook].time <= grid) {
+			grid_x = (hooks[grid_hook].time > grid_x ? hooks[grid_hook].time : grid_x) + hooks[grid_hook].duration;
+			grid_hook++;
+		}
+		while (next_hook < ctx->hook_count && hooks[next_hook].time <= grid) {
+			x = (hooks[next_hook].time > x ? hooks[next_hook].time : x) + hooks[next_hook].duration;
+			next_hook++;
+		}
+		time_t start = grid;
+		time_t target = x;
+		if (run->pin >= 0 && run->at > target) {
+			target = run->at;
+		}
+		if (target < grid && (run->pin >= 0 || grid - grid_x < VIS_STEP)) {
+			time_t from = seen[i] ? last_end[i] + task->header->repeat_every * 60 : vc->state->available_from[i];
+			const char *reason;
+			// an urgent run keeps its COMPACT start whatever the constraints say; another run does not start earlier into a meridian flip its whole minute avoids
+			if (target >= from && target < ctx->end && (run->pin >= 0 || (indigo_scheduler_points_ok(ctx->sky, task->points, task->header, target, target + task->duration, &reason) && indigo_scheduler_flip_loss(ctx->sky, task->target, task->header, target, task->duration, ctx->flip) <= indigo_scheduler_flip_loss(ctx->sky, task->target, task->header, grid, task->duration, ctx->flip)))) {
+				start = target;
+			}
+		}
+		starts[k] = start;
+		seen[i] = true;
+		last_end[i] = x = start + task->duration;
+		grid_x = grid + task->duration;
+	}
+}
+
+// whether the runs of an order can keep their previous starts: in seconds against the hooks, the night end, the delays, the repeat spacing and the constraints; a run less than a minute late, after now, the end of the run or hook before it, its delay or its repeat spacing, starts at that time instead
+static bool vis_exact_starts(const vis_context *vc, const vis_order *order, time_t *starts) {
+	const plan_context *ctx = vc->ctx;
+	const scheduler_plan_hook *hooks = ctx->hooks;
+	time_t x = vc->state->t;
+	int next_hook = vc->state->next_hook;
+	time_t last_end[MAX_PLAN_TASKS];
+	bool seen[MAX_PLAN_TASKS] = { false };
+	for (int k = 0; k < order->count; k++) {
+		int i = order->runs[k].task;
+		const scheduler_plan_task *task = ctx->tasks + i;
+		time_t start = starts[k];
+		while (next_hook < ctx->hook_count && hooks[next_hook].time <= start) {
+			x = (hooks[next_hook].time > x ? hooks[next_hook].time : x) + hooks[next_hook].duration;
+			next_hook++;
+		}
+		time_t from = seen[i] ? last_end[i] + task->header->repeat_every * 60 : vc->state->available_from[i];
+		if (from < x) {
+			from = x;
+		}
+		if (start < from && from - start < VIS_STEP) {
+			starts[k] = start = from;
+			// a hook due up to the later start would run before the run and move it again
+			if (next_hook < ctx->hook_count && hooks[next_hook].time <= start) {
+				return false;
+			}
+		}
+		const char *reason;
+		if (start < from || start >= ctx->end || !indigo_scheduler_points_ok(ctx->sky, task->points, task->header, start, start + task->duration, &reason)) {
+			return false;
+		}
+		seen[i] = true;
+		last_end[i] = x = start + task->duration;
+	}
+	return true;
+}
+
+// the summed value of an order at given starts, as vis_table values a run
+static double vis_exact_value(const vis_context *vc, const vis_order *order, const time_t *starts) {
+	const plan_context *ctx = vc->ctx;
+	double value = 0;
+	for (int k = 0; k < order->count; k++) {
+		const scheduler_plan_task *task = ctx->tasks + order->runs[k].task;
+		double quality = indigo_scheduler_run_quality(ctx->sky, task->target, task->header, starts[k], task->duration);
+		value += (quality > 0 ? quality : 0) * task->duration / 3600.0;
+		if (!is_urgent_task(ctx, order->runs[k].task)) {
+			value -= 100 * indigo_scheduler_flip_loss(ctx->sky, task->target, task->header, starts[k], task->duration, ctx->flip);
+		}
+	}
+	return value;
+}
+
+// stores the runs of an order with the hooks between them and after them, at the given starts or, without them, at the starts of its arrangement
+static int vis_store(const vis_context *vc, const vis_order *order, const time_t *exact, scheduler_plan_run *runs, int stored, int max_runs) {
 	const plan_context *ctx = vc->ctx;
 	const scheduler_plan_hook *hooks = ctx->hooks;
 	plan_state *state = indigo_safe_malloc(sizeof(plan_state));
 	*state = *vc->state;
+	time_t starts[SCHEDULER_VISIBILITY_MAX_RUNS];
+	if (exact != NULL) {
+		memcpy(starts, exact, sizeof(time_t) * order->count);
+	} else {
+		vis_starts(vc, order, starts);
+	}
 	for (int k = 0; k < order->count && stored < max_runs; k++) {
 		int i = order->runs[k].task;
-		time_t start = vc->base + (time_t)order->minutes[k] * VIS_STEP;
+		time_t start = starts[k];
 		while (state->next_hook < ctx->hook_count && hooks[state->next_hook].time <= start && stored < max_runs) {
 			time_t from = hooks[state->next_hook].time > state->t ? hooks[state->next_hook].time : state->t;
 			runs[stored].task = -1;
@@ -1162,6 +1265,7 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 			vis_run *run = compact->runs + k;
 			if (is_urgent_task(&ctx, run->task)) {
 				run->pin = vis_minute(vc, compact_start[k]);
+				run->at = compact_start[k];
 				pins_ok = pins_ok && run->pin >= 0 && run->pin < vc->minutes;
 			}
 		}
@@ -1169,19 +1273,49 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 		vis_order *best = indigo_safe_malloc(sizeof(vis_order)), *seed = indigo_safe_malloc(sizeof(vis_order));
 		best->count = 0;
 		best->value = VIS_NONE;
+		// a previous plan with starts is kept unless a plan with more runs is found; with the same runs in the same order and its starts still valid it keeps them exactly
+		bool kept = false, exact = false;
+		time_t kept_starts[SCHEDULER_VISIBILITY_MAX_RUNS], exact_starts[SCHEDULER_VISIBILITY_MAX_RUNS];
+		int kept_tasks[SCHEDULER_VISIBILITY_MAX_RUNS], kept_count = 0;
 		if (pins_ok && vc->minutes > 0) {
 			long budget = SCHEDULER_VISIBILITY_BUDGET;
 			// the rest of the previous plan comes first and wins ties, then the COMPACT order, then the COMPACT runs by the time of their best quality
 			long limit = budget / 3;
 			vc->limit = limit;
-			if (previous != NULL && previous_count > 0 && vis_previous_seed(vc, compact, previous, previous_count, seed)) {
-				vis_search(vc, seed, limit);
+			if (previous != NULL && previous_count > 0 && vis_previous_seed(vc, compact, previous, previous_count, seed, kept_tasks, kept_starts, &kept_count)) {
+				// previous starts mean that no input changed: the plan is kept, an order alone only seeds the search
+				bool committed = false;
+				for (int k = 0; k < kept_count && !committed; k++) {
+					committed = kept_starts[k] > 0;
+				}
+				if (committed) {
+					// with no run to insert and its starts still valid it is kept exactly, also where the grid of the dynamic programme cannot place it
+					bool same = seed->count == kept_count;
+					for (int k = 0; same && k < kept_count; k++) {
+						same = seed->runs[k].task == kept_tasks[k] && kept_starts[k] > 0;
+					}
+					memcpy(exact_starts, kept_starts, sizeof(time_t) * kept_count);
+					if (same && vis_exact_starts(vc, seed, exact_starts)) {
+						exact = true;
+						seed->value = vis_exact_value(vc, seed, exact_starts);
+					} else {
+						// the runs COMPACT leaves out are added where they fit, its order is not searched again
+						vc->limit = limit;
+						vc->exhausted = false;
+						vis_evaluate(vc, seed);
+						vis_add_left_out(vc, seed);
+					}
+				} else {
+					vis_search(vc, seed, limit);
+				}
 				*best = *seed;
+				kept = committed && best->value > VIS_NONE;
 			}
 			*seed = *compact;
 			vis_search(vc, seed, vc->work + (budget - vc->work) / 2);
-			if (vis_better(seed, best)) {
+			if (vis_better(seed, best, kept)) {
 				*best = *seed;
+				kept = exact = false;
 			}
 			*seed = *compact;
 			for (int a = 1; a < seed->count; a++) {
@@ -1197,21 +1331,22 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 				}
 			}
 			vis_search(vc, seed, budget);
-			if (vis_better(seed, best)) {
+			if (vis_better(seed, best, kept)) {
 				*best = *seed;
+				kept = exact = false;
 			}
 		}
 		if (compact->count == 0 && best->count == 0) {
 			info->result = SCHEDULER_VISIBILITY_NOT_BETTER;
 		} else if (best->value <= VIS_NONE || best->count < compact->count) {
 			info->result = SCHEDULER_VISIBILITY_NO_ARRANGEMENT;
-		} else if (best->count == compact->count && best->value <= compact->value + QUALITY_EPSILON) {
+		} else if (!kept && best->count == compact->count && best->value <= compact->value + QUALITY_EPSILON) {
 			info->result = SCHEDULER_VISIBILITY_NOT_BETTER;
 		} else {
 			info->result = SCHEDULER_VISIBILITY_PLANNED;
 			info->runs = best->count;
 			info->value = best->value;
-			stored = vis_store(vc, best, runs, fixed, max_runs);
+			stored = vis_store(vc, best, exact ? exact_starts : NULL, runs, fixed, max_runs);
 		}
 		info->work = vc->work;
 		free(best);
@@ -1255,9 +1390,7 @@ double indigo_scheduler_plan_order(const scheduler_sky_grid *sky, const schedule
 			vis_evaluate(vc, arranged);
 			if (arranged->value > VIS_NONE) {
 				result = arranged->value;
-				for (int k = 0; k < order_count; k++) {
-					starts[k] = vc->base + (time_t)arranged->minutes[k] * VIS_STEP;
-				}
+				vis_starts(vc, arranged, starts);
 			}
 		}
 		free(arranged);
