@@ -180,7 +180,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 | `@ha` | `from .. to` | Allowed hour-angle range in hours, −12 to +12. `from` greater than `to` wraps across 12h | off |
 | `@moon` | `> degrees` [`width days`] | Minimum moon separation, 0–180, with a width of 0.5–30 days, see [Lorentzian moon avoidance](#lorentzian-moon-avoidance); ignored while the moon is below the horizon | off |
 | `@illumination` | `< percent` | Maximum moon illumination, 0–100; ignored while the moon is below the horizon | off |
-| `@twilight` | `none` \| `civil` \| `nautical` \| `astronomical` | No limit, or the Sun must be below −6°, −12° or −18° | `none` |
+| `@twilight` | `none` \| `civil` \| `nautical` \| `astronomical` | No limit, or the Sun must be below −6°, −12° or −18° | `astronomical` with `@target`, otherwise `none` |
 | `@window` | `[start] .. [end]` | UTC time window, see below | open |
 | `@duration` | `minutes` | Expected run time, 1–1440; all constraints must hold for this whole interval before the task starts | estimated, see [Task duration](#task-duration) |
 | `@repeat` | `count` [`every minutes`] | Number of successful runs, 1–10000, with an optional pause of 0–100000 minutes between them | `1` |
@@ -564,7 +564,7 @@ Two new `AGENT_SCHEDULER_SETTINGS` items move its ends:
 - A night lasts from the time the Sun goes below the limit, plus `NIGHT_START_OFFSET`, until the time it rises above it, plus `NIGHT_END_OFFSET`. The agent samples the Sun's altitude every five minutes from 36 hours before to 36 hours after now, from Sun positions computed once per hour, and interpolates the crossings. It computes the nights again every hour and after a change of the site, the limit or the offsets. A night recomputed with slightly different ends, or for a new site, counts as the same night when the two overlap.
 - When the offsets make one night end at or after the start of the next, the two are one night.
 - When the Sun does not go below the limit, for example in summer at high latitude with `ASTRONOMICAL`, or the offsets leave no time, there is no night. When the Sun does not rise above the limit, as in polar winter, the night does not end. When a night hook is named, the agent says so in a message after `START`, after a hook is named and whenever this changes, and the night plan ends with an Alert item when no night starts within a day.
-- The night limit times only the night hooks. It does not constrain tasks: every task keeps its own `@twilight`, and a task without one may also run outside the scheduler's night.
+- The night limit times only the night hooks. It does not constrain tasks: every task keeps its own `@twilight`. A task with `@target` defaults to `@twilight astronomical`; a task without `@target` and without `@twilight` may also run outside the scheduler's night.
 
 **New hooks.** `AGENT_SCHEDULER_HOOKS` gets three more items. Like the current hooks, they name stored tasks:
 
@@ -581,7 +581,7 @@ Two new `AGENT_SCHEDULER_SETTINGS` items move its ends:
 
 **Rules.**
 
-- **Night hooks never interrupt a task.** They run only when no task runs, at the next decision after the boundary: when the running task ends, or at the next `IDLE_CHECK_INTERVAL` check while the scheduler waits. A task that must stop at dawn does so through its own `@twilight` or a checkpoint in its body, such as `break_if_solar_altitude_above()`.
+- **Night hooks never interrupt a task.** They run only when no task runs, at the next decision after the boundary: when the running task ends, or at the next `IDLE_CHECK_INTERVAL` check while the scheduler waits. A task that must stop at dawn does so through its twilight limit (`@twilight`, by default `astronomical` for a task with `@target`) or a checkpoint in its body, such as `break_if_solar_altitude_above()`.
 - **Nights without work.** At the night start, the agent looks at the [night plan](#night-plan-preview). When it has no task run that starts before the end of the night, `NIGHT_START` does not run, the night flag stays clear, and the agent says so in a message when a night hook is named, also when it is named later in that night: `No task can run tonight, the night start hook is skipped`. The equipment is not prepared, and `NIGHT_END` does not run at the end of that night. When the plan gains a run later in the night, `NIGHT_START` runs at the next decision, and at the latest before that run starts. This covers an uploaded or reset task, an urgent task, or a constraint that clears earlier than forecast. The equipment then gets less lead time than the offset gives, for example for cooling.
 - **Order.** At one decision, the agent first runs `NIGHT_END`, then `NIGHT_START`, when they are due. It then selects a task. If it starts one in standby, `RESUME` runs first. If nothing is eligible, the `IDLE` rules apply. A task that runs from before the end of one night until after the start of the next is followed by both night hooks.
 - **Idle periods.** `NIGHT_START` and `NIGHT_END` begin a new idle period when they run, as a task start does. `IDLE` does not run in standby. So after `NIGHT_START`, `IDLE` can put the equipment away again while the scheduler waits for the first target. After `NIGHT_END` it does not run during the day.

@@ -256,7 +256,7 @@ Suppose this target sinks below 30° two hours from now. The three-hour run cann
 - `@ha -2 .. 2` keeps the target within two hours of the meridian.
 - `@moon > 40` keeps the target at least 40° from the Moon.
 - `@illumination < 50` requires that less than half of the Moon is lit.
-- `@twilight astronomical` requires darkness, with the Sun below −18°. A task without `@twilight` may also run in daylight.
+- `@twilight astronomical` requires darkness, with the Sun below −18°. It is the default for a task with `@target`. A task without `@target` and without `@twilight` may also run in daylight. `@twilight none` lets a task with `@target` run in daylight too.
 - `@window` limits the time, in UTC.
 
 The Moon keys apply only while the Moon is above the horizon.
@@ -598,7 +598,7 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.NIGHT_START_OFFSE
 
 - When the scheduler night starts and a task can run in it, `NIGHT_START` runs. Without work, it is skipped with the message `No task can run tonight, the night start hook is skipped`. Work can appear later that night, when you upload or reset a task, submit an urgent task, or a constraint clears. `NIGHT_START` then runs before that task.
 - When the scheduler night ends, `NIGHT_END` runs, but only if `NIGHT_START` ran that night.
-- Night hooks never interrupt a task. To stop a task at dawn, give it `@twilight` or the checkpoint `break_if_solar_altitude_above()`.
+- Night hooks never interrupt a task. To stop a task at dawn, give it a twilight limit (a task with `@target` has `@twilight astronomical` by default) or the checkpoint `break_if_solar_altitude_above()`.
 
 **Standby.** Once the `IDLE` or `NIGHT_END` hook starts, the scheduler is in standby. It assumes that the equipment is put away. In standby, `IDLE` does not run again, so nothing is parked twice. Before the next task, the `RESUME` hook prepares the equipment again. A successful `NIGHT_START` ends the standby as well. Without a `RESUME` hook, the Mount Agent unparks the mount before a slew. It unparks the dome too when dome slaving is enabled.
 
@@ -989,7 +989,7 @@ See also: [Tasks](#tasks).
 | `@ha` | `from .. to` | Allowed hour angle in hours, −12 to +12. When `from` is greater than `to`, the range wraps across 12h | off |
 | `@moon` | `> degrees`, optionally `width days` | Minimum distance from the Moon, 0–180°, with a width of 0.5–30 days | off |
 | `@illumination` | `< percent` | Maximum Moon illumination, 0–100 | off |
-| `@twilight` | `none`, `civil`, `nautical` or `astronomical` | The Sun must be below −6°, −12° or −18°. `none` sets no limit, so the task may also run in daylight | `none` |
+| `@twilight` | `none`, `civil`, `nautical` or `astronomical` | The Sun must be below −6°, −12° or −18°. `none` sets no limit, so the task may also run in daylight | `astronomical` with `@target`, otherwise `none` |
 | `@window` | `[start] .. [end]` | Time window in UTC | open |
 | `@duration` | `minutes` | Expected length of a run, 1–1440 | estimated |
 | `@repeat` | `count`, optionally `every minutes` | Number of successful runs, 1–10000, with an optional pause of 0–100000 minutes between them | `1` |
@@ -1008,7 +1008,7 @@ See also: [Constraints](#constraints), [Priorities](#priorities), [Where the dat
 ### Constraint rules
 
 - **Whole run.** All constraints must hold from the start of a run until its expected end. The scheduler checks this when the task would start, with the expected duration.
-- **Five-minute grid.** The sky constraints are checked every five minutes. A task with `@twilight` may therefore start up to five minutes after the twilight limit.
+- **Five-minute grid.** The sky constraints are checked every five minutes. A task with a twilight limit, set by `@twilight` or by default with `@target`, may therefore start up to five minutes after it.
 - **Horizon.** A task with `@target` needs the target above 0°, even without `@altitude`.
 - **Altitude limits.** A task with `@target` needs the target at or above the larger of `MIN_ALTITUDE` and `@altitude`, and at or below `MAX_ALTITUDE`. A task whose target can never meet them is `UNREACHABLE`: `MAX_ALTITUDE` is not above `@altitude`, the upper culmination `90° − |latitude − declination|` is below the effective minimum, or the lower culmination `|latitude + declination| − 90°` is above `MAX_ALTITUDE`.
 - **Hour angle.** `@ha 22 .. 2` is not valid, because the range is −12 to +12. Write `@ha 10 .. -10` for a range that wraps across 12h.
@@ -1548,7 +1548,7 @@ A rejected request puts the property you changed into the Alert state. A message
 | `hour angle out of range` | `@ha` |
 | `too close to the moon` | `@moon` |
 | `moon too bright` | `@illumination` |
-| `too bright (twilight)` | `@twilight` |
+| `too bright (twilight)` | `@twilight`, or `@target` without `@twilight` |
 | `window not open yet`, `outside of the nightly window` | `@window` |
 | `window ends before the task can finish`, `nightly window ends before the task can finish` | The run does not fit in `@window` |
 | `site coordinates unknown` | No Mount Agent is loaded on this server, or it has no site coordinates |
@@ -1594,7 +1594,7 @@ See also: [Starting, stopping and restarting](#starting-stopping-and-restarting)
 | Nothing runs and `REASON` is `unsafe conditions` or `no safety information, treated as unsafe` | The Auxiliary Agent reports unsafe conditions, or there is no safety information and `AGENT_SCHEDULER_SAFETY_MISSING` is `UNSAFE`. See [Unsafe conditions](#unsafe-conditions) |
 | The night start hook does not run | No task can run that night, the hook names no task, there is no night at the night limit, or the site is unknown. It runs later if a task becomes able to run. See [Hooks and the night](#hooks-and-the-night) |
 | The night start hook runs too late for the camera to cool | Set a negative `NIGHT_START_OFFSET`, for example −30 |
-| The night end hook runs long after dawn | A task was still running. Night hooks never interrupt a task. Give the tasks `@twilight`, or end them with `break_if_solar_altitude_above()` |
+| The night end hook runs long after dawn | A task was still running. Night hooks never interrupt a task. Give the tasks a twilight limit (a task with `@target` has `@twilight astronomical` by default), or end them with `break_if_solar_altitude_above()` |
 | The equipment stays parked after a pause | Set a `RESUME` hook, or make every task prepare what it needs |
 | The idle hook does not run again | After `IDLE` or `NIGHT_END`, the scheduler is in standby. `IDLE` runs again after a task or the night start hook has run |
 | An urgent task does not interrupt the running task | Its own constraints do not hold yet, its duration estimate is pending, the running task is a hook, or a `STOP` is pending. See `REASON` |
@@ -1666,7 +1666,7 @@ The sandbox puts the site on the equator. It moves the longitude to choose the t
 - The server runs on a free port, not on 7624. `--port` chooses the port, and a port already in use is refused.
 - The server is announced on the network as "Scheduler Sandbox". `--name` changes the name, and `--no-bonjour` turns it off. The tool prints the addresses where an INDIGO client can watch the same scheduler.
 - The sandbox sets `IDLE_CHECK_INTERVAL` to 1 second and `IDLE_HOOK_DELAY` to 0.
-- A task with `@twilight` starts up to five minutes after the twilight limit, because of the five-minute grid. Tasks without constraints start at once.
+- A task with a twilight limit, from `@twilight` or by default with `@target`, starts up to five minutes after it, because of the five-minute grid. Tasks without constraints start at once.
 
 A night with all the hooks takes about a minute, with the script `tools/scheduler_sandbox_night.txt`:
 

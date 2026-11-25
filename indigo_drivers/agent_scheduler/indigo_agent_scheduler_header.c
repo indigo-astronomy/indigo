@@ -608,6 +608,10 @@ bool indigo_scheduler_parse_header(const char *text, scheduler_header *header, s
 		snprintf(error, error_size, "line %d: @%s: not allowed with @priority hook", conflict_line > priority_line ? conflict_line : priority_line, conflict_key);
 		return false;
 	}
+	// a task observing a target needs astronomical darkness unless it sets @twilight itself; hooks never use twilight
+	if (header->has_target && !(found & KEY_TWILIGHT) && header->priority_class != SCHEDULER_PRIORITY_HOOK) {
+		header->twilight = SCHEDULER_TWILIGHT_ASTRONOMICAL;
+	}
 	const char *body = s;
 	bool empty = true;
 	for (const char *b = body; *b; b++) {

@@ -2672,7 +2672,7 @@ static void target_at(double hour_angle, double declination, char *text, size_t 
 static bool upload_placed(const char *name, double hour_angle, double declination, const char *header) {
 	char target[64], text[1024];
 	target_at(hour_angle, declination, target, sizeof(target));
-	snprintf(text, sizeof(text), "// @task %s\n// @target %s\n%s" BODY_WAIT(1), name, target, header);
+	snprintf(text, sizeof(text), "// @task %s\n// @target %s\n// @twilight none\n%s" BODY_WAIT(1), name, target, header);
 	return upload(text);
 }
 
@@ -2786,7 +2786,7 @@ static void unreachable_tasks_are_marked_and_skipped(void) {
 	// the default site at 48.15 N
 	REQUIRE(upload("// @task Plain\n// @priority low\n" BODY_WAIT(1)));
 	// declination -30 culminates at about 11.9 degrees, below the default minimum of 20 degrees
-	REQUIRE(upload("// @task Low\n// @target 06:00:00 -30:00:00\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Low\n// @target 06:00:00 -30:00:00\n// @twilight none\n// @duration 5\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_message("Task 'Low' can never run: the target culminates at 1", 1, 5));
 	ASSERT_EQ_INT(1, count_messages("°, below the minimum altitude 20°"));
 	ASSERT_TRUE(wait_task_state("Low", "Low | UNREACHABLE | normal 50 | run 0/1", 5));
@@ -2804,7 +2804,7 @@ static void unreachable_tasks_are_marked_and_skipped(void) {
 		}
 	}
 	// Polaris never sinks below about 47.4 degrees
-	REQUIRE(upload("// @task Polar\n// @target 02:31:49 89:15:51\n// @altitude > 30\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Polar\n// @target 02:31:49 89:15:51\n// @twilight none\n// @altitude > 30\n// @duration 5\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_task_state("Polar", "Polar | QUEUED", 5));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, 45));
 	ASSERT_TRUE(wait_message("Task 'Polar' can never run: the target is never below 4", 1, 5));
@@ -2830,7 +2830,7 @@ static void unreachable_tasks_are_marked_and_skipped(void) {
 	ASSERT_EQ_INT(1, count_messages("Task 'Low' can never run"));
 	ASSERT_EQ_INT(2, count_messages("Task 'Polar' can never run"));
 	// an edit tells it again
-	REQUIRE(change_text("AGENT_SCHEDULER_TASK_1", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, "// @task Low\n// @target 06:00:00 -30:00:00\n// @duration 10\n" BODY_WAIT(1), INDIGO_OK_STATE, NULL));
+	REQUIRE(change_text("AGENT_SCHEDULER_TASK_1", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, "// @task Low\n// @target 06:00:00 -30:00:00\n// @twilight none\n// @duration 10\n" BODY_WAIT(1), INDIGO_OK_STATE, NULL));
 	ASSERT_TRUE(wait_message("Task 'Low' can never run", 2, 5));
 	// relaxed limits make both runnable again
 	REQUIRE(set_altitude_limits(10, 90, INDIGO_OK_STATE, NULL));
@@ -2960,7 +2960,7 @@ static void moon_separation_and_brightness(void) {
 	REQUIRE(upload_placed("Fixed", 0, moon_dec - separation, header));
 	REQUIRE(upload_placed("Lorentzian", 0, moon_dec - separation, "// @moon > 40 width 3\n// @duration 5\n"));
 	// a limit the moon above the horizon can never meet, and one it always meets
-	REQUIRE(upload("// @task Never\n// @priority high\n// @target 0 0\n// @illumination < 0\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Never\n// @priority high\n// @target 0 0\n// @twilight none\n// @illumination < 0\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(upload_placed("Any phase", 0, moon_dec - 40, "// @illumination < 100\n// @duration 5\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Away", "DONE", 15));
@@ -3033,7 +3033,7 @@ static void duration_must_fit_before_the_target_sets(void) {
 
 static void unknown_site_blocks_only_sky_constraints(void) {
 	indigo_delete_property(&mount_standin, site_property, NULL);
-	REQUIRE(upload("// @task Placed\n// @priority high\n// @target 0 0\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Placed\n// @priority high\n// @target 0 0\n// @twilight none\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Dark only\n// @priority high\n// @twilight civil\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Anywhere\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
@@ -3098,7 +3098,7 @@ static void sky_bonuses_order_equal_priorities(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_ALTITUDE_WEIGHT_ITEM_NAME, 0));
 	char target[64], text[512];
 	target_at(-4, 0, target, sizeof(target));
-	snprintf(text, sizeof(text), "// @task Rising\n// @target %s\n// @priority normal 50\n// @duration 5\n" BODY_WAIT(1), target);
+	snprintf(text, sizeof(text), "// @task Rising\n// @target %s\n// @twilight none\n// @priority normal 50\n// @duration 5\n" BODY_WAIT(1), target);
 	REQUIRE(change_text("AGENT_SCHEDULER_TASK_0", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, text, INDIGO_OK_STATE, NULL));
 	REQUIRE(command("Setting", AGENT_SCHEDULER_TASK_COMMAND_MOVE_UP_ITEM_NAME));
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, NULL));
@@ -3108,7 +3108,7 @@ static void sky_bonuses_order_equal_priorities(void) {
 	ASSERT_TRUE(started_before("Setting", "Rising"));
 	// the altitude bonus prefers the higher target: Rising is moved to 75 degrees
 	target_at(-1, 0, target, sizeof(target));
-	snprintf(text, sizeof(text), "// @task Rising\n// @target %s\n// @priority normal 50\n// @duration 5\n" BODY_WAIT(1), target);
+	snprintf(text, sizeof(text), "// @task Rising\n// @target %s\n// @twilight none\n// @priority normal 50\n// @duration 5\n" BODY_WAIT(1), target);
 	REQUIRE(change_text("AGENT_SCHEDULER_TASK_0", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, text, INDIGO_OK_STATE, NULL));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_ALTITUDE_WEIGHT_ITEM_NAME, 2));
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, NULL));
@@ -3711,7 +3711,7 @@ static void plan_lists_the_night(void) {
 	REQUIRE(upload("// @task Twice\n// @priority low 0\n// @repeat 2\n// @duration 1\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Off\n// @duration 1\n" BODY_WAIT(1)));
 	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
-	REQUIRE(upload("// @task South\n// @target 06:00:00 -89:00:00\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task South\n// @target 06:00:00 -89:00:00\n// @twilight none\n// @duration 1\n" BODY_WAIT(1)));
 	// the plan is a preview, it is shown before the scheduler starts
 	ASSERT_TRUE(wait_plan(7, "High", 10));
 	char labels[16][INDIGO_VALUE_SIZE];

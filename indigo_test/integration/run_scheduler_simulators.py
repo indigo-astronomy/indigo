@@ -410,13 +410,13 @@ def main():
 				body += "sequence.slew(scheduler_task.ra, scheduler_task.dec);\n"
 				body += "sequence.calibrate_guiding(0.05, 1);\n"
 				body += "sequence.start();\n"
-				run.upload("// @task Calibration\n// @priority high\n// @target " + zenith(0) + "\n// @duration 10\n\n" + body)
+				run.upload("// @task Calibration\n// @priority high\n// @target " + zenith(0) + "\n// @twilight none\n// @duration 10\n\n" + body)
 				run.wait_task("Calibration", "DONE", 240)
 				assert client.message_count("Task 'Calibration' completed") == 1
 
 			def guided_capture():
 				# no @duration: the scheduler estimates it from the sequence, then measures the real run
-				run.upload("// @task Zenith\n// @target " + zenith(0) + "\n// @altitude > 30\n\n" + capture_body(images, "zenith", 3, 0.5, True))
+				run.upload("// @task Zenith\n// @target " + zenith(0) + "\n// @twilight none\n// @altitude > 30\n\n" + capture_body(images, "zenith", 3, 0.5, True))
 				client.wait(lambda: " estimated" in client.task_label("Zenith"), 30, "estimated duration (label '" + client.task_label("Zenith") + "')")
 				run.wait_task("Zenith", "DONE", 180)
 				assert " measured" in client.task_label("Zenith"), "no measured duration: " + client.task_label("Zenith")
@@ -425,11 +425,11 @@ def main():
 				assert client.state("Guider Agent", "AGENT_START_PROCESS") != "Busy", "guiding still running"
 
 			def preemption():
-				run.upload("// @task Long\n// @target " + zenith(0) + "\n// @retry 1\n// @duration 30\n\n" + capture_body(images, "long", 40, 1, True))
+				run.upload("// @task Long\n// @target " + zenith(0) + "\n// @twilight none\n// @retry 1\n// @duration 30\n\n" + capture_body(images, "long", 40, 1, True))
 				run.wait_task("Long", "RUNNING", 60)
 				client.wait(lambda: client.state("Imager Agent", "AGENT_START_PROCESS") == "Busy" and client.state("Guider Agent", "AGENT_START_PROCESS") == "Busy", 120, "guided capture in progress")
 				client.wait(lambda: len(run.frames("long")) >= 1, 60, "first long frame")
-				client.change_text(AGENT, "AGENT_SCHEDULER_URGENT_TASK", {"TASK": "// @task Burst\n// @target " + zenith(0.5) + "\n// @duration 10\n\n" + capture_body(images, "burst", 2, 0.2, False)})
+				client.change_text(AGENT, "AGENT_SCHEDULER_URGENT_TASK", {"TASK": "// @task Burst\n// @target " + zenith(0.5) + "\n// @twilight none\n// @duration 10\n\n" + capture_body(images, "burst", 2, 0.2, False)})
 				client.wait(lambda: client.message_count("Task 'Long' preempted by an urgent task, it will be retried") == 1, 90, "preemption")
 				assert client.state("Imager Agent", "AGENT_START_PROCESS") != "Busy", "exposure not aborted"
 				assert client.state("Guider Agent", "AGENT_START_PROCESS") != "Busy", "guiding not aborted"
@@ -446,12 +446,12 @@ def main():
 			def preemption_fails():
 				# the same interruption of a guided capture, the task asks to fail instead of being retried
 				client.change_text(AGENT, "AGENT_SCHEDULER_DELETE_TASK", {"NAME": "Long"})
-				run.upload("// @task Fragile\n// @target " + zenith(0) + "\n// @retry 1\n// @preempted fail\n// @duration 30\n\n" + capture_body(images, "fragile", 40, 1, True))
+				run.upload("// @task Fragile\n// @target " + zenith(0) + "\n// @twilight none\n// @retry 1\n// @preempted fail\n// @duration 30\n\n" + capture_body(images, "fragile", 40, 1, True))
 				run.control("START")
 				run.wait_task("Fragile", "RUNNING", 60)
 				client.wait(lambda: client.state("Imager Agent", "AGENT_START_PROCESS") == "Busy" and client.state("Guider Agent", "AGENT_START_PROCESS") == "Busy", 120, "guided capture in progress")
 				client.wait(lambda: len(run.frames("fragile")) >= 1, 60, "first fragile frame")
-				client.change_text(AGENT, "AGENT_SCHEDULER_URGENT_TASK", {"TASK": "// @task Rush\n// @target " + zenith(0.5) + "\n// @duration 10\n\n" + capture_body(images, "rush", 2, 0.2, False)})
+				client.change_text(AGENT, "AGENT_SCHEDULER_URGENT_TASK", {"TASK": "// @task Rush\n// @target " + zenith(0.5) + "\n// @twilight none\n// @duration 10\n\n" + capture_body(images, "rush", 2, 0.2, False)})
 				client.wait(lambda: client.message_count("Task 'Fragile' preempted by an urgent task and failed") == 1, 90, "preemption")
 				assert client.state("Imager Agent", "AGENT_START_PROCESS") != "Busy", "exposure not aborted"
 				assert client.state("Guider Agent", "AGENT_START_PROCESS") != "Busy", "guiding not aborted"
@@ -469,7 +469,7 @@ def main():
 
 			def below_horizon():
 				client.change_text(AGENT, "AGENT_SCHEDULER_DELETE_TASK", {"NAME": "Fragile"})
-				run.upload("// @task South\n// @target 06:00:00 " + ("-89:00:00" if latitude >= 0 else "+89:00:00") + "\n// @duration 10\n\n" + capture_body(images, "south", 1, 0.2, False))
+				run.upload("// @task South\n// @target 06:00:00 " + ("-89:00:00" if latitude >= 0 else "+89:00:00") + "\n// @twilight none\n// @duration 10\n\n" + capture_body(images, "south", 1, 0.2, False))
 				run.control("START")
 				run.wait_task("South", "WAITING", 30)
 				client.wait(lambda: "target below the horizon" in (client.value(AGENT, "AGENT_SCHEDULER_CURRENT", "REASON") or ""), 30, "reason")
@@ -576,7 +576,7 @@ def main():
 				body += "sequence.capture_batch(\"bias_XXX\", 1, 0);\n"
 				body += "sequence.select_frame_type(\"Light\");\n"
 				body += "sequence.start();\n"
-				run.upload("// @task LRGB\n// @target " + target + "\n// @altitude > 30\n\n" + body)
+				run.upload("// @task LRGB\n// @target " + target + "\n// @twilight none\n// @altitude > 30\n\n" + body)
 				client.wait(lambda: " estimated" in client.task_label("LRGB"), 30, "estimated duration (label '" + client.task_label("LRGB") + "')")
 				run.wait_task("LRGB", "DONE", 300)
 				for name in "LRGB":
@@ -603,8 +603,8 @@ def main():
 				west, west_ra, west_dec = zenith_jnow(-1)
 				east, east_ra, east_dec = zenith_jnow(1)
 				# uploaded while stopped, in the reverse of the order they run
-				run.upload("// @task East field\n// @target " + east + "\n// @repeat 2\n\n" + capture_prologue(images) + "sequence.capture_batch(\"east_XXX\", 1, 0.2);\nsequence.start();\n", False)
-				run.upload("// @task West field\n// @priority high\n// @target " + west + "\n\n" + capture_prologue(images) + "sequence.capture_batch(\"west_XXX\", 1, 0.2);\nsequence.start();\n", False)
+				run.upload("// @task East field\n// @target " + east + "\n// @twilight none\n// @repeat 2\n\n" + capture_prologue(images) + "sequence.capture_batch(\"east_XXX\", 1, 0.2);\nsequence.start();\n", False)
+				run.upload("// @task West field\n// @priority high\n// @target " + west + "\n// @twilight none\n\n" + capture_prologue(images) + "sequence.capture_batch(\"west_XXX\", 1, 0.2);\nsequence.start();\n", False)
 				run.control("START")
 				run.wait_task("West field", "DONE", 180)
 				run.wait_task("East field", "DONE", 240)
@@ -623,9 +623,9 @@ def main():
 				bad_filter = capture_prologue(images) + "sequence.select_filter_wheel(" + json.dumps(WHEEL) + ");\nsequence.select_filter(\"Nonexistent\");\nsequence.capture_batch(\"badfilter_XXX\", 1, 0.2);\nsequence.start();\n"
 				bad_camera = "var sequence = new Sequence(scheduler_task.name);\nsequence.select_imager_camera(\"No Such Camera\");\nsequence.set_directory(" + json.dumps(str(images) + "/") + ");\nsequence.capture_batch(\"badcamera_XXX\", 1, 0.2);\nsequence.start();\n"
 				zenith_target = zenith(0)
-				run.upload("// @task Bad filter\n// @priority high 60\n// @retry 1\n// @target " + zenith_target + "\n\n" + bad_filter, False)
+				run.upload("// @task Bad filter\n// @priority high 60\n// @retry 1\n// @target " + zenith_target + "\n// @twilight none\n\n" + bad_filter, False)
 				run.upload("// @task Bad camera\n// @priority high 40\n\n" + bad_camera, False)
-				run.upload("// @task Afterwards\n// @priority low\n// @target " + zenith_target + "\n\n" + capture_prologue(images) + "sequence.capture_batch(\"after_XXX\", 1, 0.2);\nsequence.start();\n", False)
+				run.upload("// @task Afterwards\n// @priority low\n// @target " + zenith_target + "\n// @twilight none\n\n" + capture_prologue(images) + "sequence.capture_batch(\"after_XXX\", 1, 0.2);\nsequence.start();\n", False)
 				run.control("START")
 				run.wait_task("Afterwards", "DONE", 240)
 				run.wait_task("Bad filter", "FAILED", 10)

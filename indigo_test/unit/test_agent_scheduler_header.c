@@ -144,6 +144,23 @@ static void test_decimal_target_and_operators(void) {
 	ASSERT_NEAR(-0.5, header.dec, 1e-9);
 }
 
+static void test_target_twilight_default(void) {
+	// a task with @target and without @twilight needs astronomical darkness
+	ASSERT_TRUE(parse("// @task A\n// @target 05:35:17 -05:23:28\n" BODY));
+	ASSERT_EQ_INT(SCHEDULER_TWILIGHT_ASTRONOMICAL, header.twilight);
+	// an explicit @twilight wins, none included
+	ASSERT_TRUE(parse("// @task A\n// @target 05:35:17 -05:23:28\n// @twilight none\n" BODY));
+	ASSERT_EQ_INT(SCHEDULER_TWILIGHT_NONE, header.twilight);
+	ASSERT_TRUE(parse("// @task A\n// @twilight civil\n// @target 05:35:17 -05:23:28\n" BODY));
+	ASSERT_EQ_INT(SCHEDULER_TWILIGHT_CIVIL, header.twilight);
+	// a task without @target keeps none
+	ASSERT_TRUE(parse("// @task A\n" BODY));
+	ASSERT_EQ_INT(SCHEDULER_TWILIGHT_NONE, header.twilight);
+	// a hook with @target gets no twilight limit
+	ASSERT_TRUE(parse("// @task A\n// @priority hook\n// @target 10 20\n" BODY));
+	ASSERT_EQ_INT(SCHEDULER_TWILIGHT_NONE, header.twilight);
+}
+
 static void test_windows(void) {
 	ASSERT_TRUE(parse("// @task A\n// @window 22:00 .. 03:30\n" BODY));
 	ASSERT_EQ_INT(SCHEDULER_WINDOW_NIGHTLY, header.window_kind);
@@ -299,6 +316,7 @@ int main(void) {
 		{ "case_whitespace_crlf_and_bom", test_case_whitespace_crlf_and_bom },
 		{ "header_ends_at_first_other_line", test_header_ends_at_first_other_line },
 		{ "decimal_target_and_operators", test_decimal_target_and_operators },
+		{ "target_twilight_default", test_target_twilight_default },
 		{ "windows", test_windows },
 		{ "rejected_headers", test_rejected_headers },
 		{ "constraints_require_target", test_constraints_require_target },
