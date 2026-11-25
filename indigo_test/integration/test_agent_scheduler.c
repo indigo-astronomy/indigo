@@ -5230,6 +5230,37 @@ static void missing_safety_counts_as_unsafe_when_selected(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
 }
 
+// no safety information since the agent attached, e.g. the Auxiliary Agent loaded after the scheduler or still Idle after a restart, holds the start until the first Ok or Alert, but the wait is no unsafe report; a safety deleted after an Ok is one again
+static void missing_safety_is_awaited_without_safe_delay(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 1));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_missing(true));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Unsafe conditions, the start waits for safe conditions", 1, 5));
+	ASSERT_TRUE(wait_reason("no safety information, treated as unsafe", 10));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Work'"));
+	// defined Idle like the Auxiliary Agent without a weather source: still no information
+	REQUIRE(aux_attach(INDIGO_IDLE_STATE));
+	indigo_usleep(2000000);
+	ASSERT_TRUE(wait_reason("no safety information, treated as unsafe", 1));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Work'"));
+	// the first Ok: the start follows at once, not SAFE_DELAY later
+	set_safety(INDIGO_OK_STATE);
+	ASSERT_TRUE(wait_message("Safe conditions, the scheduler starts", 1, 5));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	// deleted after it has been seen: an unsafe report, the hold lasts SAFE_DELAY after the safety returns
+	delete_safety();
+	ASSERT_TRUE(wait_message("No safety information, treated as unsafe, the scheduler holds", 1, 5));
+	REQUIRE(upload("// @task Second\n" BODY_WAIT(1)));
+	atomic_store(&safety_published, true);
+	indigo_define_property(&aux_standin, safety_property, NULL);
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Second'"));
+	ASSERT_EQ_INT(0, count_messages("Safe conditions, the unsafe hold ends"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
 static void start_waits_for_safe_conditions(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0.1));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
@@ -5534,6 +5565,7 @@ static const indigo_test_case cases[] = {
 	{ "missing_unsafe_hook_is_reported", missing_unsafe_hook_is_reported },
 	{ "missing_safety_counts_as_safe_by_default", missing_safety_counts_as_safe_by_default },
 	{ "missing_safety_counts_as_unsafe_when_selected", missing_safety_counts_as_unsafe_when_selected },
+	{ "missing_safety_is_awaited_without_safe_delay", missing_safety_is_awaited_without_safe_delay },
 	{ "start_waits_for_safe_conditions", start_waits_for_safe_conditions },
 	{ "stop_during_the_hold_runs_the_shutdown_hook", stop_during_the_hold_runs_the_shutdown_hook },
 	{ "abort_during_the_unsafe_hook", abort_during_the_unsafe_hook },

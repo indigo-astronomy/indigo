@@ -694,7 +694,7 @@ The hold ends when the conditions have been safe for `SAFE_DELAY` minutes withou
 
 `START` while the conditions are unsafe does not start right away. The state message is `Unsafe conditions, the start waits for safe conditions`, and `STARTUP` runs once the conditions have been safe for `SAFE_DELAY`. `STOP` and `ABORT` work during the hold as usual, and run `SHUTDOWN`.
 
-`AGENT_SCHEDULER_SAFETY_MISSING` decides what happens when there is no safety information: no Auxiliary Agent, no `AGENT_AUX_SAFETY`, or an Idle light. `SAFE` (the default) ignores it, so a setup without a safety signal works as before. `UNSAFE` holds the scheduler until a safe signal arrives. With the current Auxiliary Agent no safe signal ever arrives, so `UNSAFE` holds the scheduler permanently.
+`AGENT_SCHEDULER_SAFETY_MISSING` decides what happens when there is no safety information: no Auxiliary Agent, no `AGENT_AUX_SAFETY`, or an Idle light. `SAFE` (the default) ignores it, so a setup without a safety signal works as before. `UNSAFE` holds the scheduler until a safe signal arrives. Until the first Ok or Alert since the agent was loaded, for example after a server restart while the Auxiliary Agent is still Idle, or when it is loaded later, `UNSAFE` holds `START` without counting the wait as an unsafe report: the wait adds no `SAFE_DELAY` of its own. An unsafe state saved before a restart, or an unsafe report less than `SAFE_DELAY` before it, still delays the start as usual. With the current Auxiliary Agent no safe signal ever arrives, so `UNSAFE` holds the scheduler permanently.
 
 **Example: close on rain.** Add two hooks to the observatory above. `Close` parks the mount and closes the dome, `Open` opens it again:
 
@@ -1195,7 +1195,7 @@ See also: [Hooks and the night](#hooks-and-the-night).
 - An aborted task with `@preempted retry` returns to `RETRY` without using a retry and without a retry delay; a one-off urgent task stays in the list and runs after the hold. With `@preempted fail` the task becomes `FAILED`; a one-off urgent task leaves the list and counts in `URGENT_FAILED`. The history result is `UNSAFE` in both cases.
 - `UNSAFE` runs once per hold. When it names the task that has just run as `NIGHT_END`, it does not run again.
 - During the hold, no task, urgent task or hook starts, except `UNSAFE` and `NIGHT_END` at dawn. A night that starts during the hold waits for its end. The automatic stop waits too.
-- The hold ends at the first check after the conditions have been safe for `SAFE_DELAY` minutes. Each unsafe report starts the delay again.
+- The hold ends at the first check after the conditions have been safe for `SAFE_DELAY` minutes. Each unsafe report starts the delay again. With `AGENT_SCHEDULER_SAFETY_MISSING` set to `UNSAFE`, missing information is an unsafe report only after the safety has been Ok or Alert once since the agent was loaded; before that the scheduler only waits for it.
 - At the end of the hold, during a scheduler night with work, `SAFE` runs. Otherwise the scheduler continues in standby, and `NIGHT_START` or `RESUME` prepares the equipment when it is needed. Without a known site the whole time counts as night.
 - `START` while unsafe, or less than `SAFE_DELAY` after the last unsafe report, waits for safe conditions. `UNSAFE` does not run for it, and `STARTUP` runs at the end of the wait.
 - The time of the last unsafe report is kept while the scheduler is stopped and across a server restart. A server that stopped during unsafe conditions counts as unsafe until it starts again.

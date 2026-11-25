@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000028
+#define DRIVER_VERSION 0x03000029
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -299,6 +299,8 @@ typedef struct {
 	bool safety_defined;
 	indigo_property_state safety_light;
 	unsigned safety_alerts;
+	// AGENT_AUX_SAFETY has reported Ok or Alert at least once since the agent attached; until then the missing information is awaited, not reported as unsafe
+	bool safety_seen;
 } scheduler_observed;
 
 typedef struct {
@@ -414,6 +416,9 @@ typedef struct {
 	time_t last_unsafe;
 	bool unsafe_now;
 	bool unsafe_missing;
+	// the first safety information since the attach is awaited, and whether the saved state was unsafe, which the wait keeps when it saves
+	bool safety_awaited;
+	bool saved_unsafe;
 	unsigned safety_alerts_seen;
 	// the unsafe hold, whether its UNSAFE hook was handled and whether a sequence started by hand was aborted when it began
 	hold_kind hold;
@@ -807,7 +812,9 @@ static char *history_text(indigo_device *device) {
 	}
 	// the safety at the save and the time of the latest unsafe report, so that START waits for SAFE_DELAY after a restart; CLEAR_HISTORY keeps it
 	if (PRIVATE_DATA->last_unsafe != 0) {
-		out += snprintf(out, size - (out - text), "#safety\t%s\t%ld\n", PRIVATE_DATA->unsafe_now ? "unsafe" : "safe", (long)PRIVATE_DATA->last_unsafe);
+		// a hold that only awaits the first safety information is no unsafe report, it keeps the saved state
+		bool unsafe = PRIVATE_DATA->safety_awaited ? PRIVATE_DATA->saved_unsafe : PRIVATE_DATA->unsafe_now;
+		out += snprintf(out, size - (out - text), "#safety\t%s\t%ld\n", unsafe ? "unsafe" : "safe", (long)PRIVATE_DATA->last_unsafe);
 	}
 	for (int i = PRIVATE_DATA->history_count - 1; i >= 0; i--) {
 		history_entry *entry = PRIVATE_DATA->history + i;
@@ -847,7 +854,8 @@ static void restore_history(indigo_device *device, const char *text) {
 				PRIVATE_DATA->urgent_failed = failed < 0 ? 0 : failed > MAX_URGENT_COUNT ? MAX_URGENT_COUNT : failed;
 			} else if (count >= 3 && !strcmp(fields[0], "#safety")) {
 				// the conditions while the server was down are unknown, an unsafe save counts as unsafe until now
-				PRIVATE_DATA->last_unsafe = !strcmp(fields[1], "unsafe") ? time(NULL) : (time_t)atol(fields[2]);
+				PRIVATE_DATA->saved_unsafe = !strcmp(fields[1], "unsafe");
+				PRIVATE_DATA->last_unsafe = PRIVATE_DATA->saved_unsafe ? time(NULL) : (time_t)atol(fields[2]);
 			} else if (count >= 5) {
 				run_result result = RESULT_FAILED;
 				for (int i = 0; i < (int)(sizeof(run_result_names) / sizeof(run_result_names[0])); i++) {
@@ -2111,6 +2119,7 @@ static void evaluate_safety(indigo_device *device, time_t now) {
 	scheduler_observed *observed = &PRIVATE_DATA->observed;
 	pthread_mutex_lock(&observed->mutex);
 	bool defined = observed->safety_defined;
+	bool seen = observed->safety_seen;
 	indigo_property_state light = observed->safety_light;
 	unsigned alerts = observed->safety_alerts;
 	pthread_mutex_unlock(&observed->mutex);
@@ -2120,13 +2129,16 @@ static void evaluate_safety(indigo_device *device, time_t now) {
 	bool alerted = light == INDIGO_ALERT_STATE || alerts != PRIVATE_DATA->safety_alerts_seen;
 	bool unsafe = alerted || (missing && SAFETY_MISSING_UNSAFE_ITEM->sw.value);
 	PRIVATE_DATA->safety_alerts_seen = alerts;
-	if (unsafe) {
+	// before the first Ok or Alert since the attach, e.g. after a restart, the scheduler holds until the safety is available, but the wait starts no SAFE_DELAY
+	bool awaited = unsafe && !alerted && !seen;
+	if (unsafe && !awaited) {
 		PRIVATE_DATA->last_unsafe = now;
 	}
 	bool unsafe_missing = unsafe && !alerted;
-	if (unsafe != PRIVATE_DATA->unsafe_now || unsafe_missing != PRIVATE_DATA->unsafe_missing) {
+	if (unsafe != PRIVATE_DATA->unsafe_now || unsafe_missing != PRIVATE_DATA->unsafe_missing || awaited != PRIVATE_DATA->safety_awaited) {
 		PRIVATE_DATA->unsafe_now = unsafe;
 		PRIVATE_DATA->unsafe_missing = unsafe_missing;
+		PRIVATE_DATA->safety_awaited = awaited;
 		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
 		schedule_save(device);
 	}
@@ -3859,6 +3871,9 @@ static void observe_property(indigo_property *property) {
 		indigo_item *item = property->type == INDIGO_LIGHT_VECTOR ? indigo_get_item(property, AUX_SAFETY_SAFE_ITEM) : NULL;
 		observed->safety_defined = true;
 		observed->safety_light = item ? item->light.value : INDIGO_IDLE_STATE;
+		if (observed->safety_light == INDIGO_OK_STATE || observed->safety_light == INDIGO_ALERT_STATE) {
+			observed->safety_seen = true;
+		}
 		if (observed->safety_light == INDIGO_ALERT_STATE) {
 			observed->safety_alerts++;
 		}
