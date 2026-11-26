@@ -1,0 +1,445 @@
+{
+  "schema_version": 1,
+  "ticket_id": "32757cb9-fdfe-4ccc-a152-26bedca30e27",
+  "revision": 20,
+  "title": "indigo_agent_scheduler: start the first run right after the startup hook when the night start hook names the same task",
+  "description": "Observed on the owner's server 2026-11-27 (driver 3.0.0.43, VISIBILITY, site 42N 70E, hooks STARTUP = NIGHT_START = 'Startup', SHUTDOWN = NIGHT_END = 'Shutdown', nautical night): START at 22:30 UTC during the night; the Startup hook ran 22:30-22:33; the first task (Jellyfish Nebula, a setting target, HA +1.3 h) started only at 22:35 with REASON 'Jellyfish Nebula starts at 22:35 UTC, planned for better visibility'. Waiting lost altitude (64.4 deg at 22:33, 64.1 at 22:35); the history shows a single Startup run.\n\nCause (source analysis, indigo_drivers/agent_scheduler/indigo_agent_scheduler.c, to confirm with a test):\n1. finish_hook() sets plan_dirty; check_run_end() sets plan_changed because the hook ended 10 s or more off its planned end (estimated duration).\n2. process_night() replans first (~2313). The night state is not yet handled/started, and add_plan_hook() (~2860) no longer skips the night start hook of the running hook's task because the hook has finished, so update_plan() adds a NIGHT_START run of 'Startup' (its estimated duration, about 2 min) from now and places the first task after it. update_plan() clears plan_changed (~3158).\n3. indigo_scheduler_night_decide() returns SCHEDULER_NIGHT_START and marks the night started; start_night_hook() (~2295) skips it because slot == chain_slot (the task just ran as the previous hook) - correct, the task runs once.\n4. select_planned() replans (plan_dirty); the new plan has no night start hook, but plan_changed is already false, so the previous plan is passed with its starts and kept, and the first run keeps the start behind the phantom hook.\n\nExpected: the first run starts when it would without the skipped hook (at once here). Fix options: have add_plan_hook() leave out a night start/resume hook whose task equals chain_slot with chain_ok (mirroring start_night_hook()), and/or decide the night boundary before the first replan, and/or not let a replan that included a hook later skipped clear plan_changed. Also: the REASON text 'planned for better visibility' (~3187) is printed for every future planned start; word it neutrally, or only claim better visibility when the wait gains quality.\n\nTests: integration test in indigo_test/integration/test_agent_scheduler.c with STARTUP and NIGHT_START naming the same task, START during the night, the hook ending off its estimate, a setting target: the task starts right after the hook and no plan entry/REASON refers to a night start hook; also the case of different tasks for STARTUP and NIGHT_START still runs both. Bump the driver version; update SCHEDULER.md if behaviour text changes.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-26T22:46:29.214930Z",
+  "status": "closed",
+  "branch": "ticket/32757cb9-fdfe-4ccc-a152-26bedca30e27",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "60ba63c3-f7da-457b-8cac-85fb5cb18058",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3d70f0dd-02bc-4e65-8df9-e6bdb1b6e0f9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T22:49:19.924837Z",
+          "last_activity_at": "2026-11-26T23:02:14.173214Z",
+          "ended_at": "2026-11-26T23:02:14.173214Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 774248.377,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T22:49:19.924837Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/32757cb9-fdfe-4ccc-a152-26bedca30e27"
+        },
+        {
+          "at": "2026-11-26T23:02:14.173214Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 774248.377,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "b852eaf0-ac5c-4f25-a24d-9a90915adecc",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "9f7bc2cb-8363-4d49-8bb8-00631fa27d16",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "low"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T23:02:14.173265Z",
+          "last_activity_at": "2026-11-26T23:15:20.352482Z",
+          "ended_at": "2026-11-26T23:15:20.352482Z",
+          "outcome": {
+            "summary": "Independent review: pass. Root cause confirmed: after a shared STARTUP/NIGHT_START hook ends, finish_hook sets chain_slot (1684), process_night replans before indigo_scheduler_night_decide; add_plan_hook planned NIGHT_START at from=now, update_plan cleared plan_changed, start_night_hook then skipped the task (2295), and select_planned kept the stale start. The new condition (indigo_agent_scheduler.c:2876, slot == chain_slot && time <= now) matches start_night_hook, whose skip depends only on slot == chain_slot (chain_ok only changes standby), for both NIGHT_START and NIGHT_END; RESUME is never planned. chain_slot persists until the next decision that starts a task (1876) or runs nothing (2620, 2518), so the plan and the runtime skip stay consistent: a future night start (time > now, START by day) is still planned; a failed previous hook (chain_ok false) is skipped at runtime too; an UNSAFE-interrupted hook clears chain_slot, so the hook stays planned and runs. Tests: test 1 fails on an unfixed build (Prepare completed 1795734289, Setting started 1795734349, assertion at test_agent_scheduler.c:2173) and passes with the fix (same second); test 2 passes both ways and guards against dropping a different NIGHT_START task. Margin is 5 s against a 60 s defect. Minor, not blocking: the count_plan_items(hook night start)==0 assertion (test_agent_scheduler.c:2175) runs after the target started, when the night has started and no night start item can appear anyway, so it adds little; the timing assertion carries the test. Docs (SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md) are accurate, git grep finds no leftover old REASON text, no README changes, DRIVER_VERSION 0x0300002B->0x0300002C. Ran: the two cases with the fix (pass, pass), the two cases on a scratch build without the fix (fail, pass), full make -C indigo_test test-agent-scheduler: 200 run, 200 passed, 0 failed.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 786179.217,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T23:02:14.173265Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T23:15:20.352482Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review: pass. Root cause confirmed: after a shared STARTUP/NIGHT_START hook ends, finish_hook sets chain_slot (1684), process_night replans before indigo_scheduler_night_decide; add_plan_hook planned NIGHT_START at from=now, update_plan cleared plan_changed, start_night_hook then skipped the task (2295), and select_planned kept the stale start. The new condition (indigo_agent_scheduler.c:2876, slot == chain_slot && time <= now) matches start_night_hook, whose skip depends only on slot == chain_slot (chain_ok only changes standby), for both NIGHT_START and NIGHT_END; RESUME is never planned. chain_slot persists until the next decision that starts a task (1876) or runs nothing (2620, 2518), so the plan and the runtime skip stay consistent: a future night start (time > now, START by day) is still planned; a failed previous hook (chain_ok false) is skipped at runtime too; an UNSAFE-interrupted hook clears chain_slot, so the hook stays planned and runs. Tests: test 1 fails on an unfixed build (Prepare completed 1795734289, Setting started 1795734349, assertion at test_agent_scheduler.c:2173) and passes with the fix (same second); test 2 passes both ways and guards against dropping a different NIGHT_START task. Margin is 5 s against a 60 s defect. Minor, not blocking: the count_plan_items(hook night start)==0 assertion (test_agent_scheduler.c:2175) runs after the target started, when the night has started and no night start item can appear anyway, so it adds little; the timing assertion carries the test. Docs (SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md) are accurate, git grep finds no leftover old REASON text, no README changes, DRIVER_VERSION 0x0300002B->0x0300002C. Ran: the two cases with the fix (pass, pass), the two cases on a scratch build without the fix (fail, pass), full make -C indigo_test test-agent-scheduler: 200 run, 200 passed, 0 failed."
+        }
+      ],
+      "result": {
+        "summary": "Independent review: pass. Root cause confirmed: after a shared STARTUP/NIGHT_START hook ends, finish_hook sets chain_slot (1684), process_night replans before indigo_scheduler_night_decide; add_plan_hook planned NIGHT_START at from=now, update_plan cleared plan_changed, start_night_hook then skipped the task (2295), and select_planned kept the stale start. The new condition (indigo_agent_scheduler.c:2876, slot == chain_slot && time <= now) matches start_night_hook, whose skip depends only on slot == chain_slot (chain_ok only changes standby), for both NIGHT_START and NIGHT_END; RESUME is never planned. chain_slot persists until the next decision that starts a task (1876) or runs nothing (2620, 2518), so the plan and the runtime skip stay consistent: a future night start (time > now, START by day) is still planned; a failed previous hook (chain_ok false) is skipped at runtime too; an UNSAFE-interrupted hook clears chain_slot, so the hook stays planned and runs. Tests: test 1 fails on an unfixed build (Prepare completed 1795734289, Setting started 1795734349, assertion at test_agent_scheduler.c:2173) and passes with the fix (same second); test 2 passes both ways and guards against dropping a different NIGHT_START task. Margin is 5 s against a 60 s defect. Minor, not blocking: the count_plan_items(hook night start)==0 assertion (test_agent_scheduler.c:2175) runs after the target started, when the night has started and no night start item can appear anyway, so it adds little; the timing assertion carries the test. Docs (SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md) are accurate, git grep finds no leftover old REASON text, no README changes, DRIVER_VERSION 0x0300002B->0x0300002C. Ran: the two cases with the fix (pass, pass), the two cases on a scratch build without the fix (fail, pass), full make -C indigo_test test-agent-scheduler: 200 run, 200 passed, 0 failed.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 786179.217,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "a83b26b3-5d8a-4f3f-b576-e20a2cd2051a",
+      "event": "ticket/created",
+      "at": "2026-11-26T22:46:29.215812Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "7ad48b56-64d6-42f5-8c8c-98e156a9f02c",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T22:49:08.017645Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "02efec7f-5f0a-4973-887d-75b957cac4ea",
+      "event": "task/progress",
+      "at": "2026-11-26T22:49:19.924955Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "60ba63c3-f7da-457b-8cac-85fb5cb18058",
+      "text": "Implementation started on branch ticket/32757cb9-fdfe-4ccc-a152-26bedca30e27"
+    },
+    {
+      "event_id": "507d3ce0-94b8-4580-8e3f-6b29be432937",
+      "event": "ticket/started",
+      "at": "2026-11-26T22:49:19.927339Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/32757cb9-fdfe-4ccc-a152-26bedca30e27",
+      "base": "master"
+    },
+    {
+      "event_id": "738632f3-6ddb-4200-a5cb-cc8dbfeb663b",
+      "event": "task/progress",
+      "at": "2026-11-26T22:49:21.649382Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "60ba63c3-f7da-457b-8cac-85fb5cb18058",
+      "text": "Implementer launched",
+      "attempt_id": "3d70f0dd-02bc-4e65-8df9-e6bdb1b6e0f9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a58102b8-97ce-45ad-8f0e-583bac40f47d",
+      "event": "task/progress",
+      "at": "2026-11-26T22:49:29.827081Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "60ba63c3-f7da-457b-8cac-85fb5cb18058",
+      "text": "Implementer launched; studying scheduler night hooks and tests",
+      "attempt_id": "3d70f0dd-02bc-4e65-8df9-e6bdb1b6e0f9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3726aa6b-fc49-4209-b421-84130a02f9ff",
+      "event": "task/progress",
+      "at": "2026-11-26T22:51:22.700488Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "60ba63c3-f7da-457b-8cac-85fb5cb18058",
+      "text": "Building and running the new reproducer tests against the unfixed driver"
+    },
+    {
+      "event_id": "42b818d5-a31b-4951-99b2-b9f1165a19cc",
+      "event": "task/progress",
+      "at": "2026-11-26T22:54:38.849552Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "60ba63c3-f7da-457b-8cac-85fb5cb18058",
+      "text": "Running the full Scheduler Agent integration suite: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "e4f81ad9-0ae3-4e44-8aa3-07396ddba34b",
+      "event": "task/progress",
+      "at": "2026-11-26T23:01:30.598422Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "60ba63c3-f7da-457b-8cac-85fb5cb18058",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "39458605-ed87-4afc-bfef-541c944185cb",
+      "event": "task/progress",
+      "at": "2026-11-26T23:01:30.638382Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "60ba63c3-f7da-457b-8cac-85fb5cb18058",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "1441f2a3-5844-40dc-8e94-d03319193df2",
+      "event": "check/passed",
+      "at": "2026-11-26T23:01:30.643745Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "84ffbfaddcd5da1cd4b6b435112d33231f2d177f",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "12729ba2-f201-4e54-8585-f421c348a26c",
+      "event": "ticket/note",
+      "at": "2026-11-26T23:01:38.710957Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: new integration case visibility_shared_startup_and_night_start_hook_does_not_delay_the_first_run (VISIBILITY, START in the night, STARTUP=NIGHT_START=Prepare with @duration 1 ending after ~1 s, setting target at HA +1.3 h) failed on the unfixed driver: Prepare completed 1795733570, Setting started 1795733630 (60 s behind the planned phantom night start hook). After the fix in add_plan_hook() (a hook due now whose task is chain_slot is not planned, mirroring start_night_hook()) it starts in the same second. visibility_startup_and_night_start_hooks_run_in_order passes before and after. Full make -C indigo_test test-agent-scheduler: 200 run, 200 passed, 0 failed. flow check (whitespace) passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "0b08b1e6-db0c-4c6d-893f-77759dc5f57b",
+      "event": "task/progress",
+      "at": "2026-11-26T23:02:14.173341Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b852eaf0-ac5c-4f25-a24d-9a90915adecc",
+      "text": "Review started"
+    },
+    {
+      "event_id": "0a4cebd9-75dc-4533-a9f0-df6c73ec2158",
+      "event": "review/started",
+      "at": "2026-11-26T23:02:14.174131Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "1d8f96ab-7e64-472e-b2e8-32e2a1c92127",
+      "event": "task/progress",
+      "at": "2026-11-26T23:02:14.436822Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b852eaf0-ac5c-4f25-a24d-9a90915adecc",
+      "text": "Reviewer launched",
+      "attempt_id": "9f7bc2cb-8363-4d49-8bb8-00631fa27d16",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "91018f48-6d46-4683-bb3f-ed281bd41de4",
+      "event": "task/progress",
+      "at": "2026-11-26T23:02:22.764741Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b852eaf0-ac5c-4f25-a24d-9a90915adecc",
+      "text": "Reviewer started: reading the diff and the scheduler decision path",
+      "attempt_id": "9f7bc2cb-8363-4d49-8bb8-00631fa27d16",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "low"
+      }
+    },
+    {
+      "event_id": "91522f96-5984-4085-9c8d-ddd48d53e79e",
+      "event": "task/progress",
+      "at": "2026-11-26T23:03:14.430403Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b852eaf0-ac5c-4f25-a24d-9a90915adecc",
+      "text": "Building the worktree and running the two new scheduler tests"
+    },
+    {
+      "event_id": "bb043985-5569-425f-a900-73057b69cf55",
+      "event": "task/progress",
+      "at": "2026-11-26T23:06:03.050792Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b852eaf0-ac5c-4f25-a24d-9a90915adecc",
+      "text": "Running make -C indigo_test test-agent-scheduler in the worktree"
+    },
+    {
+      "event_id": "6c091740-3217-4ebe-8390-39d365ded082",
+      "event": "task/progress",
+      "at": "2026-11-26T23:15:20.352583Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b852eaf0-ac5c-4f25-a24d-9a90915adecc",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "0e2bcbec-cb9e-4087-856a-a8a55f1f1e62",
+      "event": "review/passed",
+      "at": "2026-11-26T23:15:20.353421Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b852eaf0-ac5c-4f25-a24d-9a90915adecc",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "84ffbfaddcd5da1cd4b6b435112d33231f2d177f"
+    },
+    {
+      "event_id": "0c37be7e-2a8a-4f51-9c81-1b49d8562cbd",
+      "event": "ticket/title_changed",
+      "at": "2026-11-26T23:18:50.074458Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: after the startup hook the first run waits for a night start hook that never runs when STARTUP and NIGHT_START name the same task",
+      "title": "indigo_agent_scheduler: start the first run right after the startup hook when the night start hook names the same task"
+    },
+    {
+      "event_id": "55d467d3-99bb-4c3d-a277-f8a3d3127eb8",
+      "event": "ticket/closed",
+      "at": "2026-11-26T23:18:50.436051Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T23:18:50.436024Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "6587958b10b8f2d005874a581888de28266dc77f"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "84ffbfaddcd5da1cd4b6b435112d33231f2d177f",
+        "tree": "48d1c2ea79cfb99107cb8c3d6d92275b47327e0b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T23:01:30.637647Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/32757cb9-fdfe-4ccc-a152-26bedca30e27/48d1c2ea79cf-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review: pass. Root cause confirmed: after a shared STARTUP/NIGHT_START hook ends, finish_hook sets chain_slot (1684), process_night replans before indigo_scheduler_night_decide; add_plan_hook planned NIGHT_START at from=now, update_plan cleared plan_changed, start_night_hook then skipped the task (2295), and select_planned kept the stale start. The new condition (indigo_agent_scheduler.c:2876, slot == chain_slot && time <= now) matches start_night_hook, whose skip depends only on slot == chain_slot (chain_ok only changes standby), for both NIGHT_START and NIGHT_END; RESUME is never planned. chain_slot persists until the next decision that starts a task (1876) or runs nothing (2620, 2518), so the plan and the runtime skip stay consistent: a future night start (time > now, START by day) is still planned; a failed previous hook (chain_ok false) is skipped at runtime too; an UNSAFE-interrupted hook clears chain_slot, so the hook stays planned and runs. Tests: test 1 fails on an unfixed build (Prepare completed 1795734289, Setting started 1795734349, assertion at test_agent_scheduler.c:2173) and passes with the fix (same second); test 2 passes both ways and guards against dropping a different NIGHT_START task. Margin is 5 s against a 60 s defect. Minor, not blocking: the count_plan_items(hook night start)==0 assertion (test_agent_scheduler.c:2175) runs after the target started, when the night has started and no night start item can appear anyway, so it adds little; the timing assertion carries the test. Docs (SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md) are accurate, git grep finds no leftover old REASON text, no README changes, DRIVER_VERSION 0x0300002B->0x0300002C. Ran: the two cases with the fix (pass, pass), the two cases on a scratch build without the fix (fail, pass), full make -C indigo_test test-agent-scheduler: 200 run, 200 passed, 0 failed.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "84ffbfaddcd5da1cd4b6b435112d33231f2d177f",
+        "tree": "48d1c2ea79cfb99107cb8c3d6d92275b47327e0b",
+        "at": "2026-11-26T23:15:20.352450Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-26T23:01:38.710386Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: new integration case visibility_shared_startup_and_night_start_hook_does_not_delay_the_first_run (VISIBILITY, START in the night, STARTUP=NIGHT_START=Prepare with @duration 1 ending after ~1 s, setting target at HA +1.3 h) failed on the unfixed driver: Prepare completed 1795733570, Setting started 1795733630 (60 s behind the planned phantom night start hook). After the fix in add_plan_hook() (a hook due now whose task is chain_slot is not planned, mirroring start_night_hook()) it starts in the same second. visibility_startup_and_night_start_hooks_run_in_order passes before and after. Full make -C indigo_test test-agent-scheduler: 200 run, 200 passed, 0 failed. flow check (whitespace) passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "6587958b10b8f2d005874a581888de28266dc77f",
+      "tree": "48d1c2ea79cfb99107cb8c3d6d92275b47327e0b",
+      "base": "master",
+      "at": "2026-11-26T23:18:50.285487Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-26T22:46:29.214930Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T22:49:08.017594Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1560427.594,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 26,
+    "sha256": "74f0e37c19b0bbbbf5db85bb13963d81cc336c80bac732b54d1c290555570067"
+  }
+}
