@@ -6286,6 +6286,33 @@ static void release_after_an_unseen_take_is_no_manual_release(void) {
 	ASSERT_TRUE(wait_message("The sequencer was released on the Scripting Agent, the scheduler leaves the agents to the tasks until the next START", 1, 5));
 }
 
+// additional instances of the filter agents are named "<agent> #<n>", also with " @ host"
+static void additional_agent_instances_are_accepted(void) {
+	char message[INDIGO_VALUE_SIZE];
+	const char *imager[] = { AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME };
+	const char *wrong[] = { "Imager Agent #x", "Imager Agent #", "Imager Agentx", "Imager Agent #2x", "Imager Agent#2" };
+	for (int i = 0; i < 5; i++) {
+		const char *value[] = { wrong[i] };
+		ASSERT_TRUE(set_agents(1, imager, value, INDIGO_ALERT_STATE, message));
+		ASSERT_TRUE(strstr(message, "is not a valid imager agent name") != NULL);
+	}
+	ASSERT_TRUE(set_agent(AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, "Mount Agent #2 @ host"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, "Mount Agent #2 @ host"));
+	REQUIRE(set_agent(AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, "Mount Agent"));
+	// the instance is listed, selected and used
+	indigo_property *imager_properties[] = { imager_info, imager_ccd_list_property, imager_local_mode_property, imager_set_fits_property, imager_remove_fits_property };
+	REQUIRE(rename_standin(&imager_standin, imager_properties, 5, "Imager Agent #2"));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent #2", NULL, 5));
+	ASSERT_TRUE(set_agent(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent #2"));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent #2", "Imager Agent #2", 5));
+	REQUIRE(upload("// @task Instance\n" BODY_WAIT(3)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Instance", "RUNNING", 15));
+	ASSERT_TRUE(owner_value_is("IMAGER", "Imager Agent #2"));
+	ASSERT_TRUE(wait_task_state("Instance", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Instance", 0, 5) >= 0);
+}
+
 static const indigo_test_case cases[] = {
 	{ "store_edit_and_delete", store_edit_and_delete },
 	{ "commands_and_order", commands_and_order },
@@ -6484,6 +6511,7 @@ static const indigo_test_case cases[] = {
 	{ "remote_solver_busy_is_tracked", remote_solver_busy_is_tracked },
 	{ "manual_release_detected_after_a_release_without_effect", manual_release_detected_after_a_release_without_effect },
 	{ "release_after_an_unseen_take_is_no_manual_release", release_after_an_unseen_take_is_no_manual_release },
+	{ "additional_agent_instances_are_accepted", additional_agent_instances_are_accepted },
 };
 
 static const char *case_filter = NULL;

@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300002A
+#define DRIVER_VERSION 0x0300002B
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -713,10 +713,20 @@ static const char *agent_name(indigo_device *device, agent_role role) {
 	return indigo_get_text_item_value(AGENTS_PROPERTY->items + role);
 }
 
-// the name is the prefix, alone or followed by " @ host"
+// the name is the prefix, alone or followed by " #<n>" of an additional instance of a filter agent, then optionally by " @ host"
 static bool name_has_prefix(const char *name, const char *prefix) {
 	size_t length = strlen(prefix);
-	return !strncmp(name, prefix, length) && (name[length] == 0 || !strncmp(name + length, " @ ", 3));
+	if (strncmp(name, prefix, length)) {
+		return false;
+	}
+	const char *rest = name + length;
+	if (!strncmp(rest, " #", 2) && isdigit((unsigned char)rest[2])) {
+		rest += 2;
+		while (isdigit((unsigned char)*rest)) {
+			rest++;
+		}
+	}
+	return *rest == 0 || !strncmp(rest, " @ ", 3);
 }
 
 // the name follows the naming convention of the role
