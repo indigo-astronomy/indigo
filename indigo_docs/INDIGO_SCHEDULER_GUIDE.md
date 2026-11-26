@@ -451,7 +451,7 @@ With `COMPACT`, everything runs from dusk. Jellyfish runs more than three hours 
 
 With the flip enabled and `VISIBILITY_FLIP_PENALTY` 0, the plan is the same as in the table. With the flip enabled at `OFFSET` 0 and the default penalty, Soul, Pleiades and Jellyfish start just after the meridian, and no run flips.
 
-**What you see during a wait.** The tasks stay `QUEUED`. `REASON` names the next planned run, for example `Soul starts at 21:15 UTC, planned for better visibility`. Switching to `COMPACT` during a wait starts the best task at once.
+**What you see during a wait.** The tasks stay `QUEUED`. `REASON` names the next planned run, for example `Soul starts at 21:15 UTC, as planned`. Switching to `COMPACT` during a wait starts the best task at once.
 
 **When to use which.**
 
@@ -1575,7 +1575,7 @@ A rejected request puts the property you changed into the Alert state. A message
 | `window ends before the task can finish`, `nightly window ends before the task can finish` | The run does not fit in `@window` |
 | `site coordinates unknown` | The Mount Agent of `AGENT_SCHEDULER_AGENTS` is not loaded, or it has no site coordinates |
 | `beyond the forecast` | The constraints would have to hold beyond the next 48 hours |
-| `<task> starts at HH:MM UTC, planned for better visibility` | With `VISIBILITY`, a task could run now, but the plan starts the named task at the given time. It takes precedence over the reasons of the tasks that cannot run |
+| `<task> starts at HH:MM UTC, as planned` | With `VISIBILITY`, a task could run now, but the plan starts the named task at the given time. It takes precedence over the reasons of the tasks that cannot run |
 | `estimating the task duration` | The estimate of a task waiting to run has not finished yet. No other task starts before it, except an urgent one. Shown when another task could start, or when the estimating task comes first in the list among the tasks waiting to run |
 | `no task is ready`, `no tasks`, `all tasks finished` | Nothing to run |
 | `another sequence is running` | A sequence started by hand occupies the Scripting Agent |

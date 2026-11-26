@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300002B
+#define DRIVER_VERSION 0x0300002C
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -2872,6 +2872,10 @@ static int add_plan_hook(indigo_device *device, int count, indigo_item *item, co
 			return count;
 		}
 	}
+	// nor does a hook due now whose task has just run as the previous hook, start_night_hook() skips it at this decision
+	if (slot == PRIVATE_DATA->chain_slot && time <= now) {
+		return count;
+	}
 	plan_hooks[count].time = time;
 	plan_hooks[count].duration = task_duration(PRIVATE_DATA->tasks + slot, NULL);
 	plan_hooks[count].running = false;
@@ -3184,7 +3188,7 @@ static int select_planned(indigo_device *device, time_t now, const bool *candida
 			char reason[INDIGO_VALUE_SIZE];
 			struct tm at;
 			indigo_gmtime(&start, &at);
-			snprintf(reason, sizeof(reason), "%s starts at %02d:%02d UTC, planned for better visibility", PRIVATE_DATA->tasks[slot].header.name, at.tm_hour, at.tm_min);
+			snprintf(reason, sizeof(reason), "%s starts at %02d:%02d UTC, as planned", PRIVATE_DATA->tasks[slot].header.name, at.tm_hour, at.tm_min);
 			set_reason(device, reason);
 			// the next check comes at the planned start, so the run starts on time
 			double check = indigo_monotonic_time() + (double)(start - now);

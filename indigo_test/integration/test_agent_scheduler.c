@@ -2153,6 +2153,52 @@ static void shared_hook_task_runs_once(void) {
 	ASSERT_TRUE(message_position_last("Hook 'Prepare' completed") < message_position("Starting task 'More'"));
 }
 
+static time_t wait_start(const char *name, int count, double timeout);
+
+// START in the night with VISIBILITY, STARTUP and NIGHT_START naming one task that ends a minute before its @duration, and a setting target: the night start hook that does not run is not planned, the target starts right after the startup hook
+static void visibility_shared_startup_and_night_start_hook_does_not_delay_the_first_run(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
+	REQUIRE(upload("// @task Prepare\n// @duration 1\n" BODY_WAIT(1)));
+	// 20 minutes past the meridian, setting: its earliest start is its best one
+	REQUIRE(upload_placed("Setting", 1.3, 0, "// @duration 5\n"));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(set_night_hooks("Prepare", "", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Prepare' completed", 1, 20));
+	time_t completed = time(NULL);
+	time_t started = wait_start("Setting", 1, 150);
+	REQUIRE(started > 0);
+	printf("Prepare completed %ld, Setting started %ld\n", (long)completed, (long)started);
+	ASSERT_TRUE(started - completed <= 5);
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Prepare'"));
+	ASSERT_EQ_INT(0, count_plan_items("hook night start"));
+	ASSERT_TRUE(wait_task_state("Setting", "DONE", 15));
+}
+
+// the same START with different tasks as STARTUP and NIGHT_START runs both hooks in order before the target
+static void visibility_startup_and_night_start_hooks_run_in_order(void) {
+	REQUIRE(set_strategy(AGENT_SCHEDULER_STRATEGY_VISIBILITY_ITEM_NAME));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
+	REQUIRE(upload("// @task Prepare\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Evening\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(upload_placed("Setting", 1.3, 0, "// @duration 5\n"));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(set_night_hooks("Evening", "", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Evening' completed", 1, 30));
+	time_t completed = time(NULL);
+	time_t started = wait_start("Setting", 1, 150);
+	REQUIRE(started > 0);
+	printf("Evening completed %ld, Setting started %ld\n", (long)completed, (long)started);
+	ASSERT_TRUE(started - completed <= 5);
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") < message_position("Starting hook 'Evening'"));
+	ASSERT_TRUE(message_position("Hook 'Evening' completed") < message_position("Starting task 'Setting'"));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Prepare'"));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Evening'"));
+	ASSERT_TRUE(wait_task_state("Setting", "DONE", 15));
+}
+
 // the scheduler runs in the night with Work done and Later kept for another night
 static bool start_in_night(const char *night_end, const char *shutdown) {
 	char future[32], text[256];
@@ -3203,7 +3249,7 @@ static bool wait_planned(const char *name, int *start) {
 	snprintf(text, sizeof(text), "%s starts at ", name);
 	CHECK(wait_reason(text, 15));
 	CHECK(current_reason(reason));
-	CHECK(strstr(reason, " UTC, planned for better visibility") != NULL);
+	CHECK(strstr(reason, " UTC, as planned") != NULL);
 	int hour, minute;
 	CHECK(sscanf(strstr(reason, " starts at ") + 11, "%d:%d", &hour, &minute) == 2);
 	*start = hour * 60 + minute;
@@ -3427,11 +3473,11 @@ static void visibility_wait_lets_urgent_and_untargeted_tasks_run(void) {
 	time_t flats = wait_start("Flats", 1, 15);
 	ASSERT_TRUE(flats > 0 && flats <= control_at + 5);
 	ASSERT_TRUE(wait_message("Task 'Flats' completed", 1, 15));
-	ASSERT_TRUE(wait_reason(" UTC, planned for better visibility", 15));
+	ASSERT_TRUE(wait_reason(" UTC, as planned", 15));
 	// an urgent task starts at once
 	REQUIRE(urgent("// @task Now\n// @duration 5\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_message("Task 'Now' completed", 1, 15));
-	ASSERT_TRUE(wait_reason(" UTC, planned for better visibility", 15));
+	ASSERT_TRUE(wait_reason(" UTC, as planned", 15));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Target'"));
 	move_past_culmination();
 	ASSERT_TRUE(wait_task_state("Target", "DONE", 130));
@@ -6376,6 +6422,8 @@ static const indigo_test_case cases[] = {
 	{ "failed_night_start_runs_the_shutdown_hook", failed_night_start_runs_the_shutdown_hook },
 	{ "failed_resume_runs_the_shutdown_hook", failed_resume_runs_the_shutdown_hook },
 	{ "shared_hook_task_runs_once", shared_hook_task_runs_once },
+	{ "visibility_shared_startup_and_night_start_hook_does_not_delay_the_first_run", visibility_shared_startup_and_night_start_hook_does_not_delay_the_first_run },
+	{ "visibility_startup_and_night_start_hooks_run_in_order", visibility_startup_and_night_start_hooks_run_in_order },
 	{ "missing_night_hook_task_is_reported", missing_night_hook_task_is_reported },
 	{ "missing_idle_hook_task_is_reported_once", missing_idle_hook_task_is_reported_once },
 	{ "no_night_is_reported", no_night_is_reported },
