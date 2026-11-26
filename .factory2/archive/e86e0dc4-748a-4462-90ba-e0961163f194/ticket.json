@@ -1,0 +1,459 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e86e0dc4-748a-4462-90ba-e0961163f194",
+  "revision": 21,
+  "title": "indigo_agent_mcp: regenerate the embedded help, the Sequencer.js reference was out of date",
+  "description": "Found 2026-11-26 while closing ca925388 and b2c12d5d. 'make all' regenerates indigo_drivers/agent_mcp/indigo_agent_mcp_help.h from generate_help.py, and the result differs from the committed file, so every full build leaves the file modified (the primary checkout has exactly this uncommitted change, belonging to no ticket) and indigo_test buildsystem test test_agent_mcp_help fails on master ('committed header is stale'). A flow check progress commit in ca925388 picked the regenerated file up by accident.\n\nDo: regenerate the header from the current sources with the documented generator, confirm the diff is explained by source changes since the last regeneration (name which commits changed the help sources and why they did not regenerate it), commit the regenerated header, and make test_agent_mcp_help pass. Consider whether the build should fail or warn instead of silently rewriting a checked-in file; propose, do not change the build policy without owner approval. Do not touch the primary checkout's uncommitted copy; the owner decides about it after this lands.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-26T21:48:16.345665Z",
+  "status": "closed",
+  "branch": "ticket/e86e0dc4-748a-4462-90ba-e0961163f194",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "34a1d6c6-36ec-48a8-b37f-1804a517b950",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "79dd03aa-507f-4a06-afd4-f42bae4b9792",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:57:53.833819Z",
+          "last_activity_at": "2026-11-26T22:02:56.021088Z",
+          "ended_at": "2026-11-26T22:02:56.021088Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 302187.269,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T21:57:53.833819Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/e86e0dc4-748a-4462-90ba-e0961163f194"
+        },
+        {
+          "at": "2026-11-26T22:02:56.021088Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 302187.269,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "67fb04d0-f875-4501-bfa4-5b2fd86bf31e",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "64477433-2852-4bdb-99eb-bde6db565318",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T22:02:56.021130Z",
+          "last_activity_at": "2026-11-26T22:04:18.046976Z",
+          "ended_at": "2026-11-26T22:04:18.046976Z",
+          "outcome": {
+            "summary": "The diff is correct. generate_help.py --check reports the header current (18 documents). Every diff hunk falls inside mcp_help_text_17, which is reference/sequencer.md built from agent_scripting/library/Sequencer.md. The documents table is unchanged. The header is byte-identical to the primary checkout's uncommitted copy. Attribution checked: the header was last regenerated in 0ee7bddca and merge c68325b3f. fc3d5f543 (2026-11-22) and 33d9b31f2 (2026-11-26) touched Sequencer.md but not the header. The version bump in indigo_agent_mcp.c:42-43 (0x03000005/3.0.0.5 -> 0x03000006/3.0.0.6) follows AGENTS.md and the 273d8a224 precedent. test_agent_mcp.c checks only the API generation, so no test edit is needed. Notes for the owner, not blocking: (1) indigo_docs/mcp/agents/mcp.md:5 and agent_mcp/README.md:23 still say 3.0.0.5. 273d8a224 updated both together with its bump. mcp.md is itself a help source, so editing it would also need regenerating the header. The README needs owner approval. (2) The ticket asks for a proposal on whether the build should fail or warn instead of silently rewriting the header, through agent_mcp/Makefile:7-8 and indigo_test/Makefile:610-611. No proposal is recorded in the ticket notes or journal. Record one with flow note before close. Ran: test_agent_mcp_help unittest OK; make -C indigo_test test-buildsystem OK; make -C indigo_test test-agent-mcp 34 PASS 0 FAIL; git diff --check clean.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 82025.846,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T22:02:56.021130Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T22:04:18.046976Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "The diff is correct. generate_help.py --check reports the header current (18 documents). Every diff hunk falls inside mcp_help_text_17, which is reference/sequencer.md built from agent_scripting/library/Sequencer.md. The documents table is unchanged. The header is byte-identical to the primary checkout's uncommitted copy. Attribution checked: the header was last regenerated in 0ee7bddca and merge c68325b3f. fc3d5f543 (2026-11-22) and 33d9b31f2 (2026-11-26) touched Sequencer.md but not the header. The version bump in indigo_agent_mcp.c:42-43 (0x03000005/3.0.0.5 -> 0x03000006/3.0.0.6) follows AGENTS.md and the 273d8a224 precedent. test_agent_mcp.c checks only the API generation, so no test edit is needed. Notes for the owner, not blocking: (1) indigo_docs/mcp/agents/mcp.md:5 and agent_mcp/README.md:23 still say 3.0.0.5. 273d8a224 updated both together with its bump. mcp.md is itself a help source, so editing it would also need regenerating the header. The README needs owner approval. (2) The ticket asks for a proposal on whether the build should fail or warn instead of silently rewriting the header, through agent_mcp/Makefile:7-8 and indigo_test/Makefile:610-611. No proposal is recorded in the ticket notes or journal. Record one with flow note before close. Ran: test_agent_mcp_help unittest OK; make -C indigo_test test-buildsystem OK; make -C indigo_test test-agent-mcp 34 PASS 0 FAIL; git diff --check clean."
+        }
+      ],
+      "result": {
+        "summary": "The diff is correct. generate_help.py --check reports the header current (18 documents). Every diff hunk falls inside mcp_help_text_17, which is reference/sequencer.md built from agent_scripting/library/Sequencer.md. The documents table is unchanged. The header is byte-identical to the primary checkout's uncommitted copy. Attribution checked: the header was last regenerated in 0ee7bddca and merge c68325b3f. fc3d5f543 (2026-11-22) and 33d9b31f2 (2026-11-26) touched Sequencer.md but not the header. The version bump in indigo_agent_mcp.c:42-43 (0x03000005/3.0.0.5 -> 0x03000006/3.0.0.6) follows AGENTS.md and the 273d8a224 precedent. test_agent_mcp.c checks only the API generation, so no test edit is needed. Notes for the owner, not blocking: (1) indigo_docs/mcp/agents/mcp.md:5 and agent_mcp/README.md:23 still say 3.0.0.5. 273d8a224 updated both together with its bump. mcp.md is itself a help source, so editing it would also need regenerating the header. The README needs owner approval. (2) The ticket asks for a proposal on whether the build should fail or warn instead of silently rewriting the header, through agent_mcp/Makefile:7-8 and indigo_test/Makefile:610-611. No proposal is recorded in the ticket notes or journal. Record one with flow note before close. Ran: test_agent_mcp_help unittest OK; make -C indigo_test test-buildsystem OK; make -C indigo_test test-agent-mcp 34 PASS 0 FAIL; git diff --check clean.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 82025.846,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "35b82104-5495-4a43-8ca1-00251b598a40",
+      "event": "ticket/created",
+      "at": "2026-11-26T21:48:16.346624Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "c63bcf72-75ad-44a8-8135-4a6da6f2e76c",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T21:57:42.786622Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "54e9bc65-b854-4561-b096-26b3d0d4ca79",
+      "event": "task/progress",
+      "at": "2026-11-26T21:57:53.833948Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "34a1d6c6-36ec-48a8-b37f-1804a517b950",
+      "text": "Implementation started on branch ticket/e86e0dc4-748a-4462-90ba-e0961163f194"
+    },
+    {
+      "event_id": "edbbbe19-7677-4476-9f38-f84c6dedc64d",
+      "event": "ticket/started",
+      "at": "2026-11-26T21:57:53.834823Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/e86e0dc4-748a-4462-90ba-e0961163f194",
+      "base": "master"
+    },
+    {
+      "event_id": "f08e48b2-59fb-483b-935f-9ea8b2187522",
+      "event": "task/progress",
+      "at": "2026-11-26T21:57:56.400225Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "34a1d6c6-36ec-48a8-b37f-1804a517b950",
+      "text": "Implementer launched",
+      "attempt_id": "79dd03aa-507f-4a06-afd4-f42bae4b9792",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ae9d502c-d03e-49be-bbba-f1af921daf4d",
+      "event": "task/progress",
+      "at": "2026-11-26T21:58:34.455214Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "34a1d6c6-36ec-48a8-b37f-1804a517b950",
+      "text": "Reproducing stale MCP help header and tracing source commits",
+      "attempt_id": "79dd03aa-507f-4a06-afd4-f42bae4b9792",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ab4be73e-88f8-4e4f-9476-204238ca534f",
+      "event": "task/progress",
+      "at": "2026-11-26T22:00:08.298180Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "34a1d6c6-36ec-48a8-b37f-1804a517b950",
+      "text": "Regenerating indigo_agent_mcp_help.h with generate_help.py"
+    },
+    {
+      "event_id": "42cd4a11-b49b-4fb7-85ff-3ced26b163cc",
+      "event": "task/progress",
+      "at": "2026-11-26T22:00:39.557645Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "34a1d6c6-36ec-48a8-b37f-1804a517b950",
+      "text": "Running make -C indigo_test test-buildsystem"
+    },
+    {
+      "event_id": "9f19306e-89ab-44b9-8127-551e9d1986d1",
+      "event": "task/progress",
+      "at": "2026-11-26T22:01:02.498467Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "34a1d6c6-36ec-48a8-b37f-1804a517b950",
+      "text": "Building libindigo and running make -C indigo_test test-agent-mcp"
+    },
+    {
+      "event_id": "d29d80bf-5836-4a90-bb7b-67b640526631",
+      "event": "ticket/note",
+      "at": "2026-11-26T22:02:23.109875Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: generate_help.py --check and test_agent_mcp_help failed on master 58f892dab ('MCP help bundle is stale'). Only mcp_help_text_17 (reference/sequencer.md = indigo_drivers/agent_scripting/library/Sequencer.md) differs. Cause: header last regenerated in 0ee7bddca/merge c68325b3f; fc3d5f543 (Sequencer.md meridian flipper and messages docs, 2026-11-22) and 33d9b31f2 (scheduler/sequencer ownership, Sequencer.md +20 lines, 2026-11-26) changed Sequencer.md without regenerating; checks at 0ee7bddca and c68325b3f^1 were current, fc3d5f543 and c68325b3f stale. Fix: regenerated with python3 indigo_drivers/agent_mcp/generate_help.py (byte-identical to the uncommitted copy in the primary checkout); help text served to MCP clients changes, so DRIVER_VERSION/MCP_AGENT_VERSION 3.0.0.5 -> 3.0.0.6. After: test-buildsystem 24 tests OK, test_agent_mcp_help passes; make -C indigo_test test-agent-mcp 34 PASS 0 FAIL. Not updated: indigo_docs/mcp/agents/mcp.md and agent_mcp/README.md still say 3.0.0.5 (lifecycle statements, README edits need owner approval).",
+      "tokens": null
+    },
+    {
+      "event_id": "a5c5fb81-7362-44fe-bedb-2b74af6be8a1",
+      "event": "task/progress",
+      "at": "2026-11-26T22:02:23.389323Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "34a1d6c6-36ec-48a8-b37f-1804a517b950",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2911e520-93c6-4e0f-9edd-03f75a7ce8f1",
+      "event": "task/progress",
+      "at": "2026-11-26T22:02:23.427030Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "34a1d6c6-36ec-48a8-b37f-1804a517b950",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "1321a7da-8540-4099-850f-69dbf5d40aab",
+      "event": "check/passed",
+      "at": "2026-11-26T22:02:23.431970Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "9f97a868e930ba637190030ecc675e03df8b7df9",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "200b4e02-df11-47ed-9735-1edbee5c8fa9",
+      "event": "task/progress",
+      "at": "2026-11-26T22:02:56.021199Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67fb04d0-f875-4501-bfa4-5b2fd86bf31e",
+      "text": "Review started"
+    },
+    {
+      "event_id": "51c325d3-e557-4a57-b6bd-d460c6307509",
+      "event": "review/started",
+      "at": "2026-11-26T22:02:56.021790Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "e947a84b-02d1-4415-a0a8-13802fd5bc38",
+      "event": "task/progress",
+      "at": "2026-11-26T22:02:56.223363Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67fb04d0-f875-4501-bfa4-5b2fd86bf31e",
+      "text": "Reviewer launched",
+      "attempt_id": "64477433-2852-4bdb-99eb-bde6db565318",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "582ccca4-9f0f-4932-aedd-6acd85685d82",
+      "event": "task/progress",
+      "at": "2026-11-26T22:03:08.637031Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67fb04d0-f875-4501-bfa4-5b2fd86bf31e",
+      "text": "Reviewer: verifying generator output and version bump",
+      "attempt_id": "64477433-2852-4bdb-99eb-bde6db565318",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "c7cad80c-01f1-4acc-a239-418887af567e",
+      "event": "task/progress",
+      "at": "2026-11-26T22:03:24.789937Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67fb04d0-f875-4501-bfa4-5b2fd86bf31e",
+      "text": "Running test_agent_mcp_help and make -C indigo_test test-agent-mcp"
+    },
+    {
+      "event_id": "3f797e7d-3b49-4cda-9414-30468fb075ef",
+      "event": "task/progress",
+      "at": "2026-11-26T22:04:18.047066Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67fb04d0-f875-4501-bfa4-5b2fd86bf31e",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "277d3a48-4c53-4edf-8d58-b35efe60a488",
+      "event": "review/passed",
+      "at": "2026-11-26T22:04:18.047712Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67fb04d0-f875-4501-bfa4-5b2fd86bf31e",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "9f97a868e930ba637190030ecc675e03df8b7df9"
+    },
+    {
+      "event_id": "f53b5e05-d2b4-4738-90a5-eefffe0b6738",
+      "event": "ticket/note",
+      "at": "2026-11-26T22:04:34.051691Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Build-policy proposal (not implemented, owner decision pending): the rules indigo_drivers/agent_mcp/Makefile:7-8 and indigo_test/Makefile:610-611 silently rewrite the checked-in indigo_agent_mcp_help.h whenever a source is newer, so drift appears only as a dirty tree swept into unrelated commits (as in ca925388), while Xcode/VS builds ship the stale copy. Recommended: the make rule runs 'python3 generate_help.py --check' and fails with 'run generate_help.py and commit it'; regeneration becomes explicit (by hand or opt-in 'make MCP_HELP_REGENERATE=1'); update the indigo_docs/MAKEFILES.md paragraph from 273d8a224 accordingly. Softer alternative: keep regenerating but print a prominent warning that a checked-in file changed and must be committed. test_agent_mcp_help stays as the backstop either way.",
+      "tokens": null
+    },
+    {
+      "event_id": "0e4195f9-addf-4b57-9c04-5a9ce1fec59b",
+      "event": "ticket/title_changed",
+      "at": "2026-11-26T22:17:05.035729Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_mcp: the checked-in indigo_agent_mcp_help.h is stale, every full build regenerates it and test_agent_mcp_help fails",
+      "title": "indigo_agent_mcp: regenerate the embedded help, the Sequencer.js reference was out of date"
+    },
+    {
+      "event_id": "d969b490-ebf7-4517-ae7b-7f6ece8287e4",
+      "event": "ticket/closed",
+      "at": "2026-11-26T22:17:22.035789Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T22:17:22.035749Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "b4327b5242a1a8de09c4df698ec46ec31fb4487b"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9f97a868e930ba637190030ecc675e03df8b7df9",
+        "tree": "22ddf528ab1aa33666875334bf851052ee901e2f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T22:02:23.426256Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/e86e0dc4-748a-4462-90ba-e0961163f194/22ddf528ab1a-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "The diff is correct. generate_help.py --check reports the header current (18 documents). Every diff hunk falls inside mcp_help_text_17, which is reference/sequencer.md built from agent_scripting/library/Sequencer.md. The documents table is unchanged. The header is byte-identical to the primary checkout's uncommitted copy. Attribution checked: the header was last regenerated in 0ee7bddca and merge c68325b3f. fc3d5f543 (2026-11-22) and 33d9b31f2 (2026-11-26) touched Sequencer.md but not the header. The version bump in indigo_agent_mcp.c:42-43 (0x03000005/3.0.0.5 -> 0x03000006/3.0.0.6) follows AGENTS.md and the 273d8a224 precedent. test_agent_mcp.c checks only the API generation, so no test edit is needed. Notes for the owner, not blocking: (1) indigo_docs/mcp/agents/mcp.md:5 and agent_mcp/README.md:23 still say 3.0.0.5. 273d8a224 updated both together with its bump. mcp.md is itself a help source, so editing it would also need regenerating the header. The README needs owner approval. (2) The ticket asks for a proposal on whether the build should fail or warn instead of silently rewriting the header, through agent_mcp/Makefile:7-8 and indigo_test/Makefile:610-611. No proposal is recorded in the ticket notes or journal. Record one with flow note before close. Ran: test_agent_mcp_help unittest OK; make -C indigo_test test-buildsystem OK; make -C indigo_test test-agent-mcp 34 PASS 0 FAIL; git diff --check clean.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "9f97a868e930ba637190030ecc675e03df8b7df9",
+        "tree": "22ddf528ab1aa33666875334bf851052ee901e2f",
+        "at": "2026-11-26T22:04:18.046947Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-26T22:02:23.109296Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: generate_help.py --check and test_agent_mcp_help failed on master 58f892dab ('MCP help bundle is stale'). Only mcp_help_text_17 (reference/sequencer.md = indigo_drivers/agent_scripting/library/Sequencer.md) differs. Cause: header last regenerated in 0ee7bddca/merge c68325b3f; fc3d5f543 (Sequencer.md meridian flipper and messages docs, 2026-11-22) and 33d9b31f2 (scheduler/sequencer ownership, Sequencer.md +20 lines, 2026-11-26) changed Sequencer.md without regenerating; checks at 0ee7bddca and c68325b3f^1 were current, fc3d5f543 and c68325b3f stale. Fix: regenerated with python3 indigo_drivers/agent_mcp/generate_help.py (byte-identical to the uncommitted copy in the primary checkout); help text served to MCP clients changes, so DRIVER_VERSION/MCP_AGENT_VERSION 3.0.0.5 -> 3.0.0.6. After: test-buildsystem 24 tests OK, test_agent_mcp_help passes; make -C indigo_test test-agent-mcp 34 PASS 0 FAIL. Not updated: indigo_docs/mcp/agents/mcp.md and agent_mcp/README.md still say 3.0.0.5 (lifecycle statements, README edits need owner approval).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-26T22:04:34.050935Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Build-policy proposal (not implemented, owner decision pending): the rules indigo_drivers/agent_mcp/Makefile:7-8 and indigo_test/Makefile:610-611 silently rewrite the checked-in indigo_agent_mcp_help.h whenever a source is newer, so drift appears only as a dirty tree swept into unrelated commits (as in ca925388), while Xcode/VS builds ship the stale copy. Recommended: the make rule runs 'python3 generate_help.py --check' and fails with 'run generate_help.py and commit it'; regeneration becomes explicit (by hand or opt-in 'make MCP_HELP_REGENERATE=1'); update the indigo_docs/MAKEFILES.md paragraph from 273d8a224 accordingly. Softer alternative: keep regenerating but print a prominent warning that a checked-in file changed and must be committed. test_agent_mcp_help stays as the backstop either way.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "b4327b5242a1a8de09c4df698ec46ec31fb4487b",
+      "tree": "22ddf528ab1aa33666875334bf851052ee901e2f",
+      "base": "master",
+      "at": "2026-11-26T22:17:05.267544Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-26T21:48:16.345665Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T21:57:42.786581Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 384213.115,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 27,
+    "sha256": "8cdb0479a42b4dd0fa01c8863c1fb9e0a65281bf20e5d46a79fb34bdf6a0c7ea"
+  }
+}
