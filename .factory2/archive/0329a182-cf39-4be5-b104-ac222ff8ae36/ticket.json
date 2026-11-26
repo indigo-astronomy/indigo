@@ -1,0 +1,638 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0329a182-cf39-4be5-b104-ac222ff8ae36",
+  "revision": 32,
+  "title": "indigo_libs: a property defined again by a remote server now takes its new values",
+  "description": "Found by the two-server scheduler stress test of ticket ca925388 (indigo_test/integration/run_scheduler_two_servers.py, topology scripting-remote).\n\nSymptom: server A connected to server B with -r. When a device on B defines a property again without deleting it first (the Scripting Agent re-defines SCHEDULER_RESULT / SCHEDULER_ESTIMATE in every script run with a new token), B sends the new values in defXXXVector, but A's bus defines the property with the old cached values (confirmed in a -vvv trace: B sends 18728002, A defines 18728001). Effect: every scheduler task run on a remote Scripting Agent ends 'no result from the Scripting Agent' and every estimate 'cannot be estimated'; a remote Scripting Agent is unusable for the scheduler.\n\nCause: def_property() in indigo_libs/indigo_xml.c finds the cached property for a repeated def and reuses it, ignoring the new item values (and possibly changed item set, perm, rule, label, state). Check the JSON protocol parser (indigo_json.c) for the same defect.\n\nExperimental fix that made the test pass (release and rebuild the cached property on a repeated def): /tmp/claude-1000/-home-rumen-work-indigo-git/629be5ae-c7a6-4969-bd2c-27ae612f2bf9/scratchpad/xml_def_fix.patch. It is not reviewed: verify memory safety (who else holds the pointer, BLOB buffers, mutex), behaviour when the item set changes, and that a define with identical content is still handled correctly. Prefer the minimal correct fix in the parser.\n\nTests: a unit/integration test of the parser with a repeated def carrying new values (and a changed item set); the two-server test's KNOWN DEFECT markers for this defect must disappear (remove them). Run the existing server/protocol tests.\n\nReplaces sub-ticket 89dddb0e-3a5d-42d1-b58d-bbbcbebee10b, so that this fix lands on master as its own commit (owner asked for separate commits). The implementation and tests are the reviewed change of 89dddb0e-3a5d-42d1-b58d-bbbcbebee10b, ported unchanged; see that ticket's notes and journal for the reproduction and results.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-26T20:30:40.098305Z",
+  "status": "closed",
+  "branch": "ticket/0329a182-cf39-4be5-b104-ac222ff8ae36",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "e1bc71ad-9245-4883-9de2-23f6c840f532",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "402abba2-3e6c-4799-b9fe-4e71dd6eccfd",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T20:30:57.725716Z",
+          "last_activity_at": "2026-11-26T20:33:49.157167Z",
+          "ended_at": "2026-11-26T20:33:49.157167Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 171431.451,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T20:30:57.725716Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/0329a182-cf39-4be5-b104-ac222ff8ae36"
+        },
+        {
+          "at": "2026-11-26T20:33:49.157167Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 171431.451,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "5fc5637b-e2ec-4f73-9215-63585e6aa04b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T20:33:49.157214Z",
+          "last_activity_at": "2026-11-26T20:35:28.725494Z",
+          "ended_at": "2026-11-26T20:35:28.725494Z",
+          "outcome": {
+            "summary": "Pass. The port matches the reviewed 89dddb0e change exactly: the diff of master...HEAD and of ca925388...89dddb0e for indigo_xml.c and test_protocol_xml.c is identical apart from index lines and hunk offsets. indigo_xml.c def_property(): the cache is now searched completely, past holes left by delProperty. Before, the search stopped at the first hole, so a later redefinition put a second, stale copy in the cache, and set_property() still found the old copy first. Free slots are reused. A repeated def with the same type, count, item names and (for BLOB) effective perm is updated in place, so local clients' pointers stay valid. Text long_value is replaced with a new copy and the old buffer freed. A BLOB keeps its parser-owned payload, size and URL; only labels and hints change. Light perm is left untouched. Any other change deletes the cached property, releases it and builds it again, in the same order and under the same mutex as del_property_handler. BLOB ownership stays consistent because a perm change forces a rebuild, so release_cached_property() frees payloads only for parser-owned RO items. indigo_json.c has no cache of defined properties, so it does not have this defect. The KNOWN DEFECT markers in run_scheduler_two_servers.py are only on the ca925388 branch, not on master, so they are out of scope here. The test covers: new values, state, label and perm with the same item set; a long_value growing and then shrinking; reuse of a hole; a changed item set (deleted, then defined again); an identical redefinition; a number with a new max; a BLOB payload kept; a BLOB perm change (rebuild). It fails on master's indigo_xml.c (line 754: expected 7, got 6). Formatting follows AGENTS.md. Ran: indigo_libs build; test_protocol_xml 11/11 PASS with LD_LIBRARY_PATH set to the worktree's build/lib; valgrind: 0 errors, 0 bytes definitely or indirectly lost; negative control linking master's indigo_xml.c: the new test FAILS. No defects found.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 99568.28,
+          "tokens": null
+        },
+        {
+          "attempt_id": "8058790c-c6c3-401b-917b-458ec81d5deb",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:09:48.095606Z",
+          "last_activity_at": "2026-11-26T21:10:57.827698Z",
+          "ended_at": "2026-11-26T21:10:57.827698Z",
+          "outcome": {
+            "summary": "Post-merge re-review at 5aec7832a. git diff master...HEAD touches only indigo_libs/indigo_xml.c and indigo_test/unit/test_protocol_xml.c and is byte-identical (ignoring index lines) to the previously reviewed ticket/ca925388...ticket/89dddb0e diff; merge-base equals master (cb8fdeefb) and git diff master HEAD shows only those two files, so the merge introduced nothing else. Independent read of def_property (indigo_xml.c:883-962): full-cache search before reusing a hole fixes duplicate entries after deletions; same item set -> in-place update under context->mutex (pointer held by local clients stays valid; text long_value copied before old freed; BLOB payload/URL preserved, only label/hints taken; BLOB/light perm kept, matching indigo_init_blob_property_p RW->RO mapping); changed item set or BLOB perm change -> indigo_delete_property, release_cached_property (frees only parser-owned RO BLOB payloads), slot cleared and rebuilt. No memory-safety defects found. Built libindigo and test_protocol_xml in the worktree with LD_LIBRARY_PATH=worktree build/lib: 11/11 pass, valgrind -q clean (exit 0, no errors). No findings.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 69732.092,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T20:33:49.157214Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T20:35:28.725494Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. The port matches the reviewed 89dddb0e change exactly: the diff of master...HEAD and of ca925388...89dddb0e for indigo_xml.c and test_protocol_xml.c is identical apart from index lines and hunk offsets. indigo_xml.c def_property(): the cache is now searched completely, past holes left by delProperty. Before, the search stopped at the first hole, so a later redefinition put a second, stale copy in the cache, and set_property() still found the old copy first. Free slots are reused. A repeated def with the same type, count, item names and (for BLOB) effective perm is updated in place, so local clients' pointers stay valid. Text long_value is replaced with a new copy and the old buffer freed. A BLOB keeps its parser-owned payload, size and URL; only labels and hints change. Light perm is left untouched. Any other change deletes the cached property, releases it and builds it again, in the same order and under the same mutex as del_property_handler. BLOB ownership stays consistent because a perm change forces a rebuild, so release_cached_property() frees payloads only for parser-owned RO items. indigo_json.c has no cache of defined properties, so it does not have this defect. The KNOWN DEFECT markers in run_scheduler_two_servers.py are only on the ca925388 branch, not on master, so they are out of scope here. The test covers: new values, state, label and perm with the same item set; a long_value growing and then shrinking; reuse of a hole; a changed item set (deleted, then defined again); an identical redefinition; a number with a new max; a BLOB payload kept; a BLOB perm change (rebuild). It fails on master's indigo_xml.c (line 754: expected 7, got 6). Formatting follows AGENTS.md. Ran: indigo_libs build; test_protocol_xml 11/11 PASS with LD_LIBRARY_PATH set to the worktree's build/lib; valgrind: 0 errors, 0 bytes definitely or indirectly lost; negative control linking master's indigo_xml.c: the new test FAILS. No defects found."
+        },
+        {
+          "at": "2026-11-26T21:09:48.095606Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T21:10:57.827698Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Post-merge re-review at 5aec7832a. git diff master...HEAD touches only indigo_libs/indigo_xml.c and indigo_test/unit/test_protocol_xml.c and is byte-identical (ignoring index lines) to the previously reviewed ticket/ca925388...ticket/89dddb0e diff; merge-base equals master (cb8fdeefb) and git diff master HEAD shows only those two files, so the merge introduced nothing else. Independent read of def_property (indigo_xml.c:883-962): full-cache search before reusing a hole fixes duplicate entries after deletions; same item set -> in-place update under context->mutex (pointer held by local clients stays valid; text long_value copied before old freed; BLOB payload/URL preserved, only label/hints taken; BLOB/light perm kept, matching indigo_init_blob_property_p RW->RO mapping); changed item set or BLOB perm change -> indigo_delete_property, release_cached_property (frees only parser-owned RO BLOB payloads), slot cleared and rebuilt. No memory-safety defects found. Built libindigo and test_protocol_xml in the worktree with LD_LIBRARY_PATH=worktree build/lib: 11/11 pass, valgrind -q clean (exit 0, no errors). No findings."
+        }
+      ],
+      "result": {
+        "summary": "Post-merge re-review at 5aec7832a. git diff master...HEAD touches only indigo_libs/indigo_xml.c and indigo_test/unit/test_protocol_xml.c and is byte-identical (ignoring index lines) to the previously reviewed ticket/ca925388...ticket/89dddb0e diff; merge-base equals master (cb8fdeefb) and git diff master HEAD shows only those two files, so the merge introduced nothing else. Independent read of def_property (indigo_xml.c:883-962): full-cache search before reusing a hole fixes duplicate entries after deletions; same item set -> in-place update under context->mutex (pointer held by local clients stays valid; text long_value copied before old freed; BLOB payload/URL preserved, only label/hints taken; BLOB/light perm kept, matching indigo_init_blob_property_p RW->RO mapping); changed item set or BLOB perm change -> indigo_delete_property, release_cached_property (frees only parser-owned RO BLOB payloads), slot cleared and rebuilt. No memory-safety defects found. Built libindigo and test_protocol_xml in the worktree with LD_LIBRARY_PATH=worktree build/lib: 11/11 pass, valgrind -q clean (exit 0, no errors). No findings.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 169300.372,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "45e075cd-059d-4375-b3bf-dd1054c998da",
+      "event": "ticket/created",
+      "at": "2026-11-26T20:30:40.099218Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple"
+    },
+    {
+      "event_id": "dd3e8cb9-b9cf-4f05-bb17-55c4fa85685c",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T20:30:46.778706Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "ee699a84-a7c8-46b9-97ca-2af1b7896e7c",
+      "event": "task/progress",
+      "at": "2026-11-26T20:30:57.725982Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1bc71ad-9245-4883-9de2-23f6c840f532",
+      "text": "Implementation started on branch ticket/0329a182-cf39-4be5-b104-ac222ff8ae36"
+    },
+    {
+      "event_id": "8590005c-5838-49c4-8fe9-b92ced9e373b",
+      "event": "ticket/started",
+      "at": "2026-11-26T20:30:57.727157Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/0329a182-cf39-4be5-b104-ac222ff8ae36",
+      "base": "master"
+    },
+    {
+      "event_id": "e9948093-c2dd-447f-a8f9-e76ea1cce260",
+      "event": "task/progress",
+      "at": "2026-11-26T20:30:58.426389Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1bc71ad-9245-4883-9de2-23f6c840f532",
+      "text": "Ported the reviewed change of the superseded sub-ticket unchanged (coordinator)"
+    },
+    {
+      "event_id": "05ae6a89-4782-44d8-8a2b-cbfd689cd59e",
+      "event": "task/progress",
+      "at": "2026-11-26T20:31:21.226521Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1bc71ad-9245-4883-9de2-23f6c840f532",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9832296d-f5df-4ee3-9614-da88c1620138",
+      "event": "task/progress",
+      "at": "2026-11-26T20:31:21.240287Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1bc71ad-9245-4883-9de2-23f6c840f532",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "153b8662-742d-41c2-bdc8-5ecfadc802b5",
+      "event": "task/progress",
+      "at": "2026-11-26T20:31:21.250395Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1bc71ad-9245-4883-9de2-23f6c840f532",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "9a63f84e-0881-4139-b93c-d45ed3b8d8bf",
+      "event": "task/progress",
+      "at": "2026-11-26T20:33:36.856510Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e1bc71ad-9245-4883-9de2-23f6c840f532",
+      "text": "Check unit failed: exit code 2"
+    },
+    {
+      "event_id": "f5355b09-7323-4b0f-b439-2883cb4b3d11",
+      "event": "check/failed",
+      "at": "2026-11-26T20:33:36.862534Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "b5c52eadb26e8d2e7907ccfb3c392cbc93e8eb9d",
+      "checks": "whitespace passed, unit FAILED"
+    },
+    {
+      "event_id": "f5b75926-0db6-4f30-9201-03557a31a85d",
+      "event": "task/progress",
+      "at": "2026-11-26T20:33:49.157287Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Review started"
+    },
+    {
+      "event_id": "8526e3fa-1e6a-4fee-bae6-ac65e6811cd5",
+      "event": "review/started",
+      "at": "2026-11-26T20:33:49.157894Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "2248bc30-38a1-47a9-bbe5-eed0ec954b4b",
+      "event": "task/progress",
+      "at": "2026-11-26T20:33:49.380648Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Reviewer launched",
+      "attempt_id": "5fc5637b-e2ec-4f73-9215-63585e6aa04b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "2e9ec98d-a5cf-4a1a-a3b5-45c45992008a",
+      "event": "task/progress",
+      "at": "2026-11-26T20:33:58.449385Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Reviewing indigo_xml.c def_property diff and unit test",
+      "attempt_id": "5fc5637b-e2ec-4f73-9215-63585e6aa04b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e8285de0-a17b-4a31-adff-b8ad115099bb",
+      "event": "task/progress",
+      "at": "2026-11-26T20:34:48.138854Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Building indigo_libs and running test_protocol_xml under valgrind"
+    },
+    {
+      "event_id": "5a2b9c7a-ec0d-40fc-b8f7-a60056bfa028",
+      "event": "task/progress",
+      "at": "2026-11-26T20:35:28.725571Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "1fda4faa-a034-4657-9ee0-2b18c8e7d41d",
+      "event": "review/passed",
+      "at": "2026-11-26T20:35:28.726197Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "b5c52eadb26e8d2e7907ccfb3c392cbc93e8eb9d"
+    },
+    {
+      "event_id": "02a1bd44-abba-4f0f-9812-23929a6bd9de",
+      "event": "task/progress",
+      "at": "2026-11-26T21:06:47.818353Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e8663044-1cb2-44e9-a1c2-48898559e24c",
+      "event": "task/progress",
+      "at": "2026-11-26T21:06:47.833903Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "11f11860-30cf-44e8-8768-280af46545e4",
+      "event": "task/progress",
+      "at": "2026-11-26T21:06:47.839379Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "931bcb69-ede4-42b5-b571-b75cab04e4f0",
+      "event": "task/progress",
+      "at": "2026-11-26T21:07:23.105536Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit failed: exit code 2"
+    },
+    {
+      "event_id": "e56e88f2-8911-423a-aae2-9444cc0bfd62",
+      "event": "check/failed",
+      "at": "2026-11-26T21:07:23.110934Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5aec7832ad6dc3435a5f672031eff6e8d825b097",
+      "checks": "whitespace passed, unit FAILED"
+    },
+    {
+      "event_id": "71373ccb-12a9-47d4-9603-4a96fda1136e",
+      "event": "task/progress",
+      "at": "2026-11-26T21:07:45.119875Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9f236af6-6000-453a-a669-8be2381cce83",
+      "event": "task/progress",
+      "at": "2026-11-26T21:07:45.134392Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a05eea01-ec72-482f-8b59-10c9fca665a6",
+      "event": "task/progress",
+      "at": "2026-11-26T21:07:45.140209Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "cf8a8348-bdf5-4e60-b4b4-1d8370b7f8f8",
+      "event": "task/progress",
+      "at": "2026-11-26T21:09:32.613982Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "db947097-16a9-40b5-9f0e-c386c2ef01fd",
+      "event": "check/passed",
+      "at": "2026-11-26T21:09:32.624752Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5aec7832ad6dc3435a5f672031eff6e8d825b097",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "d00bdd1b-e776-4ec1-b709-79efc30cf2aa",
+      "event": "task/progress",
+      "at": "2026-11-26T21:09:48.095699Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Review started"
+    },
+    {
+      "event_id": "842d1cf1-50b2-48cc-a082-b4e8c86efe31",
+      "event": "review/started",
+      "at": "2026-11-26T21:09:48.096366Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "e79c6a48-0ad2-419a-a204-75104b56bfa7",
+      "event": "task/progress",
+      "at": "2026-11-26T21:09:48.312455Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Reviewer launched after merging master",
+      "attempt_id": "8058790c-c6c3-401b-917b-458ec81d5deb",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "404e7671-fa48-4f80-a639-eea1cb8c8033",
+      "event": "task/progress",
+      "at": "2026-11-26T21:10:01.144944Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Re-reviewing post-merge tree: diff comparison and parser read",
+      "attempt_id": "8058790c-c6c3-401b-917b-458ec81d5deb",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b20106ed-a340-446e-be55-1c7303bcf802",
+      "event": "task/progress",
+      "at": "2026-11-26T21:10:25.215744Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Building and running test_protocol_xml in the worktree"
+    },
+    {
+      "event_id": "65d1239a-04ac-4a12-888c-62fbbee7a7e9",
+      "event": "task/progress",
+      "at": "2026-11-26T21:10:57.827777Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "f68058a0-b702-420c-9340-bf14208a187a",
+      "event": "review/passed",
+      "at": "2026-11-26T21:10:57.828480Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "bb758b7c-e72a-4c27-b2e7-3e57c7fdf93f",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5aec7832ad6dc3435a5f672031eff6e8d825b097"
+    },
+    {
+      "event_id": "a0d38a8a-a806-466a-b89a-102175e88e39",
+      "event": "ticket/title_changed",
+      "at": "2026-11-26T21:13:53.499985Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_libs: a property defined again by a remote server keeps its previous item values on the local bus",
+      "title": "indigo_libs: a property defined again by a remote server now takes its new values"
+    },
+    {
+      "event_id": "308fce93-57ef-490b-96be-bd5dbdb563ee",
+      "event": "ticket/closed",
+      "at": "2026-11-26T21:13:53.806490Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T21:13:53.806444Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "0ce4c915eeff1696813bdda8a9d2834088a57358"
+  },
+  "priority": "high",
+  "severity": "high",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "b5c52eadb26e8d2e7907ccfb3c392cbc93e8eb9d",
+        "tree": "9b5564ebfb2fc26d3bf951bd3067b692582b15f9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T20:31:21.239600Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/0329a182-cf39-4be5-b104-ac222ff8ae36/9b5564ebfb2f-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "b5c52eadb26e8d2e7907ccfb3c392cbc93e8eb9d",
+        "tree": "9b5564ebfb2fc26d3bf951bd3067b692582b15f9",
+        "exit_code": 2,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-26T20:33:36.855737Z",
+        "duration_s": 135.6,
+        "log": "/tmp/factory-flow/0329a182-cf39-4be5-b104-ac222ff8ae36/9b5564ebfb2f-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5aec7832ad6dc3435a5f672031eff6e8d825b097",
+        "tree": "3d2f1838595c0ead7665ff74de9e2782a42c5945",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:07:45.133393Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/0329a182-cf39-4be5-b104-ac222ff8ae36/3d2f1838595c-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "5aec7832ad6dc3435a5f672031eff6e8d825b097",
+        "tree": "3d2f1838595c0ead7665ff74de9e2782a42c5945",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:09:32.611262Z",
+        "duration_s": 107.5,
+        "log": "/tmp/factory-flow/0329a182-cf39-4be5-b104-ac222ff8ae36/3d2f1838595c-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. The port matches the reviewed 89dddb0e change exactly: the diff of master...HEAD and of ca925388...89dddb0e for indigo_xml.c and test_protocol_xml.c is identical apart from index lines and hunk offsets. indigo_xml.c def_property(): the cache is now searched completely, past holes left by delProperty. Before, the search stopped at the first hole, so a later redefinition put a second, stale copy in the cache, and set_property() still found the old copy first. Free slots are reused. A repeated def with the same type, count, item names and (for BLOB) effective perm is updated in place, so local clients' pointers stay valid. Text long_value is replaced with a new copy and the old buffer freed. A BLOB keeps its parser-owned payload, size and URL; only labels and hints change. Light perm is left untouched. Any other change deletes the cached property, releases it and builds it again, in the same order and under the same mutex as del_property_handler. BLOB ownership stays consistent because a perm change forces a rebuild, so release_cached_property() frees payloads only for parser-owned RO items. indigo_json.c has no cache of defined properties, so it does not have this defect. The KNOWN DEFECT markers in run_scheduler_two_servers.py are only on the ca925388 branch, not on master, so they are out of scope here. The test covers: new values, state, label and perm with the same item set; a long_value growing and then shrinking; reuse of a hole; a changed item set (deleted, then defined again); an identical redefinition; a number with a new max; a BLOB payload kept; a BLOB perm change (rebuild). It fails on master's indigo_xml.c (line 754: expected 7, got 6). Formatting follows AGENTS.md. Ran: indigo_libs build; test_protocol_xml 11/11 PASS with LD_LIBRARY_PATH set to the worktree's build/lib; valgrind: 0 errors, 0 bytes definitely or indirectly lost; negative control linking master's indigo_xml.c: the new test FAILS. No defects found.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "b5c52eadb26e8d2e7907ccfb3c392cbc93e8eb9d",
+        "tree": "9b5564ebfb2fc26d3bf951bd3067b692582b15f9",
+        "at": "2026-11-26T20:35:28.725470Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Post-merge re-review at 5aec7832a. git diff master...HEAD touches only indigo_libs/indigo_xml.c and indigo_test/unit/test_protocol_xml.c and is byte-identical (ignoring index lines) to the previously reviewed ticket/ca925388...ticket/89dddb0e diff; merge-base equals master (cb8fdeefb) and git diff master HEAD shows only those two files, so the merge introduced nothing else. Independent read of def_property (indigo_xml.c:883-962): full-cache search before reusing a hole fixes duplicate entries after deletions; same item set -> in-place update under context->mutex (pointer held by local clients stays valid; text long_value copied before old freed; BLOB payload/URL preserved, only label/hints taken; BLOB/light perm kept, matching indigo_init_blob_property_p RW->RO mapping); changed item set or BLOB perm change -> indigo_delete_property, release_cached_property (frees only parser-owned RO BLOB payloads), slot cleared and rebuilt. No memory-safety defects found. Built libindigo and test_protocol_xml in the worktree with LD_LIBRARY_PATH=worktree build/lib: 11/11 pass, valgrind -q clean (exit 0, no errors). No findings.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "5aec7832ad6dc3435a5f672031eff6e8d825b097",
+        "tree": "3d2f1838595c0ead7665ff74de9e2782a42c5945",
+        "at": "2026-11-26T21:10:57.827672Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "0ce4c915eeff1696813bdda8a9d2834088a57358",
+      "tree": "3d2f1838595c0ead7665ff74de9e2782a42c5945",
+      "base": "master",
+      "at": "2026-11-26T21:13:53.704383Z"
+    }
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "high",
+    "profile": "simple",
+    "at": "2026-11-26T20:30:40.098305Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T20:30:46.778665Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 340731.823,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 42,
+    "sha256": "fd3a47dbaa17eaa5dd810be71416966e7f9e20304a1b3995f453644ef21a6abf"
+  }
+}
