@@ -1,0 +1,409 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a2955bf0-2e0a-49f8-b02e-1d3f399328ca",
+  "revision": 17,
+  "title": "indigo_agent_scheduler: accept additional agent instances such as 'Imager Agent #2' in the agent configuration",
+  "description": "Found 2026-11-26 after closing b7873f3d (commit 33d9b31f2). Agents built on indigo_filter.c support additional instances named \"%s #%d\" (indigo_filter.c:335), e.g. 'Imager Agent #2' or, remotely, 'Imager Agent #2 @ host'; the Imager, Guider and Mount agents expose ADDITIONAL_INSTANCES. The scheduler's name_has_prefix() (indigo_agent_scheduler.c:717) accepts only the base name alone or followed by ' @ ', so role_matches() rejects such names: typing 'Imager Agent #2' into AGENT_SCHEDULER_AGENTS is refused as not a valid agent name, and the AGENT_SCHEDULER_*_AGENT_LIST selectors do not list #N instances. The scheduler therefore cannot be configured to use a second imager, mount or guider agent. Sequencer.js is not affected (it accepts any name; its ' @ host' handling works with #N).\n\nFix: name_has_prefix() also accepts the base name followed by ' #<digits>', optionally followed by ' @ host' (reject other suffixes). Check every user of the role matching (validation, selector lists, solver prefixes, Scripting Agent suffix stripping/mapping) handles '#N' names. Bump DRIVER_VERSION. Tests in indigo_test/integration/test_agent_scheduler.c: typed 'Imager Agent #2' accepted and used; a '#2' stand-in listed in the selector; 'Mount Agent #2 @ host' accepted; invalid suffixes such as 'Imager Agent #x' or 'Imager Agentx' still rejected. Update the naming rule in indigo_docs/INDIGO_SCHEDULER_GUIDE.md and indigo_drivers/agent_scheduler/doc/SCHEDULER.md (and PROPERTIES.md if it states the rule).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-26T13:49:20.904804Z",
+  "status": "closed",
+  "branch": "ticket/a2955bf0-2e0a-49f8-b02e-1d3f399328ca",
+  "related_ticket_id": "b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f",
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "c7bd1071-ef1a-4fe1-9718-0f242817b95c",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "79d86a14-5d8c-4951-b4c2-848a154f0ee9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T13:50:17.150136Z",
+          "last_activity_at": "2026-11-26T14:25:03.238481Z",
+          "ended_at": "2026-11-26T14:25:03.238481Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2086088.345,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T13:50:17.150136Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/a2955bf0-2e0a-49f8-b02e-1d3f399328ca"
+        },
+        {
+          "at": "2026-11-26T14:25:03.238481Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 2086088.345,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "2c39b12a-2f46-47a7-b929-acd96b092af7",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "88802fff-643b-4e9c-9996-9cf0dba1aa29",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T14:25:03.238546Z",
+          "last_activity_at": "2026-11-26T14:26:14.185093Z",
+          "ended_at": "2026-11-26T14:26:14.185093Z",
+          "outcome": {
+            "summary": "Reviewed master...HEAD (5 files).\nParsing: name_has_prefix() accepts the base name, then optionally ' #' followed by one or more digits, then the end of the name or ' @ '. Rejected as intended: 'Imager Agent #x', '#', '#2x', 'Imager Agent#2' and 'Imager Agentx'. No numeric conversion is done, so there is nothing to overflow. isdigit() gets an unsigned char cast and ctype.h is already included.\nEdge cases: 'Imager Agent #02' is accepted; filter agents never zero-pad (indigo_filter.c:335 uses %d), so this is harmless. 'Imager Agent #2 @ ' with an empty host is accepted, the same as the pre-existing 'Imager Agent @ '; not a new defect.\nUsers of the name rule: role_matches() is used by both the validation and add_present_agent(), so the selectors list #N instances. Solver prefixes go through the same function. host_suffix() and scripting_view() look for ' @ ', so 'Imager Agent #2 @ obs2' becomes 'Imager Agent #2' as the Scripting Agent knows it. The suffix mapping in agent_busy_bit() keeps '#N'. Sequencer.js's guider check startsWith('Guider Agent') still holds.\nThe test is not vacuous: the ticket note records that it failed before the fix. It checks the invalid suffixes, 'Mount Agent #2 @ host', the selector listing and selection, the owner IMAGER and the LOCAL event on the renamed imager. I ran the agent-filtered cases (12 run, 12 passed, including additional_agent_instances_are_accepted), then test-clean.\nDRIVER_VERSION is bumped to 0x0300002B. The three docs are consistent with the code. Formatting follows the conventions. No findings.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 70946.547,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T14:25:03.238546Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T14:26:14.185093Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Reviewed master...HEAD (5 files).\nParsing: name_has_prefix() accepts the base name, then optionally ' #' followed by one or more digits, then the end of the name or ' @ '. Rejected as intended: 'Imager Agent #x', '#', '#2x', 'Imager Agent#2' and 'Imager Agentx'. No numeric conversion is done, so there is nothing to overflow. isdigit() gets an unsigned char cast and ctype.h is already included.\nEdge cases: 'Imager Agent #02' is accepted; filter agents never zero-pad (indigo_filter.c:335 uses %d), so this is harmless. 'Imager Agent #2 @ ' with an empty host is accepted, the same as the pre-existing 'Imager Agent @ '; not a new defect.\nUsers of the name rule: role_matches() is used by both the validation and add_present_agent(), so the selectors list #N instances. Solver prefixes go through the same function. host_suffix() and scripting_view() look for ' @ ', so 'Imager Agent #2 @ obs2' becomes 'Imager Agent #2' as the Scripting Agent knows it. The suffix mapping in agent_busy_bit() keeps '#N'. Sequencer.js's guider check startsWith('Guider Agent') still holds.\nThe test is not vacuous: the ticket note records that it failed before the fix. It checks the invalid suffixes, 'Mount Agent #2 @ host', the selector listing and selection, the owner IMAGER and the LOCAL event on the renamed imager. I ran the agent-filtered cases (12 run, 12 passed, including additional_agent_instances_are_accepted), then test-clean.\nDRIVER_VERSION is bumped to 0x0300002B. The three docs are consistent with the code. Formatting follows the conventions. No findings."
+        }
+      ],
+      "result": {
+        "summary": "Reviewed master...HEAD (5 files).\nParsing: name_has_prefix() accepts the base name, then optionally ' #' followed by one or more digits, then the end of the name or ' @ '. Rejected as intended: 'Imager Agent #x', '#', '#2x', 'Imager Agent#2' and 'Imager Agentx'. No numeric conversion is done, so there is nothing to overflow. isdigit() gets an unsigned char cast and ctype.h is already included.\nEdge cases: 'Imager Agent #02' is accepted; filter agents never zero-pad (indigo_filter.c:335 uses %d), so this is harmless. 'Imager Agent #2 @ ' with an empty host is accepted, the same as the pre-existing 'Imager Agent @ '; not a new defect.\nUsers of the name rule: role_matches() is used by both the validation and add_present_agent(), so the selectors list #N instances. Solver prefixes go through the same function. host_suffix() and scripting_view() look for ' @ ', so 'Imager Agent #2 @ obs2' becomes 'Imager Agent #2' as the Scripting Agent knows it. The suffix mapping in agent_busy_bit() keeps '#N'. Sequencer.js's guider check startsWith('Guider Agent') still holds.\nThe test is not vacuous: the ticket note records that it failed before the fix. It checks the invalid suffixes, 'Mount Agent #2 @ host', the selector listing and selection, the owner IMAGER and the LOCAL event on the renamed imager. I ran the agent-filtered cases (12 run, 12 passed, including additional_agent_instances_are_accepted), then test-clean.\nDRIVER_VERSION is bumped to 0x0300002B. The three docs are consistent with the code. Formatting follows the conventions. No findings.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 70946.547,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "ba0aac03-441b-40dd-822f-394e6dae9adf",
+      "event": "ticket/created",
+      "at": "2026-11-26T13:49:20.905329Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "32227128-7a71-4521-905e-5db53cc50820",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T13:49:23.921038Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "0d3cd91c-ee79-403d-9703-e76915017501",
+      "event": "task/progress",
+      "at": "2026-11-26T13:50:17.156051Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c7bd1071-ef1a-4fe1-9718-0f242817b95c",
+      "text": "Implementation started on branch ticket/a2955bf0-2e0a-49f8-b02e-1d3f399328ca"
+    },
+    {
+      "event_id": "3411ccf0-e216-446f-b342-878eff721b96",
+      "event": "ticket/started",
+      "at": "2026-11-26T13:50:17.160501Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/a2955bf0-2e0a-49f8-b02e-1d3f399328ca",
+      "base": "master"
+    },
+    {
+      "event_id": "77532c48-b8f5-49f3-bc03-7dd7a2c160a2",
+      "event": "task/progress",
+      "at": "2026-11-26T13:50:32.864151Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c7bd1071-ef1a-4fe1-9718-0f242817b95c",
+      "text": "Implementer started",
+      "attempt_id": "79d86a14-5d8c-4951-b4c2-848a154f0ee9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6bb484cf-f3ff-42a4-8bbf-2bad5f353193",
+      "event": "task/progress",
+      "at": "2026-11-26T13:50:42.508544Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c7bd1071-ef1a-4fe1-9718-0f242817b95c",
+      "text": "Building the worktree and writing the #N instance tests"
+    },
+    {
+      "event_id": "4dc464ea-8eb4-4be9-8caf-da00b7d1fa64",
+      "event": "task/progress",
+      "at": "2026-11-26T13:52:36.591449Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c7bd1071-ef1a-4fe1-9718-0f242817b95c",
+      "text": "Running the full test-agent-scheduler suite"
+    },
+    {
+      "event_id": "d18db393-c82a-4b8d-ba91-16c639be5c2b",
+      "event": "ticket/note",
+      "at": "2026-11-26T14:02:45.689206Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: the new case additional_agent_instances_are_accepted failed before the fix (set_agent MOUNT='Mount Agent #2 @ host' rejected with Alert). After the fix (name_has_prefix accepts ' #<digits>' optionally followed by ' @ host') the case passes; full test-agent-scheduler: 198 run, 198 passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "fc00d358-219a-4b0a-98b8-4187556d1f08",
+      "event": "task/progress",
+      "at": "2026-11-26T14:02:46.092853Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c7bd1071-ef1a-4fe1-9718-0f242817b95c",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "189a35c8-5897-4142-ac46-02d5558e2efe",
+      "event": "task/progress",
+      "at": "2026-11-26T14:02:46.116006Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c7bd1071-ef1a-4fe1-9718-0f242817b95c",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b3130fc4-9813-4969-a359-c06c3712b834",
+      "event": "check/passed",
+      "at": "2026-11-26T14:02:46.121794Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "64cf101bbd1489729c8a8ed59e3c79de8bf299f5",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "6bcbeb03-32a5-47d0-9e2f-094e5e510eab",
+      "event": "task/progress",
+      "at": "2026-11-26T14:24:50.470048Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c7bd1071-ef1a-4fe1-9718-0f242817b95c",
+      "text": "Implementation done: suite and flow check passed"
+    },
+    {
+      "event_id": "03ab65de-0d56-479b-a4ea-aca441753730",
+      "event": "task/progress",
+      "at": "2026-11-26T14:25:03.238597Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c39b12a-2f46-47a7-b929-acd96b092af7",
+      "text": "Review started"
+    },
+    {
+      "event_id": "6e5e64cb-f8a4-414e-83cb-ead7fe8b982b",
+      "event": "review/started",
+      "at": "2026-11-26T14:25:03.238925Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "1aade351-42af-420f-af88-3c0c18b80d25",
+      "event": "task/progress",
+      "at": "2026-11-26T14:25:14.141125Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c39b12a-2f46-47a7-b929-acd96b092af7",
+      "text": "Reviewer started",
+      "attempt_id": "88802fff-643b-4e9c-9996-9cf0dba1aa29",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7cb75447-57e9-4843-8a26-351ee0af946d",
+      "event": "task/progress",
+      "at": "2026-11-26T14:25:24.807080Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c39b12a-2f46-47a7-b929-acd96b092af7",
+      "text": "Running scheduler cases filtered by agent (incl. additional_agent_instances)"
+    },
+    {
+      "event_id": "8766d093-d0a6-4e23-a5f5-79b9a2c1878c",
+      "event": "task/progress",
+      "at": "2026-11-26T14:26:14.185154Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c39b12a-2f46-47a7-b929-acd96b092af7",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d89b5b86-572e-4699-b828-981a3fff609d",
+      "event": "review/passed",
+      "at": "2026-11-26T14:26:14.185462Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2c39b12a-2f46-47a7-b929-acd96b092af7",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "64cf101bbd1489729c8a8ed59e3c79de8bf299f5"
+    },
+    {
+      "event_id": "9884d41e-d09e-4796-9eed-42b525b76ebd",
+      "event": "ticket/closed",
+      "at": "2026-11-26T15:17:04.078852Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T15:17:04.078814Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "180a306ce41ed4fcdb5ceb13d3e67e22637ba83f"
+  },
+  "priority": "high",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "64cf101bbd1489729c8a8ed59e3c79de8bf299f5",
+        "tree": "6379f4b40a5b268d8bd8742f4047cce212c39f2b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T14:02:46.115646Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/a2955bf0-2e0a-49f8-b02e-1d3f399328ca/6379f4b40a5b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed master...HEAD (5 files).\nParsing: name_has_prefix() accepts the base name, then optionally ' #' followed by one or more digits, then the end of the name or ' @ '. Rejected as intended: 'Imager Agent #x', '#', '#2x', 'Imager Agent#2' and 'Imager Agentx'. No numeric conversion is done, so there is nothing to overflow. isdigit() gets an unsigned char cast and ctype.h is already included.\nEdge cases: 'Imager Agent #02' is accepted; filter agents never zero-pad (indigo_filter.c:335 uses %d), so this is harmless. 'Imager Agent #2 @ ' with an empty host is accepted, the same as the pre-existing 'Imager Agent @ '; not a new defect.\nUsers of the name rule: role_matches() is used by both the validation and add_present_agent(), so the selectors list #N instances. Solver prefixes go through the same function. host_suffix() and scripting_view() look for ' @ ', so 'Imager Agent #2 @ obs2' becomes 'Imager Agent #2' as the Scripting Agent knows it. The suffix mapping in agent_busy_bit() keeps '#N'. Sequencer.js's guider check startsWith('Guider Agent') still holds.\nThe test is not vacuous: the ticket note records that it failed before the fix. It checks the invalid suffixes, 'Mount Agent #2 @ host', the selector listing and selection, the owner IMAGER and the LOCAL event on the renamed imager. I ran the agent-filtered cases (12 run, 12 passed, including additional_agent_instances_are_accepted), then test-clean.\nDRIVER_VERSION is bumped to 0x0300002B. The three docs are consistent with the code. Formatting follows the conventions. No findings.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "64cf101bbd1489729c8a8ed59e3c79de8bf299f5",
+        "tree": "6379f4b40a5b268d8bd8742f4047cce212c39f2b",
+        "at": "2026-11-26T14:26:14.185039Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-26T14:02:45.687856Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: the new case additional_agent_instances_are_accepted failed before the fix (set_agent MOUNT='Mount Agent #2 @ host' rejected with Alert). After the fix (name_has_prefix accepts ' #<digits>' optionally followed by ' @ host') the case passes; full test-agent-scheduler: 198 run, 198 passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "180a306ce41ed4fcdb5ceb13d3e67e22637ba83f",
+      "tree": "6379f4b40a5b268d8bd8742f4047cce212c39f2b",
+      "base": "master",
+      "at": "2026-11-26T15:17:03.835242Z"
+    }
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-26T13:49:20.904804Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T13:49:23.920966Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2157034.892,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 23,
+    "sha256": "c7972a5e857749534ca4e16244aa12b21475bd4099f07304f9e47e003fb5c91d"
+  }
+}
