@@ -535,7 +535,7 @@ static void library_inventory(void) {
 	ASSERT_TRUE(check_js("typeof Sequence==='function'"));
 	ASSERT_TRUE(check_js("(function(){var names=Object.getOwnPropertyNames(Sequence.prototype); if(names.length!==110) throw new Error('prototype count '+names.length); return true})()"));
 	ASSERT_TRUE(check_js("indigo_event_handlers.indigo_sequencer===indigo_sequencer"));
-	const char *properties[] = { "SEQUENCE_NAME", "SEQUENCE_STATE", "SEQUENCE_FAILURE", "SEQUENCE_STEP_STATE", "AGENT_ABORT_PROCESS", "AGENT_PAUSE_PROCESS", "SEQUENCE_RESET", "FLIPPER_STATE", "MERIDIAN_FLIP" };
+	const char *properties[] = { "SEQUENCE_NAME", "SEQUENCE_STATE", "SEQUENCE_FAILURE", "SEQUENCE_STEP_STATE", "AGENT_ABORT_PROCESS", "AGENT_PAUSE_PROCESS", "SEQUENCE_RESET", "FLIPPER_STATE", "MERIDIAN_FLIP", "SEQUENCER_OWNER", "SEQUENCER_RELEASE" };
 	for (unsigned i = 0; i < ARRAY_SIZE(properties); i++) {
 		indigo_property *property = snapshot(SCRIPTING, properties[i]);
 		ASSERT_TRUE(property != NULL);
@@ -1762,6 +1762,216 @@ static void paused_stored_flip_failure_recovers(void) {
 	ASSERT_TRUE(check_js("recoveryTrace==='1'"));
 }
 
+// -------------------------------------------------------------------------------- Sequencer owner
+
+#define TAKE(imager, mount, guider, solver) "indigo_sequencer_take({ name: 'Test Owner', imager: '" imager "', mount: '" mount "', guider: '" guider "', solver: '" solver "' });"
+
+// SEQUENCER_OWNER reaches the values
+static bool owner_is(const char *owner, const char *imager, const char *mount, const char *guider, const char *solver) {
+	const char *items[] = { "OWNER", "IMAGER", "MOUNT", "GUIDER", "SOLVER" };
+	const char *values[] = { owner, imager, mount, guider, solver };
+	char seen[512] = "";
+	for (double deadline = indigo_monotonic_time() + 5; indigo_monotonic_time() < deadline; indigo_usleep(1000)) {
+		indigo_property *property = snapshot(SCRIPTING, "SEQUENCER_OWNER");
+		bool match = property != NULL;
+		seen[0] = 0;
+		for (int i = 0; property && i < 5; i++) {
+			indigo_item *item = indigo_get_item(property, items[i]);
+			const char *value = item ? indigo_get_text_item_value(item) : "<missing>";
+			snprintf(seen + strlen(seen), sizeof(seen) - strlen(seen), "%s='%s' ", items[i], value);
+			match = match && !strcmp(value, values[i]);
+		}
+		indigo_release_property(property);
+		if (match) {
+			return true;
+		}
+	}
+	fprintf(stderr, "SEQUENCER_OWNER is %s, expected '%s' '%s' '%s' '%s' '%s'\n", seen, owner, imager, mount, guider, solver);
+	return false;
+}
+
+static void owner_take_and_release_publish_the_owner(void) {
+	indigo_property *property = snapshot(SCRIPTING, "SEQUENCER_OWNER");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_EQ_INT(INDIGO_TEXT_VECTOR, property->type);
+	ASSERT_EQ_INT(INDIGO_RO_PERM, property->perm);
+	ASSERT_EQ_INT(5, property->count);
+	indigo_release_property(property);
+	property = snapshot(SCRIPTING, "SEQUENCER_RELEASE");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_EQ_INT(INDIGO_SWITCH_VECTOR, property->type);
+	ASSERT_EQ_INT(INDIGO_RW_PERM, property->perm);
+	indigo_release_property(property);
+	ASSERT_TRUE(owner_is("", "", "", "", ""));
+	// an automatic solver is published as the one selected for the imager agent
+	ASSERT_TRUE(run_js(TAKE("Owner Imager", "Owner Mount", "Owner Guider", "")));
+	ASSERT_TRUE(owner_is("Test Owner", "Owner Imager", "Owner Mount", "Owner Guider", "Astrometry Agent"));
+	ASSERT_TRUE(wait_message("The sequencer is controlled by Test Owner", 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[IMAGER_AGENT]==='Owner Imager' && indigo_sequencer.devices[MOUNT_AGENT]==='Owner Mount' && indigo_sequencer.devices[GUIDER_AGENT]==='Owner Guider' && indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+	// the same owner again only changes the agents
+	ASSERT_TRUE(run_js(TAKE("Owner Imager", "Owner Mount", "Owner Guider", "Custom Solver")));
+	ASSERT_TRUE(owner_is("Test Owner", "Owner Imager", "Owner Mount", "Owner Guider", "Custom Solver"));
+	ASSERT_EQ_INT(1, count_messages("The sequencer is controlled by"));
+	// only the owner releases it
+	ASSERT_TRUE(run_js("indigo_sequencer_release('Other Owner');"));
+	ASSERT_TRUE(check_js("indigo_sequencer_owner !== null && indigo_sequencer_owner.name === 'Test Owner'"));
+	ASSERT_TRUE(run_js("indigo_sequencer_release('Test Owner');"));
+	ASSERT_TRUE(owner_is("", "", "", "", ""));
+	ASSERT_TRUE(wait_message("The sequencer is released by Test Owner", 5));
+	ASSERT_FALSE(has_message("released by Other Owner"));
+	// the agents stay as the owner left them
+	ASSERT_TRUE(check_js("indigo_sequencer_owner === null && indigo_sequencer.devices[IMAGER_AGENT]==='Owner Imager'"));
+}
+
+// the text was sent count times
+static bool wait_message_count(const char *text, int count, double timeout) {
+	for (double deadline = indigo_monotonic_time() + timeout; indigo_monotonic_time() < deadline; indigo_usleep(1000)) {
+		if (count_messages(text) >= count) {
+			return true;
+		}
+	}
+	fprintf(stderr, "'%s' sent %d times, expected %d\n", text, count_messages(text), count);
+	return false;
+}
+
+static void owner_start_uses_owner_agents_with_one_warning(void) {
+	ASSERT_TRUE(run_js(TAKE("Owner Imager", "Owner Mount", "Owner Guider", "")));
+	ASSERT_TRUE(run_js("new Sequence('one').start('Other Imager', 'Owner Mount');"));
+	ASSERT_TRUE(wait_message_count("Sequence finished", 1, 5));
+	ASSERT_TRUE(has_message("Sequence 'one': imager agent 'Other Imager' ignored, 'Owner Imager' is used (agents of Test Owner)\n"));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[IMAGER_AGENT]==='Owner Imager' && indigo_sequencer.devices[MOUNT_AGENT]==='Owner Mount' && indigo_sequencer.devices[GUIDER_AGENT]==='Owner Guider'"));
+	ASSERT_TRUE(run_js("new Sequence('three').start('Other Imager', 'Other Mount', 'Other Guider');"));
+	ASSERT_TRUE(wait_message("Sequence 'three': imager agent 'Other Imager' ignored, 'Owner Imager' is used; mount agent 'Other Mount' ignored, 'Owner Mount' is used; guider agent 'Other Guider' ignored, 'Owner Guider' is used (agents of Test Owner)", 5));
+	ASSERT_TRUE(wait_message_count("Sequence finished", 2, 5));
+	// a sequence that asks for nothing or for the owner's agents is never warned about, none is refused
+	ASSERT_TRUE(run_js("new Sequence('none').start();"));
+	ASSERT_TRUE(wait_message_count("Sequence finished", 3, 5));
+	ASSERT_TRUE(run_js("new Sequence('same').start('Owner Imager', 'Owner Mount', 'Owner Guider');"));
+	ASSERT_TRUE(wait_message_count("Sequence finished", 4, 5));
+	ASSERT_EQ_INT(2, count_messages("(agents of Test Owner)"));
+	ASSERT_EQ_INT(4, count_messages("Sequence started"));
+	ASSERT_TRUE(check_js("indigo_sequencer.name==='same' && indigo_sequencer.devices[IMAGER_AGENT]==='Owner Imager'"));
+}
+
+static void owner_start_while_running_keeps_the_running_agents(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('running'); s.wait(10); s.start('Imager Agent', 'Mount Agent', 'Guider Agent');"));
+	ASSERT_TRUE(wait_sequence(INDIGO_BUSY_STATE, 2));
+	// the running sequence keeps its agents, the take does not rewrite them
+	ASSERT_TRUE(run_js(TAKE("Owner Imager", "Owner Mount", "Owner Guider", "")));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[IMAGER_AGENT]==='Imager Agent' && indigo_sequencer.devices[MOUNT_AGENT]==='Mount Agent'"));
+	ASSERT_TRUE(run_js("new Sequence('second').start('Other Imager');"));
+	ASSERT_TRUE(wait_message("Other sequence is executed", 5));
+	ASSERT_FALSE(has_message("ignored"));
+	ASSERT_TRUE(check_js("indigo_sequencer.name==='running' && indigo_sequencer.devices[IMAGER_AGENT]==='Imager Agent'"));
+	ASSERT_TRUE(change_switch(SCRIPTING, "AGENT_ABORT_PROCESS", "ABORT", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(run_js("new Sequence('after').start();"));
+	ASSERT_TRUE(wait_message("Sequence finished", 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[IMAGER_AGENT]==='Owner Imager' && indigo_sequencer.devices[MOUNT_AGENT]==='Owner Mount'"));
+}
+
+static void owner_select_agent_steps_warn_and_continue(void) {
+	ASSERT_TRUE(run_js(TAKE("Owner Imager", "Owner Mount", "Owner Guider", "Custom Solver")));
+	ASSERT_TRUE(run_js("stepTrace=0; var s=new Sequence('steps'); s.select_imager_agent('Other Imager'); s.select_mount_agent('Other Mount'); s.select_guider_agent('Other Guider'); s.select_solver_agent('Other Solver'); s.select_imager_agent('Owner Imager'); s.evaluate('stepTrace=1'); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_message("Sequence finished", 5));
+	ASSERT_TRUE(has_message("Step select_imager_agent('Other Imager') ignored, 'Owner Imager' of Test Owner is used"));
+	ASSERT_TRUE(has_message("Step select_mount_agent('Other Mount') ignored, 'Owner Mount' of Test Owner is used"));
+	ASSERT_TRUE(has_message("Step select_guider_agent('Other Guider') ignored, 'Owner Guider' of Test Owner is used"));
+	ASSERT_TRUE(has_message("Step select_solver_agent('Other Solver') ignored, 'Custom Solver' of Test Owner is used"));
+	ASSERT_EQ_INT(4, count_messages("ignored"));
+	ASSERT_TRUE(check_js("stepTrace===1 && indigo_sequencer.devices[IMAGER_AGENT]==='Owner Imager' && indigo_sequencer.devices[MOUNT_AGENT]==='Owner Mount' && indigo_sequencer.devices[GUIDER_AGENT]==='Owner Guider' && indigo_sequencer.devices[SOLVER_AGENT]==='Custom Solver'"));
+	// with an automatic solver the step is ignored too and compared with the solver selected
+	ASSERT_TRUE(run_js(TAKE("Owner Imager", "Owner Mount", "Owner Guider", "")));
+	ASSERT_TRUE(run_js("var s=new Sequence('solver step'); s.select_solver_agent('Other Solver'); s.select_solver_agent('Astrometry Agent'); s.start();"));
+	ASSERT_TRUE(wait_message("Step select_solver_agent('Other Solver') ignored, 'Astrometry Agent' of Test Owner is used", 5));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_EQ_INT(5, count_messages("ignored"));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+}
+
+static void owner_selected_solver_has_no_fallback(void) {
+	// another solver is loaded, the one of the owner is not
+	ASSERT_TRUE(rename_solver_peer("Platesolver Agent"));
+	ASSERT_TRUE(run_js(TAKE("Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent")));
+	ASSERT_TRUE(check_js("sequencer_loaded_solver_agent('Platesolver Agent', 'Imager Agent')===null"));
+	int changes = atomic_load(&orchestration_changes);
+	ASSERT_TRUE(run_js("var s=new Sequence('owner solver'); s.sync_center(0.1); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(wait_message("There is no AGENT_PLATESOLVER_EXPOSURE on Astrometry Agent", 5));
+	ASSERT_EQ_INT(changes, atomic_load(&orchestration_changes));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+	ASSERT_TRUE(owner_is("Test Owner", "Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent"));
+}
+
+static void owner_automatic_solver_is_published(void) {
+	ASSERT_TRUE(run_js(TAKE("Imager Agent", "Mount Agent", "Guider Agent", "")));
+	ASSERT_TRUE(owner_is("Test Owner", "Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent"));
+	// the solver is selected again at use, SEQUENCER_OWNER follows it
+	ASSERT_TRUE(run_js("var s=new Sequence('solver at use'); s.wait(1); s.precise_goto(0.3,11,50); s.start();"));
+	ASSERT_TRUE(rename_solver_peer("Platesolver Agent"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(owner_is("Test Owner", "Imager Agent", "Mount Agent", "Guider Agent", "Platesolver Agent"));
+	indigo_property *property = snapshot("Platesolver Agent", "AGENT_PLATESOLVER_GOTO_SETTINGS");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_NEAR(11, property->items[0].number.value, 0.001);
+	indigo_release_property(property);
+}
+
+static void owner_flip_uses_owner_agents(void) {
+	ASSERT_TRUE(rename_solver_peer("Custom Solver"));
+	ASSERT_TRUE(run_js(TAKE("Imager Agent", "Owner Mount", "Owner Guider", "Custom Solver")));
+	ASSERT_TRUE(run_js("var s=new Sequence('owned flip'); s.enable_meridian_flip(true,0); s.start('Imager Agent', 'Mount Agent', 'Guider Agent');"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	// the flip is triggered while the sequencer is idle and gets the owner's agents, whatever the sequencer was left with
+	ASSERT_TRUE(run_js("indigo_sequencer.devices[MOUNT_AGENT]='Stale Mount'; indigo_sequencer.devices[GUIDER_AGENT]='Stale Guider'; indigo_sequencer.devices[SOLVER_AGENT]='Stale Solver';"));
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(check_js("indigo_flipper.devices[IMAGER_AGENT]==='Imager Agent' && indigo_flipper.devices[MOUNT_AGENT]==='Owner Mount' && indigo_flipper.devices[GUIDER_AGENT]==='Owner Guider' && indigo_flipper.devices[SOLVER_AGENT]==='Custom Solver'"));
+	ASSERT_TRUE(wait_solver_center("Custom Solver"));
+	ASSERT_TRUE(owner_is("Test Owner", "Imager Agent", "Owner Mount", "Owner Guider", "Custom Solver"));
+}
+
+static void manual_release_clears_the_owner(void) {
+	// without an owner there is nothing to release
+	ASSERT_TRUE(change_switch(SCRIPTING, "SEQUENCER_RELEASE", "RELEASE", true, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_message("The sequencer has no owner", 5));
+	ASSERT_TRUE(run_js(TAKE("Owner Imager", "Owner Mount", "Owner Guider", "")));
+	ASSERT_TRUE(run_js("var s=new Sequence('released'); s.wait(10); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_BUSY_STATE, 2));
+	ASSERT_TRUE(change_switch(SCRIPTING, "SEQUENCER_RELEASE", "RELEASE", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_message("The sequencer was released from Test Owner by hand", 5));
+	ASSERT_TRUE(owner_is("", "", "", "", ""));
+	indigo_property *property = snapshot(SCRIPTING, "SEQUENCER_RELEASE");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_FALSE(property->items[0].sw.value);
+	indigo_release_property(property);
+	// the running sequence keeps the agents it runs on
+	ASSERT_TRUE(check_js("indigo_sequencer_owner===null && indigo_sequencer.sequence!==null && indigo_sequencer.devices[IMAGER_AGENT]==='Owner Imager'"));
+	ASSERT_TRUE(change_switch(SCRIPTING, "AGENT_ABORT_PROCESS", "ABORT", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
+	// a later sequence uses the agents it asks for, without a warning
+	ASSERT_TRUE(run_js("new Sequence('free').start('Other Imager');"));
+	ASSERT_TRUE(wait_message("Sequence finished", 5));
+	ASSERT_FALSE(has_message("ignored"));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[IMAGER_AGENT]==='Other Imager'"));
+}
+
+static void library_reload_keeps_the_owner(void) {
+	ASSERT_TRUE(run_js(TAKE("Owner Imager", "Owner Mount", "Owner Guider", "")));
+	ASSERT_TRUE(owner_is("Test Owner", "Owner Imager", "Owner Mount", "Owner Guider", "Astrometry Agent"));
+	unsigned before = revision(SCRIPTING, "SEQUENCER_OWNER");
+	// the idle sequencer is replaced by the reload and takes the owner's agents again
+	ASSERT_TRUE(run_js("indigo_sequencer.reload_marker = true;"));
+	ASSERT_TRUE(load_sequencer());
+	ASSERT_TRUE(check_js("indigo_sequencer.reload_marker === undefined && indigo_sequencer_owner !== null && indigo_sequencer_owner.name === 'Test Owner'"));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[IMAGER_AGENT]==='Owner Imager' && indigo_sequencer.devices[MOUNT_AGENT]==='Owner Mount' && indigo_sequencer.devices[GUIDER_AGENT]==='Owner Guider' && indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+	ASSERT_TRUE(revision(SCRIPTING, "SEQUENCER_OWNER") > before);
+	ASSERT_TRUE(owner_is("Test Owner", "Owner Imager", "Owner Mount", "Owner Guider", "Astrometry Agent"));
+	ASSERT_EQ_INT(1, count_messages("The sequencer is controlled by"));
+	ASSERT_TRUE(run_js("new Sequence('after reload').start('Other Imager');"));
+	ASSERT_TRUE(wait_message("Sequence 'after reload': imager agent 'Other Imager' ignored, 'Owner Imager' is used (agents of Test Owner)", 5));
+}
+
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
 	{ "published property schema", published_property_schema },
@@ -1840,7 +2050,16 @@ static const indigo_test_case tests[] = {
 	{ "meridian flip failure while step timer fires continues", meridian_flip_failure_while_step_timer_fires_continues },
 	{ "meridian flip failure while altitude poll fires recovers", meridian_flip_failure_while_altitude_poll_fires_recovers },
 	{ "abort after stored flip failure", abort_after_stored_flip_failure },
-	{ "paused stored flip failure recovers", paused_stored_flip_failure_recovers }
+	{ "paused stored flip failure recovers", paused_stored_flip_failure_recovers },
+	{ "owner take and release publish the owner", owner_take_and_release_publish_the_owner },
+	{ "owner start uses owner agents with one warning", owner_start_uses_owner_agents_with_one_warning },
+	{ "owner start while running keeps the running agents", owner_start_while_running_keeps_the_running_agents },
+	{ "owner select agent steps warn and continue", owner_select_agent_steps_warn_and_continue },
+	{ "owner selected solver has no fallback", owner_selected_solver_has_no_fallback },
+	{ "owner automatic solver is published", owner_automatic_solver_is_published },
+	{ "owner flip uses owner agents", owner_flip_uses_owner_agents },
+	{ "manual release clears the owner", manual_release_clears_the_owner },
+	{ "library reload keeps the owner", library_reload_keeps_the_owner }
 };
 
 int main(int argc, char **argv) {

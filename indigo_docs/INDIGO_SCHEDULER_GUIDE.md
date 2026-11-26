@@ -62,7 +62,7 @@ See also: [Sequencer.js](../indigo_drivers/agent_scripting/library/Sequencer.md)
 - **The Scripting Agent.** It runs every task. Without it, no task starts.
 - **The Mount Agent.** It gives the scheduler the site coordinates. Tasks with a target or a twilight limit need them, and so do the night hooks.
 - **The Auxiliary Agent, for weather and safety.** It gives the scheduler the safety signal for the unsafe hold and the `UNSAFE` and `SAFE` hooks. Without it there is no safety information, and `AGENT_SCHEDULER_SAFETY_MISSING` decides. See [Unsafe conditions](#unsafe-conditions).
-- **These agents on the same server as the Scheduler Agent.** The scheduler finds them by their exact names.
+- **These agents named in `AGENT_SCHEDULER_AGENTS`.** By default the scheduler uses the agents of its own server, "Scripting Agent", "Mount Agent" and so on. Agents of another server, such as `Imager Agent @ obs2`, can be selected there.
 - **The site, set in the Mount Agent.** For example:
 
   ```
@@ -676,7 +676,7 @@ A session then runs like this:
 
 #### Unsafe conditions
 
-The safety needs the Auxiliary Agent (`indigo_agent_auxiliary`), loaded on the same server as the Scheduler Agent. The scheduler can follow a safety signal, for example from a weather station or a cloud sensor. It reads the light `AGENT_AUX_SAFETY` of the Auxiliary Agent: item `SAFE` Ok means safe, Alert means unsafe, Idle means no information. The scheduler only reads the light.
+The safety needs the Auxiliary Agent (`indigo_agent_auxiliary`) named in `AGENT_SCHEDULER_AGENTS`, by default the one on the same server as the Scheduler Agent. The scheduler can follow a safety signal, for example from a weather station or a cloud sensor. It reads the light `AGENT_AUX_SAFETY` of the Auxiliary Agent: item `SAFE` Ok means safe, Alert means unsafe, Idle means no information. The scheduler only reads the light.
 
 > **Note:** The Auxiliary Agent computes `AGENT_AUX_SAFETY` from `AUX_WEATHER_SAFETY` of the weather devices selected in its `FILTER_AUX_1_LIST` to `FILTER_AUX_4_LIST`: Alert if any of them reports unsafe, otherwise Ok if at least one reports safe. Until a weather source is selected, and again after every source is lost, the light is Idle, which is no information, and `AGENT_SCHEDULER_SAFETY_MISSING`, below, decides. See the Auxiliary agent section of [PROPERTIES.md](PROPERTIES.md#auxiliary-agent).
 
@@ -872,6 +872,8 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_CONTROL.ABORT=ON"
 
 **A server restart.** The tasks, their states, the settings and the history are kept. The scheduler always starts stopped after a restart. Press `START` again.
 
+**The sequencer while the scheduler runs.** From `START` to the stop the scheduler owns the sequencer of the Scripting Agent: every sequence, also one you start by hand, runs on the agents of `AGENT_SCHEDULER_AGENTS`, see [Agents the scheduler depends on](#agents-the-scheduler-depends-on). `SEQUENCER_RELEASE` of the Scripting Agent releases it by hand. The scheduler then leaves the agents to the tasks until the next `START`; it still uses its configured agents for the abort, the safety, the site and the data.
+
 Details: [What happens when the server restarts](#what-happens-when-the-server-restarts), [Scheduler state](#scheduler-state).
 
 ### More examples
@@ -943,11 +945,26 @@ The Scheduler Agent (`indigo_agent_scheduler`) works directly with these agents:
 | Scripting Agent | `indigo_agent_scripting` | always | Runs every task and estimates the durations. The scheduler loads `Sequencer.js` into it when needed, and tells it to abort a sequence. Without it, no task starts and `REASON` is `waiting for the Scripting Agent` |
 | Mount Agent | `indigo_agent_mount` | for tasks with `@target` or `@twilight`, and for the night hooks | The site coordinates, from its `GEOGRAPHIC_COORDINATES` property. Without it, or without a site, these tasks wait with `site coordinates unknown`. The night hooks then do not run |
 | Guider Agent | `indigo_agent_guider` | optional | The scheduler stops guiding when a task is aborted or interrupted. The sequencer's own abort leaves guiding running |
-| Imager Agent and the plate solver agents | `indigo_agent_imager`, `indigo_agent_astrometry`, `indigo_agent_platesolver` | optional | After an abort, the scheduler waits until they are idle. Then it starts the next task |
+| Imager Agent and the plate solver agents | `indigo_agent_imager`, `indigo_agent_astrometry`, `indigo_agent_platesolver`, `indigo_agent_astap` | optional | After an abort, the scheduler waits until they are idle. Then it starts the next task. The Imager Agent also gets the object name, the folder and the FITS keywords of a run, see [Where the data goes](#where-the-data-goes) |
 | Auxiliary Agent | `indigo_agent_auxiliary` | for the weather and safety | The safety, from its `AGENT_AUX_SAFETY` light. Without it there is no safety information, which counts as safe unless `AGENT_SCHEDULER_SAFETY_MISSING` is `UNSAFE`. See [Unsafe conditions](#unsafe-conditions) |
 
-- The agents must run on the same server as the Scheduler Agent. The scheduler finds them by their exact names, such as "Scripting Agent" and "Mount Agent".
-- An agent on another server appears under another name, such as `Scripting Agent @ obs2`. The scheduler does not use it.
+**Which agents.** `AGENT_SCHEDULER_AGENTS` names the agents the scheduler uses, one item per role: `SCRIPTING`, `IMAGER`, `MOUNT`, `GUIDER`, `AUX` and `SOLVER`. The defaults are "Scripting Agent", "Imager Agent", "Mount Agent", "Guider Agent", "Auxiliary Agent" and an empty `SOLVER`, so a setup with the agents on the scheduler's own server needs no change. The setting is saved with the configuration.
+
+- A name is the device name as the Scheduler Agent sees it. An agent of another server keeps its suffix, such as `Imager Agent @ obs2`.
+- A name must follow the convention of its role: `Imager Agent` or `Imager Agent @ ...` for `IMAGER`, and so on; the solver is `Astrometry Agent`, `Platesolver Agent` or `ASTAP Agent`, also with ` @ ...`. Only `SOLVER` may be empty: Sequencer.js then selects the solver automatically. The agent does not have to be on the bus.
+- Type the names, or select them: `AGENT_SCHEDULER_SCRIPTING_AGENT_LIST`, `..._IMAGER_AGENT_LIST`, `..._MOUNT_AGENT_LIST`, `..._GUIDER_AGENT_LIST`, `..._AUX_AGENT_LIST` and `..._SOLVER_AGENT_LIST` list the agents of each role on the bus. Selecting one writes its name into `AGENT_SCHEDULER_AGENTS`; `AUTOMATIC` clears `SOLVER`. The configured agent is on; none is on while it is not on the bus.
+- The agents cannot be changed while the scheduler runs. Stop it first.
+
+```
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_AGENTS.IMAGER=Imager Agent @ obs2"
+```
+
+The scheduler uses these agents for everything: it runs the tasks on the Scripting Agent, takes the site from the Mount Agent and the safety from the Auxiliary Agent, labels the data on the Imager Agent, aborts the Guider Agent and waits for the Imager, Mount, Guider and solver agents after an abort. The solver it waits for is the configured one, otherwise the one Sequencer.js selected, for example the `ASTAP Agent`.
+
+**A Scripting Agent of another server.** The scripts run on that server, where the agents of the same server have no suffix. The scheduler therefore removes the suffix of the Scripting Agent from the names with the same suffix before it hands them to the sequencer: with `Scripting Agent @ obs2`, `Imager Agent @ obs2` becomes `Imager Agent`. Other names are handed over as they are; the agents must then be reachable under these names from the server of the Scripting Agent.
+
+**The scheduler owns the sequencer.** From `START` to the stop, also while it is idle, in standby or waits for safe conditions, the scheduler is the *owner* of the sequencer of its Scripting Agent. `SEQUENCER_OWNER` of the Scripting Agent shows "Scheduler Agent" and its agents. Every sequence started then, by a task or by hand, runs on these agents; see [Rules for the body](#rules-for-the-body). The scheduler releases the sequencer when it stops, after an abort, when all tasks finished, and when it is unloaded. Two Scheduler Agents of the same name that use one Scripting Agent are not supported.
+
 
 **Where the site comes from.** The `AGENT_SITE_DATA_SOURCE` property of the Mount Agent decides this.
 
@@ -1190,7 +1207,7 @@ See also: [Hooks and the night](#hooks-and-the-night).
 
 ### Safety rules
 
-- The safety is the light of the item `SAFE` of `AGENT_AUX_SAFETY` on the Auxiliary Agent of the same server. Ok is safe, Alert is unsafe. Idle, Busy, a missing property and a missing agent are no information, which `AGENT_SCHEDULER_SAFETY_MISSING` treats as safe (`SAFE`, the default) or unsafe (`UNSAFE`). The state of the property itself does not count.
+- The safety is the light of the item `SAFE` of `AGENT_AUX_SAFETY` on the Auxiliary Agent of `AGENT_SCHEDULER_AGENTS`. Ok is safe, Alert is unsafe. Idle, Busy, a missing property and a missing agent are no information, which `AGENT_SCHEDULER_SAFETY_MISSING` treats as safe (`SAFE`, the default) or unsafe (`UNSAFE`). The state of the property itself does not count.
 - An unsafe report while the scheduler runs starts the unsafe hold at once. Every task and every hook except `SHUTDOWN`, `NIGHT_END` and `UNSAFE` is aborted, and so is a sequence started by hand that runs at that moment. A sequence that you start by hand during the hold is left alone.
 - An aborted task with `@preempted retry` returns to `RETRY` without using a retry and without a retry delay; a one-off urgent task stays in the list and runs after the hold. With `@preempted fail` the task becomes `FAILED`; a one-off urgent task leaves the list and counts in `URGENT_FAILED`. The history result is `UNSAFE` in both cases.
 - `UNSAFE` runs once per hold. When it names the task that has just run as `NIGHT_END`, it does not run again.
@@ -1277,6 +1294,7 @@ See also: [Where the data goes](#where-the-data-goes).
 - **Leave the meridian flip alone.** Set it once, in the `STARTUP` hook. The night plan assumes that it holds for the whole night.
 - **End the sequence in the right state.** A sequence that ends Ok counts as a success. One that ends Alert counts as a failure. To stop early, use the checkpoint steps of the sequencer, such as `break_if_target_altitude_below()` and `break_at()`.
 - **Name the sequence after the task** with `new Sequence(scheduler_task.name)`.
+- **The agents are those of the scheduler.** While the scheduler runs, the agents passed to `start()` and the `select_imager_agent()`, `select_mount_agent()`, `select_guider_agent()` and `select_solver_agent()` steps are ignored. The Scripting Agent sends a warning and the sequence runs on the agents of `AGENT_SCHEDULER_AGENTS`. Configure the agents there instead.
 
 See also: [Tasks](#tasks), [Meridian flips](#meridian-flips).
 
@@ -1532,6 +1550,10 @@ The scheduler reports events as INDIGO messages of the device "Scheduler Agent".
 | `Safe conditions, the unsafe hold ends`, `..., the scheduler continues in standby`, `Safe conditions, the scheduler starts` | The unsafe hold ends |
 | `Unsafe conditions, the start waits for safe conditions` | `START` while the conditions are unsafe |
 | `The unsafe hook failed, the scheduler stopped`, `The safe hook failed, the scheduler stopped` | The `UNSAFE` or `SAFE` hook failed. `SHUTDOWN` ran |
+| `The sequencer was released on the Scripting Agent, the scheduler leaves the agents to the tasks until the next START` | `SEQUENCER_RELEASE`, or another script, released the sequencer while the scheduler runs |
+| `The agents cannot be changed while the scheduler runs, stop it first`, `Agents rejected: ...` | A change of `AGENT_SCHEDULER_AGENTS` or of a selector was refused |
+
+The Scripting Agent sends the messages of the sequencer, among them `The sequencer is controlled by Scheduler Agent`, `The sequencer is released by Scheduler Agent`, and the warnings `Sequence '<name>': imager agent '<requested>' ignored, '<configured>' is used (agents of Scheduler Agent)` and `Step select_imager_agent('<agent>') ignored, '<configured>' of Scheduler Agent is used` for a task or a sequence started by hand that asks for other agents.
 
 A rejected request puts the property you changed into the Alert state. A message gives the reason, for example `Task 'M42' not found`. The messages of property updates, such as the stop messages of `AGENT_SCHEDULER_STATE`, arrive the same way as the other messages.
 
@@ -1551,7 +1573,7 @@ A rejected request puts the property you changed into the Alert state. A message
 | `too bright (twilight)` | `@twilight`, or `@target` without `@twilight` |
 | `window not open yet`, `outside of the nightly window` | `@window` |
 | `window ends before the task can finish`, `nightly window ends before the task can finish` | The run does not fit in `@window` |
-| `site coordinates unknown` | No Mount Agent is loaded on this server, or it has no site coordinates |
+| `site coordinates unknown` | The Mount Agent of `AGENT_SCHEDULER_AGENTS` is not loaded, or it has no site coordinates |
 | `beyond the forecast` | The constraints would have to hold beyond the next 48 hours |
 | `<task> starts at HH:MM UTC, planned for better visibility` | With `VISIBILITY`, a task could run now, but the plan starts the named task at the given time. It takes precedence over the reasons of the tasks that cannot run |
 | `estimating the task duration` | The estimate of a task waiting to run has not finished yet. No other task starts before it, except an urgent one. Shown when another task could start, or when the estimating task comes first in the list among the tasks waiting to run |
@@ -1583,7 +1605,9 @@ See also: [Starting, stopping and restarting](#starting-stopping-and-restarting)
 | A task could run, but the scheduler waits | The strategy `VISIBILITY` plans the run for a better time. `REASON` names the planned start. Switch to `COMPACT` to start tasks as soon as they can run. See [Choosing a strategy](#choosing-a-strategy) |
 | All tasks run right after dusk, although the night is long | That is the default strategy `COMPACT`. Switch to `VISIBILITY`. See [Choosing a strategy](#choosing-a-strategy) |
 | My `high` task ran after a `normal` one | Under `COMPACT`, the `high` task could not run yet. Under `VISIBILITY`, the plan places runs by visibility, not by priority. See [Choosing a strategy](#choosing-a-strategy) |
-| Every task waits with `site coordinates unknown` | Load the Mount Agent on the same server as the Scheduler Agent, and set its site. See [Agents the scheduler depends on](#agents-the-scheduler-depends-on) |
+| Every task waits with `site coordinates unknown` | Load the Mount Agent named in `AGENT_SCHEDULER_AGENTS`, and set its site. See [Agents the scheduler depends on](#agents-the-scheduler-depends-on) |
+| The Scripting Agent warns `... agent '...' ignored, '...' is used (agents of Scheduler Agent)` | A task or a sequence started by hand asks for other agents than those of `AGENT_SCHEDULER_AGENTS`. Configure the agents there. To run a sequence on other agents, stop the scheduler first |
+| `SEQUENCER_OWNER` names the Scheduler Agent, but no scheduler runs | The scheduler was gone before it could release the sequencer. A started Scheduler Agent releases it by itself; otherwise set `SEQUENCER_RELEASE` of the Scripting Agent, or restart the Scripting Agent |
 | The upload is rejected | The message of the Scheduler Agent names the line and the problem. See [Header keys](#header-keys) |
 | A task shows `UNREACHABLE` | Its target can never stand within `MIN_ALTITUDE`, `MAX_ALTITUDE` and its `@altitude` at this site. The night plan and the message give the numbers. Lower `MIN_ALTITUDE` or the task's `@altitude`, or raise `MAX_ALTITUDE` |
 | A low target waits with `target below the altitude limit`, although its `@altitude` is lower | `MIN_ALTITUDE` (default 20°) is higher. Lower it |
@@ -1629,6 +1653,8 @@ All properties belong to the device "Scheduler Agent".
 | `AGENT_SCHEDULER_NIGHT` | switch | `CIVIL`, `NAUTICAL`, `ASTRONOMICAL` | The night limit of the scheduler night |
 | `AGENT_SCHEDULER_STRATEGY` | switch | `COMPACT`, `VISIBILITY` | How the next task is chosen |
 | `AGENT_SCHEDULER_SAFETY_MISSING` | switch | `SAFE`, `UNSAFE` | How missing safety information counts |
+| `AGENT_SCHEDULER_AGENTS` | text | `SCRIPTING`, `IMAGER`, `MOUNT`, `GUIDER`, `AUX`, `SOLVER` | The agents the scheduler uses |
+| `AGENT_SCHEDULER_<role>_AGENT_LIST` | switch | the agents of the role on the bus, `AUTOMATIC` for the solver | Select an agent for `AGENT_SCHEDULER_AGENTS`; `<role>` is `SCRIPTING`, `IMAGER`, `MOUNT`, `GUIDER`, `AUX` or `SOLVER` |
 
 `AGENT_SCHEDULER_ADD_TASK.STATUS` and `AGENT_SCHEDULER_RESTORE_HISTORY` only restore the configuration. Leave them alone.
 

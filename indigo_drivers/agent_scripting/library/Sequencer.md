@@ -128,6 +128,17 @@ sequence.start("Imager Agent @ observatory", "Mount Agent @ observatory", "Guide
 
 `start()` also selects the solver agent automatically. Solver agents are mutually exclusive on one server, so the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent given to `start()` is used, otherwise the local one, otherwise one loaded on another host. An imager agent which is not loaded does not count, its host is not used. With no solver agent `"Astrometry Agent"` is assumed, on the host of the loaded imager agent, otherwise local. A `select_imager_agent()` step does not change the solver agent. Use the `select_solver_agent()` step to choose another solver agent or one loaded later by the sequence. Every `start()` selects the solver agent again. The selected solver agent is used while it is loaded, also when the imager agent or a solver agent on its host appears later; when it is replaced during the sequence, the solver steps, the abort and the meridian flip select a loaded one again in the same way, and the sequence keeps using the new one.
 
+#### Agents of an owner
+
+A client that controls the sequencer, e.g. the Scheduler Agent from its START to its stop, makes itself its *owner* by calling `indigo_sequencer_take({ name, imager, mount, guider, solver })` in a script on the Scripting Agent; `solver` empty means the automatic choice described above. It is published by `SEQUENCER_OWNER`, see [Properties published during execution](#properties-published-during-execution). While the sequencer has an owner:
+
+- every `start()`, whoever calls it, runs the sequence on the agents of the owner; the agents given to `start()` are ignored, and when any of them differs from the owner's agent one message names each ignored agent and the agent used, see [Sequence messages](#sequence-messages). No sequence is refused. A `start()` while another sequence runs changes nothing, the running sequence keeps its agents.
+- the `select_*_agent()` steps do not change the agents; a step naming another agent sends a warning and the sequence continues. `select_solver_agent()` is ignored also when the owner leaves the solver to the automatic choice, and is then compared with the solver selected.
+- a solver set by the owner is used without a fallback to another loaded solver agent: when it is not loaded, the solver steps fail and the meridian flip fails with `Meridian flip failed (no solver agent is loaded)`.
+- the meridian flip uses the agents of the owner, also when it was enabled by an earlier sequence and starts while the sequencer is idle.
+
+The owner is kept when clients send the library again; a restart of the Scripting Agent clears it. `indigo_sequencer_release(name)` releases the sequencer only when `name` is the owner, and `SEQUENCER_RELEASE` releases it by hand, e.g. after the Scheduler Agent that owned it has gone. The agents a sequence runs on are not changed by a release; sequences started afterwards use the agents they ask for. The ownership is cooperative: any script on the Scripting Agent can call these functions.
+
 `estimate()` returns counts of the built sequence for a duration estimate, without starting anything: `{ exposure, frames, operations, waits, unknown }`. `exposure` is the total exposure time and `frames` the number of frames of the capture steps, `operations` the number of slew, centering, focus, guiding start, park, unpark, home and dome steps, `waits` the sum of fixed `wait()` delays in seconds, and `unknown` is true when a `wait_until()` or a sky wait makes the duration unknowable. Steps inside `repeat()` count once per iteration. The Scheduler Agent adds its own overheads per frame and per operation.
 
 ## Step reference
@@ -193,6 +204,8 @@ The `select_*_agent` methods pick which agent drives each role; the remaining `s
 | `select_gps(gps)` | Select the GPS device. |
 | `select_guider_camera(camera)` | Select the guider camera. |
 | `select_guider(guider)` | Select the guiding device (e.g. ST4 / pulse guide output). |
+
+With an owner of the sequencer the four `select_*_agent()` steps change nothing and warn when they name another agent, see [Agents of an owner](#agents-of-an-owner).
 
 ### Camera & exposure setup
 
@@ -353,6 +366,8 @@ Once `start()` is called, the sequencer defines the following properties on the 
 | `AGENT_PAUSE_PROCESS` | Switch, RW | `PAUSE_WAIT` | Pause the sequence before the next operation. |
 | `SEQUENCE_RESET` | Switch, RW | `RESET` | Reset the state of `SEQUENCE_STATE` (e.g. while the sequence is being edited in the GUI). |
 | `FLIPPER_STATE` | Switch, RO | `WAITING_FOR_TRANSIT`, `WAITING_FOR_SLEW`, `WAITING_FOR_SYNC_AND_CENTER`, `WAITING_FOR_GUIDING`, `WAITING_FOR_SETTLE_DOWN`, `RESUME_GUIDING`, `USE_SOLVER` | Progress of the automatic meridian flip, see [How the meridian flip works](#how-the-meridian-flip-works). `WAITING_FOR_TRANSIT`, `WAITING_FOR_SLEW`, `WAITING_FOR_SYNC_AND_CENTER`, `WAITING_FOR_GUIDING` and `WAITING_FOR_SETTLE_DOWN` show the phase the flip is waiting in: for `FLIP_REQUIRED` from the Mount Agent, for the slew, for recentering with the solver, for the guider process to start and for guiding to settle down. `RESUME_GUIDING` is set when the flip starts the slew ("Meridian flip started"): on when guiding ran then and will be restarted after the flip; before that, also while waiting for transit, it keeps the value of the previous flip. `USE_SOLVER` is on when the flip recenters with the solver. The state is **Busy** during the flip, including the wait for transit, **Ok** when it finished, and **Alert** after a failure; then the `WAITING_FOR_*` item still on shows the phase that failed (slew, recentering or guiding), none is on when no solver agent was loaded. |
+| `SEQUENCER_OWNER` | Text, RO | `OWNER`, `IMAGER`, `MOUNT`, `GUIDER`, `SOLVER` | The owner of the sequencer and its agents, see [Agents of an owner](#agents-of-an-owner); `SOLVER` is the solver set by the owner or, when it set none, the solver currently selected automatically. All items are empty while the sequencer has no owner. Defined when the library is loaded and kept when clients send it again. |
+| `SEQUENCER_RELEASE` | Switch, RW | `RELEASE` | Releases the owner by hand; a running sequence keeps its agents. Without an owner the switch ends in the **Alert** state. |
 | `MERIDIAN_FLIP` | Number, RO | `ENABLED`, `USE_SOLVER`, `OFFSET` | Meridian flip settings, changed only when the steps of `enable_meridian_flip()` and `disable_meridian_flip()` execute. `ENABLED` is `1` when the flip is enabled, `0` otherwise (also before the first of these steps). `USE_SOLVER` is `0` when the flip does not recenter with the solver, otherwise the solver exposure in seconds: the given number, or for `true` the exposure the loaded solver agent had when the step executed, `1` when no solver agent was loaded or its exposure was not positive; it is limited to 0..60 s like the solver agents' `AGENT_PLATESOLVER_EXPOSURE.EXPOSURE`, and a larger number is also set as 60 s by the flip. `OFFSET` is the `time` in hours relative to the meridian (transit): negative before the meridian, positive after it, `0` at the meridian; it is limited to -2..2 h like Imager Agent `AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT`, which uses it. `disable_meridian_flip()` keeps `USE_SOLVER` and `OFFSET` of the last `enable_meridian_flip()`. The settings, including those used by the flip, are kept when clients send the library again, and the property disappears with the Scripting Agent like `FLIPPER_STATE`. |
 
 ### Interpreting `SEQUENCE_STATE`
@@ -376,6 +391,11 @@ The sequencer reports its progress by messages sent to all clients. In the table
 | `Sequencer reloaded, the running sequence continues` | [Sequencer.js](Sequencer.js) is executed again while a sequence runs, see [Use](#use). |
 | `Sequence started` | `start()` starts a sequence. |
 | `Other sequence is executed` | `start()` is called while another sequence runs; the new sequence is not started. |
+| `Sequence '<name>': <role> agent '<requested>' ignored, '<used>' is used (agents of <owner>)` | `start()` asks for agents other than those of the owner of the sequencer; one message names every ignored imager, mount or guider agent, joined by `; `. |
+| `Step select_<role>_agent('<agent>') ignored, '<used>' of <owner> is used` | A `select_*_agent()` step names another agent than that of the owner; the sequence continues. |
+| `The sequencer is controlled by <owner>` | `indigo_sequencer_take()` gives the sequencer an owner it did not have. |
+| `The sequencer is released by <owner>` | `indigo_sequencer_release()` releases the sequencer. |
+| `The sequencer was released from <owner> by hand` / `The sequencer has no owner` | `SEQUENCER_RELEASE` is set with / without an owner. |
 | `Sequence finished` | The last step of the sequence completed. |
 | `Sequence paused` / `Sequence resumed` | `AGENT_PAUSE_PROCESS.PAUSE_WAIT` of the Scripting Agent is turned on / off while a sequence runs. |
 | `<message>` | A `send_message(message)` step executes. |

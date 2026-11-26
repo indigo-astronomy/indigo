@@ -58,7 +58,11 @@ function sequencer_is_solver_agent(agent) {
 }
 
 // the solver agent selected when the sequence started may have been replaced since, e.g. before a meridian flip enabled by a finished sequence; null if no solver agent is loaded
+// the solver agent set by the owner of the sequencer is used without a fallback to another one
 function sequencer_loaded_solver_agent(solver_agent, imager_agent) {
+	if (indigo_sequencer_owner != null && indigo_sequencer_owner.solver != "") {
+		return sequencer_is_solver_agent(indigo_sequencer_owner.solver) ? indigo_sequencer_owner.solver : null;
+	}
 	if (sequencer_is_solver_agent(solver_agent)) {
 		return solver_agent;
 	}
@@ -627,11 +631,28 @@ Sequence.prototype.estimate = function() {
 	return { exposure: this.exposure, frames: this.frames, operations: this.operations, waits: this.waits, unknown: this.unknown_duration };
 };
 
+// with an owner the agents of the owner are used, the requested ones are ignored with one warning; a running sequence keeps its agents
 Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
-	indigo_sequencer.devices[IMAGER_AGENT] = imager_agent == undefined ? "Imager Agent" : imager_agent;
-	indigo_sequencer.devices[MOUNT_AGENT] = mount_agent == undefined ? "Mount Agent" : mount_agent;
-	indigo_sequencer.devices[GUIDER_AGENT] = guider_agent == undefined ? "Guider Agent" : guider_agent;
-	indigo_sequencer.devices[SOLVER_AGENT] = sequencer_solver_agent(indigo_sequencer.devices[IMAGER_AGENT]);
+	var owner = indigo_sequencer_owner;
+	if (owner == null) {
+		indigo_sequencer.devices[IMAGER_AGENT] = imager_agent == undefined ? "Imager Agent" : imager_agent;
+		indigo_sequencer.devices[MOUNT_AGENT] = mount_agent == undefined ? "Mount Agent" : mount_agent;
+		indigo_sequencer.devices[GUIDER_AGENT] = guider_agent == undefined ? "Guider Agent" : guider_agent;
+		indigo_sequencer.devices[SOLVER_AGENT] = sequencer_solver_agent(indigo_sequencer.devices[IMAGER_AGENT]);
+	} else if (indigo_sequencer.sequence == null) {
+		var requested = [ [ "imager", imager_agent, owner.imager ], [ "mount", mount_agent, owner.mount ], [ "guider", guider_agent, owner.guider ] ];
+		var parts = [];
+		for (var i = 0; i < requested.length; i++) {
+			if (requested[i][1] != undefined && String(requested[i][1]) != requested[i][2]) {
+				parts.push(requested[i][0] + " agent '" + requested[i][1] + "' ignored, '" + requested[i][2] + "' is used");
+			}
+		}
+		if (parts.length > 0) {
+			indigo_send_message("Sequence '" + this.name + "': " + parts.join("; ") + " (agents of " + owner.name + ")");
+		}
+		indigo_sequencer_apply_owner();
+		indigo_sequencer_publish_owner();
+	}
 	indigo_sequencer.start(this.sequence, this.name, this.progress, this.exposure);
 };
 
@@ -650,6 +671,66 @@ var indigo_meridian_flip = typeof indigo_meridian_flip !== "undefined" && indigo
 
 function indigo_meridian_flip_items() {
 	return { ENABLED: indigo_meridian_flip.enabled ? 1 : 0, USE_SOLVER: indigo_meridian_flip.use_solver, OFFSET: indigo_meridian_flip.offset };
+}
+
+// MARK: Sequencer owner
+
+// the client that controls the agents of the sequencer, e.g. { name: "Scheduler Agent", imager: "...", mount: "...", guider: "...", solver: "" } with "" for an automatic solver;
+// kept by a reload like the running sequence and the flip, null when the sequencer is free; published by SEQUENCER_OWNER
+var indigo_sequencer_owner = typeof indigo_sequencer_owner !== "undefined" && indigo_sequencer_owner != null ? indigo_sequencer_owner : null;
+
+// the values of SEQUENCER_OWNER last published, as JSON
+var indigo_sequencer_owner_published = null;
+
+// the solver is the one set by the owner, otherwise the one selected automatically (given, or that of the sequencer)
+function indigo_sequencer_owner_items(solver) {
+	var owner = indigo_sequencer_owner;
+	if (owner == null) {
+		return { OWNER: "", IMAGER: "", MOUNT: "", GUIDER: "", SOLVER: "" };
+	}
+	return { OWNER: owner.name, IMAGER: owner.imager, MOUNT: owner.mount, GUIDER: owner.guider, SOLVER: owner.solver != "" ? owner.solver : String(solver == undefined ? indigo_sequencer.devices[SOLVER_AGENT] : solver) };
+}
+
+function indigo_sequencer_publish_owner(solver) {
+	var items = indigo_sequencer_owner_items(solver);
+	var text = JSON.stringify(items);
+	if (text != indigo_sequencer_owner_published) {
+		indigo_sequencer_owner_published = text;
+		indigo_update_text_property(indigo_sequencer.devices[SCRIPTING_AGENT], "SEQUENCER_OWNER", items, "Ok");
+	}
+}
+
+// the agents of the owner become the agents of the sequencer, which must not run a sequence
+function indigo_sequencer_apply_owner() {
+	var owner = indigo_sequencer_owner;
+	if (owner != null) {
+		indigo_sequencer.devices[IMAGER_AGENT] = owner.imager;
+		indigo_sequencer.devices[MOUNT_AGENT] = owner.mount;
+		indigo_sequencer.devices[GUIDER_AGENT] = owner.guider;
+		indigo_sequencer.devices[SOLVER_AGENT] = owner.solver != "" ? owner.solver : sequencer_solver_agent(owner.imager);
+	}
+}
+
+// called by a client which controls the sequencer, e.g. the Scheduler Agent; every sequence started afterwards runs on its agents
+function indigo_sequencer_take(owner) {
+	var previous = indigo_sequencer_owner != null ? indigo_sequencer_owner.name : "";
+	indigo_sequencer_owner = { name: String(owner.name), imager: String(owner.imager), mount: String(owner.mount), guider: String(owner.guider), solver: owner.solver == undefined || owner.solver == null ? "" : String(owner.solver) };
+	if (indigo_sequencer.sequence == null) {
+		indigo_sequencer_apply_owner();
+	}
+	indigo_sequencer_publish_owner();
+	if (previous != indigo_sequencer_owner.name) {
+		indigo_send_message("The sequencer is controlled by " + indigo_sequencer_owner.name);
+	}
+}
+
+// releases the sequencer only when it is controlled by the named client; the agents of the sequencer stay as they are
+function indigo_sequencer_release(name) {
+	if (indigo_sequencer_owner != null && indigo_sequencer_owner.name == name) {
+		indigo_sequencer_owner = null;
+		indigo_sequencer_publish_owner();
+		indigo_send_message("The sequencer is released by " + name);
+	}
 }
 
 // MARK: Flipper object
@@ -718,6 +799,7 @@ var indigo_flipper = {
 						return;
 					}
 					this.devices[SOLVER_AGENT] = solver_agent;
+					indigo_sequencer_publish_owner(solver_agent);
 					this.waiting_for_sync_and_center = true;
 					if (this.solver_exposure > 0) {
 						indigo_change_number_property(this.devices[SOLVER_AGENT], "AGENT_PLATESOLVER_EXPOSURE", { EXPOSURE: this.solver_exposure });
@@ -866,6 +948,11 @@ var indigo_sequencer = {
 
 	on_update: function(property) {
 		if (property.device == this.devices[IMAGER_AGENT] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
+			// with an owner the flip uses its agents, also when it was enabled by an earlier sequence
+			if (indigo_sequencer_owner != null && this.sequence == null) {
+				indigo_sequencer_apply_owner();
+				indigo_sequencer_publish_owner();
+			}
 			indigo_flipper.devices = this.devices;
 			indigo_flipper.start(indigo_meridian_flip.use_solver > 0, indigo_meridian_flip.solver_exposure);
 		} else if (this.sequence != null) {
@@ -921,6 +1008,14 @@ var indigo_sequencer = {
 			}
 			if (property.name == null || property.name == "SEQUENCE_RESET") {
 				indigo_define_switch_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_RESET", "Sequencer", "Reset sequence", { RESET: false }, { RESET: { label: "Reset" }}, "Ok", "RW", "ONE_OF_MANY");
+			}
+			if (property.name == null || property.name == "SEQUENCER_OWNER") {
+				var owner_items = indigo_sequencer_owner_items();
+				indigo_sequencer_owner_published = JSON.stringify(owner_items);
+				indigo_define_text_property(this.devices[SCRIPTING_AGENT], "SEQUENCER_OWNER", "Sequencer", "Owner", owner_items, { OWNER: { label: "Owner" }, IMAGER: { label: "Imager agent" }, MOUNT: { label: "Mount agent" }, GUIDER: { label: "Guider agent" }, SOLVER: { label: "Solver agent" }}, "Ok", "RO");
+			}
+			if (property.name == null || property.name == "SEQUENCER_RELEASE") {
+				indigo_define_switch_property(this.devices[SCRIPTING_AGENT], "SEQUENCER_RELEASE", "Sequencer", "Release owner", { RELEASE: false }, { RELEASE: { label: "Release" }}, "Ok", "RW", "ONE_OF_MANY");
 			}
 			for (var i = 0; i < this.loop_level; i++) {
 				if (property.name == null || property.name == "LOOP_" + i) {
@@ -988,6 +1083,20 @@ var indigo_sequencer = {
 					this.step_states_defs = {};
 					indigo_redefine_light_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 					indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_RESET", { RESET: false }, "Ok");
+				}
+			} else if (property.name == "SEQUENCER_RELEASE") {
+				if (property.items.RELEASE) {
+					// a running sequence keeps its agents, the sequences started afterwards use the agents they ask for
+					if (indigo_sequencer_owner != null) {
+						var owner_name = indigo_sequencer_owner.name;
+						indigo_sequencer_owner = null;
+						indigo_sequencer_publish_owner();
+						indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "SEQUENCER_RELEASE", { RELEASE: false }, "Ok");
+						indigo_send_message("The sequencer was released from " + owner_name + " by hand");
+					} else {
+						indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "SEQUENCER_RELEASE", { RELEASE: false }, "Alert");
+						indigo_send_message("The sequencer has no owner");
+					}
 				}
 			}
 		}
@@ -1635,24 +1744,34 @@ var indigo_sequencer = {
 		this.deselect_switch("Server", "DRIVERS", name);
 	},
 
-	select_imager_agent: function(agent) {
-		this.devices[IMAGER_AGENT] = agent;
+	// with an owner the agent is not changed, a different one is ignored with a warning; an automatic solver is compared with the one selected
+	select_agent: function(index, role, agent) {
+		var owner = indigo_sequencer_owner;
+		if (owner == null) {
+			this.devices[index] = agent;
+		} else {
+			var used = index == IMAGER_AGENT ? owner.imager : index == MOUNT_AGENT ? owner.mount : index == GUIDER_AGENT ? owner.guider : owner.solver != "" ? owner.solver : this.devices[SOLVER_AGENT];
+			if (String(agent) != used) {
+				indigo_send_message("Step select_" + role + "_agent('" + agent + "') ignored, '" + used + "' of " + owner.name + " is used");
+			}
+		}
 		indigo_sequencer_set_step_timer(indigo_sequencer_next_ok_handler, 0);
+	},
+
+	select_imager_agent: function(agent) {
+		this.select_agent(IMAGER_AGENT, "imager", agent);
 	},
 
 	select_mount_agent: function(agent) {
-		this.devices[MOUNT_AGENT] = agent;
-		indigo_sequencer_set_step_timer(indigo_sequencer_next_ok_handler, 0);
+		this.select_agent(MOUNT_AGENT, "mount", agent);
 	},
 
 	select_guider_agent: function(agent) {
-		this.devices[GUIDER_AGENT] = agent;
-		indigo_sequencer_set_step_timer(indigo_sequencer_next_ok_handler, 0);
+		this.select_agent(GUIDER_AGENT, "guider", agent);
 	},
 
 	select_solver_agent: function(agent) {
-		this.devices[SOLVER_AGENT] = agent;
-		indigo_sequencer_set_step_timer(indigo_sequencer_next_ok_handler, 0);
+		this.select_agent(SOLVER_AGENT, "solver", agent);
 	},
 
 	// the solver agent selected by start() or select_solver_agent() is used while it is loaded, otherwise another loaded one is selected again
@@ -1660,6 +1779,9 @@ var indigo_sequencer = {
 		var agent = sequencer_loaded_solver_agent(this.devices[SOLVER_AGENT], this.devices[IMAGER_AGENT]);
 		if (agent != null) {
 			this.devices[SOLVER_AGENT] = agent;
+			if (indigo_sequencer_owner != null) {
+				indigo_sequencer_publish_owner(agent);
+			}
 		}
 		return this.devices[SOLVER_AGENT];
 	},
@@ -2053,6 +2175,10 @@ if (indigo_sequencer_running != null) {
 	indigo_delete_property("Scripting Agent", "LOOP_7");
 	indigo_delete_property("Scripting Agent", "LOOP_8");
 	indigo_delete_property("Scripting Agent", "LOOP_9");
+}
+// an idle sequencer replaced by the reload uses the agents of the owner
+if (indigo_sequencer_owner != null && indigo_sequencer_running == null) {
+	indigo_sequencer_apply_owner();
 }
 indigo_sequencer_running = null;
 indigo_flipper_enabled = null;

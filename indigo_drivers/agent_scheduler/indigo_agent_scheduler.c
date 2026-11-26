@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000029
+#define DRIVER_VERSION 0x0300002A
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -50,15 +50,12 @@
 #define MAX_TASKS									128
 #define SCHEDULER_GROUP						"Scheduler"
 #define TASKS_GROUP								"Tasks"
-#define SCRIPTING_AGENT						"Scripting Agent"
-#define IMAGER_AGENT							"Imager Agent"
-#define MOUNT_AGENT								"Mount Agent"
-#define GUIDER_AGENT							"Guider Agent"
+#define AGENTS_GROUP							"Agents"
 #define SCHEDULER_RESULT_PROPERTY	"SCHEDULER_RESULT"
 #define SCHEDULER_ESTIMATE_PROPERTY	"SCHEDULER_ESTIMATE"
 #define MERIDIAN_FLIP_PROPERTY		"MERIDIAN_FLIP"
+#define SEQUENCER_OWNER_PROPERTY	"SEQUENCER_OWNER"
 // the names of indigo_agent_auxiliary.h, defined here as for the other agents
-#define AUX_AGENT									"Auxiliary Agent"
 #define AUX_SAFETY_PROPERTY				"AGENT_AUX_SAFETY"
 #define AUX_SAFETY_SAFE_ITEM			"SAFE"
 #define MAX_HISTORY								200
@@ -74,6 +71,12 @@
 #define NIGHT_NOTICE_HORIZON			86400
 // a run or hook that ends this many seconds or more before or after its planned end changes the plan
 #define RUN_END_TOLERANCE					10
+// the agents of one role listed by its selector
+#define MAX_ROLE_AGENTS						16
+// the take or release of the sequencer is sent again after this many seconds while it has no effect
+#define OWNER_RETRY_INTERVAL			5
+// the takes and releases sent whose effect on SEQUENCER_OWNER is still to be matched
+#define MAX_OWNER_SCRIPTS					32
 
 #define AGENT_IMAGER_BUSY					0x01
 #define AGENT_MOUNT_BUSY					0x02
@@ -159,6 +162,48 @@
 #define RESTORE_HISTORY_PROPERTY	(PRIVATE_DATA->restore_history_property)
 #define PLAN_PROPERTY							(PRIVATE_DATA->plan_property)
 #define RESTORE_HISTORY_ITEM			(RESTORE_HISTORY_PROPERTY->items + 0)
+#define AGENTS_PROPERTY						(PRIVATE_DATA->agents_property)
+#define AGENT_LIST_PROPERTY(role)	(PRIVATE_DATA->agent_list_properties[role])
+
+// the agents the scheduler works with, the items of AGENT_SCHEDULER_AGENTS in this order
+typedef enum {
+	ROLE_SCRIPTING = 0,
+	ROLE_IMAGER,
+	ROLE_MOUNT,
+	ROLE_GUIDER,
+	ROLE_AUX,
+	ROLE_SOLVER,
+	ROLE_COUNT
+} agent_role;
+
+static const char *role_item_names[ROLE_COUNT] = { AGENT_SCHEDULER_AGENTS_SCRIPTING_ITEM_NAME, AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, AGENT_SCHEDULER_AGENTS_GUIDER_ITEM_NAME, AGENT_SCHEDULER_AGENTS_AUX_ITEM_NAME, AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME };
+
+static const char *role_item_labels[ROLE_COUNT] = { "Scripting agent", "Imager agent", "Mount agent", "Guider agent", "Auxiliary agent", "Solver agent (empty = automatic)" };
+
+static const char *role_nouns[ROLE_COUNT] = { "scripting agent", "imager agent", "mount agent", "guider agent", "auxiliary agent", "solver agent" };
+
+// today's fixed names, the defaults; the names of a role start with them, optionally followed by " @ host"
+static const char *role_defaults[ROLE_COUNT] = { "Scripting Agent", "Imager Agent", "Mount Agent", "Guider Agent", "Auxiliary Agent", "" };
+
+static const char *solver_prefixes[] = { "Astrometry Agent", "Platesolver Agent", "ASTAP Agent" };
+
+static const char *role_list_names[ROLE_COUNT] = { AGENT_SCHEDULER_SCRIPTING_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_MOUNT_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_GUIDER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_AUX_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME };
+
+static const char *role_list_labels[ROLE_COUNT] = { "Scripting agents", "Imager agents", "Mount agents", "Guider agents", "Auxiliary agents", "Solver agents" };
+
+// the items of SEQUENCER_OWNER of the Scripting Agent
+typedef enum {
+	OWNER_NAME = 0,
+	OWNER_IMAGER,
+	OWNER_MOUNT,
+	OWNER_GUIDER,
+	OWNER_SOLVER,
+	OWNER_COUNT
+} owner_item;
+
+static const char *owner_item_names[OWNER_COUNT] = { "OWNER", "IMAGER", "MOUNT", "GUIDER", "SOLVER" };
+
+static const agent_role owner_item_roles[OWNER_COUNT] = { ROLE_SCRIPTING, ROLE_IMAGER, ROLE_MOUNT, ROLE_GUIDER, ROLE_SOLVER };
 
 typedef enum {
 	TASK_QUEUED = 0,
@@ -301,6 +346,23 @@ typedef struct {
 	unsigned safety_alerts;
 	// AGENT_AUX_SAFETY has reported Ok or Alert at least once since the agent attached; until then the missing information is awaited, not reported as unsafe
 	bool safety_seen;
+	// the configured agents, written by the handler
+	char agents[ROLE_COUNT][INDIGO_NAME_SIZE];
+	// the agents of each role on the bus, recognised by their INFO; agents_generation changes with them
+	char present[ROLE_COUNT][MAX_ROLE_AGENTS][INDIGO_NAME_SIZE];
+	int present_count[ROLE_COUNT];
+	bool present_full[ROLE_COUNT];
+	unsigned agents_generation;
+	// SEQUENCER_OWNER of the Scripting Agent (Sequencer.js), all empty until defined and after its deletion
+	bool owner_defined;
+	char owner[OWNER_COUNT][INDIGO_NAME_SIZE];
+	// the takes ('T') and releases ('R') the scheduler sent and their tokens, oldest first, written by the handler before it sends them; the Scripting Agent runs them
+	// in this order and reports each token in SCHEDULER_RESULT after its effect on SEQUENCER_OWNER, so a reported token ends the scripts up to it; the end of the
+	// scheduler's ownership is its own release when a release is the next script not ended, otherwise a release by hand
+	char owner_scripts[MAX_OWNER_SCRIPTS];
+	int owner_script_tokens[MAX_OWNER_SCRIPTS];
+	int owner_script_count;
+	unsigned manual_releases;
 } scheduler_observed;
 
 typedef struct {
@@ -324,6 +386,17 @@ typedef struct {
 	indigo_property *night_property;
 	indigo_property *strategy_property;
 	indigo_property *safety_missing_property;
+	indigo_property *agents_property;
+	indigo_property *agent_list_properties[ROLE_COUNT];
+	// the agents listed by the selectors, sorted, and the generation of the observed agents they were taken from
+	char listed[ROLE_COUNT][MAX_ROLE_AGENTS][INDIGO_NAME_SIZE];
+	int listed_count[ROLE_COUNT];
+	unsigned agents_generation;
+	// the ownership of the sequencer: held from START to the stop, the last take or release sent and a release by hand that lasts until the next START
+	bool owner_held;
+	double owner_sent;
+	bool owner_released;
+	unsigned manual_release_baseline;
 	char plan_labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
 	indigo_property_state plan_states[MAX_PLAN_ITEMS];
 	int plan_count;
@@ -633,20 +706,73 @@ static char *json_string(const char *text) {
 	return result;
 }
 
+// -------------------------------------------------------------------------------- Agents
+
+// the configured agent of a role, read by the handler
+static const char *agent_name(indigo_device *device, agent_role role) {
+	return indigo_get_text_item_value(AGENTS_PROPERTY->items + role);
+}
+
+// the name is the prefix, alone or followed by " @ host"
+static bool name_has_prefix(const char *name, const char *prefix) {
+	size_t length = strlen(prefix);
+	return !strncmp(name, prefix, length) && (name[length] == 0 || !strncmp(name + length, " @ ", 3));
+}
+
+// the name follows the naming convention of the role
+static bool role_matches(agent_role role, const char *name) {
+	if (role != ROLE_SOLVER) {
+		return name_has_prefix(name, role_defaults[role]);
+	}
+	for (int i = 0; i < (int)(sizeof(solver_prefixes) / sizeof(solver_prefixes[0])); i++) {
+		if (name_has_prefix(name, solver_prefixes[i])) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool has_control_character(const char *name) {
+	for (const unsigned char *c = (const unsigned char *)name; *c; c++) {
+		if (*c < 0x20 || *c == 0x7f) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// the " @ host" suffix of a device name, empty for a local one
+static const char *host_suffix(const char *name) {
+	const char *at = strstr(name, " @ ");
+	return at ? at : "";
+}
+
+// the name of an agent as the Scripting Agent knows it: the suffix of the Scripting Agent's own host is stripped, other names stay as they are
+static void scripting_view(indigo_device *device, const char *name, char *result) {
+	const char *suffix = host_suffix(agent_name(device, ROLE_SCRIPTING));
+	const char *own = host_suffix(name);
+	int length = *suffix && !strcmp(own, suffix) ? (int)(own - name) : (int)strlen(name);
+	snprintf(result, INDIGO_NAME_SIZE, "%.*s", length, name);
+}
+
 // the script that runs a task or, in estimation mode, only builds its sequence and reports the counts of estimate()
 static char *wrapper_script(indigo_device *device, scheduler_task *task, int token, bool estimate) {
+	char view[INDIGO_NAME_SIZE];
+	// the script defines its properties under the local name of the Scripting Agent, a JSON string literal like every name sent in a script
+	scripting_view(device, agent_name(device, ROLE_SCRIPTING), view);
+	char *scripting = json_string(view);
 	char *body = json_string(task->text);
 	char *name = json_string(task->header.name);
 	char target[128] = "";
 	if (task->header.has_target) {
 		snprintf(target, sizeof(target), " ra: %.8f, dec: %.8f,", task->header.ra, task->header.dec);
 	}
-	char report[1024];
-	snprintf(report, sizeof(report), "var scheduler_report = function(result, message) { indigo_define_text_property(\"%s\", \"%s\", \"%s\", \"Scheduler result\", { TOKEN: \"%d\", RESULT: result, MESSAGE: message }, { TOKEN: { label: \"Token\" }, RESULT: { label: \"Result\" }, MESSAGE: { label: \"Message\" }}, result == \"ok\" ? \"Ok\" : \"Alert\", \"RO\"); };\n", SCRIPTING_AGENT, SCHEDULER_RESULT_PROPERTY, SCHEDULER_GROUP, token);
-	char counts[2048] = "";
+	char report[2048];
+	snprintf(report, sizeof(report), "var scheduler_report = function(result, message) { indigo_define_text_property(%s, \"%s\", \"%s\", \"Scheduler result\", { TOKEN: \"%d\", RESULT: result, MESSAGE: message }, { TOKEN: { label: \"Token\" }, RESULT: { label: \"Result\" }, MESSAGE: { label: \"Message\" }}, result == \"ok\" ? \"Ok\" : \"Alert\", \"RO\"); };\n", scripting, SCHEDULER_RESULT_PROPERTY, SCHEDULER_GROUP, token);
+	char counts[3072] = "";
 	char restore[128] = "";
 	if (estimate) {
-		snprintf(counts, sizeof(counts), "var scheduler_start = Sequence.prototype.start;\nSequence.prototype.start = function() { var e = typeof this.estimate == \"function\" ? this.estimate() : null; indigo_define_number_property(\"%s\", \"%s\", \"%s\", \"Scheduler estimate\", { TOKEN: %d, SUPPORTED: e ? 1 : 0, EXPOSURE: e ? e.exposure : 0, FRAMES: e ? e.frames : 0, OPERATIONS: e ? e.operations : 0, WAITS: e ? e.waits : 0, UNKNOWN: e && e.unknown ? 1 : 0 }, { TOKEN: { label: \"Token\", format: \"%%g\", min: 0, max: 1e12, step: 1 }, SUPPORTED: { label: \"Supported\", format: \"%%g\", min: 0, max: 1, step: 1 }, EXPOSURE: { label: \"Exposure (s)\", format: \"%%g\", min: 0, max: 1e9, step: 1 }, FRAMES: { label: \"Frames\", format: \"%%g\", min: 0, max: 1e9, step: 1 }, OPERATIONS: { label: \"Operations\", format: \"%%g\", min: 0, max: 1e9, step: 1 }, WAITS: { label: \"Waits (s)\", format: \"%%g\", min: 0, max: 1e9, step: 1 }, UNKNOWN: { label: \"Unknown\", format: \"%%g\", min: 0, max: 1, step: 1 }}, \"Ok\", \"RO\"); };\n", SCRIPTING_AGENT, SCHEDULER_ESTIMATE_PROPERTY, SCHEDULER_GROUP, token);
+		snprintf(counts, sizeof(counts), "var scheduler_start = Sequence.prototype.start;\nSequence.prototype.start = function() { var e = typeof this.estimate == \"function\" ? this.estimate() : null; indigo_define_number_property(%s, \"%s\", \"%s\", \"Scheduler estimate\", { TOKEN: %d, SUPPORTED: e ? 1 : 0, EXPOSURE: e ? e.exposure : 0, FRAMES: e ? e.frames : 0, OPERATIONS: e ? e.operations : 0, WAITS: e ? e.waits : 0, UNKNOWN: e && e.unknown ? 1 : 0 }, { TOKEN: { label: \"Token\", format: \"%%g\", min: 0, max: 1e12, step: 1 }, SUPPORTED: { label: \"Supported\", format: \"%%g\", min: 0, max: 1, step: 1 }, EXPOSURE: { label: \"Exposure (s)\", format: \"%%g\", min: 0, max: 1e9, step: 1 }, FRAMES: { label: \"Frames\", format: \"%%g\", min: 0, max: 1e9, step: 1 }, OPERATIONS: { label: \"Operations\", format: \"%%g\", min: 0, max: 1e9, step: 1 }, WAITS: { label: \"Waits (s)\", format: \"%%g\", min: 0, max: 1e9, step: 1 }, UNKNOWN: { label: \"Unknown\", format: \"%%g\", min: 0, max: 1, step: 1 }}, \"Ok\", \"RO\"); };\n", scripting, SCHEDULER_ESTIMATE_PROPERTY, SCHEDULER_GROUP, token);
 		strcpy(restore, "Sequence.prototype.start = scheduler_start;\n");
 	}
 	const char *format =
@@ -670,6 +796,7 @@ static char *wrapper_script(indigo_device *device, scheduler_task *task, int tok
 	snprintf(script, size, format, name, target, task->runs + 1, token, estimate ? ", estimate: true" : "", report, counts, body, restore);
 	free(body);
 	free(name);
+	free(scripting);
 	return script;
 }
 
@@ -885,7 +1012,8 @@ static void save_config(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
-	// the settings and the hooks are restored before the tasks, which are then judged by the saved altitude limits and hook names
+	// the agents are restored first; the settings and the hooks are restored before the tasks, which are then judged by the saved altitude limits and hook names
+	indigo_save_property(device, NULL, AGENTS_PROPERTY);
 	indigo_save_property(device, NULL, SETTINGS_PROPERTY);
 	indigo_save_property(device, NULL, HOOKS_PROPERTY);
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
@@ -1183,6 +1311,101 @@ static void replace_text(indigo_device *device, int slot, const char *text, sche
 	}
 }
 
+// -------------------------------------------------------------------------------- Sequencer owner
+
+// removes the oldest scripts; called with the mutex locked
+static void remove_owner_scripts(scheduler_observed *observed, int count) {
+	observed->owner_script_count -= count;
+	memmove(observed->owner_scripts, observed->owner_scripts + count, observed->owner_script_count);
+	memmove(observed->owner_script_tokens, observed->owner_script_tokens + count, observed->owner_script_count * sizeof(int));
+}
+
+// SEQUENCER_OWNER names the scheduler and the configured agents as the Scripting Agent knows them; the solver counts only when one is configured
+static bool owner_matches(indigo_device *device, char owner[OWNER_COUNT][INDIGO_NAME_SIZE]) {
+	if (strcmp(owner[OWNER_NAME], device->name)) {
+		return false;
+	}
+	for (int i = OWNER_IMAGER; i < OWNER_COUNT; i++) {
+		agent_role role = owner_item_roles[i];
+		if (role == ROLE_SOLVER && *agent_name(device, ROLE_SOLVER) == 0) {
+			continue;
+		}
+		char expected[INDIGO_NAME_SIZE];
+		scripting_view(device, agent_name(device, role), expected);
+		if (strcmp(owner[i], expected)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool owner_is_current(indigo_device *device) {
+	char owner[OWNER_COUNT][INDIGO_NAME_SIZE];
+	pthread_mutex_lock(&PRIVATE_DATA->observed.mutex);
+	memcpy(owner, PRIVATE_DATA->observed.owner, sizeof(owner));
+	pthread_mutex_unlock(&PRIVATE_DATA->observed.mutex);
+	return owner_matches(device, owner);
+}
+
+// takes the sequencer for the scheduler with the configured agents, or releases it; a Scripting Agent with an older Sequencer.js ignores both
+static void send_owner_script(indigo_device *device, bool take) {
+	char script[8192];
+	char *name = json_string(device->name);
+	int token = ++PRIVATE_DATA->token;
+	char view[INDIGO_NAME_SIZE];
+	scripting_view(device, agent_name(device, ROLE_SCRIPTING), view);
+	char *scripting = json_string(view);
+	// the report follows the effect of the script on SEQUENCER_OWNER, both are published by the Scripting Agent in this order
+	char report[1024];
+	snprintf(report, sizeof(report), " indigo_define_text_property(%s, \"%s\", \"%s\", \"Scheduler result\", { TOKEN: \"%d\", RESULT: \"ok\", MESSAGE: \"\" }, { TOKEN: { label: \"Token\" }, RESULT: { label: \"Result\" }, MESSAGE: { label: \"Message\" }}, \"Ok\", \"RO\");", scripting, SCHEDULER_RESULT_PROPERTY, SCHEDULER_GROUP, token);
+	free(scripting);
+	if (take) {
+		char *names[OWNER_COUNT] = { NULL };
+		for (int i = OWNER_IMAGER; i < OWNER_COUNT; i++) {
+			char view[INDIGO_NAME_SIZE];
+			scripting_view(device, agent_name(device, owner_item_roles[i]), view);
+			names[i] = json_string(view);
+		}
+		snprintf(script, sizeof(script), "if (typeof indigo_sequencer_take == \"function\") { indigo_sequencer_take({ name: %s, imager: %s, mount: %s, guider: %s, solver: %s }); }%s", name, names[OWNER_IMAGER], names[OWNER_MOUNT], names[OWNER_GUIDER], names[OWNER_SOLVER], report);
+		for (int i = OWNER_IMAGER; i < OWNER_COUNT; i++) {
+			free(names[i]);
+		}
+	} else {
+		snprintf(script, sizeof(script), "if (typeof indigo_sequencer_release == \"function\") { indigo_sequencer_release(%s); }%s", name, report);
+	}
+	free(name);
+	// recorded before it is sent, so that its effect always finds it; a script like the last one recorded adds nothing to match, it only extends that one to its token
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	char kind = take ? 'T' : 'R';
+	pthread_mutex_lock(&observed->mutex);
+	if (observed->owner_script_count == 0 || observed->owner_scripts[observed->owner_script_count - 1] != kind) {
+		if (observed->owner_script_count == MAX_OWNER_SCRIPTS) {
+			remove_owner_scripts(observed, 1);
+		}
+		observed->owner_scripts[observed->owner_script_count++] = kind;
+	}
+	observed->owner_script_tokens[observed->owner_script_count - 1] = token;
+	pthread_mutex_unlock(&observed->mutex);
+	PRIVATE_DATA->owner_sent = indigo_monotonic_time();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s the sequencer of %s", take ? "Taking" : "Releasing", agent_name(device, ROLE_SCRIPTING));
+	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
+	const char *values[] = { script };
+	indigo_change_text_property(agent_client, agent_name(device, ROLE_SCRIPTING), AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+}
+
+// the release at the end of a run; a release by hand lasts until the next START, the scheduler then releases nothing
+static void release_owner(indigo_device *device) {
+	if (PRIVATE_DATA->owner_held && !PRIVATE_DATA->owner_released) {
+		pthread_mutex_lock(&PRIVATE_DATA->observed.mutex);
+		bool present = PRIVATE_DATA->observed.scripting_present;
+		pthread_mutex_unlock(&PRIVATE_DATA->observed.mutex);
+		if (present) {
+			send_owner_script(device, false);
+		}
+	}
+	PRIVATE_DATA->owner_held = false;
+}
+
 // -------------------------------------------------------------------------------- Running tasks
 
 static void set_reason(indigo_device *device, const char *reason) {
@@ -1270,10 +1493,10 @@ static void fits_string(const char *text, char *value, size_t size) {
 	value[length] = 0;
 }
 
-static void set_fits_header(const char *keyword, const char *value) {
+static void set_fits_header(indigo_device *device, const char *keyword, const char *value) {
 	const char *items[] = { CCD_SET_FITS_HEADER_KEYWORD_ITEM_NAME, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME };
 	const char *values[] = { keyword, value };
-	indigo_change_text_property(agent_client, IMAGER_AGENT, CCD_SET_FITS_HEADER_PROPERTY_NAME, 2, items, values);
+	indigo_change_text_property(agent_client, agent_name(device, ROLE_IMAGER), CCD_SET_FITS_HEADER_PROPERTY_NAME, 2, items, values);
 }
 
 // the data headers a task can set, the bit of each one is its index
@@ -1311,25 +1534,25 @@ static void apply_context(indigo_device *device, scheduler_task *task, int run_n
 		values[count++] = directory;
 	}
 	if (count > 0) {
-		indigo_change_text_property(agent_client, IMAGER_AGENT, CCD_LOCAL_MODE_PROPERTY_NAME, count, items, values);
+		indigo_change_text_property(agent_client, agent_name(device, ROLE_IMAGER), CCD_LOCAL_MODE_PROPERTY_NAME, count, items, values);
 		PRIVATE_DATA->context_applied = true;
 	}
 	if (DATA_FITS_ITEM->sw.value && !hook) {
 		char value[INDIGO_VALUE_SIZE];
 		char night[32];
 		fits_string(task->header.name, value, sizeof(value));
-		set_fits_header("SCHTASK", value);
+		set_fits_header(device, "SCHTASK", value);
 		snprintf(value, sizeof(value), "%d", run_number);
-		set_fits_header("SCHRUN", value);
+		set_fits_header(device, "SCHRUN", value);
 		indigo_timetoisolocal(time(NULL) - 12 * 3600, night, sizeof(night));
 		night[10] = 0;
 		fits_string(night, value, sizeof(value));
-		set_fits_header("SCHNIGHT", value);
+		set_fits_header(device, "SCHNIGHT", value);
 		for (int i = 0; i < 3; i++) {
 			const char *text = (const char *)&task->header + data_headers[i].offset;
 			if (*text) {
 				fits_string(text, value, sizeof(value));
-				set_fits_header(data_headers[i].keyword, value);
+				set_fits_header(device, data_headers[i].keyword, value);
 				PRIVATE_DATA->context_headers |= 1 << i;
 			}
 		}
@@ -1345,15 +1568,15 @@ static void restore_context(indigo_device *device) {
 	PRIVATE_DATA->context_applied = false;
 	const char *items[] = { CCD_LOCAL_MODE_DIR_ITEM_NAME, CCD_LOCAL_MODE_OBJECT_ITEM_NAME };
 	const char *values[] = { PRIVATE_DATA->original_dir, PRIVATE_DATA->original_object };
-	indigo_change_text_property(agent_client, IMAGER_AGENT, CCD_LOCAL_MODE_PROPERTY_NAME, 2, items, values);
+	indigo_change_text_property(agent_client, agent_name(device, ROLE_IMAGER), CCD_LOCAL_MODE_PROPERTY_NAME, 2, items, values);
 	if (PRIVATE_DATA->context_fits) {
 		static const char *keywords[] = { "SCHTASK", "SCHRUN", "SCHNIGHT" };
 		for (int i = 0; i < 3; i++) {
-			indigo_change_text_property_1(agent_client, IMAGER_AGENT, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "%s", keywords[i]);
+			indigo_change_text_property_1(agent_client, agent_name(device, ROLE_IMAGER), CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "%s", keywords[i]);
 		}
 		for (int i = 0; i < 3; i++) {
 			if (PRIVATE_DATA->context_headers & (1 << i)) {
-				indigo_change_text_property_1(agent_client, IMAGER_AGENT, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "%s", data_headers[i].keyword);
+				indigo_change_text_property_1(agent_client, agent_name(device, ROLE_IMAGER), CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "%s", data_headers[i].keyword);
 			}
 		}
 		PRIVATE_DATA->context_headers = 0;
@@ -1366,6 +1589,7 @@ static void restore_context(indigo_device *device) {
 }
 
 static void stop_scheduler(indigo_device *device, indigo_property_state state, const char *message) {
+	release_owner(device);
 	PRIVATE_DATA->started = false;
 	if (!PRIVATE_DATA->context_applied) {
 		PRIVATE_DATA->original_valid = false;
@@ -1591,8 +1815,8 @@ static void finish_stop(indigo_device *device) {
 
 // the abort requests are sent from the handler without holding any lock of the agent
 static void send_abort(indigo_device *device) {
-	indigo_change_switch_property_1(agent_client, SCRIPTING_AGENT, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
-	indigo_change_switch_property_1(agent_client, GUIDER_AGENT, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
+	indigo_change_switch_property_1(agent_client, agent_name(device, ROLE_SCRIPTING), AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
+	indigo_change_switch_property_1(agent_client, agent_name(device, ROLE_GUIDER), AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
 }
 
 static void begin_stop(indigo_device *device, stop_reason reason) {
@@ -1654,18 +1878,22 @@ static void start_task(indigo_device *device, int slot, run_kind kind) {
 		indigo_send_message(device, NULL, "Starting hook '%s'", task->header.name);
 	}
 	refresh(device);
+	// the Scripting Agent runs the scripts in the order they are sent, the take comes before the task when the tick has not sent it yet
+	if (PRIVATE_DATA->started && !PRIVATE_DATA->owner_released && !owner_is_current(device)) {
+		send_owner_script(device, true);
+	}
 	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
 	const char *values[] = { script };
-	indigo_change_text_property(agent_client, SCRIPTING_AGENT, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+	indigo_change_text_property(agent_client, agent_name(device, ROLE_SCRIPTING), AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
 	free(script);
 }
 
 static void load_library(indigo_device *device) {
 	PRIVATE_DATA->library_sent = indigo_monotonic_time();
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "Loading Sequencer.js into %s", SCRIPTING_AGENT);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "Loading Sequencer.js into %s", agent_name(device, ROLE_SCRIPTING));
 	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
 	const char *values[] = { sequencer_js };
-	indigo_change_text_property(agent_client, SCRIPTING_AGENT, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+	indigo_change_text_property(agent_client, agent_name(device, ROLE_SCRIPTING), AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
 }
 
 // -------------------------------------------------------------------------------- Selection
@@ -2323,7 +2551,7 @@ static void process_idle(indigo_device *device, time_t now) {
 	PRIVATE_DATA->dirty = false;
 	PRIVATE_DATA->next_check = indigo_monotonic_time() + SETTINGS_IDLE_CHECK_ITEM->number.value;
 	if (!scripting) {
-		set_reason(device, "waiting for the " SCRIPTING_AGENT);
+		set_reason(device, "waiting for the Scripting Agent");
 		return;
 	}
 	if (!sequencer) {
@@ -2461,7 +2689,7 @@ static void process_estimation(indigo_device *device) {
 			PRIVATE_DATA->estimate_deadline = indigo_monotonic_time() + ESTIMATE_TIMEOUT;
 			const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
 			const char *values[] = { script };
-			indigo_change_text_property(agent_client, SCRIPTING_AGENT, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+			indigo_change_text_property(agent_client, agent_name(device, ROLE_SCRIPTING), AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
 			free(script);
 			return;
 		}
@@ -2484,6 +2712,94 @@ static void process_library(indigo_device *device) {
 	}
 	if (needed && (PRIVATE_DATA->library_sent == 0 || indigo_monotonic_time() - PRIVATE_DATA->library_sent > LIBRARY_RETRY_INTERVAL)) {
 		load_library(device);
+	}
+}
+
+static int compare_names(const void *a, const void *b) {
+	return strcmp((const char *)a, (const char *)b);
+}
+
+// the selector of a role lists the agents of the role on the bus with the configured one on; it is defined again when its items change
+static void update_selector(indigo_device *device, agent_role role) {
+	indigo_property *property = AGENT_LIST_PROPERTY(role);
+	int first = role == ROLE_SOLVER ? 1 : 0;
+	int count = PRIVATE_DATA->listed_count[role];
+	bool redefine = property->count != first + count;
+	for (int i = 0; i < count && !redefine; i++) {
+		redefine = strcmp(property->items[first + i].name, PRIVATE_DATA->listed[role][i]) != 0;
+	}
+	if (redefine) {
+		indigo_delete_property(device, property, NULL);
+		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		for (int i = 0; i < count; i++) {
+			indigo_init_switch_item(property->items + first + i, PRIVATE_DATA->listed[role][i], PRIVATE_DATA->listed[role][i], false);
+		}
+		property->count = first + count;
+		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+	}
+	const char *configured = agent_name(device, role);
+	bool changed = property->state != INDIGO_OK_STATE;
+	pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+	for (int i = 0; i < property->count; i++) {
+		// AUTOMATIC is on when no solver is configured
+		bool value = i < first ? *configured == 0 : !strcmp(property->items[i].name, configured);
+		if (property->items[i].sw.value != value) {
+			property->items[i].sw.value = value;
+			changed = true;
+		}
+	}
+	property->state = INDIGO_OK_STATE;
+	pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+	if (redefine) {
+		indigo_define_property(device, property, NULL);
+	} else if (changed) {
+		indigo_update_property(device, property, NULL);
+	}
+}
+
+// the selectors follow the agents recorded by the client callbacks
+static void process_agents(indigo_device *device) {
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	pthread_mutex_lock(&observed->mutex);
+	bool changed = observed->agents_generation != PRIVATE_DATA->agents_generation;
+	if (changed) {
+		PRIVATE_DATA->agents_generation = observed->agents_generation;
+		memcpy(PRIVATE_DATA->listed, observed->present, sizeof(PRIVATE_DATA->listed));
+		memcpy(PRIVATE_DATA->listed_count, observed->present_count, sizeof(PRIVATE_DATA->listed_count));
+	}
+	pthread_mutex_unlock(&observed->mutex);
+	if (changed) {
+		for (int role = 0; role < ROLE_COUNT; role++) {
+			qsort(PRIVATE_DATA->listed[role], PRIVATE_DATA->listed_count[role], INDIGO_NAME_SIZE, compare_names);
+			update_selector(device, (agent_role)role);
+		}
+	}
+}
+
+// from START to the stop the scheduler owns the sequencer, taken again when it is lost; a stale ownership is released while the scheduler is stopped
+static void process_owner(indigo_device *device) {
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	char owner[OWNER_COUNT][INDIGO_NAME_SIZE];
+	pthread_mutex_lock(&observed->mutex);
+	bool present = observed->scripting_present && observed->sequencer_present;
+	unsigned manual = observed->manual_releases;
+	memcpy(owner, observed->owner, sizeof(owner));
+	pthread_mutex_unlock(&observed->mutex);
+	bool ours = !strcmp(owner[OWNER_NAME], device->name);
+	bool due = PRIVATE_DATA->owner_sent == 0 || indigo_monotonic_time() - PRIVATE_DATA->owner_sent >= OWNER_RETRY_INTERVAL;
+	if (PRIVATE_DATA->started) {
+		if (manual != PRIVATE_DATA->manual_release_baseline) {
+			PRIVATE_DATA->manual_release_baseline = manual;
+			if (!PRIVATE_DATA->owner_released) {
+				PRIVATE_DATA->owner_released = true;
+				indigo_send_message(device, NULL, "The sequencer was released on the Scripting Agent, the scheduler leaves the agents to the tasks until the next START");
+			}
+		}
+		if (!PRIVATE_DATA->owner_released && present && due && !owner_matches(device, owner)) {
+			send_owner_script(device, true);
+		}
+	} else if (present && ours && due) {
+		send_owner_script(device, false);
 	}
 }
 
@@ -2902,7 +3218,9 @@ static void process(indigo_device *device) {
 	bool plan = PRIVATE_DATA->plan_dirty || indigo_monotonic_time() >= PRIVATE_DATA->plan_due;
 	refresh_sky(device, now);
 	refresh_nights(device, now);
+	process_agents(device);
 	process_library(device);
+	process_owner(device);
 	process_estimation(device);
 	if (PRIVATE_DATA->phase == RUN_IDLE || PRIVATE_DATA->dirty || indigo_monotonic_time() >= PRIVATE_DATA->next_check) {
 		update_task_states(device, now);
@@ -2962,6 +3280,144 @@ static void reject(indigo_device *device, indigo_property *property, const char 
 	va_end(args);
 	property->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, property, "%s", message);
+}
+
+// the observed state of a replaced agent is forgotten as if the old one had been deleted, and the bus is enumerated again to learn the new one
+static void apply_agent_changes(indigo_device *device, const bool *changed) {
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	pthread_mutex_lock(&observed->mutex);
+	for (int role = 0; role < ROLE_COUNT; role++) {
+		if (changed[role]) {
+			INDIGO_COPY_NAME(observed->agents[role], agent_name(device, (agent_role)role));
+		}
+	}
+	if (changed[ROLE_SCRIPTING]) {
+		observed->scripting_present = false;
+		observed->sequencer_present = false;
+		observed->sequence_state = INDIGO_IDLE_STATE;
+		observed->owner_defined = false;
+		memset(observed->owner, 0, sizeof(observed->owner));
+		observed->owner_script_count = 0;
+		observed->agents_busy &= ~AGENT_SOLVER_BUSY;
+		if (observed->flip_enabled) {
+			observed->flip_enabled = false;
+			observed->flip_generation++;
+		}
+	}
+	if (changed[ROLE_IMAGER]) {
+		observed->imager_known = false;
+		observed->agents_busy &= ~AGENT_IMAGER_BUSY;
+	}
+	if (changed[ROLE_MOUNT]) {
+		observed->site_known = false;
+		observed->agents_busy &= ~AGENT_MOUNT_BUSY;
+	}
+	if (changed[ROLE_GUIDER]) {
+		observed->agents_busy &= ~AGENT_GUIDER_BUSY;
+	}
+	if (changed[ROLE_AUX]) {
+		observed->safety_defined = false;
+		observed->safety_light = INDIGO_IDLE_STATE;
+		observed->safety_seen = false;
+	}
+	if (changed[ROLE_SOLVER]) {
+		observed->agents_busy &= ~AGENT_SOLVER_BUSY;
+	}
+	pthread_mutex_unlock(&observed->mutex);
+	if (changed[ROLE_SCRIPTING]) {
+		PRIVATE_DATA->library_sent = 0;
+	}
+	if (changed[ROLE_IMAGER]) {
+		PRIVATE_DATA->original_valid = false;
+	}
+	if (agent_client != NULL) {
+		indigo_property all_properties;
+		memset(&all_properties, 0, sizeof(all_properties));
+		indigo_enumerate_properties(agent_client, &all_properties);
+	}
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = PRIVATE_DATA->plan_changed = true;
+}
+
+// a change of AGENT_SCHEDULER_AGENTS, typed or made by a selector, which is answered with Alert when the change is refused; nothing is applied then
+static bool change_agents(indigo_device *device, indigo_property *request, bool config_reader, indigo_property *selector) {
+	indigo_property *answer = selector != NULL ? selector : AGENTS_PROPERTY;
+	char values[ROLE_COUNT][INDIGO_VALUE_SIZE];
+	for (int role = 0; role < ROLE_COUNT; role++) {
+		INDIGO_COPY_VALUE(values[role], agent_name(device, (agent_role)role));
+	}
+	for (int i = 0; i < request->count; i++) {
+		for (int role = 0; role < ROLE_COUNT; role++) {
+			if (!strcmp(request->items[i].name, role_item_names[role])) {
+				INDIGO_COPY_VALUE(values[role], indigo_get_text_item_value(request->items + i));
+			}
+		}
+	}
+	// the owner, the context of the running task, the busy agents and the abort belong to the agents at START; the scheduler always attaches stopped
+	if (!config_reader && (PRIVATE_DATA->started || PRIVATE_DATA->phase != RUN_IDLE)) {
+		reject(device, answer, "The agents cannot be changed while the scheduler runs, stop it first");
+		return false;
+	}
+	for (int role = 0; role < ROLE_COUNT; role++) {
+		if (*values[role] == 0) {
+			if (role != ROLE_SOLVER) {
+				reject(device, answer, "Agents rejected: the %s must be given", role_nouns[role]);
+				return false;
+			}
+		} else if (strlen(values[role]) >= INDIGO_NAME_SIZE || !role_matches((agent_role)role, values[role]) || has_control_character(values[role])) {
+			reject(device, answer, "Agents rejected: '%s' is not a valid %s name", values[role], role_nouns[role]);
+			return false;
+		}
+	}
+	bool changed[ROLE_COUNT];
+	bool any = false;
+	pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+	for (int role = 0; role < ROLE_COUNT; role++) {
+		changed[role] = strcmp(values[role], agent_name(device, (agent_role)role)) != 0;
+		if (changed[role]) {
+			indigo_set_text_item_value(AGENTS_PROPERTY->items + role, values[role]);
+			any = true;
+		}
+	}
+	AGENTS_PROPERTY->state = INDIGO_OK_STATE;
+	pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+	indigo_update_property(device, AGENTS_PROPERTY, NULL);
+	if (!config_reader) {
+		schedule_save(device);
+	}
+	if (any) {
+		apply_agent_changes(device, changed);
+	}
+	for (int role = 0; role < ROLE_COUNT; role++) {
+		update_selector(device, (agent_role)role);
+	}
+	return true;
+}
+
+// a selected item writes its agent into AGENT_SCHEDULER_AGENTS, AUTOMATIC clears the solver; a request that selects no listed item changes nothing
+static void select_agent(indigo_device *device, agent_role role, indigo_property *request, bool config_reader) {
+	indigo_property *selector = AGENT_LIST_PROPERTY(role);
+	char chosen[INDIGO_NAME_SIZE] = "";
+	bool found = false;
+	for (int i = 0; i < request->count && !found; i++) {
+		if (!request->items[i].sw.value) {
+			continue;
+		}
+		for (int j = 0; j < selector->count && !found; j++) {
+			if (!strcmp(request->items[i].name, selector->items[j].name)) {
+				found = true;
+				INDIGO_COPY_NAME(chosen, role == ROLE_SOLVER && j == 0 ? "" : selector->items[j].name);
+			}
+		}
+		break;
+	}
+	if (!found) {
+		reject(device, selector, "Select one of the listed agents");
+		return;
+	}
+	indigo_property *change = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_AGENTS_PROPERTY_NAME, AGENTS_GROUP, "Agents", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	indigo_init_text_item(change->items, role_item_names[role], role_item_labels[role], chosen);
+	change_agents(device, change, config_reader, selector);
+	indigo_release_property(change);
 }
 
 // a change of the altitude limits rebuilds the sky checks of all tasks; a minimum at or above the maximum refuses the whole change
@@ -3261,6 +3717,13 @@ static void control(indigo_device *device, indigo_property *request) {
 		}
 		PRIVATE_DATA->started = true;
 		PRIVATE_DATA->stop_requested = false;
+		// the sequencer is taken at once, also after a release by hand, which lasts until this START
+		PRIVATE_DATA->owner_held = true;
+		PRIVATE_DATA->owner_released = false;
+		PRIVATE_DATA->owner_sent = 0;
+		pthread_mutex_lock(&PRIVATE_DATA->observed.mutex);
+		PRIVATE_DATA->manual_release_baseline = PRIVATE_DATA->observed.manual_releases;
+		pthread_mutex_unlock(&PRIVATE_DATA->observed.mutex);
 		set_scheduler_state(device, INDIGO_BUSY_STATE, postponed ? "Unsafe conditions, the start waits for safe conditions" : "Scheduler started");
 	} else if (stop) {
 		if (PRIVATE_DATA->started) {
@@ -3408,8 +3871,17 @@ static void command_handler(indigo_device *device, void *data) {
 		if (!command->config_reader) {
 			schedule_save(device);
 		}
+	} else if (indigo_property_match_changeable(AGENTS_PROPERTY, request)) {
+		change_agents(device, request, command->config_reader, NULL);
 	} else {
-		for (int i = 0; i < MAX_TASKS; i++) {
+		bool selected = false;
+		for (int role = 0; role < ROLE_COUNT && !selected; role++) {
+			if (indigo_property_match_changeable(AGENT_LIST_PROPERTY(role), request)) {
+				select_agent(device, (agent_role)role, request, command->config_reader);
+				selected = true;
+			}
+		}
+		for (int i = 0; i < MAX_TASKS && !selected; i++) {
 			scheduler_task *task = PRIVATE_DATA->tasks + i;
 			if (task->used && task->stored && indigo_property_match_changeable(task->property, request)) {
 				edit_task(device, i, request);
@@ -3592,6 +4064,25 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		PLAN_PROPERTY->count = 0;
+		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_AGENTS
+		AGENTS_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_AGENTS_PROPERTY_NAME, AGENTS_GROUP, "Agents", INDIGO_OK_STATE, INDIGO_RW_PERM, ROLE_COUNT);
+		if (AGENTS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		for (int role = 0; role < ROLE_COUNT; role++) {
+			indigo_init_text_item(AGENTS_PROPERTY->items + role, role_item_names[role], role_item_labels[role], role_defaults[role]);
+			INDIGO_COPY_NAME(PRIVATE_DATA->observed.agents[role], role_defaults[role]);
+		}
+		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_<role>_AGENT_LIST
+		for (int role = 0; role < ROLE_COUNT; role++) {
+			AGENT_LIST_PROPERTY(role) = indigo_init_switch_property(NULL, device->name, role_list_names[role], AGENTS_GROUP, role_list_labels[role], INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, MAX_ROLE_AGENTS + 1);
+			if (AGENT_LIST_PROPERTY(role) == NULL) {
+				return INDIGO_FAILED;
+			}
+			AGENT_LIST_PROPERTY(role)->count = 0;
+		}
+		indigo_init_switch_item(AGENT_LIST_PROPERTY(ROLE_SOLVER)->items, AGENT_SCHEDULER_SOLVER_AGENT_LIST_AUTOMATIC_ITEM_NAME, "Automatic", true);
+		AGENT_LIST_PROPERTY(ROLE_SOLVER)->count = 1;
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_TASK_<n>
 		for (int i = 0; i < MAX_TASKS; i++) {
 			char name[INDIGO_NAME_SIZE];
@@ -3639,6 +4130,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_define_property(device, CLEAR_HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, RESTORE_HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, PLAN_PROPERTY, NULL);
+		indigo_define_property(device, AGENTS_PROPERTY, NULL);
+		for (int role = 0; role < ROLE_COUNT; role++) {
+			indigo_define_property(device, AGENT_LIST_PROPERTY(role), NULL);
+		}
 		indigo_execute_handler_in(device, TICK_INTERVAL, tick_handler);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_device_enumerate_properties(device, NULL, NULL);
@@ -3683,6 +4178,10 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	define_copy(device, client, CLEAR_HISTORY_PROPERTY, property);
 	define_copy(device, client, RESTORE_HISTORY_PROPERTY, property);
 	define_copy(device, client, PLAN_PROPERTY, property);
+	define_copy(device, client, AGENTS_PROPERTY, property);
+	for (int role = 0; role < ROLE_COUNT; role++) {
+		define_copy(device, client, AGENT_LIST_PROPERTY(role), property);
+	}
 	for (int i = 0; i < MAX_TASKS; i++) {
 		scheduler_task *task = PRIVATE_DATA->tasks + i;
 		if (task->used && task->stored) {
@@ -3694,7 +4193,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 
 // returns the property of the agent the request changes, NULL for other properties
 static indigo_property *own_property(indigo_device *device, indigo_property *property) {
-	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, DATA_PROPERTY, DATA_DIR_PROPERTY, HOOKS_PROPERTY, NIGHT_PROPERTY, STRATEGY_PROPERTY, SAFETY_MISSING_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY };
+	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, DATA_PROPERTY, DATA_DIR_PROPERTY, HOOKS_PROPERTY, NIGHT_PROPERTY, STRATEGY_PROPERTY, SAFETY_MISSING_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY, AGENTS_PROPERTY, AGENT_LIST_PROPERTY(ROLE_SCRIPTING), AGENT_LIST_PROPERTY(ROLE_IMAGER), AGENT_LIST_PROPERTY(ROLE_MOUNT), AGENT_LIST_PROPERTY(ROLE_GUIDER), AGENT_LIST_PROPERTY(ROLE_AUX), AGENT_LIST_PROPERTY(ROLE_SOLVER) };
 	for (int i = 0; i < (int)(sizeof(properties) / sizeof(properties[0])); i++) {
 		if (indigo_property_match_changeable(properties[i], property)) {
 			return properties[i];
@@ -3764,6 +4263,10 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(CLEAR_HISTORY_PROPERTY);
 	indigo_release_property(RESTORE_HISTORY_PROPERTY);
 	indigo_release_property(PLAN_PROPERTY);
+	indigo_release_property(AGENTS_PROPERTY);
+	for (int role = 0; role < ROLE_COUNT; role++) {
+		indigo_release_property(AGENT_LIST_PROPERTY(role));
+	}
 	for (int i = 0; i < MAX_TASKS; i++) {
 		scheduler_task *task = PRIVATE_DATA->tasks + i;
 		if (task->used && task->stored) {
@@ -3782,20 +4285,94 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
-static unsigned agent_busy_bit(const char *device_name) {
-	if (!strcmp(device_name, IMAGER_AGENT)) {
+// the solver is the configured one, otherwise the one Sequencer.js selected for the scheduler; called with the mutex locked
+static unsigned agent_busy_bit(scheduler_observed *observed, const char *device_name) {
+	if (!strcmp(device_name, observed->agents[ROLE_IMAGER])) {
 		return AGENT_IMAGER_BUSY;
 	}
-	if (!strcmp(device_name, MOUNT_AGENT)) {
+	if (!strcmp(device_name, observed->agents[ROLE_MOUNT])) {
 		return AGENT_MOUNT_BUSY;
 	}
-	if (!strcmp(device_name, GUIDER_AGENT)) {
+	if (!strcmp(device_name, observed->agents[ROLE_GUIDER])) {
 		return AGENT_GUIDER_BUSY;
 	}
-	if (!strcmp(device_name, "Astrometry Agent") || !strcmp(device_name, "Platesolver Agent")) {
-		return AGENT_SOLVER_BUSY;
+	if (*observed->agents[ROLE_SOLVER]) {
+		return !strcmp(device_name, observed->agents[ROLE_SOLVER]) ? AGENT_SOLVER_BUSY : 0;
 	}
-	return 0;
+	// SEQUENCER_OWNER names the solver as the Scripting Agent knows it, a name without a suffix is on the host of the Scripting Agent
+	const char *solver = observed->owner[OWNER_SOLVER];
+	if (*solver == 0) {
+		return 0;
+	}
+	char name[INDIGO_NAME_SIZE];
+	snprintf(name, sizeof(name), "%s%s", solver, *host_suffix(solver) ? "" : host_suffix(observed->agents[ROLE_SCRIPTING]));
+	return !strcmp(device_name, name) ? AGENT_SOLVER_BUSY : 0;
+}
+
+// the scripts up to the reported token have run and had their effect; called with the mutex locked
+static void end_owner_scripts(scheduler_observed *observed, int token) {
+	int count = 0;
+	while (count < observed->owner_script_count && observed->owner_script_tokens[count] <= token) {
+		count++;
+	}
+	remove_owner_scripts(observed, count);
+}
+
+// the scheduler became the owner: this is the first take not matched yet, the releases recorded before it changed nothing; called with the mutex locked
+static void match_owner_take(scheduler_observed *observed) {
+	for (int i = 0; i < observed->owner_script_count; i++) {
+		if (observed->owner_scripts[i] == 'T') {
+			remove_owner_scripts(observed, i + 1);
+			return;
+		}
+	}
+}
+
+// the scheduler's ownership ended: takes before the next release changed nothing, as the scheduler already owned the sequencer; that release is the end, without one the sequencer was released by hand or by another script; called with the mutex locked
+static void match_owner_release(scheduler_observed *observed) {
+	int i = 0;
+	while (i < observed->owner_script_count && observed->owner_scripts[i] == 'T') {
+		i++;
+	}
+	if (i < observed->owner_script_count) {
+		remove_owner_scripts(observed, i + 1);
+	} else {
+		observed->manual_releases++;
+	}
+}
+
+// the agents on the bus are recognised by their INFO; called with the mutex locked
+static void add_present_agent(scheduler_observed *observed, const char *name) {
+	for (int role = 0; role < ROLE_COUNT; role++) {
+		if (!role_matches((agent_role)role, name)) {
+			continue;
+		}
+		for (int i = 0; i < observed->present_count[role]; i++) {
+			if (!strcmp(observed->present[role][i], name)) {
+				return;
+			}
+		}
+		if (observed->present_count[role] < MAX_ROLE_AGENTS) {
+			snprintf(observed->present[role][observed->present_count[role]++], INDIGO_NAME_SIZE, "%s", name);
+			observed->agents_generation++;
+		} else if (!observed->present_full[role]) {
+			observed->present_full[role] = true;
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "At most %d %ss are listed, '%s' and further ones are not", MAX_ROLE_AGENTS, role_nouns[role], name);
+		}
+	}
+}
+
+static void remove_present_agent(scheduler_observed *observed, const char *name) {
+	for (int role = 0; role < ROLE_COUNT; role++) {
+		for (int i = 0; i < observed->present_count[role]; i++) {
+			if (!strcmp(observed->present[role][i], name)) {
+				memmove(observed->present[role] + i, observed->present[role] + i + 1, (observed->present_count[role] - i - 1) * INDIGO_NAME_SIZE);
+				observed->present_count[role]--;
+				observed->agents_generation++;
+				break;
+			}
+		}
+	}
 }
 
 static void observe_property(indigo_property *property) {
@@ -3805,7 +4382,10 @@ static void observe_property(indigo_property *property) {
 	indigo_device *device = agent_device;
 	scheduler_observed *observed = &PRIVATE_DATA->observed;
 	pthread_mutex_lock(&observed->mutex);
-	if (!strcmp(property->device, SCRIPTING_AGENT)) {
+	if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
+		add_present_agent(observed, property->device);
+	}
+	if (!strcmp(property->device, observed->agents[ROLE_SCRIPTING])) {
 		if (!strcmp(property->name, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME)) {
 			observed->scripting_present = true;
 		} else if (!strcmp(property->name, "SEQUENCE_STATE")) {
@@ -3831,6 +4411,8 @@ static void observe_property(indigo_property *property) {
 			if (token && result) {
 				int value = atoi(indigo_get_text_item_value(token));
 				bool ok = !strcmp(indigo_get_text_item_value(result), "ok");
+				// every script, also a task or an estimate, runs after the scripts sent before it
+				end_owner_scripts(observed, value);
 				const char *text = result_message ? indigo_get_text_item_value(result_message) : "";
 				if (value == observed->run_token) {
 					observed->run_received = true;
@@ -3865,8 +4447,26 @@ static void observe_property(indigo_property *property) {
 					observed->flip_generation++;
 				}
 			}
+		} else if (!strcmp(property->name, SEQUENCER_OWNER_PROPERTY)) {
+			char values[OWNER_COUNT][INDIGO_NAME_SIZE];
+			for (int i = 0; i < OWNER_COUNT; i++) {
+				indigo_item *item = indigo_get_item(property, owner_item_names[i]);
+				INDIGO_COPY_NAME(values[i], item ? indigo_get_text_item_value(item) : "");
+			}
+			bool was_ours = !strcmp(observed->owner[OWNER_NAME], device->name);
+			if (!was_ours && !strcmp(values[OWNER_NAME], device->name)) {
+				match_owner_take(observed);
+			} else if (was_ours && *values[OWNER_NAME] == 0) {
+				match_owner_release(observed);
+			}
+			// another solver starts with its own Busy update
+			if (strcmp(values[OWNER_SOLVER], observed->owner[OWNER_SOLVER])) {
+				observed->agents_busy &= ~AGENT_SOLVER_BUSY;
+			}
+			memcpy(observed->owner, values, sizeof(values));
+			observed->owner_defined = true;
 		}
-	} else if (!strcmp(property->device, AUX_AGENT) && !strcmp(property->name, AUX_SAFETY_PROPERTY)) {
+	} else if (!strcmp(property->device, observed->agents[ROLE_AUX]) && !strcmp(property->name, AUX_SAFETY_PROPERTY)) {
 		// only the light of the SAFE item counts, not the property state
 		indigo_item *item = property->type == INDIGO_LIGHT_VECTOR ? indigo_get_item(property, AUX_SAFETY_SAFE_ITEM) : NULL;
 		observed->safety_defined = true;
@@ -3877,7 +4477,7 @@ static void observe_property(indigo_property *property) {
 		if (observed->safety_light == INDIGO_ALERT_STATE) {
 			observed->safety_alerts++;
 		}
-	} else if (!strcmp(property->device, MOUNT_AGENT) && !strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
+	} else if (!strcmp(property->device, observed->agents[ROLE_MOUNT]) && !strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		indigo_item *latitude = indigo_get_item(property, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME);
 		indigo_item *longitude = indigo_get_item(property, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME);
 		indigo_item *elevation = indigo_get_item(property, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME);
@@ -3888,7 +4488,7 @@ static void observe_property(indigo_property *property) {
 			observed->site_known = true;
 		}
 	}
-	if (!strcmp(property->device, IMAGER_AGENT) && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
+	if (!strcmp(property->device, observed->agents[ROLE_IMAGER]) && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
 		indigo_item *dir = indigo_get_item(property, CCD_LOCAL_MODE_DIR_ITEM_NAME);
 		indigo_item *object = indigo_get_item(property, CCD_LOCAL_MODE_OBJECT_ITEM_NAME);
 		if (dir && object) {
@@ -3898,7 +4498,7 @@ static void observe_property(indigo_property *property) {
 		}
 	}
 	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-		unsigned bit = agent_busy_bit(property->device);
+		unsigned bit = agent_busy_bit(observed, property->device);
 		if (property->state == INDIGO_BUSY_STATE) {
 			observed->agents_busy |= bit;
 		} else {
@@ -3933,29 +4533,41 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 	indigo_device *scheduler = agent_device;
 	scheduler_observed *observed = &((scheduler_private_data *)scheduler->private_data)->observed;
 	pthread_mutex_lock(&observed->mutex);
-	if (!strcmp(property->device, SCRIPTING_AGENT)) {
+	if (*property->name == 0 || !strcmp(property->name, INFO_PROPERTY_NAME)) {
+		remove_present_agent(observed, property->device);
+	}
+	if (!strcmp(property->device, observed->agents[ROLE_SCRIPTING])) {
 		if (*property->name == 0 || !strcmp(property->name, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME)) {
 			observed->scripting_present = false;
 			observed->sequencer_present = false;
 		} else if (!strcmp(property->name, "SEQUENCE_STATE")) {
 			observed->sequencer_present = false;
 		}
+		// a restart of the Scripting Agent loses the owner and the releases on their way
+		if (*property->name == 0 || !strcmp(property->name, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME) || !strcmp(property->name, SEQUENCER_OWNER_PROPERTY)) {
+			if (*observed->owner[OWNER_SOLVER]) {
+				observed->agents_busy &= ~AGENT_SOLVER_BUSY;
+			}
+			observed->owner_defined = false;
+			memset(observed->owner, 0, sizeof(observed->owner));
+			observed->owner_script_count = 0;
+		}
 		// the plan then assumes no meridian flip
 		if ((*property->name == 0 || !strcmp(property->name, MERIDIAN_FLIP_PROPERTY)) && observed->flip_enabled) {
 			observed->flip_enabled = false;
 			observed->flip_generation++;
 		}
-	} else if (!strcmp(property->device, MOUNT_AGENT) && (*property->name == 0 || !strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME))) {
+	} else if (!strcmp(property->device, observed->agents[ROLE_MOUNT]) && (*property->name == 0 || !strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME))) {
 		observed->site_known = false;
-	} else if (!strcmp(property->device, AUX_AGENT) && (*property->name == 0 || !strcmp(property->name, AUX_SAFETY_PROPERTY))) {
+	} else if (!strcmp(property->device, observed->agents[ROLE_AUX]) && (*property->name == 0 || !strcmp(property->name, AUX_SAFETY_PROPERTY))) {
 		observed->safety_defined = false;
 		observed->safety_light = INDIGO_IDLE_STATE;
 	}
-	if (!strcmp(property->device, IMAGER_AGENT) && (*property->name == 0 || !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME))) {
+	if (!strcmp(property->device, observed->agents[ROLE_IMAGER]) && (*property->name == 0 || !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME))) {
 		observed->imager_known = false;
 	}
 	if (*property->name == 0 || !strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-		observed->agents_busy &= ~agent_busy_bit(property->device);
+		observed->agents_busy &= ~agent_busy_bit(observed, property->device);
 	}
 	pthread_mutex_unlock(&observed->mutex);
 	return INDIGO_OK;
@@ -3991,9 +4603,10 @@ indigo_result indigo_agent_scheduler(indigo_driver_action action, indigo_driver_
 			break;
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
-			// the handlers use the client, so they stop before it is detached
+			// the handlers use the client, so they stop before it is detached; the sequencer is released while the client can still send
 			if (agent_device != NULL) {
 				stop_commands(agent_device);
+				release_owner(agent_device);
 			}
 			if (agent_client != NULL) {
 				indigo_detach_client(agent_client);

@@ -93,6 +93,10 @@ static pthread_mutex_t imager_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_property *safety_property;
 static atomic_bool safety_published;
 static bool aux_attached;
+// INFO of the stand-ins, by which the scheduler lists the agents of each role
+static indigo_property *mount_info, *guider_info, *imager_info, *aux_info;
+// the messages of the Scripting Agent, one per line
+static char scripting_messages[65536];
 
 // -------------------------------------------------------------------------------- Observer
 
@@ -155,6 +159,9 @@ static indigo_result message_received(indigo_client *client, indigo_device *devi
 				entry->message_revision = entry->revision;
 			}
 		}
+	} else if (message && device && !strcmp(device->name, SCRIPTING_AGENT_NAME) && strlen(scripting_messages) + strlen(message) + 2 < sizeof(scripting_messages)) {
+		strcat(scripting_messages, message);
+		strcat(scripting_messages, "\n");
 	}
 	pthread_mutex_unlock(&cache_mutex);
 	return INDIGO_OK;
@@ -514,6 +521,9 @@ static void utc(time_t t, char *buffer) {
 // -------------------------------------------------------------------------------- Stand-in agents
 
 static indigo_result mount_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(mount_info, property)) {
+		indigo_define_property(device, mount_info, NULL);
+	}
 	if (indigo_property_match(site_property, property)) {
 		indigo_define_property(device, site_property, NULL);
 	}
@@ -521,6 +531,9 @@ static indigo_result mount_enumerate(indigo_device *device, indigo_client *clien
 }
 
 static indigo_result guider_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(guider_info, property)) {
+		indigo_define_property(device, guider_info, NULL);
+	}
 	if (indigo_property_match(guider_process_property, property)) {
 		indigo_define_property(device, guider_process_property, NULL);
 	}
@@ -551,6 +564,9 @@ static bool imager_camera_selected(void) {
 }
 
 static indigo_result imager_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(imager_info, property)) {
+		indigo_define_property(device, imager_info, NULL);
+	}
 	if (indigo_property_match(imager_ccd_list_property, property)) {
 		indigo_define_property(device, imager_ccd_list_property, NULL);
 	}
@@ -628,6 +644,9 @@ static indigo_result imager_change(indigo_device *device, indigo_client *client,
 static indigo_device imager_standin = INDIGO_DEVICE_INITIALIZER("Imager Agent", NULL, imager_enumerate, imager_change, NULL, NULL);
 
 static indigo_result aux_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(aux_info, property)) {
+		indigo_define_property(device, aux_info, NULL);
+	}
 	if (atomic_load(&safety_published) && indigo_property_match(safety_property, property)) {
 		indigo_define_property(device, safety_property, NULL);
 	}
@@ -642,6 +661,7 @@ static bool aux_attach(indigo_property_state state) {
 	atomic_store(&safety_published, true);
 	CHECK(indigo_attach_device(&aux_standin) == INDIGO_OK);
 	aux_attached = true;
+	indigo_define_property(&aux_standin, aux_info, NULL);
 	indigo_define_property(&aux_standin, safety_property, NULL);
 	// the scheduler evaluates the safety every 0.5 s
 	indigo_usleep(700000);
@@ -954,6 +974,13 @@ static void set_guiding(bool guiding) {
 	indigo_update_property(&guider_standin, guider_process_property, NULL);
 }
 
+// INFO as every agent defines it
+static indigo_property *info_property(const char *name) {
+	indigo_property *property = indigo_init_text_property(NULL, name, INFO_PROPERTY_NAME, "Main", "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+	indigo_init_text_item(property->items, INFO_DEVICE_NAME_ITEM_NAME, "Device name", name);
+	return property;
+}
+
 // -------------------------------------------------------------------------------- Lifecycle
 
 static bool start_scheduler(void) {
@@ -993,6 +1020,10 @@ static bool setup(void) {
 	indigo_init_switch_item(guider_process_property->items, "GUIDING", "Guiding", false);
 	guider_abort_property = indigo_init_switch_property(NULL, guider_standin.name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Guider", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 	indigo_init_switch_item(guider_abort_property->items, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
+	mount_info = info_property(mount_standin.name);
+	guider_info = info_property(guider_standin.name);
+	imager_info = info_property(imager_standin.name);
+	aux_info = info_property(aux_standin.name);
 	CHECK(indigo_attach_device(&mount_standin) == INDIGO_OK);
 	mount_attached = true;
 	CHECK(indigo_attach_device(&guider_standin) == INDIGO_OK);
@@ -1019,8 +1050,14 @@ static bool setup(void) {
 	return start_scheduler();
 }
 
+static void detach_generic_standins(void);
+
+static void detach_scripting_standin(void);
+
 static void cleanup(void) {
 	stop_scheduler();
+	detach_generic_standins();
+	detach_scripting_standin();
 	if (scripting_running) {
 		indigo_agent_scripting(INDIGO_DRIVER_SHUTDOWN, NULL);
 	}
@@ -1051,6 +1088,10 @@ static void cleanup(void) {
 	indigo_release_property(imager_remove_fits_property);
 	indigo_release_property(imager_ccd_list_property);
 	indigo_release_property(safety_property);
+	indigo_release_property(mount_info);
+	indigo_release_property(guider_info);
+	indigo_release_property(imager_info);
+	indigo_release_property(aux_info);
 }
 
 // -------------------------------------------------------------------------------- Cases
@@ -5396,6 +5437,855 @@ static void safety_hooks_are_labelled(void) {
 	ASSERT_EQ_INT(0, count_messages("Starting hook"));
 }
 
+// -------------------------------------------------------------------------------- Agents and the sequencer owner
+
+#define OWNER_PROPERTY						"SEQUENCER_OWNER"
+
+static int count_scripting_messages(const char *text) {
+	pthread_mutex_lock(&cache_mutex);
+	int count = 0;
+	for (const char *s = scripting_messages; (s = strstr(s, text)) != NULL; s += strlen(text)) {
+		count++;
+	}
+	pthread_mutex_unlock(&cache_mutex);
+	return count;
+}
+
+static bool wait_scripting_message(const char *text, int count, double timeout) {
+	for (double t = 0; t < timeout; t += 0.01) {
+		if (count_scripting_messages(text) >= count) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for the Scripting Agent message '%s' x%d, messages:\n%s\n", text, count, scripting_messages);
+	return false;
+}
+
+// a property of any device from the cache
+static indigo_property *snapshot_of(const char *device, const char *name) {
+	pthread_mutex_lock(&cache_mutex);
+	observation *entry = find(device, name);
+	indigo_property *result = entry && entry->property ? indigo_copy_property(NULL, entry->property) : NULL;
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
+// the value of a text item of a property of the device, false when the property or the item is missing
+static bool text_value(const char *device, const char *name, const char *item, char *value) {
+	indigo_property *property = snapshot_of(device, name);
+	indigo_item *found = property ? indigo_get_item(property, item) : NULL;
+	if (found) {
+		snprintf(value, INDIGO_VALUE_SIZE, "%s", indigo_get_text_item_value(found));
+	}
+	indigo_release_property(property);
+	return found != NULL;
+}
+
+// SEQUENCER_OWNER of the Scripting Agent names the owner, empty for none
+static bool wait_owner(const char *owner, double timeout) {
+	char value[INDIGO_VALUE_SIZE] = "<undefined>";
+	for (double t = 0; t < timeout; t += 0.01) {
+		if (text_value(SCRIPTING_AGENT_NAME, OWNER_PROPERTY, "OWNER", value) && !strcmp(value, owner)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for the owner '%s', SEQUENCER_OWNER.OWNER is '%s', messages:\n%s\n", owner, value, scripting_messages);
+	return false;
+}
+
+static bool owner_value_is(const char *item, const char *expected) {
+	char value[INDIGO_VALUE_SIZE] = "<undefined>";
+	text_value(SCRIPTING_AGENT_NAME, OWNER_PROPERTY, item, value);
+	if (strcmp(value, expected)) {
+		fprintf(stderr, "SEQUENCER_OWNER.%s is '%s', expected '%s'\n", item, value, expected);
+		return false;
+	}
+	return true;
+}
+
+// the configured agent of the role
+static bool agent_is(const char *item, const char *expected) {
+	char value[INDIGO_VALUE_SIZE] = "<undefined>";
+	for (int i = 0; i < 300; i++) {
+		if (text_value(AGENT, AGENT_SCHEDULER_AGENTS_PROPERTY_NAME, item, value) && !strcmp(value, expected)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "AGENT_SCHEDULER_AGENTS.%s is '%s', expected '%s'\n", item, value, expected);
+	return false;
+}
+
+static bool set_agents(int count, const char **items, const char **values, indigo_property_state expected, char *message) {
+	unsigned before = revision(AGENT_SCHEDULER_AGENTS_PROPERTY_NAME);
+	indigo_change_text_property(&observer, AGENT, AGENT_SCHEDULER_AGENTS_PROPERTY_NAME, count, items, values);
+	return wait_property_state(AGENT_SCHEDULER_AGENTS_PROPERTY_NAME, before, expected, message);
+}
+
+static bool set_agent(const char *item, const char *value) {
+	const char *items[] = { item };
+	const char *values[] = { value };
+	return set_agents(1, items, values, INDIGO_OK_STATE, NULL);
+}
+
+static bool select_listed(const char *list, const char *item, indigo_property_state expected, char *message) {
+	unsigned before = revision(list);
+	indigo_change_switch_property_1(&observer, AGENT, list, item, true);
+	return wait_property_state(list, before, expected, message);
+}
+
+// the selector lists exactly the agents, "|" separated in their order, with the item on (NULL for none)
+static bool wait_selector(const char *list, const char *items, const char *on, double timeout) {
+	char seen[2048] = "", seen_on[INDIGO_NAME_SIZE] = "";
+	for (double t = 0; t < timeout; t += 0.01) {
+		indigo_property *property = snapshot(list);
+		seen[0] = seen_on[0] = 0;
+		int count_on = 0;
+		for (int i = 0; property && i < property->count; i++) {
+			snprintf(seen + strlen(seen), sizeof(seen) - strlen(seen), "%s%s", i ? "|" : "", property->items[i].name);
+			if (property->items[i].sw.value) {
+				snprintf(seen_on, sizeof(seen_on), "%s", property->items[i].name);
+				count_on++;
+			}
+		}
+		bool ready = property && !strcmp(seen, items) && (on == NULL ? count_on == 0 : count_on == 1 && !strcmp(seen_on, on));
+		indigo_release_property(property);
+		if (ready) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for %s '%s' with '%s' on, it lists '%s' with '%s' on\n", list, items, on ? on : "", seen, seen_on);
+	return false;
+}
+
+// detaches a stand-in, gives it and its properties another name and attaches it again
+static bool rename_standin(indigo_device *standin, indigo_property **properties, int count, const char *name) {
+	for (int i = 0; i < count; i++) {
+		indigo_delete_property(standin, properties[i], NULL);
+	}
+	CHECK(indigo_detach_device(standin) == INDIGO_OK);
+	INDIGO_COPY_NAME(standin->name, name);
+	for (int i = 0; i < count; i++) {
+		INDIGO_COPY_NAME(properties[i]->device, name);
+		if (!strcmp(properties[i]->name, INFO_PROPERTY_NAME)) {
+			indigo_set_text_item_value(properties[i]->items, name);
+		}
+	}
+	CHECK(indigo_attach_device(standin) == INDIGO_OK);
+	standin->enumerate_properties(standin, NULL, NULL);
+	return true;
+}
+
+// stand-ins that only define their properties: INFO, and for a solver AGENT_PLATESOLVER_EXPOSURE and AGENT_START_PROCESS
+typedef struct {
+	indigo_property *properties[3];
+	int count;
+} generic_standin;
+
+static indigo_device *generic_standins[8];
+
+static indigo_result generic_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	generic_standin *data = device->private_data;
+	for (int i = 0; i < data->count; i++) {
+		if (indigo_property_match(data->properties[i], property)) {
+			indigo_define_property(device, data->properties[i], NULL);
+		}
+	}
+	return INDIGO_OK;
+}
+
+static indigo_device *attach_generic_standin(const char *name, bool solver) {
+	static indigo_device template = INDIGO_DEVICE_INITIALIZER("", NULL, generic_enumerate, NULL, NULL, NULL);
+	int slot = 0;
+	while (slot < (int)ARRAY_SIZE(generic_standins) && generic_standins[slot] != NULL) {
+		slot++;
+	}
+	if (slot == (int)ARRAY_SIZE(generic_standins)) {
+		return NULL;
+	}
+	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &template);
+	INDIGO_COPY_NAME(device->name, name);
+	generic_standin *data = indigo_safe_malloc(sizeof(generic_standin));
+	data->properties[data->count++] = info_property(name);
+	if (solver) {
+		indigo_property *exposure = indigo_init_number_property(NULL, name, "AGENT_PLATESOLVER_EXPOSURE", "Solver", "Exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		indigo_init_number_item(exposure->items, "EXPOSURE", "Exposure", 0, 60, 0, 1);
+		data->properties[data->count++] = exposure;
+		indigo_property *process = indigo_init_switch_property(NULL, name, AGENT_START_PROCESS_PROPERTY_NAME, "Solver", "Process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		indigo_init_switch_item(process->items, "SOLVE", "Solve", false);
+		data->properties[data->count++] = process;
+	}
+	device->private_data = data;
+	if (indigo_attach_device(device) != INDIGO_OK) {
+		return NULL;
+	}
+	generic_standins[slot] = device;
+	generic_enumerate(device, NULL, NULL);
+	return device;
+}
+
+static void detach_generic_standin(indigo_device *device) {
+	for (int slot = 0; slot < (int)ARRAY_SIZE(generic_standins); slot++) {
+		if (generic_standins[slot] == device) {
+			generic_standins[slot] = NULL;
+			generic_standin *data = device->private_data;
+			for (int i = 0; i < data->count; i++) {
+				indigo_delete_property(device, data->properties[i], NULL);
+			}
+			indigo_detach_device(device);
+			for (int i = 0; i < data->count; i++) {
+				indigo_release_property(data->properties[i]);
+			}
+			free(data);
+			free(device);
+		}
+	}
+}
+
+static void detach_generic_standins(void) {
+	for (int slot = 0; slot < (int)ARRAY_SIZE(generic_standins); slot++) {
+		if (generic_standins[slot] != NULL) {
+			detach_generic_standin(generic_standins[slot]);
+		}
+	}
+}
+
+// AGENT_START_PROCESS of a solver stand-in goes Busy or Ok
+static void set_solver_busy(indigo_device *device, bool busy) {
+	generic_standin *data = device->private_data;
+	data->properties[2]->state = busy ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+	indigo_update_property(device, data->properties[2], NULL);
+}
+
+// a remote Scripting Agent with Sequencer.js loaded, which records the scripts it is asked to run
+#define REMOTE_SCRIPTING					"Scripting Agent @ obs2"
+
+static indigo_property *remote_run_property, *remote_state_property, *remote_owner_property, *remote_info;
+static char remote_scripts[262144];
+static bool remote_attached;
+// the stand-in answers the task and estimate scripts with SCHEDULER_RESULT, a task script also makes its sequence Busy
+static bool remote_responds;
+
+static indigo_result remote_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	indigo_property *properties[] = { remote_info, remote_run_property, remote_state_property, remote_owner_property };
+	for (int i = 0; i < 4; i++) {
+		if (indigo_property_match(properties[i], property)) {
+			indigo_define_property(device, properties[i], NULL);
+		}
+	}
+	return INDIGO_OK;
+}
+
+static indigo_result remote_change(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match_changeable(remote_run_property, property)) {
+		const char *script = indigo_get_text_item_value(property->items);
+		pthread_mutex_lock(&cache_mutex);
+		if (strlen(remote_scripts) + strlen(script) + 2 < sizeof(remote_scripts)) {
+			strcat(remote_scripts, script);
+			strcat(remote_scripts, "\n");
+		}
+		pthread_mutex_unlock(&cache_mutex);
+		indigo_update_property(device, remote_run_property, NULL);
+		const char *token = strstr(script, "token: ");
+		if (remote_responds && strstr(script, "scheduler_report") && token) {
+			char value[32];
+			snprintf(value, sizeof(value), "%d", atoi(token + 7));
+			if (!strstr(script, "estimate: true")) {
+				remote_state_property->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, remote_state_property, NULL);
+			}
+			indigo_property *result = indigo_init_text_property(NULL, device->name, "SCHEDULER_RESULT", "Scheduler", "Scheduler result", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+			indigo_init_text_item(result->items + 0, "TOKEN", "Token", value);
+			indigo_init_text_item(result->items + 1, "RESULT", "Result", "ok");
+			indigo_init_text_item(result->items + 2, "MESSAGE", "Message", "");
+			indigo_define_property(device, result, NULL);
+			indigo_release_property(result);
+		}
+	}
+	return INDIGO_OK;
+}
+
+static indigo_device remote_scripting = INDIGO_DEVICE_INITIALIZER(REMOTE_SCRIPTING, NULL, remote_enumerate, remote_change, NULL, NULL);
+
+static bool attach_scripting_standin(void) {
+	remote_info = info_property(REMOTE_SCRIPTING);
+	remote_run_property = indigo_init_text_property(NULL, REMOTE_SCRIPTING, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, "Main", "Run script", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	indigo_init_text_item_raw(remote_run_property->items, AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME, "Script", "");
+	remote_state_property = indigo_init_number_property(NULL, REMOTE_SCRIPTING, "SEQUENCE_STATE", "Sequencer", "State", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+	indigo_init_number_item(remote_state_property->items, "STEP", "Step", -1, 1000000, 1, -1);
+	remote_owner_property = indigo_init_text_property(NULL, REMOTE_SCRIPTING, OWNER_PROPERTY, "Sequencer", "Owner", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+	const char *items[] = { "OWNER", "IMAGER", "MOUNT", "GUIDER", "SOLVER" };
+	for (int i = 0; i < 5; i++) {
+		indigo_init_text_item(remote_owner_property->items + i, items[i], items[i], "");
+	}
+	CHECK(indigo_attach_device(&remote_scripting) == INDIGO_OK);
+	remote_attached = true;
+	remote_enumerate(&remote_scripting, NULL, NULL);
+	return true;
+}
+
+static void detach_scripting_standin(void) {
+	if (remote_attached) {
+		indigo_detach_device(&remote_scripting);
+		remote_attached = false;
+	}
+	indigo_release_property(remote_info);
+	indigo_release_property(remote_run_property);
+	indigo_release_property(remote_state_property);
+	indigo_release_property(remote_owner_property);
+}
+
+static bool wait_remote_script(const char *text, double timeout) {
+	for (double t = 0; t < timeout; t += 0.01) {
+		pthread_mutex_lock(&cache_mutex);
+		bool found = strstr(remote_scripts, text) != NULL;
+		pthread_mutex_unlock(&cache_mutex);
+		if (found) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for the script '%s', scripts:\n%s\n", text, remote_scripts);
+	return false;
+}
+
+// sends Sequencer.js to the Scripting Agent as a client does before its own scripts
+static bool send_sequencer_library(void) {
+	FILE *file = fopen(SEQUENCER_JS_PATH, "rb");
+	CHECK(file != NULL);
+	fseek(file, 0, SEEK_END);
+	long length = ftell(file);
+	rewind(file);
+	char *source = indigo_safe_malloc((size_t)length + 1);
+	size_t read = fread(source, 1, (size_t)length, file);
+	fclose(file);
+	source[read] = 0;
+	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
+	const char *values[] = { source };
+	indigo_change_text_property(&observer, SCRIPTING_AGENT_NAME, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+	free(source);
+	return true;
+}
+
+static void run_scripting(const char *script) {
+	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
+	const char *values[] = { script };
+	indigo_change_text_property(&observer, SCRIPTING_AGENT_NAME, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+}
+
+static void agents_default_to_the_fixed_names(void) {
+	indigo_property *agents = snapshot(AGENT_SCHEDULER_AGENTS_PROPERTY_NAME);
+	REQUIRE(agents != NULL);
+	ASSERT_EQ_INT(INDIGO_TEXT_VECTOR, agents->type);
+	ASSERT_EQ_INT(INDIGO_RW_PERM, agents->perm);
+	ASSERT_STREQ("Agents", agents->group);
+	ASSERT_EQ_INT(6, agents->count);
+	indigo_release_property(agents);
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_SCRIPTING_ITEM_NAME, "Scripting Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, "Mount Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_GUIDER_ITEM_NAME, "Guider Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_AUX_ITEM_NAME, "Auxiliary Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, ""));
+	const char *lists[] = { AGENT_SCHEDULER_SCRIPTING_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_MOUNT_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_GUIDER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_AUX_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME };
+	for (int i = 0; i < 6; i++) {
+		indigo_property *list = snapshot(lists[i]);
+		REQUIRE(list != NULL);
+		ASSERT_EQ_INT(INDIGO_SWITCH_VECTOR, list->type);
+		ASSERT_EQ_INT(INDIGO_RW_PERM, list->perm);
+		ASSERT_EQ_INT(INDIGO_AT_MOST_ONE_RULE, list->rule);
+		indigo_release_property(list);
+	}
+	// the agents on the bus are listed with today's names selected
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SCRIPTING_AGENT_LIST_PROPERTY_NAME, "Scripting Agent", "Scripting Agent", 5));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent", "Imager Agent", 5));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_MOUNT_AGENT_LIST_PROPERTY_NAME, "Mount Agent", "Mount Agent", 5));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_GUIDER_AGENT_LIST_PROPERTY_NAME, "Guider Agent", "Guider Agent", 5));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_AUX_AGENT_LIST_PROPERTY_NAME, "", NULL, 5));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_SOLVER_AGENT_LIST_AUTOMATIC_ITEM_NAME, AGENT_SCHEDULER_SOLVER_AGENT_LIST_AUTOMATIC_ITEM_NAME, 5));
+}
+
+static void agents_survive_a_restart(void) {
+	REQUIRE(set_agent(AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, "Mount Agent @ obs2"));
+	REQUIRE(set_agent(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, "ASTAP Agent"));
+	stop_scheduler();
+	// the configuration is saved, the selectors are not
+	char path[512];
+	snprintf(path, sizeof(path), "%s/Scheduler_Agent.config", indigo_uni_config_folder());
+	FILE *file = fopen(path, "rb");
+	REQUIRE(file != NULL);
+	static char content[1048576];
+	size_t length = fread(content, 1, sizeof(content) - 1, file);
+	fclose(file);
+	content[length] = 0;
+	ASSERT_TRUE(strstr(content, AGENT_SCHEDULER_AGENTS_PROPERTY_NAME) != NULL);
+	ASSERT_TRUE(strstr(content, "Mount Agent @ obs2") != NULL);
+	ASSERT_TRUE(strstr(content, "_AGENT_LIST") == NULL);
+	memset(messages, 0, sizeof(messages));
+	REQUIRE(start_scheduler());
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, "Mount Agent @ obs2"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, "ASTAP Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent"));
+	// the configured mount is not on the bus: it stays configured, none is selected and the site is unknown
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_MOUNT_AGENT_LIST_PROPERTY_NAME, "Mount Agent", NULL, 5));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_SOLVER_AGENT_LIST_AUTOMATIC_ITEM_NAME, NULL, 5));
+	REQUIRE(upload_placed("Placed", 0, 48, "// @duration 5\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(waits_with_reason("Placed", "site coordinates unknown"));
+	// once it is attached it is listed, selected and gives the site
+	indigo_property *mount_properties[] = { mount_info, site_property };
+	REQUIRE(rename_standin(&mount_standin, mount_properties, 2, "Mount Agent @ obs2"));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_MOUNT_AGENT_LIST_PROPERTY_NAME, "Mount Agent @ obs2", "Mount Agent @ obs2", 5));
+	ASSERT_TRUE(wait_task_state("Placed", "DONE", 15));
+}
+
+static void agents_typed_change_is_validated(void) {
+	char message[INDIGO_VALUE_SIZE];
+	const char *imager[] = { AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME };
+	const char *bad_name[] = { "Imager Agentx" };
+	ASSERT_TRUE(set_agents(1, imager, bad_name, INDIGO_ALERT_STATE, message));
+	ASSERT_STREQ("Agents rejected: 'Imager Agentx' is not a valid imager agent name", message);
+	const char *other_role[] = { "Mount Agent" };
+	ASSERT_TRUE(set_agents(1, imager, other_role, INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "'Mount Agent' is not a valid imager agent name") != NULL);
+	const char *guider[] = { AGENT_SCHEDULER_AGENTS_GUIDER_ITEM_NAME };
+	const char *empty[] = { "" };
+	ASSERT_TRUE(set_agents(1, guider, empty, INDIGO_ALERT_STATE, message));
+	ASSERT_STREQ("Agents rejected: the guider agent must be given", message);
+	const char *solver[] = { AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME };
+	const char *not_solver[] = { "Imager Agent" };
+	ASSERT_TRUE(set_agents(1, solver, not_solver, INDIGO_ALERT_STATE, message));
+	// one invalid item refuses the whole request
+	const char *two[] = { AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME };
+	const char *one_bad[] = { "Imager Agent @ obs2", "Mount" };
+	ASSERT_TRUE(set_agents(2, two, one_bad, INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, "Mount Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_GUIDER_ITEM_NAME, "Guider Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, ""));
+	// valid names need not be on the bus
+	const char *remote_solver[] = { "ASTAP Agent @ obs2" };
+	ASSERT_TRUE(set_agents(1, solver, remote_solver, INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, "ASTAP Agent @ obs2"));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_SOLVER_AGENT_LIST_AUTOMATIC_ITEM_NAME, NULL, 5));
+	const char *good[] = { "Imager Agent @ obs2", "Mount Agent @ obs3" };
+	ASSERT_TRUE(set_agents(2, two, good, INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent @ obs2"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, "Mount Agent @ obs3"));
+}
+
+static void agents_change_refused_while_running(void) {
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	char message[INDIGO_VALUE_SIZE];
+	const char *imager[] = { AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME };
+	const char *name[] = { "Imager Agent @ obs2" };
+	ASSERT_TRUE(set_agents(1, imager, name, INDIGO_ALERT_STATE, message));
+	ASSERT_STREQ("The agents cannot be changed while the scheduler runs, stop it first", message);
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent", "Imager Agent", 5));
+	REQUIRE(attach_generic_standin("ASTAP Agent", true) != NULL);
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, "AUTOMATIC|ASTAP Agent", "AUTOMATIC", 5));
+	ASSERT_TRUE(select_listed(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, "ASTAP Agent", INDIGO_ALERT_STATE, message));
+	ASSERT_STREQ("The agents cannot be changed while the scheduler runs, stop it first", message);
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, "AUTOMATIC|ASTAP Agent", "AUTOMATIC", 5));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent"));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(set_agents(1, imager, name, INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(select_listed(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, "ASTAP Agent", INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, "ASTAP Agent"));
+}
+
+static void agent_selectors_follow_the_bus(void) {
+	indigo_device *remote_imager = attach_generic_standin("Imager Agent @ obs2", false);
+	REQUIRE(remote_imager != NULL);
+	REQUIRE(attach_generic_standin("ASTAP Agent", true) != NULL);
+	REQUIRE(attach_generic_standin("Astrometry Agent @ obs2", true) != NULL);
+	// a device named against the convention is listed nowhere
+	REQUIRE(attach_generic_standin("Imager Agentx", false) != NULL);
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent|Imager Agent @ obs2", "Imager Agent", 5));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, "AUTOMATIC|ASTAP Agent|Astrometry Agent @ obs2", "AUTOMATIC", 5));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_MOUNT_AGENT_LIST_PROPERTY_NAME, "Mount Agent", "Mount Agent", 5));
+	REQUIRE(set_agent(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent @ obs2"));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent|Imager Agent @ obs2", "Imager Agent @ obs2", 5));
+	// a configured agent that leaves the bus stays configured, none is selected
+	detach_generic_standin(remote_imager);
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent", NULL, 5));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent @ obs2"));
+	// a whole device that leaves the bus leaves the list
+	indigo_property *guider_properties[] = { guider_info, guider_process_property, guider_abort_property };
+	REQUIRE(rename_standin(&guider_standin, guider_properties, 3, "Guider Agent @ obs2"));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_GUIDER_AGENT_LIST_PROPERTY_NAME, "Guider Agent @ obs2", NULL, 5));
+}
+
+static void agent_selector_fills_the_configuration(void) {
+	REQUIRE(attach_generic_standin("Imager Agent @ obs2", false) != NULL);
+	REQUIRE(attach_generic_standin("ASTAP Agent", true) != NULL);
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent|Imager Agent @ obs2", "Imager Agent", 5));
+	ASSERT_TRUE(select_listed(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent @ obs2", INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent @ obs2"));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent|Imager Agent @ obs2", "Imager Agent @ obs2", 5));
+	ASSERT_TRUE(select_listed(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, "ASTAP Agent", INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, "ASTAP Agent"));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, "AUTOMATIC|ASTAP Agent", "ASTAP Agent", 5));
+	ASSERT_TRUE(select_listed(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_SOLVER_AGENT_LIST_AUTOMATIC_ITEM_NAME, INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, ""));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, "AUTOMATIC|ASTAP Agent", "AUTOMATIC", 5));
+	// a typed change moves the selection
+	REQUIRE(set_agent(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent"));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent|Imager Agent @ obs2", "Imager Agent", 5));
+	// an item that is not listed changes nothing
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(select_listed(AGENT_SCHEDULER_IMAGER_AGENT_LIST_PROPERTY_NAME, "Imager Agent @ nowhere", INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(agent_is(AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, "Imager Agent"));
+}
+
+static void non_default_agents_are_used(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SAFE_DELAY_ITEM_NAME, 0));
+	const char *items[] = { AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME, AGENT_SCHEDULER_AGENTS_GUIDER_ITEM_NAME, AGENT_SCHEDULER_AGENTS_AUX_ITEM_NAME };
+	const char *values[] = { "Imager Agent @ obs2", "Mount Agent @ obs2", "Guider Agent @ obs2", "Auxiliary Agent @ obs2" };
+	REQUIRE(set_agents(4, items, values, INDIGO_OK_STATE, NULL));
+	// only the renamed stand-ins are on the bus
+	indigo_property *mount_properties[] = { mount_info, site_property };
+	REQUIRE(rename_standin(&mount_standin, mount_properties, 2, "Mount Agent @ obs2"));
+	indigo_property *guider_properties[] = { guider_info, guider_process_property, guider_abort_property };
+	REQUIRE(rename_standin(&guider_standin, guider_properties, 3, "Guider Agent @ obs2"));
+	indigo_property *imager_properties[] = { imager_info, imager_ccd_list_property, imager_local_mode_property, imager_set_fits_property, imager_remove_fits_property };
+	REQUIRE(rename_standin(&imager_standin, imager_properties, 5, "Imager Agent @ obs2"));
+	INDIGO_COPY_NAME(aux_standin.name, "Auxiliary Agent @ obs2");
+	INDIGO_COPY_NAME(safety_property->device, "Auxiliary Agent @ obs2");
+	INDIGO_COPY_NAME(aux_info->device, "Auxiliary Agent @ obs2");
+	REQUIRE(aux_attach(INDIGO_OK_STATE));
+	// the site of the configured mount makes the target eligible, the configured imager is labelled
+	REQUIRE(upload_placed("Placed", 0, 48, "// @priority high\n"));
+	REQUIRE(upload("// @task Work\n// @priority low\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Placed", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Placed", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("SET SCHTASK='Placed'", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event(IMAGER_RESTORED, 0, 5) >= 0);
+	// the configured auxiliary agent holds the scheduler, whose abort reaches the configured guider
+	ASSERT_TRUE(wait_task_state("Work", "RUNNING", 15));
+	set_guiding(true);
+	indigo_usleep(1000000);
+	set_safety(INDIGO_ALERT_STATE);
+	ASSERT_TRUE(wait_message("Unsafe conditions, the scheduler holds", 1, 5));
+	ASSERT_TRUE(wait_message("Task 'Work' aborted by unsafe conditions", 1, 10));
+	ASSERT_TRUE(atomic_load(&guider_aborts) >= 1);
+	// the sequencer runs on the configured agents
+	ASSERT_TRUE(owner_value_is("IMAGER", "Imager Agent @ obs2"));
+	ASSERT_TRUE(owner_value_is("MOUNT", "Mount Agent @ obs2"));
+	ASSERT_TRUE(owner_value_is("GUIDER", "Guider Agent @ obs2"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+// the solver keeps the preemption of Work waiting until it is no longer Busy
+static void solver_busy_delays_the_next_task(indigo_device *solver, const char *name) {
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Work", "RUNNING", 15));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 5));
+	ASSERT_TRUE(owner_value_is("SOLVER", name));
+	set_solver_busy(solver, true);
+	indigo_usleep(500000);
+	REQUIRE(urgent("// @task Flash\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_reason("stopping the running sequence", 5));
+	// the stop timeout is 5 s
+	indigo_usleep(2500000);
+	ASSERT_EQ_INT(0, count_messages("preempted"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Flash'"));
+	set_solver_busy(solver, false);
+	ASSERT_TRUE(wait_message("Task 'Work' preempted by an urgent task, it will be retried", 1, 5));
+	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 15));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+}
+
+static void astap_solver_busy_delays_the_next_task(void) {
+	// Sequencer.js selects the solver automatically, the scheduler follows its choice
+	indigo_device *solver = attach_generic_standin("ASTAP Agent", true);
+	REQUIRE(solver != NULL);
+	solver_busy_delays_the_next_task(solver, "ASTAP Agent");
+}
+
+static void configured_solver_busy_delays_the_next_task(void) {
+	indigo_device *solver = attach_generic_standin("Platesolver Agent @ obs2", true);
+	REQUIRE(solver != NULL);
+	REQUIRE(set_agent(AGENT_SCHEDULER_AGENTS_SOLVER_ITEM_NAME, "Platesolver Agent @ obs2"));
+	solver_busy_delays_the_next_task(solver, "Platesolver Agent @ obs2");
+}
+
+static void lock_is_held_from_start_to_stop(void) {
+	char future[32], text[256];
+	time_t now = time(NULL);
+	utc(now - now % 60 + 7200, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_HOOK_DELAY_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Park"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 15));
+	indigo_property *owner = snapshot_of(SCRIPTING_AGENT_NAME, OWNER_PROPERTY);
+	REQUIRE(owner != NULL);
+	ASSERT_EQ_INT(INDIGO_RO_PERM, owner->perm);
+	indigo_release_property(owner);
+	ASSERT_TRUE(owner_value_is("IMAGER", "Imager Agent"));
+	ASSERT_TRUE(owner_value_is("MOUNT", "Mount Agent"));
+	ASSERT_TRUE(owner_value_is("GUIDER", "Guider Agent"));
+	ASSERT_TRUE(owner_value_is("SOLVER", "Astrometry Agent"));
+	ASSERT_TRUE(wait_scripting_message("The sequencer is controlled by Scheduler Agent", 1, 5));
+	// idle and in standby after the idle hook it stays the owner
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	indigo_usleep(1500000);
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 1));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(wait_owner("", 5));
+	ASSERT_TRUE(wait_scripting_message("The sequencer is released by Scheduler Agent", 1, 5));
+	// a start postponed by unsafe conditions takes the sequencer too
+	REQUIRE(aux_attach(INDIGO_ALERT_STATE));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Unsafe conditions, the start waits for safe conditions", 1, 5));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 10));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_owner("", 10));
+	ASSERT_EQ_INT(2, count_scripting_messages("The sequencer is controlled by Scheduler Agent"));
+}
+
+static void task_agents_are_ignored_with_a_warning(void) {
+	REQUIRE(upload("// @task Agents\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(1);\nsequence.start(\"Other Imager\", \"Mount Agent\");\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Agents", "DONE", 20));
+	ASSERT_TRUE(wait_scripting_message("Sequence 'Agents': imager agent 'Other Imager' ignored, 'Imager Agent' is used (agents of Scheduler Agent)", 1, 5));
+	ASSERT_EQ_INT(1, count_scripting_messages("ignored"));
+}
+
+static void estimates_do_not_warn_under_the_owner(void) {
+	char future[32], text[512];
+	time_t now = time(NULL);
+	utc(now - now % 60 + 7200, future);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 15));
+	snprintf(text, sizeof(text), "// @task Estimated\n// @window %s ..\nvar sequence = new Sequence(scheduler_task.name);\nsequence.select_imager_agent(\"Other Imager\");\nsequence.wait(60);\nsequence.start(\"Other Imager\");\n", future);
+	REQUIRE(upload(text));
+	ASSERT_TRUE(wait_task_state("Estimated", "estimated", 15));
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(0, count_scripting_messages("ignored"));
+}
+
+static void lock_released_on_abort(void) {
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Work", "RUNNING", 15));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 10));
+	ASSERT_TRUE(wait_owner("", 5));
+}
+
+static void lock_released_when_all_tasks_finished(void) {
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 15));
+	ASSERT_TRUE(wait_message("All tasks finished, the scheduler stopped", 1, 20));
+	ASSERT_TRUE(wait_owner("", 5));
+}
+
+static void lock_released_on_scheduler_shutdown(void) {
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 15));
+	stop_scheduler();
+	ASSERT_TRUE(wait_owner("", 5));
+	ASSERT_TRUE(wait_scripting_message("The sequencer is released by Scheduler Agent", 1, 5));
+}
+
+static void stale_lock_released_after_restart(void) {
+	stop_scheduler();
+	// the ownership of a scheduler that is gone
+	REQUIRE(send_sequencer_library());
+	run_scripting("indigo_sequencer_take({ name: 'Scheduler Agent', imager: 'Imager Agent', mount: 'Mount Agent', guider: 'Guider Agent', solver: '' });");
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 5));
+	REQUIRE(start_scheduler());
+	ASSERT_TRUE(wait_owner("", 10));
+	// a stopped scheduler does not take it again
+	indigo_usleep(1500000);
+	ASSERT_TRUE(wait_owner("", 1));
+}
+
+static void lock_retaken_after_scripting_agent_restart(void) {
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 15));
+	indigo_agent_scripting(INDIGO_DRIVER_SHUTDOWN, NULL);
+	REQUIRE(indigo_agent_scripting(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+	// the library is loaded again within LIBRARY_RETRY_INTERVAL, then the sequencer is taken within one tick
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 45));
+	ASSERT_TRUE(wait_scripting_message("The sequencer is controlled by Scheduler Agent", 2, 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_owner("", 10));
+}
+
+static void take_script_strips_the_scripting_agent_suffix(void) {
+	REQUIRE(attach_scripting_standin());
+	const char *items[] = { AGENT_SCHEDULER_AGENTS_SCRIPTING_ITEM_NAME, AGENT_SCHEDULER_AGENTS_IMAGER_ITEM_NAME, AGENT_SCHEDULER_AGENTS_MOUNT_ITEM_NAME };
+	// a name with a control character is rejected, a quote is sent escaped
+	char message[INDIGO_VALUE_SIZE];
+	const char *control_items[] = { AGENT_SCHEDULER_AGENTS_GUIDER_ITEM_NAME };
+	const char *control_values[] = { "Guider Agent @ ob\ts" };
+	ASSERT_TRUE(set_agents(1, control_items, control_values, INDIGO_ALERT_STATE, message));
+	ASSERT_STREQ("Agents rejected: 'Guider Agent @ ob\ts' is not a valid guider agent name", message);
+	const char *values[] = { REMOTE_SCRIPTING, "Imager Agent @ obs2", "Mount Agent @ o\"bs" };
+	REQUIRE(set_agents(3, items, values, INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SCRIPTING_AGENT_LIST_PROPERTY_NAME, "Scripting Agent|" REMOTE_SCRIPTING, REMOTE_SCRIPTING, 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	// names on the host of the Scripting Agent lose the suffix, the others keep it
+	ASSERT_TRUE(wait_remote_script("indigo_sequencer_take({ name: \"Scheduler Agent\", imager: \"Imager Agent\", mount: \"Mount Agent @ o\\\"bs\", guider: \"Guider Agent\", solver: \"\" });", 5));
+	// the scripts define their results under the local name of the Scripting Agent
+	REQUIRE(upload("// @task Remote\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_remote_script("indigo_define_number_property(\"Scripting Agent\", \"SCHEDULER_ESTIMATE\"", 5));
+	ASSERT_TRUE(wait_remote_script("indigo_define_text_property(\"Scripting Agent\", \"SCHEDULER_RESULT\"", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_remote_script("indigo_sequencer_release(\"Scheduler Agent\");", 10));
+	// the local Scripting Agent is left alone
+	ASSERT_EQ_INT(0, count_scripting_messages("The sequencer is controlled by"));
+}
+
+static void manual_release_lasts_until_the_next_start(void) {
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 15));
+	indigo_change_switch_property_1(&observer, SCRIPTING_AGENT_NAME, "SEQUENCER_RELEASE", "RELEASE", true);
+	ASSERT_TRUE(wait_scripting_message("The sequencer was released from Scheduler Agent by hand", 1, 5));
+	ASSERT_TRUE(wait_message("The sequencer was released on the Scripting Agent, the scheduler leaves the agents to the tasks until the next START", 1, 5));
+	// no take within three retry intervals, a task then runs on the agents it asks for
+	indigo_usleep(15000000);
+	ASSERT_TRUE(wait_owner("", 1));
+	REQUIRE(upload("// @task Free\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(1);\nsequence.start(\"Other Imager\");\n"));
+	ASSERT_TRUE(wait_task_state("Free", "DONE", 20));
+	ASSERT_EQ_INT(0, count_scripting_messages("ignored"));
+	ASSERT_TRUE(wait_owner("", 1));
+	ASSERT_EQ_INT(1, count_messages("The sequencer was released on the Scripting Agent"));
+	// the stop releases nothing, the next START takes the sequencer again
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 10));
+	indigo_usleep(1000000);
+	ASSERT_EQ_INT(0, count_scripting_messages("The sequencer is released by"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 10));
+	ASSERT_EQ_INT(1, count_messages("The sequencer was released on the Scripting Agent"));
+}
+
+static void library_reload_keeps_the_lock(void) {
+	REQUIRE(upload("// @task Steadfast\n" BODY_WAIT(3)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Steadfast", "RUNNING", 15));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 5));
+	REQUIRE(send_sequencer_library());
+	ASSERT_TRUE(wait_scripting_message("Sequencer reloaded, the running sequence continues", 1, 5));
+	ASSERT_TRUE(wait_task_state("Steadfast", "DONE", 15));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 1));
+	ASSERT_EQ_INT(1, count_scripting_messages("The sequencer is controlled by"));
+	ASSERT_EQ_INT(0, count_scripting_messages("released"));
+}
+
+// with an automatic solver and a remote Scripting Agent, SEQUENCER_OWNER names the solver without the host the scheduler sees it on
+static void remote_solver_busy_is_tracked(void) {
+	REQUIRE(attach_scripting_standin());
+	remote_responds = true;
+	indigo_device *solver = attach_generic_standin("ASTAP Agent @ obs2", true);
+	REQUIRE(solver != NULL);
+	REQUIRE(set_agent(AGENT_SCHEDULER_AGENTS_SCRIPTING_ITEM_NAME, REMOTE_SCRIPTING));
+	const char *owner[] = { "Scheduler Agent", "Imager Agent", "Mount Agent", "Guider Agent", "ASTAP Agent" };
+	for (int i = 0; i < 5; i++) {
+		indigo_set_text_item_value(remote_owner_property->items + i, owner[i]);
+	}
+	indigo_update_property(&remote_scripting, remote_owner_property, NULL);
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Work", "RUNNING", 15));
+	set_solver_busy(solver, true);
+	indigo_usleep(500000);
+	REQUIRE(urgent("// @task Flash\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_reason("stopping the running sequence", 5));
+	// the sequence ends, the solver still works; the stop timeout is 5 s
+	remote_state_property->state = INDIGO_ALERT_STATE;
+	indigo_update_property(&remote_scripting, remote_state_property, NULL);
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(0, count_messages("preempted"));
+	set_solver_busy(solver, false);
+	ASSERT_TRUE(wait_message("Task 'Work' preempted by an urgent task, it will be retried", 1, 5));
+}
+
+// a release that changed nothing, after a take without effect, does not hide a later release by hand
+static void manual_release_detected_after_a_release_without_effect(void) {
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 15));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_owner("", 5));
+	run_scripting("indigo_sequencer_take = function(owner) {};");
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	indigo_usleep(1500000);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 10));
+	indigo_usleep(1000000);
+	REQUIRE(send_sequencer_library());
+	indigo_usleep(1000000);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_owner(SCHEDULER_AGENT_NAME, 10));
+	indigo_change_switch_property_1(&observer, SCRIPTING_AGENT_NAME, "SEQUENCER_RELEASE", "RELEASE", true);
+	ASSERT_TRUE(wait_message("The sequencer was released on the Scripting Agent, the scheduler leaves the agents to the tasks until the next START", 1, 5));
+	indigo_usleep(7000000);
+	ASSERT_TRUE(wait_owner("", 1));
+}
+
+static int count_remote_scripts(const char *text) {
+	pthread_mutex_lock(&cache_mutex);
+	int count = 0;
+	for (const char *s = remote_scripts; (s = strstr(s, text)) != NULL; s += strlen(text)) {
+		count++;
+	}
+	pthread_mutex_unlock(&cache_mutex);
+	return count;
+}
+
+// SEQUENCER_OWNER of the remote stand-in as Sequencer.js would publish it, with the scheduler as the owner or free
+static void set_remote_owner(bool scheduler) {
+	const char *owner[] = { "Scheduler Agent", "Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent" };
+	for (int i = 0; i < 5; i++) {
+		indigo_set_text_item_value(remote_owner_property->items + i, scheduler ? owner[i] : "");
+	}
+	indigo_update_property(&remote_scripting, remote_owner_property, NULL);
+}
+
+// START, STOP and START again before the effect of the first take is seen: the release of the STOP lands after that take and is the scheduler's own
+static void release_after_an_unseen_take_is_no_manual_release(void) {
+	REQUIRE(attach_scripting_standin());
+	REQUIRE(set_agent(AGENT_SCHEDULER_AGENTS_SCRIPTING_ITEM_NAME, REMOTE_SCRIPTING));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_remote_script("indigo_sequencer_take(", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(wait_remote_script("indigo_sequencer_release(", 5));
+	int takes = count_remote_scripts("indigo_sequencer_take(");
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	for (int i = 0; i < 500 && count_remote_scripts("indigo_sequencer_take(") == takes; i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(count_remote_scripts("indigo_sequencer_take(") > takes);
+	// the effects arrive in the order of the scripts: the first take, the release, the second take
+	set_remote_owner(true);
+	indigo_usleep(300000);
+	set_remote_owner(false);
+	indigo_usleep(300000);
+	set_remote_owner(true);
+	indigo_usleep(1500000);
+	ASSERT_EQ_INT(0, count_messages("The sequencer was released on the Scripting Agent"));
+	// a release by hand afterwards is still recognised
+	set_remote_owner(false);
+	ASSERT_TRUE(wait_message("The sequencer was released on the Scripting Agent, the scheduler leaves the agents to the tasks until the next START", 1, 5));
+}
+
 static const indigo_test_case cases[] = {
 	{ "store_edit_and_delete", store_edit_and_delete },
 	{ "commands_and_order", commands_and_order },
@@ -5571,6 +6461,29 @@ static const indigo_test_case cases[] = {
 	{ "abort_during_the_unsafe_hook", abort_during_the_unsafe_hook },
 	{ "unsafe_hold_survives_a_restart", unsafe_hold_survives_a_restart },
 	{ "safety_hooks_are_labelled", safety_hooks_are_labelled },
+	{ "agents_default_to_the_fixed_names", agents_default_to_the_fixed_names },
+	{ "agents_survive_a_restart", agents_survive_a_restart },
+	{ "agents_typed_change_is_validated", agents_typed_change_is_validated },
+	{ "agents_change_refused_while_running", agents_change_refused_while_running },
+	{ "agent_selectors_follow_the_bus", agent_selectors_follow_the_bus },
+	{ "agent_selector_fills_the_configuration", agent_selector_fills_the_configuration },
+	{ "non_default_agents_are_used", non_default_agents_are_used },
+	{ "astap_solver_busy_delays_the_next_task", astap_solver_busy_delays_the_next_task },
+	{ "configured_solver_busy_delays_the_next_task", configured_solver_busy_delays_the_next_task },
+	{ "lock_is_held_from_start_to_stop", lock_is_held_from_start_to_stop },
+	{ "task_agents_are_ignored_with_a_warning", task_agents_are_ignored_with_a_warning },
+	{ "estimates_do_not_warn_under_the_owner", estimates_do_not_warn_under_the_owner },
+	{ "lock_released_on_abort", lock_released_on_abort },
+	{ "lock_released_when_all_tasks_finished", lock_released_when_all_tasks_finished },
+	{ "lock_released_on_scheduler_shutdown", lock_released_on_scheduler_shutdown },
+	{ "stale_lock_released_after_restart", stale_lock_released_after_restart },
+	{ "lock_retaken_after_scripting_agent_restart", lock_retaken_after_scripting_agent_restart },
+	{ "take_script_strips_the_scripting_agent_suffix", take_script_strips_the_scripting_agent_suffix },
+	{ "manual_release_lasts_until_the_next_start", manual_release_lasts_until_the_next_start },
+	{ "library_reload_keeps_the_lock", library_reload_keeps_the_lock },
+	{ "remote_solver_busy_is_tracked", remote_solver_busy_is_tracked },
+	{ "manual_release_detected_after_a_release_without_effect", manual_release_detected_after_a_release_without_effect },
+	{ "release_after_an_unseen_take_is_no_manual_release", release_after_an_unseen_take_is_no_manual_release },
 };
 
 static const char *case_filter = NULL;
