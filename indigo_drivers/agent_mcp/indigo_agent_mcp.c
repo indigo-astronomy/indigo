@@ -39,8 +39,8 @@
 #include "indigo_agent_mcp_help.h"
 
 #define DRIVER_NAME "indigo_agent_mcp"
-#define DRIVER_VERSION 0x03000005
-#define MCP_AGENT_VERSION "3.0.0.5"
+#define DRIVER_VERSION 0x03000006
+#define MCP_AGENT_VERSION "3.0.0.6"
 #define MCP_VERSION "2025-11-25"
 #define MCP_BODY_LIMIT (64 * 1024)
 #define MCP_TOKEN_LIMIT 256
