@@ -48,6 +48,7 @@ typedef struct {
 	int update_count;
 	int delete_count;
 	int message_count;
+	int updated_item_count;
 	indigo_property_type last_type;
 	char last_property[INDIGO_NAME_SIZE];
 	char last_item[INDIGO_NAME_SIZE];
@@ -119,6 +120,9 @@ static indigo_result test_client_update_property(indigo_client *client, indigo_d
 	context.last_type = property->type;
 	INDIGO_COPY_NAME(context.last_property, property->name);
 	if (property->count > 0) {
+		if (property->items[0].do_update) {
+			context.updated_item_count++;
+		}
 		INDIGO_COPY_NAME(context.last_item, property->items[0].name);
 		if (property->type == INDIGO_TEXT_VECTOR) {
 			INDIGO_COPY_VALUE(context.last_text_value, property->items[0].text.value);
@@ -559,6 +563,57 @@ static void xml_client_adapter_parses_remote_property_events(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
 }
 
+// A server sends an update whose values and state did not change when its bus delivers it, as for an agent relaying an
+// unchanged device update; its adapter then lists no item. The server that receives it must still deliver it to its own
+// clients, as it would deliver the same update of a local device, instead of dropping it as redundant.
+static void xml_client_adapter_delivers_unchanged_remote_updates(void) {
+	char output[8192];
+	reset_context();
+	indigo_uni_handle *handle = NULL;
+	indigo_client *remote = new_output_adapter("build/unit/protocol_xml_unchanged_updates.tmp", &handle);
+	ASSERT_TRUE(remote != NULL);
+	remote->force_item_updates = false;
+	indigo_device device;
+	memset(&device, 0, sizeof(device));
+	INDIGO_COPY_NAME(device.name, TEST_DEVICE_NAME);
+	indigo_property *text = indigo_init_text_property(NULL, TEST_DEVICE_NAME, TEXT_PROPERTY_NAME, "Protocol", "Text", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	ASSERT_TRUE(text != NULL);
+	indigo_init_text_item(text->items, TEXT_ITEM_NAME, "Value", "alpha");
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_device_adapter_define_property(remote, &device, text, NULL));
+	// the same value sent again with its item
+	text->items[0].do_update = true;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_device_adapter_update_property(remote, &device, text, NULL));
+	// the same value without any item, twice
+	text->items[0].do_update = false;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_device_adapter_update_property(remote, &device, text, NULL));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_device_adapter_update_property(remote, &device, text, NULL));
+	indigo_release_property(text);
+	close_output_adapter(remote, &handle);
+	ASSERT_TRUE(read_file("build/unit/protocol_xml_unchanged_updates.tmp", output, sizeof(output)));
+	assert_contains(output, "<setTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' state='Ok'>\n</setTextVector>\n");
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&test_client));
+	indigo_uni_handle *input = indigo_uni_open_file("build/unit/protocol_xml_unchanged_updates.tmp", INDIGO_LOG_NONE);
+	ASSERT_TRUE(input != NULL);
+	indigo_device *adapter = indigo_xml_client_adapter("Protocol Peer", "", input, NULL);
+	ASSERT_TRUE(adapter != NULL);
+	adapter->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(adapter));
+	reset_context();
+	indigo_xml_parse(adapter, NULL);
+	indigo_uni_close(&input);
+	((indigo_adapter_context *)adapter->device_context)->input = NULL;
+	ASSERT_EQ_INT(1, context.define_count);
+	ASSERT_EQ_INT(3, context.update_count);
+	// the item sent with the unchanged value stays marked, so that a server resharing the device passes it on
+	ASSERT_EQ_INT(1, context.updated_item_count);
+	ASSERT_STREQ("alpha", context.last_text_value);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(adapter));
+	indigo_release_xml_client_adapter(adapter);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&test_client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+}
+
 // Parses text as the remote server's reply on the adapter's input.
 static void parse_reply(indigo_device *adapter, const char *path, const char *text) {
 	FILE *file = fopen(path, "wb");
@@ -831,6 +886,7 @@ int main(void) {
 		{ "xml_client_adapter_serializes_requests", xml_client_adapter_serializes_requests },
 		{ "xml_parser_routes_change_and_enable_blob_fixtures", xml_parser_routes_change_and_enable_blob_fixtures },
 		{ "xml_client_adapter_parses_remote_property_events", xml_client_adapter_parses_remote_property_events },
+		{ "xml_client_adapter_delivers_unchanged_remote_updates", xml_client_adapter_delivers_unchanged_remote_updates },
 		{ "xml_client_adapter_switches_protocol_with_a_named_request", xml_client_adapter_switches_protocol_with_a_named_request },
 		{ "xml_client_adapter_redefines_property_with_new_values", xml_client_adapter_redefines_property_with_new_values },
 		{ "xml_parser_ignores_malformed_fixture_without_change", xml_parser_ignores_malformed_fixture_without_change }

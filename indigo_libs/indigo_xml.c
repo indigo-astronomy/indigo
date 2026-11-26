@@ -492,7 +492,6 @@ static void set_property(parser_context *context, indigo_property *other, char *
 				for (int j = 0; j < property->count; j++) {
 					indigo_item *property_item = &property->items[j];
 					if (!strcmp(property_item->name, other_item->name)) {
-						property_item->do_update = true;
 						switch (property->type) {
 							case INDIGO_TEXT_VECTOR:
 								indigo_set_text_item_value(property_item, indigo_get_text_item_value(other_item));
@@ -550,10 +549,15 @@ static void set_property(parser_context *context, indigo_property *other, char *
 								}
 								break;
 						}
+						// marked after the copy, because indigo_set_text_item_value() clears the flag of an unchanged text
+						property_item->do_update = true;
 						break;
 					}
 				}
 			}
+			// the remote server sends an update only when its bus delivers it, so it is delivered here too, also when no
+			// item listed (or none at all) changed, as an update of a local device would be
+			property->do_update = true;
 			INDIGO_TRACE_PARSER(indigo_trace("XML Parser: set_property '%s' '%s' %d", property->device, property->name, index));
 			indigo_update_property(context->device, property, *message ? "%s" : NULL, message);
 			break;
