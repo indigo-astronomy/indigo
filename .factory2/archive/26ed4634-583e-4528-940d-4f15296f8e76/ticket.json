@@ -1,0 +1,545 @@
+{
+  "schema_version": 1,
+  "ticket_id": "26ed4634-583e-4528-940d-4f15296f8e76",
+  "revision": 20,
+  "title": "factory: indigo_test/AGENTS.md: document that test binaries and runners use their own checkout's build/lib",
+  "description": "Agent-instruction part of ticket b2c12d5d, split out so that it lands in a separate factory: commit (AGENTS.md is a Factory artifact under the repository commit rules). Land only after b2c12d5d is on master. Apply exactly the reviewed bullet saved in /tmp/claude-1000/-home-rumen-work-indigo-git/629be5ae-c7a6-4969-bd2c-27ae612f2bf9/scratchpad/b2c_agents.patch to the Makefile Rules list of indigo_test/AGENTS.md (after 'Keep test-specific linker flags local and explicit.'). No other change.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-26T21:48:16.101618Z",
+  "status": "closed",
+  "branch": "ticket/26ed4634-583e-4528-940d-4f15296f8e76",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "82ecca41-dd50-4df2-81fb-0e75db99d259",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "8a0c0294-3fc4-43d8-9f97-2c43df3cbdf6",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:57:42.567704Z",
+          "last_activity_at": "2026-11-26T21:58:14.255510Z",
+          "ended_at": "2026-11-26T21:58:14.255510Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 31687.806,
+          "tokens": null
+        },
+        {
+          "attempt_id": "fdce0371-e385-4f1c-a153-76adb1a47581",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:58:51.078171Z",
+          "last_activity_at": "2026-11-26T21:59:16.427368Z",
+          "ended_at": "2026-11-26T21:59:16.427368Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 25349.197,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T21:57:42.567704Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/26ed4634-583e-4528-940d-4f15296f8e76"
+        },
+        {
+          "at": "2026-11-26T21:58:14.255510Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-26T21:58:51.078171Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-26T21:59:16.427368Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 57037.003,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "af5c350c-35f6-454b-b17a-bbdda80c3a53",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-26T21:58:14.255553Z",
+          "last_activity_at": "2026-11-26T21:58:51.078083Z",
+          "ended_at": "2026-11-26T21:58:51.078083Z",
+          "outcome": {
+            "summary": "One accuracy defect in the added bullet (indigo_test/AGENTS.md:322). Its last sentence, 'buildsystem/test_checkout_library.py checks this.', directly follows the Python runner sentence and reads as covering it, but the test does not exercise any Python runner: it only checks that a TEST_LDFLAGS-style binary started directly loads this checkout's libindigo despite a foreign LD_LIBRARY_PATH (test_checkout_library.py:119-124), that indigo_test/Makefile exports this build/lib first in LD_LIBRARY_PATH/DYLD_LIBRARY_PATH (108-117), and that a recipe overrides a foreign path also for a RUNPATH binary (126-136). Nothing inspects run_scheduler_simulators.py or the environment any runner builds. An agent adding a new runner could wrongly assume the convention is enforced. Fix: limit the claim, e.g. 'buildsystem/test_checkout_library.py checks the linking and the Makefile export.' Everything else verified against master: TEST_LDFLAGS carries -Wl,-rpath,$(BUILD_LIB) plus -Wl,--disable-new-dtags on non-Darwin (indigo_test/Makefile:259,266-268), DT_RPATH precedes LD_LIBRARY_PATH, the Makefile exports both variables with BUILD_LIB first (269-270), and run_scheduler_simulators.py:339-340 prepends repo/build/lib to both in the child environment. Placement after 'Keep test-specific linker flags local and explicit.' matches the ticket; English; no contradiction with other rules in the file; diff equals the reviewed patch; commit 72e37b315 is on master.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 36822.53,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1ac339e4-911e-4209-bc2b-bc06e6901183",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:59:16.427397Z",
+          "last_activity_at": "2026-11-26T21:59:44.600400Z",
+          "ended_at": "2026-11-26T21:59:44.600400Z",
+          "outcome": {
+            "summary": "Round 2: the round-1 finding is fixed; the closing sentence now limits buildsystem/test_checkout_library.py to the linking and the Makefile export (tests at lines 108, 120 and 126) and says the runners are not covered. Every statement re-checked against master 72e37b315. indigo_test/Makefile:258 has the TEST_LDFLAGS rpath, :265-267 has --disable-new-dtags except on Darwin (DT_RPATH, searched before LD_LIBRARY_PATH), and :269-270 exports LD_LIBRARY_PATH and DYLD_LIBRARY_PATH with BUILD_LIB first. integration/run_scheduler_simulators.py:338-340 puts repo/build/lib first in both variables for the indigo_server child. The diff adds one line in the Makefile Rules list after 'Keep test-specific linker flags local and explicit.' and changes nothing else. It differs from scratchpad b2c_agents.patch only by the round-1 wording fix. The whitespace check passed. No defects.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 28173.003,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T21:58:14.255553Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T21:58:51.078083Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "One accuracy defect in the added bullet (indigo_test/AGENTS.md:322). Its last sentence, 'buildsystem/test_checkout_library.py checks this.', directly follows the Python runner sentence and reads as covering it, but the test does not exercise any Python runner: it only checks that a TEST_LDFLAGS-style binary started directly loads this checkout's libindigo despite a foreign LD_LIBRARY_PATH (test_checkout_library.py:119-124), that indigo_test/Makefile exports this build/lib first in LD_LIBRARY_PATH/DYLD_LIBRARY_PATH (108-117), and that a recipe overrides a foreign path also for a RUNPATH binary (126-136). Nothing inspects run_scheduler_simulators.py or the environment any runner builds. An agent adding a new runner could wrongly assume the convention is enforced. Fix: limit the claim, e.g. 'buildsystem/test_checkout_library.py checks the linking and the Makefile export.' Everything else verified against master: TEST_LDFLAGS carries -Wl,-rpath,$(BUILD_LIB) plus -Wl,--disable-new-dtags on non-Darwin (indigo_test/Makefile:259,266-268), DT_RPATH precedes LD_LIBRARY_PATH, the Makefile exports both variables with BUILD_LIB first (269-270), and run_scheduler_simulators.py:339-340 prepends repo/build/lib to both in the child environment. Placement after 'Keep test-specific linker flags local and explicit.' matches the ticket; English; no contradiction with other rules in the file; diff equals the reviewed patch; commit 72e37b315 is on master."
+        },
+        {
+          "at": "2026-11-26T21:59:16.427397Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T21:59:44.600400Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2: the round-1 finding is fixed; the closing sentence now limits buildsystem/test_checkout_library.py to the linking and the Makefile export (tests at lines 108, 120 and 126) and says the runners are not covered. Every statement re-checked against master 72e37b315. indigo_test/Makefile:258 has the TEST_LDFLAGS rpath, :265-267 has --disable-new-dtags except on Darwin (DT_RPATH, searched before LD_LIBRARY_PATH), and :269-270 exports LD_LIBRARY_PATH and DYLD_LIBRARY_PATH with BUILD_LIB first. integration/run_scheduler_simulators.py:338-340 puts repo/build/lib first in both variables for the indigo_server child. The diff adds one line in the Makefile Rules list after 'Keep test-specific linker flags local and explicit.' and changes nothing else. It differs from scratchpad b2c_agents.patch only by the round-1 wording fix. The whitespace check passed. No defects."
+        }
+      ],
+      "result": {
+        "summary": "Round 2: the round-1 finding is fixed; the closing sentence now limits buildsystem/test_checkout_library.py to the linking and the Makefile export (tests at lines 108, 120 and 126) and says the runners are not covered. Every statement re-checked against master 72e37b315. indigo_test/Makefile:258 has the TEST_LDFLAGS rpath, :265-267 has --disable-new-dtags except on Darwin (DT_RPATH, searched before LD_LIBRARY_PATH), and :269-270 exports LD_LIBRARY_PATH and DYLD_LIBRARY_PATH with BUILD_LIB first. integration/run_scheduler_simulators.py:338-340 puts repo/build/lib first in both variables for the indigo_server child. The diff adds one line in the Makefile Rules list after 'Keep test-specific linker flags local and explicit.' and changes nothing else. It differs from scratchpad b2c_agents.patch only by the round-1 wording fix. The whitespace check passed. No defects.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 64995.533,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "be01ff67-3c0b-4cdc-bd13-8a989ecaa9da",
+      "event": "ticket/created",
+      "at": "2026-11-26T21:48:16.102524Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "365fb013-ae47-4569-9f21-a2f58e790144",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T21:57:30.984295Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "3f353145-c44a-4488-8c02-42d96f6809f7",
+      "event": "task/progress",
+      "at": "2026-11-26T21:57:42.567795Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "82ecca41-dd50-4df2-81fb-0e75db99d259",
+      "text": "Implementation started on branch ticket/26ed4634-583e-4528-940d-4f15296f8e76"
+    },
+    {
+      "event_id": "8dbcd76d-8ba6-41ff-b24d-dd6e54838ad1",
+      "event": "ticket/started",
+      "at": "2026-11-26T21:57:42.568544Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/26ed4634-583e-4528-940d-4f15296f8e76",
+      "base": "master"
+    },
+    {
+      "event_id": "2589b705-ae13-4ace-988e-09c4de0db315",
+      "event": "task/progress",
+      "at": "2026-11-26T21:57:55.003264Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "82ecca41-dd50-4df2-81fb-0e75db99d259",
+      "text": "Applied the reviewed AGENTS.md bullet split out of b2c12d5d (coordinator)"
+    },
+    {
+      "event_id": "08d7d6f9-7eaf-417c-8a64-07864ea4a21c",
+      "event": "task/progress",
+      "at": "2026-11-26T21:57:56.113205Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "82ecca41-dd50-4df2-81fb-0e75db99d259",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d5805f6a-50b5-464a-a9e7-d33a64260776",
+      "event": "task/progress",
+      "at": "2026-11-26T21:57:56.128523Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "82ecca41-dd50-4df2-81fb-0e75db99d259",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "12492703-b1f2-4dbb-a8dd-9f5eb4427f97",
+      "event": "check/passed",
+      "at": "2026-11-26T21:57:56.139929Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "1af9eddf69cb71583305fc241e0d83cc8af763e6",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "c4b48abf-108e-46de-b726-651a95adfee8",
+      "event": "task/progress",
+      "at": "2026-11-26T21:58:14.255621Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b868387b-7d3f-49a2-8040-c1a7a4ba071e",
+      "event": "review/started",
+      "at": "2026-11-26T21:58:14.256509Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "4e4c5533-3e64-48a2-8f3f-b4b6c5a4dd7d",
+      "event": "task/progress",
+      "at": "2026-11-26T21:58:14.457992Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "text": "Reviewer launched",
+      "attempt_id": "af5c350c-35f6-454b-b17a-bbdda80c3a53",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "08a2977a-a75d-4408-a779-d05cb5ddfa03",
+      "event": "task/progress",
+      "at": "2026-11-26T21:58:23.274095Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "text": "Reviewing AGENTS.md bullet against master's Makefile and runners",
+      "attempt_id": "af5c350c-35f6-454b-b17a-bbdda80c3a53",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "22e80add-b583-45ef-9d3a-8408d1259be9",
+      "event": "task/progress",
+      "at": "2026-11-26T21:58:51.078162Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "2a0e945f-4c35-47d6-b551-44ff915a4329",
+      "event": "task/progress",
+      "at": "2026-11-26T21:58:51.078199Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "82ecca41-dd50-4df2-81fb-0e75db99d259",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "deddac2b-a01c-4eb3-afa1-a93c47bad6e3",
+      "event": "review/changes_requested",
+      "at": "2026-11-26T21:58:51.078806Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "1af9eddf69cb71583305fc241e0d83cc8af763e6"
+    },
+    {
+      "event_id": "c22a2d7f-5d73-4ca4-b8e5-1af409dec527",
+      "event": "task/progress",
+      "at": "2026-11-26T21:59:05.512139Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "82ecca41-dd50-4df2-81fb-0e75db99d259",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b468f9f3-0631-4949-90c0-2e2efa3f702f",
+      "event": "task/progress",
+      "at": "2026-11-26T21:59:05.553076Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "82ecca41-dd50-4df2-81fb-0e75db99d259",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7ce2f374-5b99-41ae-bed0-83fcedbad377",
+      "event": "check/passed",
+      "at": "2026-11-26T21:59:05.594192Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "1e16c4188fcd5743fb7b4d29b22d80c5a4783b8a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a79f871a-091e-464f-a1b9-67c86b952a8b",
+      "event": "task/progress",
+      "at": "2026-11-26T21:59:16.427492Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "21857971-69da-4026-b1c0-d89d753bc168",
+      "event": "review/started",
+      "at": "2026-11-26T21:59:16.428235Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "7c875dc0-048e-450f-9a54-ea89d7c725dd",
+      "event": "task/progress",
+      "at": "2026-11-26T21:59:16.676467Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "text": "Reviewer launched, round 2",
+      "attempt_id": "1ac339e4-911e-4209-bc2b-bc06e6901183",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "208816fd-420c-45c5-babe-ba6feb1be12d",
+      "event": "task/progress",
+      "at": "2026-11-26T21:59:25.255385Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "text": "Round 2 review: re-checking AGENTS.md bullet against master sources",
+      "attempt_id": "1ac339e4-911e-4209-bc2b-bc06e6901183",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a55532d3-84d6-4866-a9d7-1200b6c862d6",
+      "event": "task/progress",
+      "at": "2026-11-26T21:59:44.600482Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "ecd38c85-ac26-494c-8202-37e3a2ecde80",
+      "event": "review/passed",
+      "at": "2026-11-26T21:59:44.601167Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d6947394-c294-4aa9-82b8-95de977f21a2",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "1e16c4188fcd5743fb7b4d29b22d80c5a4783b8a"
+    },
+    {
+      "event_id": "c30929c8-c6eb-4524-9b33-b2141bd48830",
+      "event": "ticket/closed",
+      "at": "2026-11-26T22:17:04.232062Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T22:17:04.232030Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "f9459fd488013205db1adc38c3aefa6b7c8b264e"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "1af9eddf69cb71583305fc241e0d83cc8af763e6",
+        "tree": "7a45e79f2f51d258db580aa81833c98c98a9eec0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:57:56.127767Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/26ed4634-583e-4528-940d-4f15296f8e76/7a45e79f2f51-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "1e16c4188fcd5743fb7b4d29b22d80c5a4783b8a",
+        "tree": "0df7ba8332830df6031b3ec09ae27def57b372e7",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:59:05.552111Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/26ed4634-583e-4528-940d-4f15296f8e76/0df7ba833283-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "One accuracy defect in the added bullet (indigo_test/AGENTS.md:322). Its last sentence, 'buildsystem/test_checkout_library.py checks this.', directly follows the Python runner sentence and reads as covering it, but the test does not exercise any Python runner: it only checks that a TEST_LDFLAGS-style binary started directly loads this checkout's libindigo despite a foreign LD_LIBRARY_PATH (test_checkout_library.py:119-124), that indigo_test/Makefile exports this build/lib first in LD_LIBRARY_PATH/DYLD_LIBRARY_PATH (108-117), and that a recipe overrides a foreign path also for a RUNPATH binary (126-136). Nothing inspects run_scheduler_simulators.py or the environment any runner builds. An agent adding a new runner could wrongly assume the convention is enforced. Fix: limit the claim, e.g. 'buildsystem/test_checkout_library.py checks the linking and the Makefile export.' Everything else verified against master: TEST_LDFLAGS carries -Wl,-rpath,$(BUILD_LIB) plus -Wl,--disable-new-dtags on non-Darwin (indigo_test/Makefile:259,266-268), DT_RPATH precedes LD_LIBRARY_PATH, the Makefile exports both variables with BUILD_LIB first (269-270), and run_scheduler_simulators.py:339-340 prepends repo/build/lib to both in the child environment. Placement after 'Keep test-specific linker flags local and explicit.' matches the ticket; English; no contradiction with other rules in the file; diff equals the reviewed patch; commit 72e37b315 is on master.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "1af9eddf69cb71583305fc241e0d83cc8af763e6",
+        "tree": "7a45e79f2f51d258db580aa81833c98c98a9eec0",
+        "at": "2026-11-26T21:58:51.078055Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2: the round-1 finding is fixed; the closing sentence now limits buildsystem/test_checkout_library.py to the linking and the Makefile export (tests at lines 108, 120 and 126) and says the runners are not covered. Every statement re-checked against master 72e37b315. indigo_test/Makefile:258 has the TEST_LDFLAGS rpath, :265-267 has --disable-new-dtags except on Darwin (DT_RPATH, searched before LD_LIBRARY_PATH), and :269-270 exports LD_LIBRARY_PATH and DYLD_LIBRARY_PATH with BUILD_LIB first. integration/run_scheduler_simulators.py:338-340 puts repo/build/lib first in both variables for the indigo_server child. The diff adds one line in the Makefile Rules list after 'Keep test-specific linker flags local and explicit.' and changes nothing else. It differs from scratchpad b2c_agents.patch only by the round-1 wording fix. The whitespace check passed. No defects.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "1e16c4188fcd5743fb7b4d29b22d80c5a4783b8a",
+        "tree": "0df7ba8332830df6031b3ec09ae27def57b372e7",
+        "at": "2026-11-26T21:59:44.600373Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "f9459fd488013205db1adc38c3aefa6b7c8b264e",
+      "tree": "0df7ba8332830df6031b3ec09ae27def57b372e7",
+      "base": "master",
+      "at": "2026-11-26T22:17:04.151872Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-26T21:48:16.101618Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T21:57:30.984219Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 122032.536,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 33,
+    "sha256": "833fb74b82658c4373d614627ef542c1ffcd1c9be008f3fefff7fdf2a8cee01c"
+  }
+}
