@@ -222,6 +222,9 @@ def main():
 	drivers = ["agent_scripting", "agent_imager", "agent_mount", "agent_guider", "agent_config", "agent_platesolver", "ccd_simulator", "mount_simulator", "dome_simulator", "gps_simulator", "rotator_simulator"]
 	command = [str(repo / "build/bin/indigo_server"), "--", "-p", str(port), "-b-", "-c-", "-w-", "-a", str(acl)]
 	env = dict(os.environ, HOME=str(home), INDIGO_CACHE_BASE=str(home / ".indigo"))
+	# the library of this checkout, also when the environment points at another build
+	for variable in ("LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
+		env[variable] = os.pathsep.join([str(repo / "build/lib")] + ([env[variable]] if env.get(variable) else []))
 	metadata = {"command": command, "cwd": str(repo), "indexes": copied, "output": str(output), "source_revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip()}
 	metadata["source_sha256"] = {str(p.relative_to(repo)): hashlib.sha256(p.read_bytes()).hexdigest() for p in (Path(__file__).resolve(), Path(__file__).with_name("sequencer_simulators.js"), repo / "indigo_drivers/agent_scripting/library/Sequencer.js")}
 	process = None

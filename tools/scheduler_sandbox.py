@@ -537,6 +537,9 @@ def main():
 	if args.simulators:
 		drivers += ["indigo_agent_imager", "indigo_agent_guider", "indigo_ccd_simulator", "indigo_mount_simulator"]
 	environment = dict(os.environ, HOME=str(directory / "home"), INDIGO_CACHE_BASE=str(directory / "home/.indigo"))
+	# the library of this checkout, also when the environment points at another build
+	for variable in ("LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
+		environment[variable] = os.pathsep.join([str(REPOSITORY / "build/lib")] + ([environment[variable]] if environment.get(variable) else []))
 	log = (directory / "server.log").open("w")
 	process = None
 	client = None

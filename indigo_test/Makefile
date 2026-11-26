@@ -257,6 +257,17 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 # Without this every test that includes the header fails to compile on Linux.
 TEST_CFLAGS = $(CFLAGS) -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include
 TEST_LDFLAGS = $(LDFLAGS) -Wl,-rpath,$(BUILD_LIB) -lindigo -lm -lpthread
+# Tests run against the build of the checkout that contains them, also when the caller's
+# LD_LIBRARY_PATH or DYLD_LIBRARY_PATH points at another checkout, such as the primary one
+# seen from a Factory worktree. On Linux the rpath is stored as DT_RPATH, which the loader
+# searches before LD_LIBRARY_PATH (DT_RUNPATH, the default, comes after it), so a test binary
+# finds this build/lib however it is started. Every recipe also gets this build/lib first in
+# both variables, for indigo_server, the tools and the drivers that the runners start.
+ifneq ($(OS_DETECTED),Darwin)
+TEST_LDFLAGS += -Wl,--disable-new-dtags
+endif
+export LD_LIBRARY_PATH := $(BUILD_LIB)$(if $(LD_LIBRARY_PATH),:$(LD_LIBRARY_PATH))
+export DYLD_LIBRARY_PATH := $(BUILD_LIB)$(if $(DYLD_LIBRARY_PATH),:$(DYLD_LIBRARY_PATH))
 # A test that compiles indigo_driver.c itself links the serial port scan, which uses libudev on Linux only.
 FRAMEWORK_TEST_LDFLAGS = $(TEST_LDFLAGS) -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),,-ludev)
 CCD_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_ccd_simulator.a $(TEST_LDFLAGS) -lindigocat

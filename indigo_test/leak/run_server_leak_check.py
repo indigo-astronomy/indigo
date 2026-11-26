@@ -96,6 +96,9 @@ class Server:
 		self.prop_tool = str(root / "build/bin/indigo_prop_tool")
 		self.port = port
 		self.environment = dict(os.environ, HOME=str(home))
+		# the library of this checkout, also when the environment points at another build
+		for variable in ("LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
+			self.environment[variable] = os.pathsep.join([str(root / "build/lib")] + ([self.environment[variable]] if self.environment.get(variable) else []))
 		# --do-not-fork: by default the server runs in a child it supervises, and both processes would write one report.
 		# --keep-debuginfo: the drivers are unloaded at shutdown, before Valgrind names the frames of the leaks.
 		command = ["valgrind", "--tool=memcheck", "--leak-check=full", "--show-leak-kinds=definite,indirect,possible", "--num-callers=40", "--keep-debuginfo=yes", "--xml=yes", "--xml-file=" + str(xml_path), str(root / "build/bin/indigo_server"), "--do-not-fork", "-p", str(port)] + DRIVERS

@@ -335,6 +335,9 @@ def main():
 	drivers = ["agent_scripting", "agent_scheduler", "agent_imager", "agent_mount", "agent_guider", "agent_auxiliary", "ccd_simulator", "mount_simulator", "aux_simulator"]
 	command = [str(repo / "build/bin/indigo_server"), "--", "-p", str(port), "-b-", "-c-", "-w-"] + ([os.environ.get("INDIGO_TEST_DEBUG")] if os.environ.get("INDIGO_TEST_DEBUG") else [])
 	env = dict(os.environ, HOME=str(home), INDIGO_CACHE_BASE=str(home / ".indigo"))
+	# the library of this checkout, also when the environment points at another build
+	for variable in ("LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
+		env[variable] = os.pathsep.join([str(repo / "build/lib")] + ([env[variable]] if env.get(variable) else []))
 	process = None
 	client = None
 	run = None

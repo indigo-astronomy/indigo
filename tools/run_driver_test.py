@@ -416,6 +416,9 @@ def main():
 	handle, results = tempfile.mkstemp(prefix="indigo-test-results.", suffix=".txt")
 	os.close(handle)
 	env = dict(os.environ, INDIGO_TEST_RESULTS=results)
+	# the library of this checkout, also when the environment points at another build
+	for variable in ("LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
+		env[variable] = os.pathsep.join([os.path.join(ROOT, "build", "lib")] + ([env[variable]] if env.get(variable) else []))
 	# Every hardware suite falls back to these when its own variable, such as MOUNT_PMC8_HW_PORT, is not set.
 	if args.port:
 		env["INDIGO_TEST_PORT"] = args.port
