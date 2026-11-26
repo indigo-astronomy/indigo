@@ -1275,6 +1275,7 @@
 		1DD24DE680C3E763067271B0 /* build_ftdi_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_ftdi_macos.sh; sourceTree = "<group>"; };
 		1FFB7311819711838181A2E5 /* template.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = template.md; sourceTree = "<group>"; };
 		275307178DD598D6193D6713 /* run_scheduler_simulators.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_scheduler_simulators.py; sourceTree = "<group>"; };
+		5A1C2E7F4B3D9A0611E2C001 /* run_scheduler_two_servers.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_scheduler_two_servers.py; sourceTree = "<group>"; };
 		28279F7A850321D8E31D1F6D /* alto_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = alto_simulator.c; sourceTree = "<group>"; };
 		5C3E71A0D4B94F2A8E10B6C7 /* test_ccd_fits_header.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_fits_header.c; sourceTree = "<group>"; };
 		2A58B98529C1E22A09B86319 /* test_rgb48.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rgb48.c; sourceTree = "<group>"; };
@@ -14475,6 +14476,7 @@
 				C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */,
 				C0DE20261105B00100000001 /* run_sequencer_simulators.py */,
 				275307178DD598D6193D6713 /* run_scheduler_simulators.py */,
+				5A1C2E7F4B3D9A0611E2C001 /* run_scheduler_two_servers.py */,
 				C0DE20261105B00100000002 /* sequencer_simulators.js */,
 				C0DE20261105B00100000003 /* sequencer_simulators.md */,
 				5907ACE5301E93D30009AA99 /* test_ao_sx_simulator.c */,

@@ -2669,6 +2669,18 @@ $(INTEGRATION_BUILD)/test_agent_scheduler_simulators: integration/run_scheduler_
 	printf '%s\n' '#!/bin/sh' 'exec python3 "$$(dirname "$$0")/../../integration/run_scheduler_simulators.py" "$$@"' > $@
 	chmod +x $@
 
+# Opt-in two-server stress: the Scheduler Agent in one private indigo_server drives the Scripting and Imager agents and the CCD simulator
+# in a second one through the remote-server link, which the test cuts and restores; SCHEDULER_TWO_SERVERS_TOPOLOGY selects one topology.
+.PHONY: test-scheduler-two-servers
+test-scheduler-two-servers:
+	python3 integration/run_scheduler_two_servers.py $(SCHEDULER_ARGS)
+
+OPT_IN_DRIVER_TESTS += $(INTEGRATION_BUILD)/test_agent_scheduler_two_servers
+
+$(INTEGRATION_BUILD)/test_agent_scheduler_two_servers: integration/run_scheduler_two_servers.py integration/run_scheduler_simulators.py | $(INTEGRATION_BUILD)
+	printf '%s\n' '#!/bin/sh' 'exec python3 "$$(dirname "$$0")/../../integration/run_scheduler_two_servers.py" "$$@"' > $@
+	chmod +x $@
+
 .PHONY: test-scheduler-sandbox
 # opt-in: one night of the scheduler in a private server through the hand-testing tool
 test-scheduler-sandbox: check-lib
