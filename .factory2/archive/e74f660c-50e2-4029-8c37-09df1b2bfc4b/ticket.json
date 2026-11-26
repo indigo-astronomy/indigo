@@ -1,0 +1,415 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e74f660c-50e2-4029-8c37-09df1b2bfc4b",
+  "revision": 17,
+  "title": "indigo_test: restore the visibility_kept_only_with_starts fixture, the scheduler planner was right",
+  "description": "indigo_test/build/unit/test_agent_scheduler_plan fails deterministically (3 of 3, also on the primary checkout build of master 019d3297a) in visibility_kept_only_with_starts (indigo_test/unit/test_agent_scheduler_plan.c:1369); all other cases pass. Inputs are fixed timestamps and a fixed random seed, so this is a regression or a broken test assumption, not flakiness. It blocks flow check 'unit' for every ticket.\n\nFind which assertion fails and which commit introduced it (likely one of the recent scheduler commits, e.g. 33d9b31f2, 180a306ce or the plan changes before them). Decide from the plan semantics documented in indigo_drivers/agent_scheduler/doc/SCHEDULER.md whether the planner or the test is wrong, fix that, and explain the decision in the ticket. Do not weaken the assertion without justification.\n\nReplaces sub-ticket bba375f4, so that this fix lands on master as its own commit (owner asked for separate commits). The change is bba375f4's, ported unchanged: the fixture of visibility_kept_only_with_starts is restored to its version before 7468290a9 (39th queue, now + 3009); see bba375f4's notes for the bisect and the decision.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-26T20:37:13.071253Z",
+  "status": "closed",
+  "branch": "ticket/e74f660c-50e2-4029-8c37-09df1b2bfc4b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "4888b8f8-6726-4913-b6c1-ce8c0fec4790",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "03b3aa9b-f1ae-4587-b45b-4abf95c6cd75",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T20:37:24.016226Z",
+          "last_activity_at": "2026-11-26T20:41:16.195088Z",
+          "ended_at": "2026-11-26T20:41:16.195088Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 232178.862,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T20:37:24.016226Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/e74f660c-50e2-4029-8c37-09df1b2bfc4b"
+        },
+        {
+          "at": "2026-11-26T20:41:16.195088Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 232178.862,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "9adc5376-5adb-4747-b03c-fb048301a54d",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "1c478dd2-cf5d-4da8-ae9a-c34bb9606505",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "low"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T20:41:16.195136Z",
+          "last_activity_at": "2026-11-26T20:46:04.757149Z",
+          "ended_at": "2026-11-26T20:46:04.757149Z",
+          "outcome": {
+            "summary": "Pass. Diff restores the 7468290a9^ fixture of visibility_kept_only_with_starts (indigo_test/unit/test_agent_scheduler_plan.c:1368,1375,1388); assertions unchanged, epoch fix in sky.c kept. Independent clean build (git archive of the ticket branch into scratch, libindigo + agent_platesolver/scheduler/system_alpaca from scratch, LD_LIBRARY_PATH unset): plan suite 49/49 PASS. Instrumented copies: 39th queue/now+3009 -> with starts: PLANNED, J 551.745 < COMPACT 554.073, 4/4 same runs (kept); as order only: J 582.312 > COMPACT, first start moves +574 s -> +4774 s, runs differ (replaced). So the test is not vacuous and exercises exactly the documented SCHEDULER.md contract. 67th queue/now+13183 on the same clean build: J 175.865 > COMPACT 117.250, 1 run vs 2 previous -> FAIL, confirming the 7468290a9 fixture is wrong against committed code (no later commit touches plan/sky numerics; 33d9b31f2's indigo_libs change is names.h only). Planner is correct; test fixture was wrong. Nothing weakened; 7468290a9's intended epoch fix and its sky unit test are untouched. Note (non-blocking): the fixture is knife-edge by construction (margin ~2.3 of ~552), so a future numeric change in plan/sky may again require re-deriving it from a clean build.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 288562.013,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T20:41:16.195136Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T20:46:04.757149Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Diff restores the 7468290a9^ fixture of visibility_kept_only_with_starts (indigo_test/unit/test_agent_scheduler_plan.c:1368,1375,1388); assertions unchanged, epoch fix in sky.c kept. Independent clean build (git archive of the ticket branch into scratch, libindigo + agent_platesolver/scheduler/system_alpaca from scratch, LD_LIBRARY_PATH unset): plan suite 49/49 PASS. Instrumented copies: 39th queue/now+3009 -> with starts: PLANNED, J 551.745 < COMPACT 554.073, 4/4 same runs (kept); as order only: J 582.312 > COMPACT, first start moves +574 s -> +4774 s, runs differ (replaced). So the test is not vacuous and exercises exactly the documented SCHEDULER.md contract. 67th queue/now+13183 on the same clean build: J 175.865 > COMPACT 117.250, 1 run vs 2 previous -> FAIL, confirming the 7468290a9 fixture is wrong against committed code (no later commit touches plan/sky numerics; 33d9b31f2's indigo_libs change is names.h only). Planner is correct; test fixture was wrong. Nothing weakened; 7468290a9's intended epoch fix and its sky unit test are untouched. Note (non-blocking): the fixture is knife-edge by construction (margin ~2.3 of ~552), so a future numeric change in plan/sky may again require re-deriving it from a clean build."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Diff restores the 7468290a9^ fixture of visibility_kept_only_with_starts (indigo_test/unit/test_agent_scheduler_plan.c:1368,1375,1388); assertions unchanged, epoch fix in sky.c kept. Independent clean build (git archive of the ticket branch into scratch, libindigo + agent_platesolver/scheduler/system_alpaca from scratch, LD_LIBRARY_PATH unset): plan suite 49/49 PASS. Instrumented copies: 39th queue/now+3009 -> with starts: PLANNED, J 551.745 < COMPACT 554.073, 4/4 same runs (kept); as order only: J 582.312 > COMPACT, first start moves +574 s -> +4774 s, runs differ (replaced). So the test is not vacuous and exercises exactly the documented SCHEDULER.md contract. 67th queue/now+13183 on the same clean build: J 175.865 > COMPACT 117.250, 1 run vs 2 previous -> FAIL, confirming the 7468290a9 fixture is wrong against committed code (no later commit touches plan/sky numerics; 33d9b31f2's indigo_libs change is names.h only). Planner is correct; test fixture was wrong. Nothing weakened; 7468290a9's intended epoch fix and its sky unit test are untouched. Note (non-blocking): the fixture is knife-edge by construction (margin ~2.3 of ~552), so a future numeric change in plan/sky may again require re-deriving it from a clean build.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 288562.013,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "91e66aaf-cfec-4c75-bea2-cbc304ca6fb1",
+      "event": "ticket/created",
+      "at": "2026-11-26T20:37:13.071936Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "f65c6030-ca53-43a5-80d1-ea268e046e9e",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T20:37:13.204960Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "9b711336-a354-4d18-a3d4-05266e0ebf95",
+      "event": "task/progress",
+      "at": "2026-11-26T20:37:24.016330Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4888b8f8-6726-4913-b6c1-ce8c0fec4790",
+      "text": "Implementation started on branch ticket/e74f660c-50e2-4029-8c37-09df1b2bfc4b"
+    },
+    {
+      "event_id": "e0851eb7-0a40-4a1c-9885-cf2157edc705",
+      "event": "ticket/started",
+      "at": "2026-11-26T20:37:24.017195Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/e74f660c-50e2-4029-8c37-09df1b2bfc4b",
+      "base": "master"
+    },
+    {
+      "event_id": "08c4434e-4f72-4785-86de-dd15f51d1745",
+      "event": "task/progress",
+      "at": "2026-11-26T20:37:25.042691Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4888b8f8-6726-4913-b6c1-ce8c0fec4790",
+      "text": "Ported the reviewed-to-be change of superseded sub-ticket bba375f4 unchanged (coordinator)"
+    },
+    {
+      "event_id": "041493e0-9c2e-4261-9f2e-f6620f2ea189",
+      "event": "task/progress",
+      "at": "2026-11-26T20:37:31.469436Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4888b8f8-6726-4913-b6c1-ce8c0fec4790",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "01e943cf-284f-415d-b9d3-b2d832539183",
+      "event": "task/progress",
+      "at": "2026-11-26T20:37:31.489542Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4888b8f8-6726-4913-b6c1-ce8c0fec4790",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6ceec3bb-1d71-49e6-af52-a85abc7ad4a8",
+      "event": "task/progress",
+      "at": "2026-11-26T20:37:31.495704Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4888b8f8-6726-4913-b6c1-ce8c0fec4790",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "7aaeffe8-7361-4f7c-8d96-95c9b5eb9269",
+      "event": "task/progress",
+      "at": "2026-11-26T20:41:02.087077Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "4888b8f8-6726-4913-b6c1-ce8c0fec4790",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "7a47f03e-b51a-4c42-89f2-155061ab8830",
+      "event": "check/passed",
+      "at": "2026-11-26T20:41:02.091941Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "464aaa05c120157a0bcf9f1c522ed20d73db8571",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "8fcacdf3-3e80-441a-8e39-111b39077dd2",
+      "event": "task/progress",
+      "at": "2026-11-26T20:41:16.195218Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9adc5376-5adb-4747-b03c-fb048301a54d",
+      "text": "Review started"
+    },
+    {
+      "event_id": "80d2a375-9e39-410a-b9ec-1a240cb7f61b",
+      "event": "review/started",
+      "at": "2026-11-26T20:41:16.195886Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "dd8f7217-4c3a-4655-945f-6047e43fdf01",
+      "event": "task/progress",
+      "at": "2026-11-26T20:41:16.395282Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9adc5376-5adb-4747-b03c-fb048301a54d",
+      "text": "Reviewer launched",
+      "attempt_id": "1c478dd2-cf5d-4da8-ae9a-c34bb9606505",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f9183d32-938e-4139-ba52-9df964c99eeb",
+      "event": "task/progress",
+      "at": "2026-11-26T20:41:26.094273Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9adc5376-5adb-4747-b03c-fb048301a54d",
+      "text": "Reviewer started: reading diff and 7468290a9",
+      "attempt_id": "1c478dd2-cf5d-4da8-ae9a-c34bb9606505",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "low"
+      }
+    },
+    {
+      "event_id": "211c08f5-005d-48db-abd5-60d2b2af0dad",
+      "event": "task/progress",
+      "at": "2026-11-26T20:42:24.476034Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9adc5376-5adb-4747-b03c-fb048301a54d",
+      "text": "Clean scratch build of the ticket tree to run the plan unit suite"
+    },
+    {
+      "event_id": "8b759625-9f6a-4d09-b8cd-42fdf838004e",
+      "event": "task/progress",
+      "at": "2026-11-26T20:46:04.757225Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9adc5376-5adb-4747-b03c-fb048301a54d",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "035b9f79-b5d1-4fe5-b335-67362913c089",
+      "event": "review/passed",
+      "at": "2026-11-26T20:46:04.757841Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "9adc5376-5adb-4747-b03c-fb048301a54d",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "464aaa05c120157a0bcf9f1c522ed20d73db8571"
+    },
+    {
+      "event_id": "7a861807-55f1-40f0-a5e1-d808aacf8999",
+      "event": "ticket/title_changed",
+      "at": "2026-11-26T21:06:39.373480Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: unit test test_agent_scheduler_plan/visibility_kept_only_with_starts fails on master",
+      "title": "indigo_test: restore the visibility_kept_only_with_starts fixture, the scheduler planner was right"
+    },
+    {
+      "event_id": "ef82c160-adc1-4333-9509-1fd2df15b8b8",
+      "event": "ticket/closed",
+      "at": "2026-11-26T21:06:39.882827Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T21:06:39.882798Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "8d231e72e66013d110a4e582cb88603df32c349a"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "464aaa05c120157a0bcf9f1c522ed20d73db8571",
+        "tree": "6d06b9b4dc841841c5f8a0800f027ed1e5d031c0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T20:37:31.488780Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/e74f660c-50e2-4029-8c37-09df1b2bfc4b/6d06b9b4dc84-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "464aaa05c120157a0bcf9f1c522ed20d73db8571",
+        "tree": "6d06b9b4dc841841c5f8a0800f027ed1e5d031c0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T20:41:02.086333Z",
+        "duration_s": 210.6,
+        "log": "/tmp/factory-flow/e74f660c-50e2-4029-8c37-09df1b2bfc4b/6d06b9b4dc84-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Diff restores the 7468290a9^ fixture of visibility_kept_only_with_starts (indigo_test/unit/test_agent_scheduler_plan.c:1368,1375,1388); assertions unchanged, epoch fix in sky.c kept. Independent clean build (git archive of the ticket branch into scratch, libindigo + agent_platesolver/scheduler/system_alpaca from scratch, LD_LIBRARY_PATH unset): plan suite 49/49 PASS. Instrumented copies: 39th queue/now+3009 -> with starts: PLANNED, J 551.745 < COMPACT 554.073, 4/4 same runs (kept); as order only: J 582.312 > COMPACT, first start moves +574 s -> +4774 s, runs differ (replaced). So the test is not vacuous and exercises exactly the documented SCHEDULER.md contract. 67th queue/now+13183 on the same clean build: J 175.865 > COMPACT 117.250, 1 run vs 2 previous -> FAIL, confirming the 7468290a9 fixture is wrong against committed code (no later commit touches plan/sky numerics; 33d9b31f2's indigo_libs change is names.h only). Planner is correct; test fixture was wrong. Nothing weakened; 7468290a9's intended epoch fix and its sky unit test are untouched. Note (non-blocking): the fixture is knife-edge by construction (margin ~2.3 of ~552), so a future numeric change in plan/sky may again require re-deriving it from a clean build.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "464aaa05c120157a0bcf9f1c522ed20d73db8571",
+        "tree": "6d06b9b4dc841841c5f8a0800f027ed1e5d031c0",
+        "at": "2026-11-26T20:46:04.757122Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "8d231e72e66013d110a4e582cb88603df32c349a",
+      "tree": "6d06b9b4dc841841c5f8a0800f027ed1e5d031c0",
+      "base": "master",
+      "at": "2026-11-26T21:06:39.782965Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-26T20:37:13.071253Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T20:37:13.204922Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 520740.875,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 23,
+    "sha256": "7c64c8fa6332e682455afb2884c51dd133d437e2abcaa3159518ef82c5eb0086"
+  }
+}
