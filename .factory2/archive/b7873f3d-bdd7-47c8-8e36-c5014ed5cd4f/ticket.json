@@ -1,0 +1,1530 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f",
+  "revision": 81,
+  "title": "indigo_agent_scheduler: configurable agents and ownership of the sequencer while the scheduler runs",
+  "description": "Problem: indigo_agent_scheduler hard-codes the agent names (indigo_agent_scheduler.c: SCRIPTING_AGENT, IMAGER_AGENT, MOUNT_AGENT, GUIDER_AGENT, AUX_AGENT; solver busy bit only for \"Astrometry Agent\"/\"Platesolver Agent\", not \"ASTAP Agent\"). It uses them for the Sequencer.js library and task scripts, FITS context (apply_context/restore_context), site coordinates for planning, AGENT_AUX_SAFETY, busy tracking (agent_busy_bit) and abort (send_abort). Sequencer.js selects its agents per sequence (start(imager, mount, guider), select_*_agent() steps, automatic solver choice) and does not publish them. Setups with other agent names (e.g. remote 'Imager Agent @ host') therefore get wrong busy tracking, abort, safety, site and FITS context.\n\nAgreed design (owner, 2026-11-26):\n1. Scheduler configuration: a new saved property (e.g. AGENT_SCHEDULER_AGENTS) with the scripting, imager, mount, guider and aux agents and an optional solver; defaults are today's names, so existing setups do not change. All scheduler uses of agent names (planning site, safety, FITS context, busy tracking, abort, library loading and script runs) take them from this property instead of the #defines. Busy tracking recognises the configured or automatically selected solver, including ASTAP Agent.\n2. Takeover: from scheduler Start to Stop, including idle and standby periods, the scheduler owns the sequencer. It sets a global owner object in Sequencer.js on the configured Scripting Agent (owner name and agents), kept across library reloads like the running sequence and the flip, and published read-only on the Scripting Agent (e.g. SEQUENCER_OWNER) so clients can show that the sequencer is under scheduler control. The scheduler releases it on stop, abort, finish of the run, disconnect and detach.\n3. Under the lock, the agents passed to start() and select_*_agent() steps are ignored: the configured agents are used and a warning naming the requested and the configured agent is sent (once per sequence from start(); select_*_agent() only warns and continues). The meridian flip uses the owner's agents too.\n4. Under the lock, a sequence not started by the scheduler is refused with a message naming the owner. The scheduler grants a one-shot permit in each task or hook script it runs (consumed by the next start() of that script).\n5. The lock is cooperative (any script on the Scripting Agent could clear it); this is accepted.\n\nWork: Sequencer.js (+ regenerate the embedded copies Sequencer.js.dat in agent_scheduler and indigo_server/resource/Sequencer.js.data as the build expects), indigo_agent_scheduler.c, version bumps of both agents, indigo_docs/PROPERTIES.md, INDIGO_SCHEDULER_GUIDE.md, agent_scripting/library/Sequencer.md and the MCP agent docs for the scheduler and sequencer. Tests in indigo_test/integration (test_agent_scheduler.c, test_agent_scripting_sequencer.c): non-default agent names, lock held across idle periods, ignored agents with warning, refused foreign sequence, flip under the lock, release on stop/abort/detach, library reload keeps the owner.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-26T08:29:07.341426Z",
+  "status": "closed",
+  "branch": "ticket/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "88ae386c-d311-48d6-aafe-dc4a8a884bf6",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T08:31:35.561443Z",
+          "last_activity_at": "2026-11-26T10:27:58.985248Z",
+          "ended_at": "2026-11-26T10:27:58.985248Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 6983423.805,
+          "tokens": null
+        },
+        {
+          "attempt_id": "d0fa88bd-fc32-4a0f-9657-f19b2bb14723",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T10:39:09.520261Z",
+          "last_activity_at": "2026-11-26T11:00:19.571261Z",
+          "ended_at": "2026-11-26T11:00:19.571261Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1270051.0,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T08:31:35.561443Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f"
+        },
+        {
+          "at": "2026-11-26T10:27:58.985248Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-26T10:39:09.520261Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-26T11:00:19.571261Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 8253474.805,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "title": "Design",
+      "type": "planning",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "763b7c01-4435-4875-b973-ba5766b5fafc",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-26T08:31:41.015272Z",
+          "last_activity_at": "2026-11-26T09:10:14.603607Z",
+          "ended_at": "2026-11-26T09:10:14.603607Z",
+          "outcome": {
+            "summary": "Revise: the lock applies only to changing agents. Remove the permit and the refusal of sequences not started by the scheduler; keep the owner's agents enforced for every start(), select_*_agent() and the flip. Existing tests that start sequences by hand should then not need changes.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2313588.335,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ef826378-91a7-4aa1-9fe7-3e900412289f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-26T09:23:34.425462Z",
+          "last_activity_at": "2026-11-26T09:23:34.425480Z",
+          "ended_at": "2026-11-26T09:23:34.425480Z",
+          "outcome": {
+            "summary": "Revise per owner decisions note: per-role ONE_OF_MANY agent selection from agents on the bus with today's defaults, manual unlock, no MCP doc changes, no guider abort change.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.018,
+          "tokens": null
+        },
+        {
+          "attempt_id": "5a5665c7-2d6d-4e15-9af1-1f77c726c45b",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-26T09:43:24.512905Z",
+          "last_activity_at": "2026-11-26T09:43:24.512938Z",
+          "ended_at": "2026-11-26T09:43:24.512938Z",
+          "outcome": {
+            "summary": "Revise: text property with the agents (saved) filled by per-role switch lists (not saved, only agents on the bus); keep @ host names; D1 still open.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.033,
+          "tokens": null
+        },
+        {
+          "attempt_id": "bb4b05fd-5751-4962-a8ed-523eaf232298",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T09:48:10.329767Z",
+          "last_activity_at": "2026-11-26T09:48:10.329778Z",
+          "ended_at": "2026-11-26T09:48:10.329778Z",
+          "outcome": {
+            "summary": "Approved design.md",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.011,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T08:31:41.015272Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design started"
+        },
+        {
+          "at": "2026-11-26T09:10:14.603607Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Revise: the lock applies only to changing agents. Remove the permit and the refusal of sequences not started by the scheduler; keep the owner's agents enforced for every start(), select_*_agent() and the flip. Existing tests that start sequences by hand should then not need changes."
+        },
+        {
+          "at": "2026-11-26T09:23:34.425462Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design presented"
+        },
+        {
+          "at": "2026-11-26T09:23:34.425480Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Revise per owner decisions note: per-role ONE_OF_MANY agent selection from agents on the bus with today's defaults, manual unlock, no MCP doc changes, no guider abort change."
+        },
+        {
+          "at": "2026-11-26T09:43:24.512905Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design presented"
+        },
+        {
+          "at": "2026-11-26T09:43:24.512938Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Revise: text property with the agents (saved) filled by per-role switch lists (not saved, only agents on the bus); keep @ host names; D1 still open."
+        },
+        {
+          "at": "2026-11-26T09:48:10.329767Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Design presented"
+        },
+        {
+          "at": "2026-11-26T09:48:10.329778Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Approved design.md"
+        }
+      ],
+      "result": {
+        "summary": "Approved design.md",
+        "source": "owner",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "phase": "design",
+      "action": "implement",
+      "workflow_step": "design/implement",
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 2313588.397,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 4
+        }
+      }
+    },
+    {
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "2c49c627-736d-41bc-9988-9cee279c1a55",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-26T10:27:58.985298Z",
+          "last_activity_at": "2026-11-26T10:39:09.520190Z",
+          "ended_at": "2026-11-26T10:39:09.520190Z",
+          "outcome": {
+            "summary": "Independent review of 64ba24b65 against design rev. 3 and the owner notes. The implementation follows the design closely. Every hard-coded agent name is replaced: grep finds only role_defaults and solver_prefixes. The take/release lifecycle (START incl. HOLD_START, idle/standby, stop_scheduler for STOP/ABORT/finish/timeout/hook failure, SHUTDOWN before client detach, stale lock while stopped, Scripting Agent restart, manual release until next START) is implemented and tested. Callback/handler data is mirrored under observed.mutex as designed. Name buffers are bounded with INDIGO_COPY_NAME/snprintf and validated < INDIGO_NAME_SIZE. The take/release scripts use json_string. The Sequencer.js owner global survives reload. Tests are substantive, not vacuous. I ran them: test-agent-scripting-sequencer 87/87 passed, and all 20 new scheduler cases (run by filter) passed. Then test-clean.\n\nDefects:\n1. indigo_drivers/agent_scripting/library/Sequencer.md:199 - the new paragraph \"With an owner of the sequencer the four select_*_agent() steps ...\" is inserted in the middle of the \"Selecting agents & devices\" table, after the select_solver_agent row. This cuts the table: the rows from select_imager_camera onward no longer render as a table. Fix: move the paragraph below the end of the table (or into a table row).\n2. indigo_agent_scheduler.c:756 and :760 (wrapper_script) - the Scripting Agent name (scripting_view of AGENT_SCHEDULER_AGENTS.SCRIPTING) goes into a JS string literal with \\\"%s\\\" and is not escaped. Validation (role_matches, :3335) accepts any characters after \" @ \". A configured or selected name containing \" or \\ therefore breaks every task, hook and estimate script, or injects code into it. The take/release scripts already use json_string. Fix: emit the name through json_string here too, or reject \" and \\ (and control characters) in change_agents validation.\n3. indigo_agent_scheduler.c:4268 (agent_busy_bit) - with an automatic solver, the solver is taken from SEQUENCE",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 670534.892,
+          "tokens": null
+        },
+        {
+          "attempt_id": "3d8aa4f5-7392-4e6f-8d98-76ec03916caa",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T11:00:19.571347Z",
+          "last_activity_at": "2026-11-26T11:01:41.410356Z",
+          "ended_at": "2026-11-26T11:01:41.410356Z",
+          "outcome": {
+            "summary": "Re-review of b28dc9b64 (delta since 64ba24b65). All four earlier findings are fixed:\n(1) Sequencer.md: the sentence now follows the table, which is whole again.\n(2) wrapper_script() emits the local Scripting Agent name through json_string(). Buffer check: names are < 256 bytes and control characters are now rejected by has_control_character() in change_agents, so the worst escaped length is 2*255+2 (quotes, backslashes, U+2028/2029). Even the unreachable \\u00XX worst case is 6*255+2 = 1532. report (about 350 bytes of fixed text) fits in 2048 and counts (about 1050 bytes) fits in 3072; size in wrapper_script is computed from strlen() of the parts. The test checks that a tab is rejected and that a quote is escaped in the take script.\n(3) agent_busy_bit() adds the Scripting Agent's suffix to a suffix-less SEQUENCER_OWNER.SOLVER. It is called with the mutex held and reads observed->agents; snprintf is bounded. remote_solver_busy_is_tracked would fail on the old code (\"ASTAP Agent\" vs \"ASTAP Agent @ obs2\"), so the test is not vacuous.\n(4) releases_expected is counted at most once and reset when the owner changes to the scheduler. The test reproduces the leak through a take without effect.\nI ran the filtered cases remote_solver_busy, manual_release*, take_script_strips and *solver_busy: all passed (7 cases); test-clean afterwards.\n\nResidual note on (4), minor, not blocking (rare timing): the comment at indigo_agent_scheduler.c observe_property (\"when a take of the scheduler takes effect every release sent before it has had its effect\") holds only for releases sent before that take. With take_unconfirmed, a release sent after a take that is not yet observed is counted (expected=1), and is then cleared when that very take becomes visible. The release's own effect (ours -> empty) is then counted as a manual release. This takes START, STOP and START within one script round trip: the second START captures the baseline before the event arrives, and the scheduler falsely announc",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 81839.009,
+          "tokens": null
+        },
+        {
+          "attempt_id": "37d5ff28-37c0-4162-8103-51fa14b903c7",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T13:00:43.295901Z",
+          "last_activity_at": "2026-11-26T13:03:23.109246Z",
+          "ended_at": "2026-11-26T13:03:23.109246Z",
+          "outcome": {
+            "summary": "Re-review of c4af2aa9b (delta since b28dc9b64): ordered list of the scheduler's takes and releases, with token reports.\n\nCorrectness: the matching is right in every ordering I worked through.\n- Ordering: the Scripting Agent runs RUN_SCRIPT requests in order and publishes the SEQUENCER_OWNER update before the SCHEDULER_RESULT define of the same script (same device, same thread). So \"a reported token ends every recorded script up to it\" holds.\n- Task and estimate tokens: they come from the same increasing PRIVATE_DATA->token. A task token taken before the take in start_task is smaller than the take's token, so it can only end scripts that were sent earlier. That is correct.\n- Becoming the owner consumes the first open take; any releases before it necessarily ran and had no effect. Losing ownership skips takes that had no effect (we were already the owner) and consumes the next release; with no release open, it is a manual release.\n- Merging consecutive scripts of the same kind is sound: the first one has the effect and the later ones only extend the token.\n- START, STOP, START before any effect is seen gives T,R,T and three matched transitions, so no false manual release. This was my round-2 note; it is fixed, and release_after_an_unseen_take_is_no_manual_release covers it.\n- An older library: the reports still end the takes and releases, which removes the round-1 leak.\n- Overflow: when the 32-entry list is full the oldest entry is dropped. This needs 32 alternating scripts with no effect and no report; acceptable.\n- The list is cleared on Scripting Agent deletion and on a change of the configured Scripting Agent.\n- Locking: entries are recorded under observed.mutex before sending and consumed in the callbacks under the same mutex. The handler, and SHUTDOWN after stop_commands, is the only writer of token.\n\nExisting result handling: run and estimate results are matched by token equality, so the extra SCHEDULER_RESULT defines with owner tokens are ignored there. Buffer",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 159813.345,
+          "tokens": null
+        },
+        {
+          "attempt_id": "7c9d14aa-9731-4b87-8d71-6cbda056372f",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T13:05:27.692683Z",
+          "last_activity_at": "2026-11-26T13:05:34.766988Z",
+          "ended_at": "2026-11-26T13:05:34.766988Z",
+          "outcome": {
+            "summary": "Delta since c4af2aa9b is only the requested formatting fix: the release_after_an_unseen_take_is_no_manual_release case entry in test_agent_scheduler.c is now on its own line. No other changes and a clean working tree. My earlier pass (round 3) applies to this tree.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 7074.305,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T10:27:58.985298Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T10:39:09.520190Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of 64ba24b65 against design rev. 3 and the owner notes. The implementation follows the design closely. Every hard-coded agent name is replaced: grep finds only role_defaults and solver_prefixes. The take/release lifecycle (START incl. HOLD_START, idle/standby, stop_scheduler for STOP/ABORT/finish/timeout/hook failure, SHUTDOWN before client detach, stale lock while stopped, Scripting Agent restart, manual release until next START) is implemented and tested. Callback/handler data is mirrored under observed.mutex as designed. Name buffers are bounded with INDIGO_COPY_NAME/snprintf and validated < INDIGO_NAME_SIZE. The take/release scripts use json_string. The Sequencer.js owner global survives reload. Tests are substantive, not vacuous. I ran them: test-agent-scripting-sequencer 87/87 passed, and all 20 new scheduler cases (run by filter) passed. Then test-clean.\n\nDefects:\n1. indigo_drivers/agent_scripting/library/Sequencer.md:199 - the new paragraph \"With an owner of the sequencer the four select_*_agent() steps ...\" is inserted in the middle of the \"Selecting agents & devices\" table, after the select_solver_agent row. This cuts the table: the rows from select_imager_camera onward no longer render as a table. Fix: move the paragraph below the end of the table (or into a table row).\n2. indigo_agent_scheduler.c:756 and :760 (wrapper_script) - the Scripting Agent name (scripting_view of AGENT_SCHEDULER_AGENTS.SCRIPTING) goes into a JS string literal with \\\"%s\\\" and is not escaped. Validation (role_matches, :3335) accepts any characters after \" @ \". A configured or selected name containing \" or \\ therefore breaks every task, hook and estimate script, or injects code into it. The take/release scripts already use json_string. Fix: emit the name through json_string here too, or reject \" and \\ (and control characters) in change_agents validation.\n3. indigo_agent_scheduler.c:4268 (agent_busy_bit) - with an automatic solver, the solver is taken from SEQUENCE"
+        },
+        {
+          "at": "2026-11-26T11:00:19.571347Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T11:01:41.410356Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review of b28dc9b64 (delta since 64ba24b65). All four earlier findings are fixed:\n(1) Sequencer.md: the sentence now follows the table, which is whole again.\n(2) wrapper_script() emits the local Scripting Agent name through json_string(). Buffer check: names are < 256 bytes and control characters are now rejected by has_control_character() in change_agents, so the worst escaped length is 2*255+2 (quotes, backslashes, U+2028/2029). Even the unreachable \\u00XX worst case is 6*255+2 = 1532. report (about 350 bytes of fixed text) fits in 2048 and counts (about 1050 bytes) fits in 3072; size in wrapper_script is computed from strlen() of the parts. The test checks that a tab is rejected and that a quote is escaped in the take script.\n(3) agent_busy_bit() adds the Scripting Agent's suffix to a suffix-less SEQUENCER_OWNER.SOLVER. It is called with the mutex held and reads observed->agents; snprintf is bounded. remote_solver_busy_is_tracked would fail on the old code (\"ASTAP Agent\" vs \"ASTAP Agent @ obs2\"), so the test is not vacuous.\n(4) releases_expected is counted at most once and reset when the owner changes to the scheduler. The test reproduces the leak through a take without effect.\nI ran the filtered cases remote_solver_busy, manual_release*, take_script_strips and *solver_busy: all passed (7 cases); test-clean afterwards.\n\nResidual note on (4), minor, not blocking (rare timing): the comment at indigo_agent_scheduler.c observe_property (\"when a take of the scheduler takes effect every release sent before it has had its effect\") holds only for releases sent before that take. With take_unconfirmed, a release sent after a take that is not yet observed is counted (expected=1), and is then cleared when that very take becomes visible. The release's own effect (ours -> empty) is then counted as a manual release. This takes START, STOP and START within one script round trip: the second START captures the baseline before the event arrives, and the scheduler falsely announc"
+        },
+        {
+          "at": "2026-11-26T13:00:43.295901Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T13:03:23.109246Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review of c4af2aa9b (delta since b28dc9b64): ordered list of the scheduler's takes and releases, with token reports.\n\nCorrectness: the matching is right in every ordering I worked through.\n- Ordering: the Scripting Agent runs RUN_SCRIPT requests in order and publishes the SEQUENCER_OWNER update before the SCHEDULER_RESULT define of the same script (same device, same thread). So \"a reported token ends every recorded script up to it\" holds.\n- Task and estimate tokens: they come from the same increasing PRIVATE_DATA->token. A task token taken before the take in start_task is smaller than the take's token, so it can only end scripts that were sent earlier. That is correct.\n- Becoming the owner consumes the first open take; any releases before it necessarily ran and had no effect. Losing ownership skips takes that had no effect (we were already the owner) and consumes the next release; with no release open, it is a manual release.\n- Merging consecutive scripts of the same kind is sound: the first one has the effect and the later ones only extend the token.\n- START, STOP, START before any effect is seen gives T,R,T and three matched transitions, so no false manual release. This was my round-2 note; it is fixed, and release_after_an_unseen_take_is_no_manual_release covers it.\n- An older library: the reports still end the takes and releases, which removes the round-1 leak.\n- Overflow: when the 32-entry list is full the oldest entry is dropped. This needs 32 alternating scripts with no effect and no report; acceptable.\n- The list is cleared on Scripting Agent deletion and on a change of the configured Scripting Agent.\n- Locking: entries are recorded under observed.mutex before sending and consumed in the callbacks under the same mutex. The handler, and SHUTDOWN after stop_commands, is the only writer of token.\n\nExisting result handling: run and estimate results are matched by token equality, so the extra SCHEDULER_RESULT defines with owner tokens are ignored there. Buffer"
+        },
+        {
+          "at": "2026-11-26T13:05:27.692683Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T13:05:34.766988Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Delta since c4af2aa9b is only the requested formatting fix: the release_after_an_unseen_take_is_no_manual_release case entry in test_agent_scheduler.c is now on its own line. No other changes and a clean working tree. My earlier pass (round 3) applies to this tree."
+        }
+      ],
+      "result": {
+        "summary": "Delta since c4af2aa9b is only the requested formatting fix: the release_after_an_unseen_take_is_no_manual_release case entry in test_agent_scheduler.c is now on its own line. No other changes and a clean working tree. My earlier pass (round 3) applies to this tree.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 919261.551,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 4
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "ad10d5e0-5171-4d3c-925b-25465390cb79",
+      "event": "ticket/created",
+      "at": "2026-11-26T08:29:07.342705Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "full"
+    },
+    {
+      "event_id": "4353722e-f686-46cc-86a0-913bab380b7f",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T08:29:10.454781Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "full",
+      "corrected": null
+    },
+    {
+      "event_id": "10f14200-a632-47b2-9965-be75fac48738",
+      "event": "task/progress",
+      "at": "2026-11-26T08:31:35.566586Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Implementation started on branch ticket/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f"
+    },
+    {
+      "event_id": "31964784-ad1b-49ea-9fbe-cbcc24978bb0",
+      "event": "ticket/started",
+      "at": "2026-11-26T08:31:35.574993Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f",
+      "base": "master"
+    },
+    {
+      "event_id": "0a0ddfcf-2fca-4b5c-9be8-c27744f75d05",
+      "event": "task/progress",
+      "at": "2026-11-26T08:31:41.015440Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "text": "Design started"
+    },
+    {
+      "event_id": "642e9e7b-c40a-4440-a666-942499cd2589",
+      "event": "stage/started",
+      "at": "2026-11-26T08:31:41.016080Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41"
+    },
+    {
+      "event_id": "8788cf28-728c-4c6d-8bba-ab96c97cbdaf",
+      "event": "task/progress",
+      "at": "2026-11-26T08:32:04.437782Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "text": "Design worker started",
+      "attempt_id": "763b7c01-4435-4875-b973-ba5766b5fafc",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "aa15cc36-6e53-4984-91a7-82b3612576eb",
+      "event": "task/progress",
+      "at": "2026-11-26T08:37:44.714240Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "text": "Writing design.md for configurable agents and sequencer takeover"
+    },
+    {
+      "event_id": "963a904c-ef2a-4ccb-8c44-94da2ea30475",
+      "event": "task/progress",
+      "at": "2026-11-26T08:39:31.358698Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "text": "Design written to design.md with 8 open questions"
+    },
+    {
+      "event_id": "a9bfeed1-b494-4b5b-af3b-6a30682264f6",
+      "event": "stage/presented",
+      "at": "2026-11-26T08:39:57.548702Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "8b0123d9-8d23-460f-9f07-c1ec57f142c0",
+      "event": "ticket/note",
+      "at": "2026-11-26T09:10:14.526812Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision 2026-11-26: the lock applies only to changing agents, not to everything. While the scheduler owns the sequencer, any sequence may be started by any client (no permit, no refusal of sequences not started by the scheduler); every start() uses the owner's agents, agents passed to start() and select_*_agent() steps are ignored with a warning, and the meridian flip uses the owner's agents. Item 4 of the agreed design (refusing foreign sequences, one-shot permit) is withdrawn.",
+      "tokens": null
+    },
+    {
+      "event_id": "a91d5120-0bfb-4170-b410-09887aebcd95",
+      "event": "task/progress",
+      "at": "2026-11-26T09:10:14.603673Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "text": "Design returned by the owner"
+    },
+    {
+      "event_id": "026a488e-1daf-48e4-aff4-05bbeb28c145",
+      "event": "stage/returned",
+      "at": "2026-11-26T09:10:14.604000Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "file": "design.md"
+    },
+    {
+      "event_id": "3ed5e148-2eee-4e16-a8aa-c05084edc78f",
+      "event": "task/progress",
+      "at": "2026-11-26T09:10:23.356496Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Revising design.md: lock covers agents only, permit and refusal removed"
+    },
+    {
+      "event_id": "dee040ca-7bd4-456f-90e0-1e162b272763",
+      "event": "task/progress",
+      "at": "2026-11-26T09:12:00.554697Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Revised design.md written: agents-only lock, 7 open questions"
+    },
+    {
+      "event_id": "2a650807-186f-434b-bdbf-8b2879aaf447",
+      "event": "stage/presented",
+      "at": "2026-11-26T09:12:19.527348Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "bea9413b-eda3-4b97-8507-d2d713dc8ad0",
+      "event": "ticket/note",
+      "at": "2026-11-26T09:23:34.347741Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions on the design questions (2026-11-26): Q1 agent configuration as one ONE_OF_MANY switch property per agent role, listing the agents of that role seen on the bus (by the INDIGO name convention, e.g. names starting with 'Imager Agent'), with today's defaults selected; the user chooses which to use. Q2 add a manual unlock (release of the sequencer owner from a client). Q3 select_solver_agent() under automatic solver choice is ignored with a warning. Q4 no change: guider agent names always start with 'Guider Agent' by accepted convention. Q5 MCP documents are not updated in this ticket (later). Q6 two schedulers with the same name: documented as unsupported. Q7 web UI not in this ticket.",
+      "tokens": null
+    },
+    {
+      "event_id": "f50fbf65-3e2c-4ea3-ac69-823fbd9fdb1e",
+      "event": "task/progress",
+      "at": "2026-11-26T09:23:34.425529Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "text": "Design returned by the owner"
+    },
+    {
+      "event_id": "c1efaeee-0e9e-40e3-b459-18d7e1747e39",
+      "event": "stage/returned",
+      "at": "2026-11-26T09:23:34.425801Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "file": "design.md"
+    },
+    {
+      "event_id": "e5b9543c-ca5e-4379-ac5b-1985f21022fe",
+      "event": "task/progress",
+      "at": "2026-11-26T09:23:47.453193Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Revising design.md: per-role agent switch lists and manual unlock"
+    },
+    {
+      "event_id": "5775cfe1-37ab-46d2-b990-3a1cc9cb344c",
+      "event": "task/progress",
+      "at": "2026-11-26T09:25:56.863695Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Second revision of design.md written: agent lists, manual release, D1"
+    },
+    {
+      "event_id": "8bbe62a3-31b1-462c-9ee6-4f478e2691f0",
+      "event": "stage/presented",
+      "at": "2026-11-26T09:26:13.897545Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "9aa00455-413f-4607-ba82-0995f6e16002",
+      "event": "ticket/note",
+      "at": "2026-11-26T09:43:24.409243Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions on design revision 2 (2026-11-26): (a) remote agents: the owner asked to strip ' @ host' from the lists only if the sequencer does not work with remote agents; it does (Sequencer.md start('Imager Agent @ observatory', ...), sequencer_agent_host() in Sequencer.js), so the lists keep ' @ host' names. (b) The saved, authoritative agent configuration is a text property with one item per role, loaded from the saved configuration; the per-role ONE_OF_MANY switch lists of agents on the bus only serve to fill it (selecting a switch writes the name into the text item). A configured agent that is not on the bus stays in the text property; no '(not present)' switch items. D1 (duration of a manual release while the scheduler runs) is still open.",
+      "tokens": null
+    },
+    {
+      "event_id": "bccf2e7b-a235-4968-b924-71ddb8d6b3ae",
+      "event": "task/progress",
+      "at": "2026-11-26T09:43:24.513014Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "text": "Design returned by the owner"
+    },
+    {
+      "event_id": "611fbae1-de5c-4be3-86d2-25c42790ad35",
+      "event": "stage/returned",
+      "at": "2026-11-26T09:43:24.513546Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "file": "design.md"
+    },
+    {
+      "event_id": "44a7b273-4770-4757-a8d8-f7ef49b11064",
+      "event": "task/progress",
+      "at": "2026-11-26T09:43:34.902677Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Revising design.md: text config property plus bus-only selector lists"
+    },
+    {
+      "event_id": "90d66038-dce1-466e-9bce-1d57fa132f38",
+      "event": "task/progress",
+      "at": "2026-11-26T09:44:31.041096Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Third revision of design.md written; D1 remains open"
+    },
+    {
+      "event_id": "6b8a3e3a-3ad1-45c3-abd1-00c68c9d19a4",
+      "event": "stage/presented",
+      "at": "2026-11-26T09:44:50.486971Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "8a932255-b64d-4052-a2d3-b73801664d44",
+      "event": "ticket/note",
+      "at": "2026-11-26T09:48:10.253145Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decisions on design revision 3 (2026-11-26): at-most-one selector switches accepted; D1: a manual release lasts until the next START (or a scheduler restart), as recommended in the design.",
+      "tokens": null
+    },
+    {
+      "event_id": "77f885ee-866a-4294-8f85-fb6a7ae5b943",
+      "event": "task/progress",
+      "at": "2026-11-26T09:48:10.329809Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "text": "Design approved: design.md"
+    },
+    {
+      "event_id": "8191d12b-90d4-42bc-9337-93e7fea74d23",
+      "event": "stage/approved",
+      "at": "2026-11-26T09:48:10.330021Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "stage": "design",
+      "task_id": "63127b76-ed4f-4376-ac2c-a80bf8c6fa41",
+      "file": "design.md"
+    },
+    {
+      "event_id": "bd4c6894-ddf0-4682-bd75-a6a21bae03fb",
+      "event": "task/progress",
+      "at": "2026-11-26T09:48:34.743071Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Implementer started",
+      "attempt_id": "88ae386c-d311-48d6-aafe-dc4a8a884bf6",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6affbfc4-03b7-4fa6-a1e1-62593e548ab0",
+      "event": "task/progress",
+      "at": "2026-11-26T09:53:10.533300Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Implementing the sequencer owner in Sequencer.js"
+    },
+    {
+      "event_id": "f2f9d13d-cd84-4eca-8436-feb6982a6a5c",
+      "event": "task/progress",
+      "at": "2026-11-26T09:55:02.865184Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Running existing Sequencer.js suite: test_agent_scripting_sequencer"
+    },
+    {
+      "event_id": "c090c699-5e91-4cb7-a693-020232b0a4e6",
+      "event": "task/progress",
+      "at": "2026-11-26T10:00:21.145530Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Running selected scheduler cases: test_agent_scheduler"
+    },
+    {
+      "event_id": "8d27799d-6547-4b0b-8e7a-83894d7f532e",
+      "event": "task/progress",
+      "at": "2026-11-26T10:02:01.562186Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Writing Sequencer.js owner tests"
+    },
+    {
+      "event_id": "53da434e-0891-47ac-aa90-b215f8f36d52",
+      "event": "task/progress",
+      "at": "2026-11-26T10:05:24.336631Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Writing scheduler agent configuration and ownership tests"
+    },
+    {
+      "event_id": "c177e923-4646-4dfa-9afe-d6eed535ec5a",
+      "event": "task/progress",
+      "at": "2026-11-26T10:08:25.817828Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Running the new scheduler cases of test_agent_scheduler"
+    },
+    {
+      "event_id": "3f231f52-605a-4830-9690-25f2608973c1",
+      "event": "task/progress",
+      "at": "2026-11-26T10:09:18.127410Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Running full suites: test_agent_scheduler and test_agent_scripting_sequencer"
+    },
+    {
+      "event_id": "d33ba5f7-16bf-4834-836f-ff811310c72b",
+      "event": "task/progress",
+      "at": "2026-11-26T10:24:13.794872Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Running test-agent-scripting and ASan scheduler on the new cases"
+    },
+    {
+      "event_id": "3f8b5e3a-2388-4c4c-a5bf-364ea868ca2d",
+      "event": "task/progress",
+      "at": "2026-11-26T10:26:00.781458Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "93fd9030-daf5-4b1f-bfff-8c68689b81ad",
+      "event": "task/progress",
+      "at": "2026-11-26T10:26:00.808639Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "3f83e801-8ace-4f58-942b-ede9d4a3eef4",
+      "event": "task/progress",
+      "at": "2026-11-26T10:26:00.813274Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "505035b9-34e9-44ce-a05a-c7ca9ab41628",
+      "event": "task/progress",
+      "at": "2026-11-26T10:27:19.360950Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "c57ce3ac-6d85-46ae-b4af-a1a7731c0509",
+      "event": "check/passed",
+      "at": "2026-11-26T10:27:19.367931Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "64ba24b65622f615009e6db7f26cf7a31265cb51",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "1bd057e3-7be9-482a-bd68-f2ec3c6e22c0",
+      "event": "task/progress",
+      "at": "2026-11-26T10:27:24.796122Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Implementation done: suites and flow check passed"
+    },
+    {
+      "event_id": "c34373a8-cae9-4d7a-a045-51bb8bc9c240",
+      "event": "task/progress",
+      "at": "2026-11-26T10:27:58.985330Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b2b2c7d0-15e8-47c3-8df7-083efbd7fafb",
+      "event": "review/started",
+      "at": "2026-11-26T10:27:58.985611Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "90a0ec5f-e667-4ad9-893c-2f37da250bc4",
+      "event": "task/progress",
+      "at": "2026-11-26T10:28:15.765370Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Reviewer started",
+      "attempt_id": "2c49c627-736d-41bc-9988-9cee279c1a55",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "2d5e9036-a912-46bb-88c7-0efc167b6455",
+      "event": "task/progress",
+      "at": "2026-11-26T10:30:44.713367Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Running test-agent-scripting-sequencer and new scheduler cases (agent/lock/owner filters)"
+    },
+    {
+      "event_id": "8c8e41c4-78cd-475d-bf10-b111a2fb6f23",
+      "event": "task/progress",
+      "at": "2026-11-26T10:39:09.520255Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "1e999588-c76f-4f43-b049-3e12becd93fb",
+      "event": "task/progress",
+      "at": "2026-11-26T10:39:09.520278Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "8f71cedb-0a4d-45b3-bb4e-99acc81b27ee",
+      "event": "review/changes_requested",
+      "at": "2026-11-26T10:39:09.520689Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "64ba24b65622f615009e6db7f26cf7a31265cb51"
+    },
+    {
+      "event_id": "0a8a0e7d-1829-4d63-b1b4-e5651d350f03",
+      "event": "task/progress",
+      "at": "2026-11-26T10:39:35.683089Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Fixing review findings: Sequencer.md table, JS escaping, remote solver busy, releases_expected"
+    },
+    {
+      "event_id": "cac0ecfa-2c81-4eb7-a3c7-e469dcce4f58",
+      "event": "task/progress",
+      "at": "2026-11-26T10:42:53.740933Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Running full suites after review fixes: test-agent-scheduler, test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "8343ecf9-be22-4337-8c70-49e86045338e",
+      "event": "task/progress",
+      "at": "2026-11-26T10:58:49.822290Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "342ddbf0-31dd-4100-b11d-bcedc26ddc35",
+      "event": "task/progress",
+      "at": "2026-11-26T10:58:49.864033Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "740c2dc9-83bc-43be-b980-8d610eb57a40",
+      "event": "task/progress",
+      "at": "2026-11-26T10:58:49.869731Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "5779b16e-105a-4e5a-b0df-55914afd2598",
+      "event": "task/progress",
+      "at": "2026-11-26T11:00:00.696580Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "7ef29f84-37b5-43b5-9867-a40ba9e4e438",
+      "event": "check/passed",
+      "at": "2026-11-26T11:00:00.706190Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "b28dc9b643c664c1a2e4fce19f4d3d7a110b22c7",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "ab28c6e2-fd18-4e44-9919-77f8372c2ac4",
+      "event": "task/progress",
+      "at": "2026-11-26T11:00:00.856343Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b357e9cd-4a70-43bd-9683-3eba4f266c7f",
+      "text": "Review fixes done, suites and flow check passed"
+    },
+    {
+      "event_id": "9f3400e4-5f9c-4968-880b-770f4f35e26b",
+      "event": "task/progress",
+      "at": "2026-11-26T11:00:19.571409Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Review started"
+    },
+    {
+      "event_id": "95e08155-8d01-46b5-bae9-cb5eeb11cb3d",
+      "event": "review/started",
+      "at": "2026-11-26T11:00:19.571824Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "c80d29a3-9ccf-429a-8a56-0b2440bfdffb",
+      "event": "task/progress",
+      "at": "2026-11-26T11:00:30.428258Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Re-review of the fixes since 64ba24b65"
+    },
+    {
+      "event_id": "c3285a35-2ca6-4ea7-84f6-a2570885a910",
+      "event": "task/progress",
+      "at": "2026-11-26T11:00:52.697050Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Running new/changed scheduler cases by filter (remote_solver, manual_release, take_script)"
+    },
+    {
+      "event_id": "5823c11e-9584-48d6-8ff5-3297405d5edc",
+      "event": "task/progress",
+      "at": "2026-11-26T11:01:41.410426Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "f3a29baf-420e-41b1-babb-d3e5e82f0f2b",
+      "event": "review/passed",
+      "at": "2026-11-26T11:01:41.410902Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "b28dc9b643c664c1a2e4fce19f4d3d7a110b22c7"
+    },
+    {
+      "event_id": "ec653d54-e3e9-4fc8-bd9b-ace4b3f6908c",
+      "event": "ticket/title_changed",
+      "at": "2026-11-26T12:37:22.559815Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler, Sequencer.js: configurable agents and scheduler takeover of the sequencer",
+      "title": "indigo_agent_scheduler: configurable agents and ownership of the sequencer while the scheduler runs"
+    },
+    {
+      "event_id": "0a3bc53a-0415-4b05-b2f9-9577071b910d",
+      "event": "ticket/note",
+      "at": "2026-11-26T12:37:22.645813Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision 2026-11-26: fix the remaining race from review round 2 before commit (a release sent after a take whose effect is not yet seen is counted, then the count is cleared when that take becomes visible, so the release's own effect is misread as a manual release on fast START/STOP/START). Ticket retitled to the commit subject.",
+      "tokens": null
+    },
+    {
+      "event_id": "51b2080e-4e65-4cd4-9adc-83a61b2e7503",
+      "event": "task/progress",
+      "at": "2026-11-26T12:37:54.943127Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Fixing the release race: ordered queue of sent takes and releases"
+    },
+    {
+      "event_id": "8b485548-8b64-421c-b856-21f61f15cf53",
+      "event": "task/progress",
+      "at": "2026-11-26T12:42:43.743176Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Running full suites after the release race fix"
+    },
+    {
+      "event_id": "8d3a7431-49c7-4e54-81e1-2069eff6f8b1",
+      "event": "task/progress",
+      "at": "2026-11-26T12:58:51.323062Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c6318f3c-b8a3-473a-b16d-f4b90690501f",
+      "event": "task/progress",
+      "at": "2026-11-26T12:58:51.373330Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7bb70a51-a006-4243-9511-1a7b772f88c8",
+      "event": "task/progress",
+      "at": "2026-11-26T12:58:51.383695Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "56a3e501-7b2c-4613-b3eb-c4ef6abf6eaa",
+      "event": "task/progress",
+      "at": "2026-11-26T13:00:14.051030Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "1ae8e5fd-ee34-4d64-8f36-b2373d8d549d",
+      "event": "check/passed",
+      "at": "2026-11-26T13:00:14.076877Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "c4af2aa9bf6995f74a0e7eaf1f568ee2b4051d79",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "638e37a3-934f-46f4-8863-07529be5cb12",
+      "event": "task/progress",
+      "at": "2026-11-26T13:00:14.357432Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Release race fixed, suites and flow check passed"
+    },
+    {
+      "event_id": "664e8d0c-c751-46d9-a9d2-d507c518832b",
+      "event": "task/progress",
+      "at": "2026-11-26T13:00:43.296072Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f58ac181-1dcf-4426-a3f4-c157dacef7fa",
+      "event": "review/started",
+      "at": "2026-11-26T13:00:43.297176Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "628408e1-bbba-40f8-a656-2469c80e4306",
+      "event": "task/progress",
+      "at": "2026-11-26T13:00:47.574821Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Re-review of release-race fix since b28dc9b64"
+    },
+    {
+      "event_id": "cb5317d4-e897-4b3d-94d3-11e345e395dd",
+      "event": "task/progress",
+      "at": "2026-11-26T13:01:45.264042Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Running owner/lock/release/task-result scheduler cases by filter"
+    },
+    {
+      "event_id": "6f7273f7-5c13-4ae6-9599-00067cd90436",
+      "event": "task/progress",
+      "at": "2026-11-26T13:03:23.109311Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b854d835-9abe-4998-81d3-385cd70f8111",
+      "event": "review/passed",
+      "at": "2026-11-26T13:03:23.109792Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "c4af2aa9bf6995f74a0e7eaf1f568ee2b4051d79"
+    },
+    {
+      "event_id": "803ceb2e-ef53-4d98-ae3c-627c152523db",
+      "event": "task/progress",
+      "at": "2026-11-26T13:03:47.609749Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Putting the new case entry on its own line"
+    },
+    {
+      "event_id": "fd37a22f-b72f-4254-8ad4-d00ffbfae2d4",
+      "event": "task/progress",
+      "at": "2026-11-26T13:03:58.216699Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "71255dfc-2268-44c0-842a-a60d5ed7e9d4",
+      "event": "task/progress",
+      "at": "2026-11-26T13:03:58.248961Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "963b5d8a-10a9-4b48-bf18-9465ff6f6198",
+      "event": "task/progress",
+      "at": "2026-11-26T13:03:58.257762Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "de0a4bf9-e5e0-4421-aa41-eb66d0a4b35f",
+      "event": "task/progress",
+      "at": "2026-11-26T13:05:19.170725Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "eb200cf2-211c-4fa0-a394-e01cb536d97c",
+      "event": "check/passed",
+      "at": "2026-11-26T13:05:19.185747Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "4fb1749c4de5c4b3903545b110f9223626dd4b42",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "8bc4b681-a726-48f9-9d2c-0e48c6959a06",
+      "event": "task/progress",
+      "at": "2026-11-26T13:05:27.692834Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Review started"
+    },
+    {
+      "event_id": "14943191-259f-42f9-abbd-6c6b0c85f7df",
+      "event": "review/started",
+      "at": "2026-11-26T13:05:27.693280Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "f09e3044-c861-48fe-8223-35d88c7d6d6f",
+      "event": "task/progress",
+      "at": "2026-11-26T13:05:31.170231Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Verifying formatting-only delta since c4af2aa9b"
+    },
+    {
+      "event_id": "f6868d9d-6a83-4c5a-a94f-f2eabdae03b9",
+      "event": "task/progress",
+      "at": "2026-11-26T13:05:34.767059Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "52471cdf-1b6b-4c32-a134-09bbe30b0b58",
+      "event": "review/passed",
+      "at": "2026-11-26T13:05:34.767555Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c68d86c5-65c9-4339-975c-030367d8227c",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "4fb1749c4de5c4b3903545b110f9223626dd4b42"
+    },
+    {
+      "event_id": "f5f3417b-2d74-4dcf-87ce-e31b4253b98e",
+      "event": "ticket/closed",
+      "at": "2026-11-26T13:14:40.800401Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T13:14:40.800375Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "33d9b31f21baf1217f067f4dd030853a902676d9"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "high",
+  "flow": {
+    "profile": "full",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "64ba24b65622f615009e6db7f26cf7a31265cb51",
+        "tree": "f5184d4cb91de2af4aa586c1379e1e9bc46abe5a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T10:26:00.808201Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f/f5184d4cb91d-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "64ba24b65622f615009e6db7f26cf7a31265cb51",
+        "tree": "f5184d4cb91de2af4aa586c1379e1e9bc46abe5a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T10:27:19.358354Z",
+        "duration_s": 78.5,
+        "log": "/tmp/factory-flow/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f/f5184d4cb91d-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "b28dc9b643c664c1a2e4fce19f4d3d7a110b22c7",
+        "tree": "d2b035dd83ed180b9b2b0e5b73dba5f064152983",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T10:58:49.863393Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f/d2b035dd83ed-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "b28dc9b643c664c1a2e4fce19f4d3d7a110b22c7",
+        "tree": "d2b035dd83ed180b9b2b0e5b73dba5f064152983",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T11:00:00.693713Z",
+        "duration_s": 70.8,
+        "log": "/tmp/factory-flow/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f/d2b035dd83ed-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c4af2aa9bf6995f74a0e7eaf1f568ee2b4051d79",
+        "tree": "6b70861dd540a998b3c1fe8681bc5d4c2d591b26",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T12:58:51.372117Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f/6b70861dd540-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "c4af2aa9bf6995f74a0e7eaf1f568ee2b4051d79",
+        "tree": "6b70861dd540a998b3c1fe8681bc5d4c2d591b26",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T13:00:14.035785Z",
+        "duration_s": 82.7,
+        "log": "/tmp/factory-flow/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f/6b70861dd540-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "4fb1749c4de5c4b3903545b110f9223626dd4b42",
+        "tree": "df9b1055cc98934f776eab771f2dac192f5ea966",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T13:03:58.248188Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f/df9b1055cc98-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "4fb1749c4de5c4b3903545b110f9223626dd4b42",
+        "tree": "df9b1055cc98934f776eab771f2dac192f5ea966",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T13:05:19.167735Z",
+        "duration_s": 80.9,
+        "log": "/tmp/factory-flow/b7873f3d-bdd7-47c8-8e36-c5014ed5cd4f/df9b1055cc98-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Independent review of 64ba24b65 against design rev. 3 and the owner notes. The implementation follows the design closely. Every hard-coded agent name is replaced: grep finds only role_defaults and solver_prefixes. The take/release lifecycle (START incl. HOLD_START, idle/standby, stop_scheduler for STOP/ABORT/finish/timeout/hook failure, SHUTDOWN before client detach, stale lock while stopped, Scripting Agent restart, manual release until next START) is implemented and tested. Callback/handler data is mirrored under observed.mutex as designed. Name buffers are bounded with INDIGO_COPY_NAME/snprintf and validated < INDIGO_NAME_SIZE. The take/release scripts use json_string. The Sequencer.js owner global survives reload. Tests are substantive, not vacuous. I ran them: test-agent-scripting-sequencer 87/87 passed, and all 20 new scheduler cases (run by filter) passed. Then test-clean.\n\nDefects:\n1. indigo_drivers/agent_scripting/library/Sequencer.md:199 - the new paragraph \"With an owner of the sequencer the four select_*_agent() steps ...\" is inserted in the middle of the \"Selecting agents & devices\" table, after the select_solver_agent row. This cuts the table: the rows from select_imager_camera onward no longer render as a table. Fix: move the paragraph below the end of the table (or into a table row).\n2. indigo_agent_scheduler.c:756 and :760 (wrapper_script) - the Scripting Agent name (scripting_view of AGENT_SCHEDULER_AGENTS.SCRIPTING) goes into a JS string literal with \\\"%s\\\" and is not escaped. Validation (role_matches, :3335) accepts any characters after \" @ \". A configured or selected name containing \" or \\ therefore breaks every task, hook and estimate script, or injects code into it. The take/release scripts already use json_string. Fix: emit the name through json_string here too, or reject \" and \\ (and control characters) in change_agents validation.\n3. indigo_agent_scheduler.c:4268 (agent_busy_bit) - with an automatic solver, the solver is taken from SEQUENCER_OWNER.SOLVER. That value is the name as the Scripting Agent sees it, while AGENT_START_PROCESS events carry bus names as the scheduler sees them. With a remote Scripting Agent (\"Scripting Agent @ obs2\") and a solver on obs2, the owner publishes \"ASTAP Agent\" while the bus device is \"ASTAP Agent @ obs2\". Busy tracking of the solver then silently does nothing. This goes against design 1.3 (\"covers ASTAP Agent and remote solvers\"). Fix: map the observed solver back into the scheduler's namespace before comparing. This is the inverse of scripting_view: append the Scripting Agent's suffix to a name that has no \" @ \". Ideally add an assertion in take_script_strips_the_scripting_agent_suffix or a small case.\n\nMinor robustness note (not blocking):\n4. indigo_agent_scheduler.c:1348 - releases_expected is incremented per release sent while the observed owner is still ours. Suppose a release has not been observed within OWNER_RETRY_INTERVAL, so the stale-lock path in process_owner sends it again. The second release causes no transition, so the counter stays > 0. It is not reset at START, so it can later swallow a real SEQUENCER_RELEASE, and the scheduler then retakes contrary to D1. Suggest resetting releases_expected (under the mutex) in control() START, or not incrementing while one is already pending.\n\nOut-of-scope notes: none. Formatting (tabs, one-line calls, braces, no blank lines in bodies) is OK; git diff --check is clean; versions are bumped (scheduler 0x0300002A, scripting 0x03000016); PROPERTIES.md and the guides cover the new properties; no README changed.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "64ba24b65622f615009e6db7f26cf7a31265cb51",
+        "tree": "f5184d4cb91de2af4aa586c1379e1e9bc46abe5a",
+        "at": "2026-11-26T10:39:09.520124Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of b28dc9b64 (delta since 64ba24b65). All four earlier findings are fixed:\n(1) Sequencer.md: the sentence now follows the table, which is whole again.\n(2) wrapper_script() emits the local Scripting Agent name through json_string(). Buffer check: names are < 256 bytes and control characters are now rejected by has_control_character() in change_agents, so the worst escaped length is 2*255+2 (quotes, backslashes, U+2028/2029). Even the unreachable \\u00XX worst case is 6*255+2 = 1532. report (about 350 bytes of fixed text) fits in 2048 and counts (about 1050 bytes) fits in 3072; size in wrapper_script is computed from strlen() of the parts. The test checks that a tab is rejected and that a quote is escaped in the take script.\n(3) agent_busy_bit() adds the Scripting Agent's suffix to a suffix-less SEQUENCER_OWNER.SOLVER. It is called with the mutex held and reads observed->agents; snprintf is bounded. remote_solver_busy_is_tracked would fail on the old code (\"ASTAP Agent\" vs \"ASTAP Agent @ obs2\"), so the test is not vacuous.\n(4) releases_expected is counted at most once and reset when the owner changes to the scheduler. The test reproduces the leak through a take without effect.\nI ran the filtered cases remote_solver_busy, manual_release*, take_script_strips and *solver_busy: all passed (7 cases); test-clean afterwards.\n\nResidual note on (4), minor, not blocking (rare timing): the comment at indigo_agent_scheduler.c observe_property (\"when a take of the scheduler takes effect every release sent before it has had its effect\") holds only for releases sent before that take. With take_unconfirmed, a release sent after a take that is not yet observed is counted (expected=1), and is then cleared when that very take becomes visible. The release's own effect (ours -> empty) is then counted as a manual release. This takes START, STOP and START within one script round trip: the second START captures the baseline before the event arrives, and the scheduler falsely announces a manual release and keeps no lock until the next START. When the scheduler is not started the miscount has no effect. Possible fix: do not reset while take_unconfirmed was set when the release was counted, e.g. keep a separate \"release after unconfirmed take\" flag. Owner's call.\n\nNo other issues in the delta. Docs (SCHEDULER.md) describe the suffix mapping, the control-character rule and the escaping. Formatting is OK.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "b28dc9b643c664c1a2e4fce19f4d3d7a110b22c7",
+        "tree": "d2b035dd83ed180b9b2b0e5b73dba5f064152983",
+        "at": "2026-11-26T11:01:41.410237Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of c4af2aa9b (delta since b28dc9b64): ordered list of the scheduler's takes and releases, with token reports.\n\nCorrectness: the matching is right in every ordering I worked through.\n- Ordering: the Scripting Agent runs RUN_SCRIPT requests in order and publishes the SEQUENCER_OWNER update before the SCHEDULER_RESULT define of the same script (same device, same thread). So \"a reported token ends every recorded script up to it\" holds.\n- Task and estimate tokens: they come from the same increasing PRIVATE_DATA->token. A task token taken before the take in start_task is smaller than the take's token, so it can only end scripts that were sent earlier. That is correct.\n- Becoming the owner consumes the first open take; any releases before it necessarily ran and had no effect. Losing ownership skips takes that had no effect (we were already the owner) and consumes the next release; with no release open, it is a manual release.\n- Merging consecutive scripts of the same kind is sound: the first one has the effect and the later ones only extend the token.\n- START, STOP, START before any effect is seen gives T,R,T and three matched transitions, so no false manual release. This was my round-2 note; it is fixed, and release_after_an_unseen_take_is_no_manual_release covers it.\n- An older library: the reports still end the takes and releases, which removes the round-1 leak.\n- Overflow: when the 32-entry list is full the oldest entry is dropped. This needs 32 alternating scripts with no effect and no report; acceptable.\n- The list is cleared on Scripting Agent deletion and on a change of the configured Scripting Agent.\n- Locking: entries are recorded under observed.mutex before sending and consumed in the callbacks under the same mutex. The handler, and SHUTDOWN after stop_commands, is the only writer of token.\n\nExisting result handling: run and estimate results are matched by token equality, so the extra SCHEDULER_RESULT defines with owner tokens are ignored there. Buffer: report[1024] holds about 300 bytes of fixed text plus the escaped Scripting Agent name, at most 2*255+2 = 512 bytes with control characters rejected, so it fits.\n\nThe stated limits (manual release within milliseconds of a scheduler release; a stale token from a previous instance after the time-seeded token wraps about every 27.8 h) are acceptable and documented.\n\nSimpler alternative: a correct C-only design needs some way to confirm that a take with no visible effect has run, so the per-script report is the minimal mechanism. The alternative is Sequencer.js publishing who released, which changes the published property and is not smaller overall. The change size (about 100 lines in C) is reasonable.\n\nTests: I ran the scheduler cases filtered by release (8), lock_ (6), take_script, remote_solver and estimate (5): all passed. test-clean afterwards.\n\nFinding (formatting, trivial, not blocking): indigo_test/integration/test_agent_scheduler.c:6485 has two case initializers on one line, separated by a tab (\"}, \\t{ \\\"release_after_an_unseen_take_is_no_manual_release\\\" ...\"). Put the new entry on its own line.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "c4af2aa9bf6995f74a0e7eaf1f568ee2b4051d79",
+        "tree": "6b70861dd540a998b3c1fe8681bc5d4c2d591b26",
+        "at": "2026-11-26T13:03:23.109175Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Delta since c4af2aa9b is only the requested formatting fix: the release_after_an_unseen_take_is_no_manual_release case entry in test_agent_scheduler.c is now on its own line. No other changes and a clean working tree. My earlier pass (round 3) applies to this tree.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "4fb1749c4de5c4b3903545b110f9223626dd4b42",
+        "tree": "df9b1055cc98934f776eab771f2dac192f5ea966",
+        "at": "2026-11-26T13:05:34.766898Z"
+      }
+    ],
+    "approvals": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": false,
+        "text": "Revise: the lock applies only to changing agents. Remove the permit and the refusal of sequences not started by the scheduler; keep the owner's agents enforced for every start(), select_*_agent() and the flip. Existing tests that start sequences by hand should then not need changes.",
+        "sha256": "4d4e382f9c5f4772bc441ddef33ce907ba955f0afb74e91f656af7aff68bd84d",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-26T09:10:14.602244Z"
+      },
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": false,
+        "text": "Revise per owner decisions note: per-role ONE_OF_MANY agent selection from agents on the bus with today's defaults, manual unlock, no MCP doc changes, no guider abort change.",
+        "sha256": "ab9675ef4aed6c796c135bf78f17888f90453210daaed6c1059a7117198cdca8",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-26T09:23:34.424233Z"
+      },
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": false,
+        "text": "Revise: text property with the agents (saved) filled by per-role switch lists (not saved, only agents on the bus); keep @ host names; D1 still open.",
+        "sha256": "9b1e4035f90b68a35a9cf08ccf1841ce6779e476f20404e1c9d022f7f8fc4983",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-26T09:43:24.511572Z"
+      },
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": true,
+        "text": "",
+        "sha256": "9de149e0d96e9452c4b543a22bcd39ddf4448df6747fbbabf276c44a665414aa",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-26T09:48:10.329048Z"
+      }
+    ],
+    "notes": [
+      {
+        "at": "2026-11-26T09:10:14.525541Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision 2026-11-26: the lock applies only to changing agents, not to everything. While the scheduler owns the sequencer, any sequence may be started by any client (no permit, no refusal of sequences not started by the scheduler); every start() uses the owner's agents, agents passed to start() and select_*_agent() steps are ignored with a warning, and the meridian flip uses the owner's agents. Item 4 of the agreed design (refusing foreign sequences, one-shot permit) is withdrawn.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-26T09:23:34.347176Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions on the design questions (2026-11-26): Q1 agent configuration as one ONE_OF_MANY switch property per agent role, listing the agents of that role seen on the bus (by the INDIGO name convention, e.g. names starting with 'Imager Agent'), with today's defaults selected; the user chooses which to use. Q2 add a manual unlock (release of the sequencer owner from a client). Q3 select_solver_agent() under automatic solver choice is ignored with a warning. Q4 no change: guider agent names always start with 'Guider Agent' by accepted convention. Q5 MCP documents are not updated in this ticket (later). Q6 two schedulers with the same name: documented as unsupported. Q7 web UI not in this ticket.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-26T09:43:24.407575Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions on design revision 2 (2026-11-26): (a) remote agents: the owner asked to strip ' @ host' from the lists only if the sequencer does not work with remote agents; it does (Sequencer.md start('Imager Agent @ observatory', ...), sequencer_agent_host() in Sequencer.js), so the lists keep ' @ host' names. (b) The saved, authoritative agent configuration is a text property with one item per role, loaded from the saved configuration; the per-role ONE_OF_MANY switch lists of agents on the bus only serve to fill it (selecting a switch writes the name into the text item). A configured agent that is not on the bus stays in the text property; no '(not present)' switch items. D1 (duration of a manual release while the scheduler runs) is still open.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-26T09:48:10.252594Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decisions on design revision 3 (2026-11-26): at-most-one selector switches accepted; D1: a manual release lasts until the next START (or a scheduler restart), as recommended in the design.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-26T12:37:22.645452Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision 2026-11-26: fix the remaining race from review round 2 before commit (a release sent after a take whose effect is not yet seen is counted, then the count is cleared when that take becomes visible, so the release's own effect is misread as a manual release on fast START/STOP/START). Ticket retitled to the commit subject.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-26T08:39:57.548362Z"
+      },
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-26T09:12:19.527006Z"
+      },
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-26T09:26:13.897198Z"
+      },
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/Rumen G.Bogdanovski",
+        "at": "2026-11-26T09:44:50.486357Z"
+      }
+    ],
+    "landing": {
+      "commit": "33d9b31f21baf1217f067f4dd030853a902676d9",
+      "tree": "df9b1055cc98934f776eab771f2dac192f5ea966",
+      "base": "master",
+      "at": "2026-11-26T13:14:40.677565Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "full",
+    "at": "2026-11-26T08:29:07.341426Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T08:29:10.454725Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 11486324.753,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 10
+    }
+  },
+  "journal": {
+    "entries": 112,
+    "sha256": "ab7f556a9e273788b1fabf219fa200eef228c191a8422460ac1bd0aefdfaf8f6"
+  }
+}
