@@ -1365,14 +1365,14 @@ static void test_visibility_wait_keeps_first_run(void) {
 	ASSERT_EQ_INT(waits, kept);
 }
 
-// a previous plan passed with its starts, while no input changed, is kept against a COMPACT plan with a higher value at the same runs; passed as an order alone, after a change, it is replaced as a new plan: the 67th random queue at the moment its COMPACT plan overtakes it
+// a previous plan passed with its starts, while no input changed, is kept against a COMPACT plan with a higher value at the same runs; passed as an order alone, after a change, it is replaced as a new plan: the 39th random queue at the moment its COMPACT plan overtakes it
 static void test_visibility_kept_only_with_starts(void) {
 	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, 42, 23, 0);
 	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON);
 	random_state = 11;
 	int count = 0;
 	time_t now = 0;
-	for (int queue = 0; queue <= 66; queue++) {
+	for (int queue = 0; queue <= 38; queue++) {
 		count = random_queue(false);
 		now = T_VISIBILITY_NOON + 3600 * (int)(random_unit() * 8) + 17;
 	}
@@ -1385,7 +1385,7 @@ static void test_visibility_kept_only_with_starts(void) {
 		}
 	}
 	ASSERT_TRUE(previous_count > 0);
-	time_t t = now + 13183;
+	time_t t = now + 3009;
 	scheduler_plan_info info;
 	planned = indigo_scheduler_plan_visibility(&sky, tasks, count, NULL, 0, t, end, 1, 1, NULL, previous, previous_count, runs, 512, &info);
 	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
