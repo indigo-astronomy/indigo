@@ -319,6 +319,7 @@ can be found from its name alone:
 - List every driver archive a test links as a prerequisite of that test's rule, not only inside its `*_TEST_LDFLAGS` variable, so a rebuilt driver relinks the test.
 - Add every new test source or header to its appropriate Xcode project group in `../indigo.xcodeproj/project.pbxproj`.
 - Keep test-specific linker flags local and explicit.
+- Link test executables through `TEST_LDFLAGS` (or a variable built from it). On Linux it stores the rpath to this checkout's `build/lib` as DT_RPATH, which the loader searches before `LD_LIBRARY_PATH`, so a test binary uses this checkout's libindigo even when the caller's library path points at another checkout, such as the primary one seen from a Factory worktree. The Makefile also exports `LD_LIBRARY_PATH` and `DYLD_LIBRARY_PATH` with this `build/lib` first to every recipe. A Python runner that starts `indigo_server`, a tool or a test binary itself puts its checkout's `build/lib` first in both variables of the child's environment, as `integration/run_scheduler_simulators.py` does. `buildsystem/test_checkout_library.py` checks the linking and the Makefile export; the runners are not covered by it.
 - Do not add generated binaries or `build/` artifacts to the repository.
 - Keep `test-clean` able to remove all generated test outputs.
 
