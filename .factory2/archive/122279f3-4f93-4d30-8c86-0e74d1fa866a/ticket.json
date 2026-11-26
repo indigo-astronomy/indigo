@@ -1,0 +1,525 @@
+{
+  "schema_version": 1,
+  "ticket_id": "122279f3-4f93-4d30-8c86-0e74d1fa866a",
+  "revision": 27,
+  "title": "indigo_mount_synscan: expose X_MOUNT_STEP_POSITION for both axes",
+  "description": "Add a read-only numeric property X_MOUNT_STEP_POSITION to the SynScan mount device, with RA and DEC items. Publish the motor step counters from the existing :j reads for both axes in the position poll, with no additional controller commands. Define the property for connected SynScan mounts whether or not they advertise auxiliary encoders, including the Sky-Watcher Wave 100i over USB. Keep X_MOUNT_ENCODER_POSITION and its :d behavior as they are.\n\nPublish both axes from the same successful poll. If either read fails, keep the last valid pair and report ALERT until both reads succeed again. Document the counter units and reference convention so clients can convert counts to axis angles. The intended use is to read the mechanical RA axis position for a scheduler collision check, including at Home.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-25T18:31:03.461525Z",
+  "status": "closed",
+  "branch": "ticket/122279f3-4f93-4d30-8c86-0e74d1fa866a",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "63cb18ce-b216-4f68-b32e-dc683c5648be",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T18:42:50.767389Z",
+          "last_activity_at": "2026-11-25T19:13:54.986549Z",
+          "ended_at": "2026-11-25T19:13:54.986549Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 1864219.16,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T18:42:50.767389Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/122279f3-4f93-4d30-8c86-0e74d1fa866a"
+        },
+        {
+          "at": "2026-11-25T19:13:54.986549Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1864219.16,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "49006d18-efc2-4815-a513-41abc587c277",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "352bcd3b-e1dc-4b93-ab63-88ba0eeb94b5",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-25T19:13:54.986714Z",
+          "last_activity_at": "2026-11-25T19:15:28.045842Z",
+          "ended_at": "2026-11-25T19:15:28.045842Z",
+          "outcome": {
+            "summary": "Independent review of clean HEAD 9470bab4ea381935747a1915ac169bf935ef7d03 and git diff master...HEAD: no required defects found. Reviewed source and generated lifecycle, connected/read-only RA and DEC metadata, no-encoder availability, signed 24-bit counter conversion, atomic successful-pair copying, failed-poll ALERT and pair retention/recovery, coordinate callers, preserved :d behavior, Home/reference documentation and all three new simulator cases. Added publication uses existing reads with no additional controller transactions; serialized handlers retain existing concurrency behavior. Inspected recorded Factory log: full non-interactive macOS arm64 SynScan simulator 147/147 passed, including all three new cases and existing encoder regressions; exactly four queries each for :j1/:j2/:d1/:d2 in four idle polls. Generator consistency and full simulator command passed at 04b7ab99c7; only README and TEST_SUMMARY run-record lines differ from final HEAD. Final Factory whitespace passed at 9470bab4ea. Reviewed the prior targeted 3/3 evidence; no tests rerun by reviewer. Hardware/Wave 100i USB, Linux and Windows remain untested. Review limited to this ticket diff and relevant callers, not a whole-project audit.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 93059.128,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-25T19:13:54.986714Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-25T19:15:28.045842Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Independent review of clean HEAD 9470bab4ea381935747a1915ac169bf935ef7d03 and git diff master...HEAD: no required defects found. Reviewed source and generated lifecycle, connected/read-only RA and DEC metadata, no-encoder availability, signed 24-bit counter conversion, atomic successful-pair copying, failed-poll ALERT and pair retention/recovery, coordinate callers, preserved :d behavior, Home/reference documentation and all three new simulator cases. Added publication uses existing reads with no additional controller transactions; serialized handlers retain existing concurrency behavior. Inspected recorded Factory log: full non-interactive macOS arm64 SynScan simulator 147/147 passed, including all three new cases and existing encoder regressions; exactly four queries each for :j1/:j2/:d1/:d2 in four idle polls. Generator consistency and full simulator command passed at 04b7ab99c7; only README and TEST_SUMMARY run-record lines differ from final HEAD. Final Factory whitespace passed at 9470bab4ea. Reviewed the prior targeted 3/3 evidence; no tests rerun by reviewer. Hardware/Wave 100i USB, Linux and Windows remain untested. Review limited to this ticket diff and relevant callers, not a whole-project audit."
+        }
+      ],
+      "result": {
+        "summary": "Independent review of clean HEAD 9470bab4ea381935747a1915ac169bf935ef7d03 and git diff master...HEAD: no required defects found. Reviewed source and generated lifecycle, connected/read-only RA and DEC metadata, no-encoder availability, signed 24-bit counter conversion, atomic successful-pair copying, failed-poll ALERT and pair retention/recovery, coordinate callers, preserved :d behavior, Home/reference documentation and all three new simulator cases. Added publication uses existing reads with no additional controller transactions; serialized handlers retain existing concurrency behavior. Inspected recorded Factory log: full non-interactive macOS arm64 SynScan simulator 147/147 passed, including all three new cases and existing encoder regressions; exactly four queries each for :j1/:j2/:d1/:d2 in four idle polls. Generator consistency and full simulator command passed at 04b7ab99c7; only README and TEST_SUMMARY run-record lines differ from final HEAD. Final Factory whitespace passed at 9470bab4ea. Reviewed the prior targeted 3/3 evidence; no tests rerun by reviewer. Hardware/Wave 100i USB, Linux and Windows remain untested. Review limited to this ticket diff and relevant callers, not a whole-project audit.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 93059.128,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "463859aa-54a2-4da4-93bd-2c014de32fb7",
+      "event": "ticket/created",
+      "at": "2026-11-25T18:31:03.463257Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "70250ef3-a28f-4492-bc02-ad3e73e8c815",
+      "event": "ticket/confirmed",
+      "at": "2026-11-25T18:42:38.814440Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "a72ec51b-a8e7-4439-a375-5c808e4973c7",
+      "event": "task/progress",
+      "at": "2026-11-25T18:42:50.767713Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Implementation started on branch ticket/122279f3-4f93-4d30-8c86-0e74d1fa866a"
+    },
+    {
+      "event_id": "24e30e93-a999-4f3c-9e7f-156be8c9d7f2",
+      "event": "ticket/started",
+      "at": "2026-11-25T18:42:50.769543Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/122279f3-4f93-4d30-8c86-0e74d1fa866a",
+      "base": "master"
+    },
+    {
+      "event_id": "ff02b18c-1ab7-4575-a44f-94acf0b13de1",
+      "event": "task/progress",
+      "at": "2026-11-25T18:43:18.042258Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Implementer launched",
+      "attempt_id": "63cb18ce-b216-4f68-b32e-dc683c5648be",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "9c54dcce-5f4f-43cf-a4a9-666f1ab03479",
+      "event": "ticket/note",
+      "at": "2026-11-25T18:44:39.093829Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implementation plan: expose signed :j motor counts (24-bit reply minus 0x800000) through the generated mount property lifecycle, copying both only after successful coordinate reads. Preserve :d commands and auxiliary encoder gating. Add simulator cases for no-encoder lifecycle/Home, motion and zero added reads, and either-axis failure/last-pair recovery. Document conversion and reference in indigo_docs/PROPERTIES.md. Verification mode: non-interactive simulator only; no hardware/Wave 100i USB validation. Run targeted cases then the recorded SynScan simulator suite and required Factory whitespace check.",
+      "tokens": null
+    },
+    {
+      "event_id": "2dcd9d38-96fd-49dc-86a5-78d17eca4470",
+      "event": "task/progress",
+      "at": "2026-11-25T18:44:50.614037Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Adding step-counter property, protocol documentation and simulator regression cases"
+    },
+    {
+      "event_id": "b0131926-5f97-4c0a-88fa-6c30e391abcc",
+      "event": "task/progress",
+      "at": "2026-11-25T18:47:18.843464Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && INDIGO_TEST_FILTER=step_position python3 -B tools/run_driver_test.py mount_synscan --"
+    },
+    {
+      "event_id": "3d145171-5f74-41e8-b832-adb507715550",
+      "event": "task/progress",
+      "at": "2026-11-25T18:48:34.775023Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Check command-1 failed: exit code 1"
+    },
+    {
+      "event_id": "a8cf371c-61a5-4667-a4a1-c0d3d581565c",
+      "event": "check/failed",
+      "at": "2026-11-25T18:48:34.777287Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "d7c6f9b12a3bcfaabb2d4877f5aee227ba74f7a4",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "bfdd9d33-99a7-4b43-8ecd-0019285ebf30",
+      "event": "ticket/note",
+      "at": "2026-11-25T18:49:26.930258Z",
+      "actor": "human/Peter Polakovic",
+      "text": "First targeted build succeeded. Two new simulator cases passed, including last-pair failure/recovery and exactly four :j1/:j2/:d1/:d2 queries for four idle polls. The lifecycle case failed because has_defined_property records definition history even after deletion; corrected the test to assert absence from the live property cache. No production defect was found by that failure.",
+      "tokens": null
+    },
+    {
+      "event_id": "574fc21d-a02b-4d7b-8485-9ae9472b8b55",
+      "event": "task/progress",
+      "at": "2026-11-25T18:49:29.355087Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Check command-1 started: INDIGO_TEST_FILTER=step_position python3 -B tools/run_driver_test.py mount_synscan --no-record"
+    },
+    {
+      "event_id": "9f910a0f-66d4-47d7-bb5a-8f31d6b7e19d",
+      "event": "task/progress",
+      "at": "2026-11-25T18:50:01.921457Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "c00f96b8-7285-4de0-9980-7a99a1fe9c63",
+      "event": "check/passed",
+      "at": "2026-11-25T18:50:01.925831Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "04b7ab99c7a5b373c16be784c908fd0748c4f6f9",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "ac21e397-b153-40f9-bdce-eef2bcb31f6f",
+      "event": "task/progress",
+      "at": "2026-11-25T18:50:14.866547Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Check command-1 started: build/bin/indigo_generator indigo_drivers/mount_synscan/indigo_mount_synscan.driver && git diff --exit-code -- indigo_drivers/mount_synscan/indigo_mou"
+    },
+    {
+      "event_id": "238b7183-53f9-473d-8f5a-ee46822c7545",
+      "event": "task/progress",
+      "at": "2026-11-25T19:12:44.410214Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "c8cb253e-66c5-491c-a4bf-82872d9da72f",
+      "event": "check/passed",
+      "at": "2026-11-25T19:12:44.415076Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "04b7ab99c7a5b373c16be784c908fd0748c4f6f9",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "eb0f0518-4881-418f-b1a9-9ddc607e77e4",
+      "event": "ticket/note",
+      "at": "2026-11-25T19:13:23.673677Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Final behavioral verification: targeted new-property tests 3/3 passed; generated .c/.h/main regeneration matched exactly; recorded non-interactive SynScan simulator run passed 147/147 on macOS arm64 (driver 3.0.0.35), including unchanged :d encoder regressions, in 1349.5 s. Script updated only the SynScan simulator record in README.md and TEST_SUMMARY.md. New cases cover no-encoder Wave 100i model flags, lifecycle/read-only metadata and nominal Home, motion counter values independent of :d, one existing query per axis per idle poll, failed initial reading, successful DEC then failed RA, malformed reads, pair retention and recovery. Hardware tests run/passed: 0/0; actual Wave 100i USB, Linux and Windows were not tested. Native build included x86_64/arm64; baseline dependency/platform warnings only. The initial failed targeted run was a test assertion using historical definitions instead of the live cache; its corrected rerun passed. No unresolved product defect found.",
+      "tokens": null
+    },
+    {
+      "event_id": "d47dacc6-1081-48ed-8d58-69eb1877b2ab",
+      "event": "task/progress",
+      "at": "2026-11-25T19:13:25.545930Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Cleaning test build artifacts and checking the final recorded diff"
+    },
+    {
+      "event_id": "7a801914-2112-4882-8881-4847727b714a",
+      "event": "task/progress",
+      "at": "2026-11-25T19:13:30.503956Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2b5a3a68-2aab-4e5b-9864-37a86a670989",
+      "event": "task/progress",
+      "at": "2026-11-25T19:13:30.547643Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "4358f099-c114-4d10-b201-263e9a4397a6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7c2162c3-793f-4b97-8bd8-d335d082dfcb",
+      "event": "check/passed",
+      "at": "2026-11-25T19:13:30.549484Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "9470bab4ea381935747a1915ac169bf935ef7d03",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "8063b0f8-ee3a-4b30-8788-4b80285803e9",
+      "event": "task/progress",
+      "at": "2026-11-25T19:13:54.986791Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "49006d18-efc2-4815-a513-41abc587c277",
+      "text": "Review started"
+    },
+    {
+      "event_id": "ee85d244-0997-49a7-a68e-deb5101aaf1e",
+      "event": "review/started",
+      "at": "2026-11-25T19:13:54.988401Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "6490590e-f663-4d04-b87d-4da01bd397f9",
+      "event": "task/progress",
+      "at": "2026-11-25T19:14:20.072074Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "49006d18-efc2-4815-a513-41abc587c277",
+      "text": "Reviewer launched",
+      "attempt_id": "352bcd3b-e1dc-4b93-ab63-88ba0eeb94b5",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3bcdd30e-2cb3-4549-8eb5-ab469b22f079",
+      "event": "task/progress",
+      "at": "2026-11-25T19:14:58.940589Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "49006d18-efc2-4815-a513-41abc587c277",
+      "text": "Reviewing coordinate callers, Home reference and recorded simulator checks"
+    },
+    {
+      "event_id": "758e96ac-2576-4e13-b7e4-7c0e0a9b83bc",
+      "event": "task/progress",
+      "at": "2026-11-25T19:15:28.045948Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "49006d18-efc2-4815-a513-41abc587c277",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d289293b-4752-43da-8c39-7555d40d21ff",
+      "event": "review/passed",
+      "at": "2026-11-25T19:15:28.047278Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "49006d18-efc2-4815-a513-41abc587c277",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "9470bab4ea381935747a1915ac169bf935ef7d03"
+    },
+    {
+      "event_id": "34d3a273-bb1a-44e7-83e4-ebc2ab08b9fd",
+      "event": "ticket/closed",
+      "at": "2026-11-25T19:15:42.047013Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-25T19:15:42.046985Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "8b9d5d6b3f368e45225efed001ffb62ce4450d54"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && INDIGO_TEST_FILTER=step_position python3 -B tools/run_driver_test.py mount_synscan --no-record",
+        "commit": "d7c6f9b12a3bcfaabb2d4877f5aee227ba74f7a4",
+        "tree": "0ba5a0b81d167a994943256594de341ef5851244",
+        "exit_code": 1,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-25T18:48:34.773570Z",
+        "duration_s": 75.9,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/122279f3-4f93-4d30-8c86-0e74d1fa866a/0ba5a0b81d16-command-1.log"
+      },
+      {
+        "name": "command-1",
+        "command": "build/bin/indigo_generator indigo_drivers/mount_synscan/indigo_mount_synscan.driver && git diff --exit-code -- indigo_drivers/mount_synscan/indigo_mount_synscan.c indigo_drivers/mount_synscan/indigo_mount_synscan.h indigo_drivers/mount_synscan/indigo_mount_synscan_main.c && python3 -B tools/run_driver_test.py mount_synscan",
+        "commit": "04b7ab99c7a5b373c16be784c908fd0748c4f6f9",
+        "tree": "7e69a5d371b56916f0999f85c518eb3426d3b70e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T19:12:44.408116Z",
+        "duration_s": 1349.5,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/122279f3-4f93-4d30-8c86-0e74d1fa866a/7e69a5d371b5-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9470bab4ea381935747a1915ac169bf935ef7d03",
+        "tree": "ef399ca3546caab31bfa0ce207a8ece64c67af01",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-25T19:13:30.546808Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/122279f3-4f93-4d30-8c86-0e74d1fa866a/ef399ca3546c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of clean HEAD 9470bab4ea381935747a1915ac169bf935ef7d03 and git diff master...HEAD: no required defects found. Reviewed source and generated lifecycle, connected/read-only RA and DEC metadata, no-encoder availability, signed 24-bit counter conversion, atomic successful-pair copying, failed-poll ALERT and pair retention/recovery, coordinate callers, preserved :d behavior, Home/reference documentation and all three new simulator cases. Added publication uses existing reads with no additional controller transactions; serialized handlers retain existing concurrency behavior. Inspected recorded Factory log: full non-interactive macOS arm64 SynScan simulator 147/147 passed, including all three new cases and existing encoder regressions; exactly four queries each for :j1/:j2/:d1/:d2 in four idle polls. Generator consistency and full simulator command passed at 04b7ab99c7; only README and TEST_SUMMARY run-record lines differ from final HEAD. Final Factory whitespace passed at 9470bab4ea. Reviewed the prior targeted 3/3 evidence; no tests rerun by reviewer. Hardware/Wave 100i USB, Linux and Windows remain untested. Review limited to this ticket diff and relevant callers, not a whole-project audit.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "9470bab4ea381935747a1915ac169bf935ef7d03",
+        "tree": "ef399ca3546caab31bfa0ce207a8ece64c67af01",
+        "at": "2026-11-25T19:15:28.045680Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-25T18:44:39.091914Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implementation plan: expose signed :j motor counts (24-bit reply minus 0x800000) through the generated mount property lifecycle, copying both only after successful coordinate reads. Preserve :d commands and auxiliary encoder gating. Add simulator cases for no-encoder lifecycle/Home, motion and zero added reads, and either-axis failure/last-pair recovery. Document conversion and reference in indigo_docs/PROPERTIES.md. Verification mode: non-interactive simulator only; no hardware/Wave 100i USB validation. Run targeted cases then the recorded SynScan simulator suite and required Factory whitespace check.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-25T18:49:26.928058Z",
+        "actor": "human/Peter Polakovic",
+        "text": "First targeted build succeeded. Two new simulator cases passed, including last-pair failure/recovery and exactly four :j1/:j2/:d1/:d2 queries for four idle polls. The lifecycle case failed because has_defined_property records definition history even after deletion; corrected the test to assert absence from the live property cache. No production defect was found by that failure.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-25T19:13:23.671349Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Final behavioral verification: targeted new-property tests 3/3 passed; generated .c/.h/main regeneration matched exactly; recorded non-interactive SynScan simulator run passed 147/147 on macOS arm64 (driver 3.0.0.35), including unchanged :d encoder regressions, in 1349.5 s. Script updated only the SynScan simulator record in README.md and TEST_SUMMARY.md. New cases cover no-encoder Wave 100i model flags, lifecycle/read-only metadata and nominal Home, motion counter values independent of :d, one existing query per axis per idle poll, failed initial reading, successful DEC then failed RA, malformed reads, pair retention and recovery. Hardware tests run/passed: 0/0; actual Wave 100i USB, Linux and Windows were not tested. Native build included x86_64/arm64; baseline dependency/platform warnings only. The initial failed targeted run was a test assertion using historical definitions instead of the live cache; its corrected rerun passed. No unresolved product defect found.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "8b9d5d6b3f368e45225efed001ffb62ce4450d54",
+      "tree": "ef399ca3546caab31bfa0ce207a8ece64c67af01",
+      "base": "master",
+      "at": "2026-11-25T19:15:41.955506Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-25T18:31:03.461525Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-25T18:42:38.814115Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 1957278.288,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 33,
+    "sha256": "338c5d4cf2002fc684c593858b83dc17165e1f62386d8d8ea3d15a782ed55aa8"
+  }
+}

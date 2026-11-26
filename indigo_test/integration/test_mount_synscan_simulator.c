@@ -61,6 +61,7 @@ static char park_folder[] = "/tmp/indigo-synscan-park-XXXXXX";
 #define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME      "X_MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME        "DEC_OFFSET"
 #define MOUNT_OPERATING_MODE_PROPERTY_NAME         "X_MOUNT_OPERATING_MODE"
+#define MOUNT_STEP_POSITION_PROPERTY_NAME          "X_MOUNT_STEP_POSITION"
 #define MOUNT_ENCODER_POSITION_PROPERTY_NAME       "X_MOUNT_ENCODER_POSITION"
 #define MOUNT_ENCODER_POSITION_RA_ITEM_NAME        "RA"
 #define MOUNT_ENCODER_POSITION_DEC_ITEM_NAME       "DEC"
@@ -2269,6 +2270,9 @@ static _Atomic double observed_previous_ra, observed_previous_dec, observed_aler
 static pthread_mutex_t observed_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char observed_coordinates_message[INDIGO_VALUE_SIZE], observed_park_message[INDIGO_VALUE_SIZE];
 
+// The motor counter state at definition, including a failed first reading.
+static atomic_int observed_step_define_state;
+
 // The same for X_MOUNT_ENCODER_POSITION: the state it was defined with and the values around its first ALERT.
 static atomic_int observed_encoder_define_state;
 static atomic_bool observed_encoder_alert;
@@ -2312,6 +2316,9 @@ static indigo_result observe_define(indigo_client *client, indigo_device *device
 		atomic_store(&observed_encoder_define_state, property->state);
 		atomic_store(&observed_encoder_previous_ra, observed_item_value(property, MOUNT_ENCODER_POSITION_RA_ITEM_NAME));
 		atomic_store(&observed_encoder_previous_dec, observed_item_value(property, MOUNT_ENCODER_POSITION_DEC_ITEM_NAME));
+	}
+	if (!strcmp(property->device, synscan_mount.device_name) && !strcmp(property->name, MOUNT_STEP_POSITION_PROPERTY_NAME)) {
+		atomic_store(&observed_step_define_state, property->state);
 	}
 	return simulator_client_define_property(client, device, property, message);
 }
@@ -2422,6 +2429,7 @@ static indigo_result observe_message(indigo_client *client, indigo_device *devic
 }
 
 static void install_observer(void) {
+	atomic_store(&observed_step_define_state, -1);
 	atomic_store(&observed_coordinates_define_state, -1);
 	atomic_store(&observed_slew_define_light, -1);
 	atomic_store(&observed_coordinates_alert, false);
@@ -5822,12 +5830,141 @@ static void synscan_mount_park_queued_behind_home_is_refused(void) {
 	synscan_check_queued_park_and_home(false);
 }
 
+// Motor counters use the existing coordinate reads and remain available without auxiliary encoders.
+static void synscan_mount_step_position_without_encoders(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	const char *arguments[] = { "--model-code", "44", "--ra-features", "6000", "--dec-features", "6000", NULL };
+	const char *items[] = { "RA", "DEC" };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&synscan_mount));
+	driver_started = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_STEP_POSITION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_STEP_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_ENCODER_POSITION_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_USE_ENCODERS_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "Wave 100i"));
+	assert_property_has_items(MOUNT_STEP_POSITION_PROPERTY_NAME, items, ARRAY_SIZE(items));
+	indigo_property *property = find_cached_property(MOUNT_STEP_POSITION_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(property != NULL && property->type == INDIGO_NUMBER_VECTOR && property->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_TRUE(!strcmp(property->group, MOUNT_ALIGNMENT_GROUP));
+	for (int i = 0; i < 2; i++) {
+		indigo_item *item = find_cached_item(MOUNT_STEP_POSITION_PROPERTY_NAME, items[i]);
+		SERIAL_CHECK_TRUE(item != NULL && item->number.min == -8388608 && item->number.max == 8388607 && item->number.step == 1);
+		SERIAL_CHECK_TRUE(!strcmp(item->number.format, "%.0f"));
+	}
+	// The nominal Home counter reference is independent of sky RA, which is degenerate at the pole.
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA") == 0);
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "DEC") == SIM_STEPS_PER_REVOLUTION / 4);
+	SERIAL_CHECK_EQ_INT(0, count_synscan_commands(&simulator, 0, ":d", NULL, 0, NULL));
+	double values[] = { 1, 1 };
+	indigo_change_number_property(&simulator_test_client, synscan_mount.device_name, MOUNT_STEP_POSITION_PROPERTY_NAME, 2, items, values);
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA") == 0);
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "DEC") == SIM_STEPS_PER_REVOLUTION / 4);
+	disconnect_serial_device(&synscan_mount);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_STEP_POSITION_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_TRUE(connect_serial_device(&synscan_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_STEP_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA") == 0);
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void synscan_mount_step_position_reuses_coordinate_reads(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	SERIAL_CHECK_TRUE(start_encoder_simulator(&simulator, "6007", "6007"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(synscan_select_encoders(false, false));
+	SERIAL_CHECK_TRUE(synscan_goto(MOUNT_ON_COORDINATES_SET_SLEW_ITEM_NAME, fmod(synscan_lst() - 2 + 24, 24), 40));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA") == synscan_replayed_step_counter(&simulator, '1') - 0x800000);
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "DEC") == synscan_replayed_step_counter(&simulator, '2') - 0x800000);
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA") != cached_number_value(MOUNT_ENCODER_POSITION_PROPERTY_NAME, "RA"));
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "DEC") != cached_number_value(MOUNT_ENCODER_POSITION_PROPERTY_NAME, "DEC"));
+	// While idle there is exactly one pair of :j and :d queries per coordinate poll. Allow one boundary poll.
+	int mark = synscan_mark(&simulator);
+	unsigned int revision = property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(4));
+	int polls = property_revision(MOUNT_RAW_COORDINATES_PROPERTY_NAME) - revision;
+	const char *queries[] = { ":j1", ":j2", ":d1", ":d2" };
+	for (int i = 0; i < ARRAY_SIZE(queries); i++) {
+		int reads = count_synscan_commands(&simulator, mark, queries[i], NULL, 0, NULL);
+		printf("    %s: %d queries in %d coordinate polls\n", queries[i], reads, polls);
+		SERIAL_CHECK_TRUE(reads >= polls - 1 && reads <= polls + 1);
+	}
+	// Enabling dual encoders does not hide the motor counters or change them into :d encoder ticks.
+	SERIAL_CHECK_TRUE(synscan_select_encoders(true, true));
+	SERIAL_CHECK_TRUE(wait_for_synscan_polls(2));
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA") == synscan_replayed_step_counter(&simulator, '1') - 0x800000);
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "DEC") == synscan_replayed_step_counter(&simulator, '2') - 0x800000);
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// A good DEC read followed by a failed RA read must not leak a mixed pair. Refused and malformed reads recover.
+static void synscan_mount_step_position_keeps_pair_on_failure(void) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	install_observer();
+	SERIAL_CHECK_TRUE(start_encoder_simulator(&simulator, "6000", "6000"));
+	SERIAL_CHECK_TRUE(write_synscan_fault(&simulator, ":j1", "!0", 1000));
+	SERIAL_CHECK_TRUE(start_serial_driver(&synscan_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, atomic_load(&observed_step_define_state));
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA") == 0);
+	SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "DEC") == 0);
+	remove_synscan_fault(&simulator);
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_STEP_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	const char *faults[] = { ":j2 =000000 1000\n:j1 !0 1000\n", ":j2 =1 1000\n", ":j1 =1 1000\n" };
+	for (int i = 0; i < ARRAY_SIZE(faults); i++) {
+		double ra = cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA");
+		double dec = cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "DEC");
+		SERIAL_CHECK_TRUE(ra == 0 && dec == SIM_STEPS_PER_REVOLUTION / 4);
+		SERIAL_CHECK_TRUE(write_synscan_faults(&simulator, faults[i]));
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_STEP_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA") == ra);
+		SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "DEC") == dec);
+		unsigned int alert = property_state_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+		simulator_test_client.force_property_updates = true;
+		SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, alert));
+		SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_STEP_POSITION_PROPERTY_NAME)->state);
+		SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "RA") == ra);
+		SERIAL_CHECK_TRUE(cached_number_value(MOUNT_STEP_POSITION_PROPERTY_NAME, "DEC") == dec);
+		remove_synscan_fault(&simulator);
+		SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_STEP_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+		simulator_test_client.force_property_updates = false;
+		SERIAL_CHECK_TRUE(context.connected);
+	}
+cleanup:
+	simulator_test_client.force_property_updates = false;
+	remove_observer();
+	remove_synscan_fault(&simulator);
+	if (driver_started) {
+		stop_serial_driver(&synscan_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (indigo_test_mkdtemp_home(park_folder) == NULL) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
+		{ "synscan_mount_step_position_without_encoders", synscan_mount_step_position_without_encoders },
+		{ "synscan_mount_step_position_reuses_coordinate_reads", synscan_mount_step_position_reuses_coordinate_reads },
+		{ "synscan_mount_step_position_keeps_pair_on_failure", synscan_mount_step_position_keeps_pair_on_failure },
 		{ "synscan_autohome_abort_stop_failure", synscan_autohome_abort_stop_failure },
 		{ "synscan_autohome_disconnect_stop_failure", synscan_autohome_disconnect_stop_failure },
 		{ "synscan_autohome_abort_then_restart", synscan_autohome_abort_then_restart },
