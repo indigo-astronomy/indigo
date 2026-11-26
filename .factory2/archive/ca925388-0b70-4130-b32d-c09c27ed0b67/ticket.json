@@ -1,0 +1,923 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ca925388-0b70-4130-b32d-c09c27ed0b67",
+  "revision": 53,
+  "title": "indigo_test: two-server end-to-end stress tests for the Scheduler Agent",
+  "description": "Add two end-to-end stress tests in which the Scheduler Agent works across two private indigo_server processes on the local host (separate ports, private configuration, no existing server or configuration used), connected through the standard INDIGO remote-server connection, with the CCD simulator as the camera.\n\nTopology 1: server A runs the Scheduler Agent only; server B runs the Scripting Agent, the Imager Agent and the CCD simulator. The scheduler drives capture through the remote Scripting/Imager agents.\n\nTopology 2: server A runs the Scheduler Agent and the Scripting Agent; server B runs the Imager Agent and the CCD simulator.\n\nEach test is a stress run, not a smoke test: upload a queue of many short capture tasks over the JSON protocol, run it to completion, and verify through properties, messages and saved frames that every task finished with the expected frame count and no task was lost, duplicated or left BUSY. Include repeated start/abort/restart of the queue while captures are in progress, and a loss and reconnection of the link between the two servers during a run (scheduler must hold/fail the running task as designed and recover). Check that both servers exit cleanly and leave no stale processes or files.\n\nBase the harness on indigo_test/integration/run_scheduler_simulators.py (private server, JSON client) or extend it; follow indigo_test/AGENTS.md (naming, recording, cleanup, timeouts, parallel safety, free ports). Use the configurable agent names of the scheduler (remote devices appear as e.g. 'Imager Agent @ host'). Defects found in the agents while writing the tests get their own tickets unless trivially in scope. Add new files to indigo.xcodeproj. Exclude indigo_test/shell_compliance/.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-26T18:22:54.877109Z",
+  "status": "closed",
+  "branch": "ticket/ca925388-0b70-4130-b32d-c09c27ed0b67",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "605259bf-3ed2-41a3-8e55-c79af04c172d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T18:28:49.888882Z",
+          "last_activity_at": "2026-11-26T21:44:36.299567Z",
+          "ended_at": "2026-11-26T21:44:36.299567Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 11746410.685,
+          "tokens": null
+        },
+        {
+          "attempt_id": "920add0c-9aec-4796-9f53-91f9f8904803",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:52:34.251642Z",
+          "last_activity_at": "2026-11-26T22:06:43.092978Z",
+          "ended_at": "2026-11-26T22:06:43.092978Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 848841.336,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T18:28:49.888882Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/ca925388-0b70-4130-b32d-c09c27ed0b67"
+        },
+        {
+          "at": "2026-11-26T21:44:36.299567Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-26T21:52:34.251642Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-26T22:06:43.092978Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 12595252.021,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "0747847a-5c33-4a06-abbb-7728abb010d0",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-26T21:44:36.299618Z",
+          "last_activity_at": "2026-11-26T21:52:34.251550Z",
+          "ended_at": "2026-11-26T21:52:34.251550Z",
+          "outcome": {
+            "summary": "Ran make -C indigo_test test-scheduler-two-servers (env -u LD_LIBRARY_PATH, INDIGO_TEST_RESULTS): 10/10 pass, 2m13s, plan 10 matches records; two instances in parallel: 5/5 and 10/10 pass, no leftovers. Assertions are exact and not vacuous; link-loss expectations agree with SCHEDULER.md (disappeared-agent failure reason, waiting for the Scripting Agent, no start while a foreign sequence is Busy). Required: (1) indigo_test/integration/run_scheduler_two_servers.py:178 starts the servers with start_new_session=True but the script installs no SIGTERM handler, so a SIGTERM to the runner (flow check timeout killing its process group, make/CI kill) leaves both indigo_servers running forever, server A reconnecting to the dead relay; reproduced: kill -TERM after 12 s left pids of both servers and the temp dir. Install a SIGTERM (and SIGHUP) handler in main() that raises SystemExit/KeyboardInterrupt so the existing finally at lines 616-619 kills the groups. Minor, optional: (2) Ctrl-C leaves the output temp dir with private homes and frames and records 'both servers exit cleanly' as pass in INDIGO_TEST_RESULTS although interrupted (lines 390-391, 628-629); (3) exceptions other than AssertionError/TimeoutError/RuntimeError/OSError (e.g. StopIteration from next() at line 464) escape case() and run() and skip results.json; (4) Relay.accepted/refused (lines 87-88, 100, 110) are never read - dead code, or assert refused>0 to prove A retried during the cut; accept() checks blocked before the upstream connect and adds the pair after it without re-checking (98-111), a narrow race with drop(); (5) SCHEDULER.md:956 does not say that in scripting-remote the orphaned run on server B keeps capturing all its frames next to the retry (test expects 2x frames at line 541); worth one clause. Xcode entry, Makefile target/wrapper, tabs and no .factory2 refs are fine.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 477951.932,
+          "tokens": null
+        },
+        {
+          "attempt_id": "6850d83a-5b49-467a-81c8-0b82a1648c00",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T22:06:43.093012Z",
+          "last_activity_at": "2026-11-26T22:11:24.539686Z",
+          "ended_at": "2026-11-26T22:11:24.539686Z",
+          "outcome": {
+            "summary": "Round 2: all five round-1 requests verified. (1) SIGTERM/SIGHUP handlers raise Interrupted (BaseException), Topology.run re-raises past the case handler, main's finally kills both process groups; a second SIGTERM is ignored (SIG_IGN set in the handler). (2) Interrupted runs record no unfinished case and remove the temp dir unless --keep/--output (exit 130). (3) Exceptions in a topology become an error/case failure; results.json always written on normal completion. (4) Relay refused/accepted counters asserted in link_loss; accept() re-checks blocked/closed under the lock after the upstream connect. (5) SCHEDULER.md bullet states the folder holds the frames of both runs. Ran: full make test-scheduler-two-servers with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib exported and INDIGO_TEST_RESULTS set: 10/10 pass, rc 0, plan 10 + 10 pass records, temp dir removed, no server left (2m13s). SIGTERM at 15 s plus a second SIGTERM 0.3 s later: rc 130, plan 10 / 1 pass recorded, no indigo_server, no temp dir. SIGHUP at 35 s with --output: rc 130, servers gone, results.json interrupted=true. Minor, non-blocking: (a) run_scheduler_two_servers.py:654 results += topology.results runs only after topology.run returns, so on interruption results.json (--keep/--output) omits the cases already finished in the interrupted topology (observed: results [] after 2 passes); move it into the finally at 650-653. (b) :388-389 and :392-393 a signal between Popen in Server() and servers.append() would leak that server (very narrow window). (c) 130 is used for SIGTERM/SIGHUP too; 128+signum would be conventional. (d) SIGINT is not ignored during cleanup, only TERM/HUP.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 281446.674,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T21:44:36.299618Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T21:52:34.251550Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ran make -C indigo_test test-scheduler-two-servers (env -u LD_LIBRARY_PATH, INDIGO_TEST_RESULTS): 10/10 pass, 2m13s, plan 10 matches records; two instances in parallel: 5/5 and 10/10 pass, no leftovers. Assertions are exact and not vacuous; link-loss expectations agree with SCHEDULER.md (disappeared-agent failure reason, waiting for the Scripting Agent, no start while a foreign sequence is Busy). Required: (1) indigo_test/integration/run_scheduler_two_servers.py:178 starts the servers with start_new_session=True but the script installs no SIGTERM handler, so a SIGTERM to the runner (flow check timeout killing its process group, make/CI kill) leaves both indigo_servers running forever, server A reconnecting to the dead relay; reproduced: kill -TERM after 12 s left pids of both servers and the temp dir. Install a SIGTERM (and SIGHUP) handler in main() that raises SystemExit/KeyboardInterrupt so the existing finally at lines 616-619 kills the groups. Minor, optional: (2) Ctrl-C leaves the output temp dir with private homes and frames and records 'both servers exit cleanly' as pass in INDIGO_TEST_RESULTS although interrupted (lines 390-391, 628-629); (3) exceptions other than AssertionError/TimeoutError/RuntimeError/OSError (e.g. StopIteration from next() at line 464) escape case() and run() and skip results.json; (4) Relay.accepted/refused (lines 87-88, 100, 110) are never read - dead code, or assert refused>0 to prove A retried during the cut; accept() checks blocked before the upstream connect and adds the pair after it without re-checking (98-111), a narrow race with drop(); (5) SCHEDULER.md:956 does not say that in scripting-remote the orphaned run on server B keeps capturing all its frames next to the retry (test expects 2x frames at line 541); worth one clause. Xcode entry, Makefile target/wrapper, tabs and no .factory2 refs are fine."
+        },
+        {
+          "at": "2026-11-26T22:06:43.093012Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T22:11:24.539686Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2: all five round-1 requests verified. (1) SIGTERM/SIGHUP handlers raise Interrupted (BaseException), Topology.run re-raises past the case handler, main's finally kills both process groups; a second SIGTERM is ignored (SIG_IGN set in the handler). (2) Interrupted runs record no unfinished case and remove the temp dir unless --keep/--output (exit 130). (3) Exceptions in a topology become an error/case failure; results.json always written on normal completion. (4) Relay refused/accepted counters asserted in link_loss; accept() re-checks blocked/closed under the lock after the upstream connect. (5) SCHEDULER.md bullet states the folder holds the frames of both runs. Ran: full make test-scheduler-two-servers with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib exported and INDIGO_TEST_RESULTS set: 10/10 pass, rc 0, plan 10 + 10 pass records, temp dir removed, no server left (2m13s). SIGTERM at 15 s plus a second SIGTERM 0.3 s later: rc 130, plan 10 / 1 pass recorded, no indigo_server, no temp dir. SIGHUP at 35 s with --output: rc 130, servers gone, results.json interrupted=true. Minor, non-blocking: (a) run_scheduler_two_servers.py:654 results += topology.results runs only after topology.run returns, so on interruption results.json (--keep/--output) omits the cases already finished in the interrupted topology (observed: results [] after 2 passes); move it into the finally at 650-653. (b) :388-389 and :392-393 a signal between Popen in Server() and servers.append() would leak that server (very narrow window). (c) 130 is used for SIGTERM/SIGHUP too; 128+signum would be conventional. (d) SIGINT is not ignored during cleanup, only TERM/HUP."
+        }
+      ],
+      "result": {
+        "summary": "Round 2: all five round-1 requests verified. (1) SIGTERM/SIGHUP handlers raise Interrupted (BaseException), Topology.run re-raises past the case handler, main's finally kills both process groups; a second SIGTERM is ignored (SIG_IGN set in the handler). (2) Interrupted runs record no unfinished case and remove the temp dir unless --keep/--output (exit 130). (3) Exceptions in a topology become an error/case failure; results.json always written on normal completion. (4) Relay refused/accepted counters asserted in link_loss; accept() re-checks blocked/closed under the lock after the upstream connect. (5) SCHEDULER.md bullet states the folder holds the frames of both runs. Ran: full make test-scheduler-two-servers with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib exported and INDIGO_TEST_RESULTS set: 10/10 pass, rc 0, plan 10 + 10 pass records, temp dir removed, no server left (2m13s). SIGTERM at 15 s plus a second SIGTERM 0.3 s later: rc 130, plan 10 / 1 pass recorded, no indigo_server, no temp dir. SIGHUP at 35 s with --output: rc 130, servers gone, results.json interrupted=true. Minor, non-blocking: (a) run_scheduler_two_servers.py:654 results += topology.results runs only after topology.run returns, so on interruption results.json (--keep/--output) omits the cases already finished in the interrupted topology (observed: results [] after 2 passes); move it into the finally at 650-653. (b) :388-389 and :392-393 a signal between Popen in Server() and servers.append() would leak that server (very narrow window). (c) 130 is used for SIGTERM/SIGHUP too; 128+signum would be conventional. (d) SIGINT is not ignored during cleanup, only TERM/HUP.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 759398.606,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "52b1d956-e60e-42ff-9b1b-bb3218e4612d",
+      "event": "ticket/created",
+      "at": "2026-11-26T18:22:54.878079Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "6921a5ce-a043-4950-92c5-be62a3847c63",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T18:28:38.279143Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "c4574681-f4c1-4c2a-bcf0-c6f8f9d192c7",
+      "event": "task/progress",
+      "at": "2026-11-26T18:28:49.891620Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Implementation started on branch ticket/ca925388-0b70-4130-b32d-c09c27ed0b67"
+    },
+    {
+      "event_id": "3eca50bd-5b64-4d29-9dd7-e183be948eb5",
+      "event": "ticket/started",
+      "at": "2026-11-26T18:28:49.894647Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/ca925388-0b70-4130-b32d-c09c27ed0b67",
+      "base": "master"
+    },
+    {
+      "event_id": "0811a1d2-9d61-4eac-8376-e63225a829e0",
+      "event": "task/progress",
+      "at": "2026-11-26T18:29:08.538316Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Implementer launched",
+      "attempt_id": "605259bf-3ed2-41a3-8e55-c79af04c172d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "20a2b972-8b0c-4724-8799-cca960b53999",
+      "event": "task/progress",
+      "at": "2026-11-26T18:29:17.948553Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Implementer started: studying scheduler test harness",
+      "attempt_id": "605259bf-3ed2-41a3-8e55-c79af04c172d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "00454703-b5da-4bdb-a5f1-00b2b602672c",
+      "event": "task/progress",
+      "at": "2026-11-26T18:31:08.787633Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Building libindigo, indigo_server and agent/ccd simulator drivers in the worktree"
+    },
+    {
+      "event_id": "ab483c2b-7ae9-4465-8c37-01dc083e810f",
+      "event": "task/progress",
+      "at": "2026-11-26T18:35:57.825646Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Running exploratory two-server scheduler run, topology scripting-remote"
+    },
+    {
+      "event_id": "ff170493-e5fe-4db8-856e-1c10fcbc0d77",
+      "event": "task/progress",
+      "at": "2026-11-26T19:06:48.223125Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Running scripting-remote topology against an experimental indigo_xml fix (not kept)"
+    },
+    {
+      "event_id": "b238b778-40f5-4031-a9ed-abf45ffbcfa5",
+      "event": "task/progress",
+      "at": "2026-11-26T19:19:18.187753Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Running test-scheduler-two-servers against unpatched sources"
+    },
+    {
+      "event_id": "e4c830d8-e220-4ac9-b0ec-e70969efb285",
+      "event": "task/progress",
+      "at": "2026-11-26T19:24:32.908148Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "464d0511-a5c8-4a67-b18e-fcb203b1f5aa",
+      "event": "task/progress",
+      "at": "2026-11-26T19:24:32.945296Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5612a332-acfb-4d37-b200-61fd71311e2b",
+      "event": "task/progress",
+      "at": "2026-11-26T19:24:32.949936Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "d18172a5-7af7-4ee9-8d51-71695e9b8856",
+      "event": "task/progress",
+      "at": "2026-11-26T19:25:26.685346Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check unit failed: exit code 2"
+    },
+    {
+      "event_id": "a9efeb9d-7ce7-473b-aee4-adbde3bb6f3e",
+      "event": "check/failed",
+      "at": "2026-11-26T19:25:26.690903Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "9d61681ed04372e3176a0dccd8531df51c832ab6",
+      "checks": "whitespace passed, unit FAILED"
+    },
+    {
+      "event_id": "849110c0-5398-4314-9555-3b44c6650cfe",
+      "event": "task/progress",
+      "at": "2026-11-26T19:27:13.404021Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Final unpatched runs of run_scheduler_two_servers.py (x2)"
+    },
+    {
+      "event_id": "e229f88e-4f0f-4272-a852-23a7171329d8",
+      "event": "task/progress",
+      "at": "2026-11-26T19:37:08.442600Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Implementation done; 2 framework defects marked in the tests, unit check fails on baseline plan test"
+    },
+    {
+      "event_id": "7a89e114-7ebf-48a7-ab27-121bdf59dd68",
+      "event": "task/progress",
+      "at": "2026-11-26T21:26:18.518629Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Resuming implementer: merge master with the two xml fixes, remove KNOWN DEFECT markers, full run"
+    },
+    {
+      "event_id": "a301742c-25f6-41db-b9da-4e9edf779e6a",
+      "event": "task/progress",
+      "at": "2026-11-26T21:26:36.201436Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Merging master with the two indigo_xml fixes into the ticket branch"
+    },
+    {
+      "event_id": "1415d233-3083-4435-b6e0-ffa7824fdc9e",
+      "event": "task/progress",
+      "at": "2026-11-26T21:27:11.216924Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Running run_scheduler_two_servers.py without defect markers on merged master"
+    },
+    {
+      "event_id": "2acb4130-19ae-41fb-b62a-2541d65e29a5",
+      "event": "task/progress",
+      "at": "2026-11-26T21:29:39.188904Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Full build (make all) in the worktree for test_server_driver_stress"
+    },
+    {
+      "event_id": "91cae4a7-6464-498b-b6e1-447f4ffe33ab",
+      "event": "task/progress",
+      "at": "2026-11-26T21:30:31.733343Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Running test-server-driver-stress on the full worktree build"
+    },
+    {
+      "event_id": "dbf0145e-36db-43a6-99a4-c5f309c2f47d",
+      "event": "task/progress",
+      "at": "2026-11-26T21:35:43.126756Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Two-server runs 2 and 3 on the full build"
+    },
+    {
+      "event_id": "0a4c023e-84c0-42de-9c56-89170f7a57c3",
+      "event": "task/progress",
+      "at": "2026-11-26T21:40:17.148579Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "7c2a7d3e-ae6e-4bd1-97f4-b609ae4f15fe",
+      "event": "task/progress",
+      "at": "2026-11-26T21:40:17.218770Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "90317135-52b2-4705-b283-ae808c3d7d5a",
+      "event": "task/progress",
+      "at": "2026-11-26T21:40:17.223807Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "262a52db-617a-4712-b9b8-5f8617379cea",
+      "event": "task/progress",
+      "at": "2026-11-26T21:42:03.916038Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "fc46ee51-7d31-4e76-bb96-e6e850fe6d25",
+      "event": "check/passed",
+      "at": "2026-11-26T21:42:03.921448Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "ac00b162a83d818b41f230abfa3fa706923830b3",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "ea212ef6-0792-4de0-9c2c-e18ead34e99d",
+      "event": "task/progress",
+      "at": "2026-11-26T21:42:09.535652Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Markers removed; 3/3 two-server runs 10/10, driver stress passed, flow check passed"
+    },
+    {
+      "event_id": "40309cb9-af89-41be-bf13-6a94ad0f711a",
+      "event": "task/progress",
+      "at": "2026-11-26T21:42:22.526312Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d4f171da-f45d-4ed2-88b1-ff1922cb47fc",
+      "event": "task/progress",
+      "at": "2026-11-26T21:42:22.564428Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "54f32d74-0a32-4a19-aa07-8b2f6089d4a9",
+      "event": "task/progress",
+      "at": "2026-11-26T21:42:22.570468Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "eba7c1dc-2e0b-40ad-80b1-da7f4a01bd41",
+      "event": "task/progress",
+      "at": "2026-11-26T21:44:06.312788Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "a8a23ba3-717c-4c5f-99dd-b4b93d4ce531",
+      "event": "check/passed",
+      "at": "2026-11-26T21:44:06.318046Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "e86d5cf41a3227912bce6801503333c44a601cd5",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "f62e2dfa-dbe5-4bf6-84a0-3d1f288fe31d",
+      "event": "task/progress",
+      "at": "2026-11-26T21:44:36.299693Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "text": "Review started"
+    },
+    {
+      "event_id": "bf26d1bb-a015-407c-8d87-725b716c4c2e",
+      "event": "review/started",
+      "at": "2026-11-26T21:44:36.300890Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "6dcaac59-c870-41ab-bf88-8e1fe0537314",
+      "event": "task/progress",
+      "at": "2026-11-26T21:44:36.580316Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "text": "Reviewer launched",
+      "attempt_id": "0747847a-5c33-4a06-abbb-7728abb010d0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "2c66e187-78d8-4b92-af03-f5f79a9f34a6",
+      "event": "task/progress",
+      "at": "2026-11-26T21:44:47.147977Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "text": "Reviewer started: reading diff",
+      "attempt_id": "0747847a-5c33-4a06-abbb-7728abb010d0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f3366c67-0df0-4912-8a67-c4d5d904f668",
+      "event": "task/progress",
+      "at": "2026-11-26T21:46:04.658257Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "text": "Running run_scheduler_two_servers.py, both topologies"
+    },
+    {
+      "event_id": "1d50773d-5337-4086-837a-bedfed4e3828",
+      "event": "task/progress",
+      "at": "2026-11-26T21:52:34.251633Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "a60d3ff5-36c2-45b3-a685-26f27834dfbd",
+      "event": "task/progress",
+      "at": "2026-11-26T21:52:34.251672Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "1033eea4-1e3e-4bf8-8f94-c63f963d8519",
+      "event": "review/changes_requested",
+      "at": "2026-11-26T21:52:34.252379Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "e86d5cf41a3227912bce6801503333c44a601cd5"
+    },
+    {
+      "event_id": "cec48dfa-7619-49c0-b6ac-dcf855d65409",
+      "event": "task/progress",
+      "at": "2026-11-26T21:53:12.419612Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Addressing review: merging master, signal handling, relay race, doc clause"
+    },
+    {
+      "event_id": "7a0f97b1-266c-47ac-af0c-00d57afb3a77",
+      "event": "task/progress",
+      "at": "2026-11-26T21:57:31.191377Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Three full two-server runs with LD_LIBRARY_PATH left as exported"
+    },
+    {
+      "event_id": "940ed6d3-92b1-4ff7-a0e5-e629d79078ba",
+      "event": "task/progress",
+      "at": "2026-11-26T22:04:20.843446Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "33289bbb-7317-4aa1-bd18-196abd1e0907",
+      "event": "task/progress",
+      "at": "2026-11-26T22:04:20.883221Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "050fef6e-19bf-4c7b-8ad2-79e1508a0073",
+      "event": "task/progress",
+      "at": "2026-11-26T22:04:20.890308Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "d0f26335-6f0e-49a9-9733-23259b10cb53",
+      "event": "task/progress",
+      "at": "2026-11-26T22:06:06.217166Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "45ec81f9-724b-44aa-aacc-5c052b4a71a4",
+      "event": "check/passed",
+      "at": "2026-11-26T22:06:06.223757Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "6a311291558c68c35611153be3df51b4d3cfe29b",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "bd103728-69e8-494a-b504-21ea05f0c488",
+      "event": "task/progress",
+      "at": "2026-11-26T22:06:14.179072Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "56793526-862a-4ee8-b223-bff029aef8a6",
+      "text": "Review changes done: 3/3 runs 10/10, TERM/INT/HUP checks clean, flow check passed"
+    },
+    {
+      "event_id": "b1b3224f-e415-4c05-bbe9-4295909199e9",
+      "event": "task/progress",
+      "at": "2026-11-26T22:06:43.093103Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "text": "Review started"
+    },
+    {
+      "event_id": "95dcf703-121c-4dfa-8f16-2ba040c7cc3c",
+      "event": "review/started",
+      "at": "2026-11-26T22:06:43.093971Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "c7e6f6dd-9adc-4d84-8fd2-883db679f490",
+      "event": "task/progress",
+      "at": "2026-11-26T22:06:43.308652Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "text": "Reviewer launched, round 2",
+      "attempt_id": "6850d83a-5b49-467a-81c8-0b82a1648c00",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ab64c6f1-52de-461d-829d-89331cb2f35c",
+      "event": "task/progress",
+      "at": "2026-11-26T22:07:35.885585Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "text": "Round 2 review: building and running run_scheduler_two_servers.py",
+      "attempt_id": "6850d83a-5b49-467a-81c8-0b82a1648c00",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "2e9758c5-85f0-46bb-9c70-55f2bfc10b03",
+      "event": "task/progress",
+      "at": "2026-11-26T22:11:24.539766Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "e5a63601-4342-4404-b9ed-79c05199d969",
+      "event": "review/passed",
+      "at": "2026-11-26T22:11:24.540532Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "eea1383c-45ea-4e96-88e6-3ca429e539a0",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "6a311291558c68c35611153be3df51b4d3cfe29b"
+    },
+    {
+      "event_id": "26aad0cf-84ed-429b-a26b-e7c16458389d",
+      "event": "ticket/title_changed",
+      "at": "2026-11-26T22:17:32.858685Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_test: two-server end-to-end stress tests for the Scheduler Agent with remote Scripting/Imager agents and the CCD simulator",
+      "title": "indigo_test: two-server end-to-end stress tests for the Scheduler Agent"
+    },
+    {
+      "event_id": "bd016e2e-d2e0-410e-a4b6-a27b9aabf25c",
+      "event": "ticket/closed",
+      "at": "2026-11-26T22:17:43.178453Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T22:17:43.178423Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "c0afb3dab00febcabd9a88fc834273e20161d3c2"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9d61681ed04372e3176a0dccd8531df51c832ab6",
+        "tree": "34c4c09705c6681f7b2ce80cfc6384f059d9f085",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T19:24:32.944583Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ca925388-0b70-4130-b32d-c09c27ed0b67/34c4c09705c6-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "9d61681ed04372e3176a0dccd8531df51c832ab6",
+        "tree": "34c4c09705c6681f7b2ce80cfc6384f059d9f085",
+        "exit_code": 2,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-26T19:25:26.684531Z",
+        "duration_s": 53.7,
+        "log": "/tmp/factory-flow/ca925388-0b70-4130-b32d-c09c27ed0b67/34c4c09705c6-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ac00b162a83d818b41f230abfa3fa706923830b3",
+        "tree": "9a1a918cace1f32f42ed8d3493a143e221e04a9a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:40:17.217945Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/ca925388-0b70-4130-b32d-c09c27ed0b67/9a1a918cace1-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "ac00b162a83d818b41f230abfa3fa706923830b3",
+        "tree": "9a1a918cace1f32f42ed8d3493a143e221e04a9a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:42:03.915230Z",
+        "duration_s": 106.7,
+        "log": "/tmp/factory-flow/ca925388-0b70-4130-b32d-c09c27ed0b67/9a1a918cace1-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e86d5cf41a3227912bce6801503333c44a601cd5",
+        "tree": "f8c32ee19d45ff20181837033924d8604c2a8e3a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:42:22.563519Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ca925388-0b70-4130-b32d-c09c27ed0b67/f8c32ee19d45-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "e86d5cf41a3227912bce6801503333c44a601cd5",
+        "tree": "f8c32ee19d45ff20181837033924d8604c2a8e3a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:44:06.311851Z",
+        "duration_s": 103.7,
+        "log": "/tmp/factory-flow/ca925388-0b70-4130-b32d-c09c27ed0b67/f8c32ee19d45-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6a311291558c68c35611153be3df51b4d3cfe29b",
+        "tree": "4ddad35cc11340e380106e56d574c123e6d9e1df",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T22:04:20.882156Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ca925388-0b70-4130-b32d-c09c27ed0b67/4ddad35cc113-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "6a311291558c68c35611153be3df51b4d3cfe29b",
+        "tree": "4ddad35cc11340e380106e56d574c123e6d9e1df",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T22:06:06.216061Z",
+        "duration_s": 105.3,
+        "log": "/tmp/factory-flow/ca925388-0b70-4130-b32d-c09c27ed0b67/4ddad35cc113-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Ran make -C indigo_test test-scheduler-two-servers (env -u LD_LIBRARY_PATH, INDIGO_TEST_RESULTS): 10/10 pass, 2m13s, plan 10 matches records; two instances in parallel: 5/5 and 10/10 pass, no leftovers. Assertions are exact and not vacuous; link-loss expectations agree with SCHEDULER.md (disappeared-agent failure reason, waiting for the Scripting Agent, no start while a foreign sequence is Busy). Required: (1) indigo_test/integration/run_scheduler_two_servers.py:178 starts the servers with start_new_session=True but the script installs no SIGTERM handler, so a SIGTERM to the runner (flow check timeout killing its process group, make/CI kill) leaves both indigo_servers running forever, server A reconnecting to the dead relay; reproduced: kill -TERM after 12 s left pids of both servers and the temp dir. Install a SIGTERM (and SIGHUP) handler in main() that raises SystemExit/KeyboardInterrupt so the existing finally at lines 616-619 kills the groups. Minor, optional: (2) Ctrl-C leaves the output temp dir with private homes and frames and records 'both servers exit cleanly' as pass in INDIGO_TEST_RESULTS although interrupted (lines 390-391, 628-629); (3) exceptions other than AssertionError/TimeoutError/RuntimeError/OSError (e.g. StopIteration from next() at line 464) escape case() and run() and skip results.json; (4) Relay.accepted/refused (lines 87-88, 100, 110) are never read - dead code, or assert refused>0 to prove A retried during the cut; accept() checks blocked before the upstream connect and adds the pair after it without re-checking (98-111), a narrow race with drop(); (5) SCHEDULER.md:956 does not say that in scripting-remote the orphaned run on server B keeps capturing all its frames next to the retry (test expects 2x frames at line 541); worth one clause. Xcode entry, Makefile target/wrapper, tabs and no .factory2 refs are fine.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "e86d5cf41a3227912bce6801503333c44a601cd5",
+        "tree": "f8c32ee19d45ff20181837033924d8604c2a8e3a",
+        "at": "2026-11-26T21:52:34.251523Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2: all five round-1 requests verified. (1) SIGTERM/SIGHUP handlers raise Interrupted (BaseException), Topology.run re-raises past the case handler, main's finally kills both process groups; a second SIGTERM is ignored (SIG_IGN set in the handler). (2) Interrupted runs record no unfinished case and remove the temp dir unless --keep/--output (exit 130). (3) Exceptions in a topology become an error/case failure; results.json always written on normal completion. (4) Relay refused/accepted counters asserted in link_loss; accept() re-checks blocked/closed under the lock after the upstream connect. (5) SCHEDULER.md bullet states the folder holds the frames of both runs. Ran: full make test-scheduler-two-servers with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib exported and INDIGO_TEST_RESULTS set: 10/10 pass, rc 0, plan 10 + 10 pass records, temp dir removed, no server left (2m13s). SIGTERM at 15 s plus a second SIGTERM 0.3 s later: rc 130, plan 10 / 1 pass recorded, no indigo_server, no temp dir. SIGHUP at 35 s with --output: rc 130, servers gone, results.json interrupted=true. Minor, non-blocking: (a) run_scheduler_two_servers.py:654 results += topology.results runs only after topology.run returns, so on interruption results.json (--keep/--output) omits the cases already finished in the interrupted topology (observed: results [] after 2 passes); move it into the finally at 650-653. (b) :388-389 and :392-393 a signal between Popen in Server() and servers.append() would leak that server (very narrow window). (c) 130 is used for SIGTERM/SIGHUP too; 128+signum would be conventional. (d) SIGINT is not ignored during cleanup, only TERM/HUP.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "6a311291558c68c35611153be3df51b4d3cfe29b",
+        "tree": "4ddad35cc11340e380106e56d574c123e6d9e1df",
+        "at": "2026-11-26T22:11:24.539659Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "c0afb3dab00febcabd9a88fc834273e20161d3c2",
+      "tree": "4ddad35cc11340e380106e56d574c123e6d9e1df",
+      "base": "master",
+      "at": "2026-11-26T22:17:43.075348Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-26T18:22:54.877109Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T18:28:38.279091Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 13354650.627,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 66,
+    "sha256": "e82b821a45cd7919519f5b7d3a6ce9c0069b8195ccbbfb687775448a84ede038"
+  }
+}
