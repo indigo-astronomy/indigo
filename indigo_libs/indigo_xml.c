@@ -832,25 +832,89 @@ static void *set_blob_vector_handler(parser_state state, parser_context *context
 	return set_blob_vector_handler;
 }
 
+static void release_cached_property(indigo_property *property);
+
+// The parser owns the payloads of cached RO BLOB items only, so a BLOB permission change counts as a changed item set.
+static bool same_item_set(indigo_property *property, indigo_property *other) {
+	if (property->type != other->type || property->count != other->count) {
+		return false;
+	}
+	if (property->type == INDIGO_BLOB_VECTOR && property->perm != (other->perm == INDIGO_RW_PERM ? INDIGO_RO_PERM : other->perm)) {
+		return false;
+	}
+	for (int i = 0; i < property->count; i++) {
+		if (strncmp(property->items[i].name, other->items[i].name, INDIGO_NAME_SIZE)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+// Takes the attributes and values of a repeated definition in place; local clients may hold the cached property's pointer.
+static void update_cached_property(indigo_property *property, indigo_property *other) {
+	INDIGO_COPY_NAME(property->group, other->group);
+	INDIGO_COPY_VALUE(property->label, other->label);
+	INDIGO_COPY_VALUE(property->hints, other->hints);
+	property->state = other->state;
+	if (property->type == INDIGO_SWITCH_VECTOR) {
+		property->rule = other->rule;
+	}
+	if (property->type != INDIGO_BLOB_VECTOR && property->type != INDIGO_LIGHT_VECTOR) {
+		property->perm = other->perm;
+	}
+	for (int i = 0; i < property->count; i++) {
+		indigo_item *property_item = property->items + i;
+		indigo_item *other_item = other->items + i;
+		if (property->type == INDIGO_TEXT_VECTOR) {
+			char *long_value = property_item->text.long_value;
+			memcpy(property_item, other_item, sizeof(indigo_item));
+			property_item->text.long_value = other_item->text.long_value ? indigo_safe_malloc_copy(other_item->text.length, other_item->text.long_value) : NULL;
+			indigo_safe_free(long_value);
+		} else if (property->type == INDIGO_BLOB_VECTOR) {
+			// A definition carries no BLOB value; the cached payload and its URL stay.
+			INDIGO_COPY_VALUE(property_item->label, other_item->label);
+			INDIGO_COPY_VALUE(property_item->hints, other_item->hints);
+		} else {
+			memcpy(property_item, other_item, sizeof(indigo_item));
+		}
+	}
+}
+
 static void def_property(parser_context *context, indigo_property *other, char *message) {
 	indigo_property *property = NULL;
-	int index;
+	int index, free_index = -1;
 	pthread_mutex_lock(&context->mutex);
+	// Deleted properties leave holes, so the whole cache is searched before a free slot is taken.
 	for (index = 0; index < context->count; index++) {
 		property = context->properties[index];
 		if (property == NULL) {
+			if (free_index == -1) {
+				free_index = index;
+			}
+		} else if (!strncmp(property->device, other->device, INDIGO_NAME_SIZE) && !strncmp(property->name, other->name, INDIGO_NAME_SIZE)) {
 			break;
 		}
-		if (!strncmp(property->device, other->device, INDIGO_NAME_SIZE) && !strncmp(property->name, other->name, INDIGO_NAME_SIZE))
-			break;
 	}
 	if (index == context->count) {
-		context->properties = indigo_safe_realloc(context->properties, context->count * 2 * sizeof(indigo_property *));
-		memset(context->properties + context->count, 0, context->count * sizeof(indigo_property *));
-		context->count *= 2;
+		property = NULL;
+		if (free_index != -1) {
+			index = free_index;
+		} else {
+			context->properties = indigo_safe_realloc(context->properties, context->count * 2 * sizeof(indigo_property *));
+			memset(context->properties + context->count, 0, context->count * sizeof(indigo_property *));
+			context->count *= 2;
+		}
+	}
+	// A repeated definition with another item set replaces the cached property, so local clients see it deleted first.
+	if (property != NULL && !same_item_set(property, other)) {
+		indigo_delete_property(context->device, property, NULL);
+		release_cached_property(property);
+		context->properties[index] = NULL;
 		property = NULL;
 	}
-	if (property == NULL) {
+	if (property != NULL) {
+		update_cached_property(property, other);
+	} else {
 		switch (other->type) {
 			case INDIGO_TEXT_VECTOR:
 				property = indigo_init_text_property(property, other->device, other->name, other->group, other->label, other->state, other->perm, other->count);

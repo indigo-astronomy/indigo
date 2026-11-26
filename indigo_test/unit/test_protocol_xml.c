@@ -624,6 +624,180 @@ static void xml_client_adapter_switches_protocol_with_a_named_request(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
 }
 
+#define REDEFINE_MAX_EVENTS 8
+
+typedef struct {
+	bool deleted;
+	indigo_property *property;
+	int count;
+	indigo_property_state state;
+	indigo_property_perm perm;
+	char label[INDIGO_VALUE_SIZE];
+	char item[INDIGO_NAME_SIZE];
+	char value[2 * INDIGO_VALUE_SIZE];
+	double number;
+	double max;
+	long blob_size;
+} redefine_event;
+
+typedef struct {
+	int event_count;
+	redefine_event events[REDEFINE_MAX_EVENTS];
+} redefine_record;
+
+static redefine_record text_record, number_record, blob_record;
+
+static redefine_event *redefine_event_for(indigo_property *property) {
+	redefine_record *record = NULL;
+	if (!strcmp(property->name, TEXT_PROPERTY_NAME)) {
+		record = &text_record;
+	} else if (!strcmp(property->name, NUMBER_PROPERTY_NAME)) {
+		record = &number_record;
+	} else if (!strcmp(property->name, BLOB_PROPERTY_NAME)) {
+		record = &blob_record;
+	}
+	if (record == NULL || record->event_count == REDEFINE_MAX_EVENTS) {
+		return NULL;
+	}
+	return record->events + record->event_count++;
+}
+
+// Records a snapshot of every definition of the observed properties, because the parser releases its cache when the stream ends.
+static indigo_result redefine_client_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	redefine_event *event = redefine_event_for(property);
+	if (event == NULL) {
+		return INDIGO_OK;
+	}
+	event->property = property;
+	event->count = property->count;
+	event->state = property->state;
+	event->perm = property->perm;
+	INDIGO_COPY_VALUE(event->label, property->label);
+	if (property->count > 0) {
+		INDIGO_COPY_NAME(event->item, property->items[property->count - 1].name);
+		if (property->type == INDIGO_TEXT_VECTOR) {
+			snprintf(event->value, sizeof(event->value), "%s", indigo_get_text_item_value(property->items));
+		} else if (property->type == INDIGO_NUMBER_VECTOR) {
+			event->number = property->items[0].number.value;
+			event->max = property->items[0].number.max;
+		} else if (property->type == INDIGO_BLOB_VECTOR) {
+			event->blob_size = property->items[0].blob.size;
+		}
+	}
+	return INDIGO_OK;
+}
+
+static indigo_result redefine_client_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	redefine_event *event = redefine_event_for(property);
+	if (event != NULL) {
+		event->deleted = true;
+		event->property = property;
+	}
+	return INDIGO_OK;
+}
+
+static indigo_client redefine_client = {
+	"Redefine Observer",
+	false,
+	NULL,
+	INDIGO_OK,
+	INDIGO_VERSION_CURRENT,
+	NULL,
+	NULL,
+	redefine_client_define_property,
+	NULL,
+	redefine_client_delete_property,
+	NULL,
+	NULL,
+	false,
+	false
+};
+
+// A remote device may define a property again without deleting it first (the Scripting Agent does so with every run).
+// The local bus must see the values of the new definition; before, the parser defined its cached copy with the old ones.
+// The same item set keeps the cached property in place, so local clients holding its pointer stay valid; a changed item
+// set deletes the cached property first and defines it anew.
+static void xml_client_adapter_redefines_property_with_new_values(void) {
+	static char long_value[INDIGO_VALUE_SIZE + 100], reply[8 * INDIGO_VALUE_SIZE];
+	memset(&text_record, 0, sizeof(text_record));
+	memset(&number_record, 0, sizeof(number_record));
+	memset(&blob_record, 0, sizeof(blob_record));
+	memset(long_value, 'x', sizeof(long_value) - 1);
+	long_value[sizeof(long_value) - 1] = 0;
+	// PROTOCOL_LIST takes the first cache slot; deleting it later leaves a hole before PROTOCOL_TEXT.
+	static const char first_definitions[] = "<defTextVector device='Protocol Test Device' name='PROTOCOL_LIST' group='Protocol' label='List' perm='ro' state='Idle'>\n<defText name='VALUE' label='Value'>list</defText>\n</defTextVector>\n" "<defTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' group='Protocol' label='Text' perm='ro' state='Idle'>\n<defText name='VALUE' label='Value'>18728001</defText>\n</defTextVector>\n" "<defNumberVector device='Protocol Test Device' name='PROTOCOL_NUMBER' group='Protocol' label='Number' perm='ro' state='Idle'>\n<defNumber name='VALUE' label='Value' format='%g' min='0' max='10' step='1'>1</defNumber>\n</defNumberVector>\n";
+	// The same item set with a new value, state, label and permission.
+	static const char same_item_set[] = "<defTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' group='Protocol' label='Text again' perm='rw' state='Ok'>\n<defText name='VALUE' label='Value'>18728002</defText>\n</defTextVector>\n" "<defNumberVector device='Protocol Test Device' name='PROTOCOL_NUMBER' group='Protocol' label='Number' perm='ro' state='Busy'>\n<defNumber name='VALUE' label='Value' format='%g' min='0' max='20' step='1'>15</defNumber>\n</defNumberVector>\n";
+	// A long value, then a short one behind the hole left by the deleted PROTOCOL_LIST, which releases the long buffer.
+	static const char long_value_prefix[] = "<defTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' group='Protocol' label='Text' perm='rw' state='Ok'>\n<defText name='VALUE' label='Value'>";
+	static const char long_value_suffix[] = "</defText>\n</defTextVector>\n" "<delProperty device='Protocol Test Device' name='PROTOCOL_LIST'/>\n" "<defTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' group='Protocol' label='Text' perm='rw' state='Ok'>\n<defText name='VALUE' label='Value'>short</defText>\n</defTextVector>\n";
+	// A changed item set, then the identical definition again.
+	static const char changed_item_set[] = "<defTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' group='Protocol' label='Text' perm='ro' state='Alert'>\n<defText name='VALUE' label='Value'>first</defText>\n<defText name='EXTRA' label='Extra'>second</defText>\n</defTextVector>\n" "<defTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' group='Protocol' label='Text' perm='ro' state='Alert'>\n<defText name='VALUE' label='Value'>first</defText>\n<defText name='EXTRA' label='Extra'>second</defText>\n</defTextVector>\n";
+	// A repeated BLOB definition keeps the received payload; a changed permission replaces the property.
+	static const char blob_definitions[] = "<defBLOBVector device='Protocol Test Device' name='PROTOCOL_BLOB' group='Protocol' label='Blob' perm='ro' state='Idle'>\n<defBLOB name='IMAGE' label='Image'/>\n</defBLOBVector>\n" "<setBLOBVector device='Protocol Test Device' name='PROTOCOL_BLOB' state='Ok'>\n<oneBLOB name='IMAGE' format='.raw' size='5'>aGVsbG8=</oneBLOB>\n</setBLOBVector>\n" "<defBLOBVector device='Protocol Test Device' name='PROTOCOL_BLOB' group='Protocol' label='Blob again' perm='ro' state='Ok'>\n<defBLOB name='IMAGE' label='Image'/>\n</defBLOBVector>\n" "<defBLOBVector device='Protocol Test Device' name='PROTOCOL_BLOB' group='Protocol' label='Blob' perm='wo' state='Idle'>\n<defBLOB name='IMAGE' label='Image'/>\n</defBLOBVector>\n";
+	snprintf(reply, sizeof(reply), "%s%s%s%s%s%s%s", first_definitions, same_item_set, long_value_prefix, long_value, long_value_suffix, changed_item_set, blob_definitions);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&redefine_client));
+	indigo_uni_handle *handle = indigo_uni_create_file("build/unit/protocol_xml_redefine_requests.tmp", INDIGO_LOG_NONE);
+	ASSERT_TRUE(handle != NULL);
+	indigo_device *adapter = indigo_xml_client_adapter("Redefine Peer", "", handle, handle);
+	ASSERT_TRUE(adapter != NULL);
+	adapter->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(adapter));
+	parse_reply(adapter, "build/unit/protocol_xml_redefine_reply.tmp", reply);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(adapter));
+	indigo_release_xml_client_adapter(adapter);
+	indigo_uni_close(&handle);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&redefine_client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+	redefine_event *events = text_record.events;
+	ASSERT_EQ_INT(7, text_record.event_count);
+	ASSERT_FALSE(events[0].deleted);
+	ASSERT_STREQ("18728001", events[0].value);
+	// The same item set: new values in the same cached property, no deletion.
+	ASSERT_FALSE(events[1].deleted);
+	ASSERT_TRUE(events[1].property == events[0].property);
+	ASSERT_STREQ("18728002", events[1].value);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, events[1].state);
+	ASSERT_EQ_INT(INDIGO_RW_PERM, events[1].perm);
+	ASSERT_STREQ("Text again", events[1].label);
+	ASSERT_FALSE(events[2].deleted);
+	ASSERT_TRUE(events[2].property == events[0].property);
+	ASSERT_STREQ(long_value, events[2].value);
+	ASSERT_FALSE(events[3].deleted);
+	ASSERT_TRUE(events[3].property == events[0].property);
+	ASSERT_STREQ("short", events[3].value);
+	// The changed item set: the cached property is deleted, then defined with both items.
+	ASSERT_TRUE(events[4].deleted);
+	ASSERT_TRUE(events[4].property == events[0].property);
+	ASSERT_FALSE(events[5].deleted);
+	ASSERT_EQ_INT(2, events[5].count);
+	ASSERT_STREQ("first", events[5].value);
+	ASSERT_STREQ("EXTRA", events[5].item);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, events[5].state);
+	// The identical definition is defined again unchanged.
+	ASSERT_FALSE(events[6].deleted);
+	ASSERT_TRUE(events[6].property == events[5].property);
+	ASSERT_EQ_INT(2, events[6].count);
+	ASSERT_STREQ("first", events[6].value);
+	events = number_record.events;
+	ASSERT_EQ_INT(2, number_record.event_count);
+	ASSERT_TRUE(events[1].property == events[0].property);
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, events[1].state);
+	ASSERT_NEAR(15, events[1].number, 1e-9);
+	ASSERT_NEAR(20, events[1].max, 1e-9);
+	events = blob_record.events;
+	ASSERT_EQ_INT(4, blob_record.event_count);
+	ASSERT_FALSE(events[1].deleted);
+	ASSERT_TRUE(events[1].property == events[0].property);
+	ASSERT_STREQ("Blob again", events[1].label);
+	ASSERT_EQ_INT(5, events[1].blob_size);
+	ASSERT_TRUE(events[2].deleted);
+	ASSERT_TRUE(events[2].property == events[0].property);
+	ASSERT_FALSE(events[3].deleted);
+	ASSERT_EQ_INT(INDIGO_WO_PERM, events[3].perm);
+}
+
 static void xml_parser_ignores_malformed_fixture_without_change(void) {
 	reset_context();
 
@@ -658,6 +832,7 @@ int main(void) {
 		{ "xml_parser_routes_change_and_enable_blob_fixtures", xml_parser_routes_change_and_enable_blob_fixtures },
 		{ "xml_client_adapter_parses_remote_property_events", xml_client_adapter_parses_remote_property_events },
 		{ "xml_client_adapter_switches_protocol_with_a_named_request", xml_client_adapter_switches_protocol_with_a_named_request },
+		{ "xml_client_adapter_redefines_property_with_new_values", xml_client_adapter_redefines_property_with_new_values },
 		{ "xml_parser_ignores_malformed_fixture_without_change", xml_parser_ignores_malformed_fixture_without_change }
 	};
 	return indigo_run_tests("XML protocol unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));
