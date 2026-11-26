@@ -1,0 +1,415 @@
+{
+  "schema_version": 1,
+  "ticket_id": "540cb18c-e04f-466d-a14e-4eb740b952b3",
+  "revision": 17,
+  "title": "indigo_libs: deliver every update received from a remote server, including unchanged values",
+  "description": "Found by the two-server scheduler stress test of ticket ca925388 (indigo_test/integration/run_scheduler_two_servers.py, topology scripting-local).\n\nSymptom: server A (Scheduler + Scripting) connected to server B (Imager Agent + CCD simulator) with -r. A task restarted after ABORT hangs forever in Sequencer.js set_local_mode() at SEQUENCE_STATE step 4: the restart sets the same CCD_LOCAL_MODE values; B sends the setTextVector, but A's bus treats it as a non-update (no item changed, state unchanged, no message) and does not deliver it to the Scripting Agent's client. The same update from a local Imager Agent is delivered, because the local change handler marks items do_update explicitly (indigo_property_copy_values). Setting FORCE_PROPERTY_UPDATES on A's connection to B did not help.\n\nCause (to confirm): set_property() in indigo_libs/indigo_xml.c updates the cached remote property and calls indigo_update_property(); the change-detection in indigo_update_property() (indigo_bus.c ~1229-1268) compares against previous values and suppresses the update. B already decided to send the update, so the local bus should forward it. Find out why item->do_update set in set_property does not survive (e.g. B sends no items for unchanged values, or flags are cleared), and fix so that a set received from a remote server is always delivered, as for a local device. Check indigo_json.c and the BLOB paths for the same.\n\nExperimental fix that made the test pass: property->do_update = true in set_property() before indigo_update_property() (in /tmp/claude-1000/-home-rumen-work-indigo-git/629be5ae-c7a6-4969-bd2c-27ae612f2bf9/scratchpad/xml_experimental_fixes.patch). Verify it is correct and does not cause update storms or loops in chained servers.\n\nTests: a protocol-level test of a repeated identical set from a remote server reaching a local client; the two-server test's KNOWN DEFECT markers for this defect must disappear (remove them). Run the existing server/protocol tests.\n\nReplaces sub-ticket 8d835099-43a4-47fc-8ec2-402ea80159d1, so that this fix lands on master as its own commit (owner asked for separate commits). The implementation and tests are the reviewed change of 8d835099-43a4-47fc-8ec2-402ea80159d1, ported unchanged; see that ticket's notes and journal for the reproduction and results.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-26T20:30:40.446646Z",
+  "status": "closed",
+  "branch": "ticket/540cb18c-e04f-466d-a14e-4eb740b952b3",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "85a0e053-eca6-4ec9-82b5-ebb16b193778",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "93d29040-be34-40f0-8fc5-5add1f7d1a24",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-26T20:31:13.276249Z",
+          "last_activity_at": "2026-11-26T21:17:57.708877Z",
+          "ended_at": "2026-11-26T21:17:57.708877Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2804432.628,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T20:31:13.276249Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/540cb18c-e04f-466d-a14e-4eb740b952b3"
+        },
+        {
+          "at": "2026-11-26T21:17:57.708877Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2804432.628,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "244b1cca-ce4b-4437-8cbd-1e146831be22",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "99f039db-dd2c-43a7-bb20-579c55a3148a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:17:57.708930Z",
+          "last_activity_at": "2026-11-26T21:19:41.906237Z",
+          "ended_at": "2026-11-26T21:19:41.906237Z",
+          "outcome": {
+            "summary": "Pass. (1) git diff master...HEAD changed lines are byte-identical to ticket/ca925388...ticket/8d835099 (3 files, +62/-2); only offsets differ. (2) Merge coherent: set_property() (indigo_xml.c:553,560) is independent of the new def_property()/update_cached_property(); indigo_define_property clears previous state (indigo_bus.c:1191) so a redefinition followed by a set behaves correctly; test counters are reset by memset in reset_context(), updated_item_count is used only by the new case; all 12 cases registered once, no duplicates. (3) Fix correct: item do_update is now set after the copy (indigo_set_text_item_value clears it for unchanged text, indigo_bus.c:2316-2318), property->do_update forces delivery, including state-only/no-item sets; flags are cleared by clear_previous_state after delivery, so nothing stale carries over; switch reset items and unlisted changes still go through the bus comparison; WO BLOB count=0 and RO BLOB default branch are unaffected. No amplification: one received set gives at most one delivery, and re-sharing remote devices is opt-in (indigo_reshare_remote_devices). Peers that send redundant sets (force_property_updates on their side, legacy INDI) are now forwarded 1:1, as the docs describe. Ran: built libindigo in the worktree, rebuilt test_protocol_xml with LD_LIBRARY_PATH on the worktree build/lib (checked with ldd): 12/12 pass. Negative control (master indigo_xml.c linked over libindigo): new case fails at test_protocol_xml.c:607 (0 of 3 updates); with only the property->do_update line removed, 1 of 3. Note: the two-server test KNOWN DEFECT markers are not on master (run_scheduler_two_servers.py belongs to ca925388), so removing them is left to that ticket.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 104197.307,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T21:17:57.708930Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T21:19:41.906237Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. (1) git diff master...HEAD changed lines are byte-identical to ticket/ca925388...ticket/8d835099 (3 files, +62/-2); only offsets differ. (2) Merge coherent: set_property() (indigo_xml.c:553,560) is independent of the new def_property()/update_cached_property(); indigo_define_property clears previous state (indigo_bus.c:1191) so a redefinition followed by a set behaves correctly; test counters are reset by memset in reset_context(), updated_item_count is used only by the new case; all 12 cases registered once, no duplicates. (3) Fix correct: item do_update is now set after the copy (indigo_set_text_item_value clears it for unchanged text, indigo_bus.c:2316-2318), property->do_update forces delivery, including state-only/no-item sets; flags are cleared by clear_previous_state after delivery, so nothing stale carries over; switch reset items and unlisted changes still go through the bus comparison; WO BLOB count=0 and RO BLOB default branch are unaffected. No amplification: one received set gives at most one delivery, and re-sharing remote devices is opt-in (indigo_reshare_remote_devices). Peers that send redundant sets (force_property_updates on their side, legacy INDI) are now forwarded 1:1, as the docs describe. Ran: built libindigo in the worktree, rebuilt test_protocol_xml with LD_LIBRARY_PATH on the worktree build/lib (checked with ldd): 12/12 pass. Negative control (master indigo_xml.c linked over libindigo): new case fails at test_protocol_xml.c:607 (0 of 3 updates); with only the property->do_update line removed, 1 of 3. Note: the two-server test KNOWN DEFECT markers are not on master (run_scheduler_two_servers.py belongs to ca925388), so removing them is left to that ticket."
+        }
+      ],
+      "result": {
+        "summary": "Pass. (1) git diff master...HEAD changed lines are byte-identical to ticket/ca925388...ticket/8d835099 (3 files, +62/-2); only offsets differ. (2) Merge coherent: set_property() (indigo_xml.c:553,560) is independent of the new def_property()/update_cached_property(); indigo_define_property clears previous state (indigo_bus.c:1191) so a redefinition followed by a set behaves correctly; test counters are reset by memset in reset_context(), updated_item_count is used only by the new case; all 12 cases registered once, no duplicates. (3) Fix correct: item do_update is now set after the copy (indigo_set_text_item_value clears it for unchanged text, indigo_bus.c:2316-2318), property->do_update forces delivery, including state-only/no-item sets; flags are cleared by clear_previous_state after delivery, so nothing stale carries over; switch reset items and unlisted changes still go through the bus comparison; WO BLOB count=0 and RO BLOB default branch are unaffected. No amplification: one received set gives at most one delivery, and re-sharing remote devices is opt-in (indigo_reshare_remote_devices). Peers that send redundant sets (force_property_updates on their side, legacy INDI) are now forwarded 1:1, as the docs describe. Ran: built libindigo in the worktree, rebuilt test_protocol_xml with LD_LIBRARY_PATH on the worktree build/lib (checked with ldd): 12/12 pass. Negative control (master indigo_xml.c linked over libindigo): new case fails at test_protocol_xml.c:607 (0 of 3 updates); with only the property->do_update line removed, 1 of 3. Note: the two-server test KNOWN DEFECT markers are not on master (run_scheduler_two_servers.py belongs to ca925388), so removing them is left to that ticket.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 104197.307,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "fa010181-ffed-4012-8386-a7a70d5c3310",
+      "event": "ticket/created",
+      "at": "2026-11-26T20:30:40.447310Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple"
+    },
+    {
+      "event_id": "152876d9-f19e-4f57-baab-9d6b0402d9cf",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T20:30:58.587696Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "6fa793df-3f19-4265-9402-4182ed51d544",
+      "event": "task/progress",
+      "at": "2026-11-26T20:31:13.276400Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85a0e053-eca6-4ec9-82b5-ebb16b193778",
+      "text": "Implementation started on branch ticket/540cb18c-e04f-466d-a14e-4eb740b952b3"
+    },
+    {
+      "event_id": "25c8710b-32d1-4e8e-93f9-69b27c4fdf75",
+      "event": "ticket/started",
+      "at": "2026-11-26T20:31:13.277300Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/540cb18c-e04f-466d-a14e-4eb740b952b3",
+      "base": "master"
+    },
+    {
+      "event_id": "7b906f5f-4950-435e-b19d-3660fbd84125",
+      "event": "task/progress",
+      "at": "2026-11-26T20:31:13.651543Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85a0e053-eca6-4ec9-82b5-ebb16b193778",
+      "text": "Ported the reviewed change of the superseded sub-ticket unchanged (coordinator)"
+    },
+    {
+      "event_id": "73c35f72-e958-40e5-b14e-88dd9cb86642",
+      "event": "task/progress",
+      "at": "2026-11-26T21:14:10.918610Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85a0e053-eca6-4ec9-82b5-ebb16b193778",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "239d9480-403f-4aa1-bceb-bbc03667e72a",
+      "event": "task/progress",
+      "at": "2026-11-26T21:14:10.933064Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85a0e053-eca6-4ec9-82b5-ebb16b193778",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "26f073c9-c3b4-4cef-9628-dbca7155838b",
+      "event": "task/progress",
+      "at": "2026-11-26T21:14:10.938136Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85a0e053-eca6-4ec9-82b5-ebb16b193778",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "e2e71e96-47d0-41fe-b7f6-798fcf5515d9",
+      "event": "task/progress",
+      "at": "2026-11-26T21:17:44.227611Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "85a0e053-eca6-4ec9-82b5-ebb16b193778",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "38fdf787-5b63-4c76-8385-e33bcca940b8",
+      "event": "check/passed",
+      "at": "2026-11-26T21:17:44.233641Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "825b5ffd58b2c8b39e7b840471ca11c7b07b1bd9",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "82545687-ce7a-47c0-8372-725e4164ef13",
+      "event": "task/progress",
+      "at": "2026-11-26T21:17:57.709021Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "244b1cca-ce4b-4437-8cbd-1e146831be22",
+      "text": "Review started"
+    },
+    {
+      "event_id": "3fb42020-2aa5-4829-b934-04a75040aaa6",
+      "event": "review/started",
+      "at": "2026-11-26T21:17:57.709692Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "0e002b74-bd26-47bc-b3f3-479bc2e70f02",
+      "event": "task/progress",
+      "at": "2026-11-26T21:17:57.950299Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "244b1cca-ce4b-4437-8cbd-1e146831be22",
+      "text": "Reviewer launched",
+      "attempt_id": "99f039db-dd2c-43a7-bb20-579c55a3148a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "85d7d0b0-c35b-4c04-81c4-d3bceaa7b92d",
+      "event": "task/progress",
+      "at": "2026-11-26T21:18:09.868374Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "244b1cca-ce4b-4437-8cbd-1e146831be22",
+      "text": "Reviewer started: comparing diffs and reading set_property change",
+      "attempt_id": "99f039db-dd2c-43a7-bb20-579c55a3148a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0b68dc37-7641-466b-83fe-3dcf1ad33234",
+      "event": "task/progress",
+      "at": "2026-11-26T21:18:54.385293Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "244b1cca-ce4b-4437-8cbd-1e146831be22",
+      "text": "Building libindigo and running test_protocol_xml in the worktree"
+    },
+    {
+      "event_id": "3e412bc4-d976-49eb-968c-aef630d17502",
+      "event": "task/progress",
+      "at": "2026-11-26T21:19:41.906319Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "244b1cca-ce4b-4437-8cbd-1e146831be22",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "255c0bc0-0ae4-452e-a3c5-943ba25e6366",
+      "event": "review/passed",
+      "at": "2026-11-26T21:19:41.906939Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "244b1cca-ce4b-4437-8cbd-1e146831be22",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "825b5ffd58b2c8b39e7b840471ca11c7b07b1bd9"
+    },
+    {
+      "event_id": "cc5fa0ea-86dd-4886-9384-9178b61a7bdf",
+      "event": "ticket/title_changed",
+      "at": "2026-11-26T21:25:41.753206Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_libs: a setXXXVector from a remote server with unchanged values is not delivered to local clients",
+      "title": "indigo_libs: deliver every update received from a remote server, including unchanged values"
+    },
+    {
+      "event_id": "26afdf76-6bca-44bf-b6f3-cf105fa77fc3",
+      "event": "ticket/closed",
+      "at": "2026-11-26T21:25:42.067645Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T21:25:42.067620Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "33bb1053d455f7af0920bd59be441945ab3146b1"
+  },
+  "priority": "high",
+  "severity": "high",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "825b5ffd58b2c8b39e7b840471ca11c7b07b1bd9",
+        "tree": "6f008371e75d356c1556534892bbe94af2b98526",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:14:10.932330Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/540cb18c-e04f-466d-a14e-4eb740b952b3/6f008371e75d-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "825b5ffd58b2c8b39e7b840471ca11c7b07b1bd9",
+        "tree": "6f008371e75d356c1556534892bbe94af2b98526",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:17:44.226214Z",
+        "duration_s": 213.3,
+        "log": "/tmp/factory-flow/540cb18c-e04f-466d-a14e-4eb740b952b3/6f008371e75d-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. (1) git diff master...HEAD changed lines are byte-identical to ticket/ca925388...ticket/8d835099 (3 files, +62/-2); only offsets differ. (2) Merge coherent: set_property() (indigo_xml.c:553,560) is independent of the new def_property()/update_cached_property(); indigo_define_property clears previous state (indigo_bus.c:1191) so a redefinition followed by a set behaves correctly; test counters are reset by memset in reset_context(), updated_item_count is used only by the new case; all 12 cases registered once, no duplicates. (3) Fix correct: item do_update is now set after the copy (indigo_set_text_item_value clears it for unchanged text, indigo_bus.c:2316-2318), property->do_update forces delivery, including state-only/no-item sets; flags are cleared by clear_previous_state after delivery, so nothing stale carries over; switch reset items and unlisted changes still go through the bus comparison; WO BLOB count=0 and RO BLOB default branch are unaffected. No amplification: one received set gives at most one delivery, and re-sharing remote devices is opt-in (indigo_reshare_remote_devices). Peers that send redundant sets (force_property_updates on their side, legacy INDI) are now forwarded 1:1, as the docs describe. Ran: built libindigo in the worktree, rebuilt test_protocol_xml with LD_LIBRARY_PATH on the worktree build/lib (checked with ldd): 12/12 pass. Negative control (master indigo_xml.c linked over libindigo): new case fails at test_protocol_xml.c:607 (0 of 3 updates); with only the property->do_update line removed, 1 of 3. Note: the two-server test KNOWN DEFECT markers are not on master (run_scheduler_two_servers.py belongs to ca925388), so removing them is left to that ticket.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "825b5ffd58b2c8b39e7b840471ca11c7b07b1bd9",
+        "tree": "6f008371e75d356c1556534892bbe94af2b98526",
+        "at": "2026-11-26T21:19:41.906211Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "33bb1053d455f7af0920bd59be441945ab3146b1",
+      "tree": "6f008371e75d356c1556534892bbe94af2b98526",
+      "base": "master",
+      "at": "2026-11-26T21:25:41.960187Z"
+    }
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "high",
+    "profile": "simple",
+    "at": "2026-11-26T20:30:40.446646Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T20:30:58.587657Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2908629.935,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 23,
+    "sha256": "24eb600c4b360d684a42209ed01131f7fd8c65578009564267edbaab522c9b11"
+  }
+}
