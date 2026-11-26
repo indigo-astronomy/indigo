@@ -1,0 +1,750 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b2c12d5d-dfae-4110-a26e-93fab7f02f33",
+  "revision": 42,
+  "title": "indigo_test: tests load libindigo, indigo_server and drivers from their own checkout regardless of LD_LIBRARY_PATH",
+  "description": "Found while closing ca925388 and its fixes (2026-11-26). The owner's shell exports LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib. Every test binary built in a Factory worktree (.factory2/local/worktrees/<id>) then loads the primary checkout's libindigo.so instead of the worktree's own, so 'flow check unit' in a worktree silently tests the primary checkout's library. Observed: ticket 0329a182's fixed indigo_xml.c failed test_protocol_xml.c:754 (the exact failure of the unfixed parser) until the check was rerun with LD_LIBRARY_PATH unset; earlier sub-tickets had to override it by hand.\n\nExpected: indigo_test/Makefile targets (test-unit, the integration targets and helpers such as check-lib, and the Python runners under indigo_test/ that start indigo_server or drivers, e.g. run_scheduler_simulators.py) run against the build/lib (and build/drivers, build/bin) of the checkout that contains them, regardless of the caller's LD_LIBRARY_PATH / DYLD_LIBRARY_PATH, on Linux and macOS. Options: prepend the checkout's build/lib in the Makefile recipes and runners, or link the test binaries with an rpath that takes precedence (note LD_LIBRARY_PATH overrides DT_RUNPATH, not DT_RPATH). run_scheduler_two_servers.py (ticket ca925388) already prepends its own build/lib; reuse or align. Do not change tools/run_driver_test.py semantics without checking the recording contract in indigo_test/AGENTS.md.\n\nTests: a harness test showing that a test binary run with a foreign LD_LIBRARY_PATH still loads the checkout's libindigo (e.g. via ldd or a version symbol), and flow check passing in a worktree with the owner's environment.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-26T21:19:58.826719Z",
+  "status": "closed",
+  "branch": "ticket/b2c12d5d-dfae-4110-a26e-93fab7f02f33",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "432cea01-5c84-4c82-b168-7f236d36e8da",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:25:54.611645Z",
+          "last_activity_at": "2026-11-26T21:34:00.703679Z",
+          "ended_at": "2026-11-26T21:34:00.703679Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 486092.034,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T21:25:54.611645Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/b2c12d5d-dfae-4110-a26e-93fab7f02f33"
+        },
+        {
+          "at": "2026-11-26T21:34:00.703679Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 486092.034,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "941ddac8-fecf-44c2-af7d-603e1ceb9173",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:34:00.703742Z",
+          "last_activity_at": "2026-11-26T21:37:31.458798Z",
+          "ended_at": "2026-11-26T21:37:31.458798Z",
+          "outcome": {
+            "summary": "Pass. -Wl,--disable-new-dtags is added only to TEST_LDFLAGS in indigo_test/Makefile:266-268; TEST_LDFLAGS is used by no makefile outside indigo_test, so installed/packaged binaries keep DT_RUNPATH. BUILD_LIB is absolute (Makefile.inc), so the exported LD_LIBRARY_PATH/DYLD_LIBRARY_PATH (Makefile:269-270) is valid from any recipe cwd; a missing build/lib only adds a nonexistent entry; recursive makes just duplicate the entry. Statically linked tests and sanitizer builds are unaffected; test_examples.py still overrides the variables itself; valgrind leak runner gets the checkout path. Python launchers prepend only the library variables; run_driver_test.py counting/recording logic untouched. New buildsystem/test_checkout_library.py: 3 tests pass with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib; with master's indigo_test/Makefile temporarily restored all 3 fail (file restored afterwards, worktree clean), and the RUNPATH control proves the reported defect. ldd of a unit binary with the foreign LD_LIBRARY_PATH resolves libindigo.so to the worktree build/lib. flow check (whitespace, unit: 78 suites, exit 0) passed with LD_LIBRARY_PATH set; test-buildsystem 24 tests, only the known unrelated test_agent_mcp_help failure. Non-blocking notes: on macOS /usr/bin/make and /bin/sh are SIP-protected and strip DYLD_* from children, so the DYLD export is mostly inert there, and test_make_puts_this_build_first passes on macOS from make's own expansion only (not a defect: macOS LC_RPATH lookup already is not overridden by a stripped DYLD path); Makefile.inc LDFLAGS carries '.' in the rpath, which as DT_RPATH now also applies to transitive dependencies of test binaries (pre-existing flag, low impact).",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 210755.056,
+          "tokens": null
+        },
+        {
+          "attempt_id": "6d3a7ea9-2025-450f-ac8c-b34bb7dd0ebf",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-26T21:50:18.154434Z",
+          "last_activity_at": "2026-11-26T21:50:50.396083Z",
+          "ended_at": "2026-11-26T21:50:50.396083Z",
+          "outcome": {
+            "summary": "Re-review after indigo_test/AGENTS.md was dropped from the ticket. git diff master...HEAD is 8 files, 168 insertions, matching the previously reviewed change without indigo_test/AGENTS.md (that file has no diff against master). indigo_test/Makefile:266-270 adds -Wl,--disable-new-dtags to TEST_LDFLAGS on non-Darwin, so the existing -rpath to this checkout's build/lib is stored as DT_RPATH. That flag is only in indigo_test, so installed binaries are not affected. The same lines export LD_LIBRARY_PATH and DYLD_LIBRARY_PATH with this checkout's BUILD_LIB first and keep the caller's value after it. Nested makes may repeat the entry, which does no harm. The five Python launchers prepend their own build/lib the same way: run_scheduler_simulators.py:338, run_sequencer_simulators.py:225, run_server_leak_check.py:99, run_driver_test.py:419 and scheduler_sandbox.py:540. run_driver_test.py changes only the child environment, so the recording contract is unchanged. buildsystem/test_checkout_library.py places a decoy copy of libindigo in a foreign directory. It checks a DT_RPATH probe started directly, the make export, and a DT_RUNPATH control that loads the decoy when started directly and this build when started from a recipe. The test is sound. The pbxproj entry sits in the buildsystem group. Ran: unittest test_checkout_library.py with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib, 3/3 ok. readelf on build/unit shows RPATH including the worktree's build/lib. ldd test_protocol_xml with the owner's LD_LIBRARY_PATH resolves the worktree's libindigo.so. git diff --check is clean. No defects found.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 32241.649,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-26T21:34:00.703742Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T21:37:31.458798Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. -Wl,--disable-new-dtags is added only to TEST_LDFLAGS in indigo_test/Makefile:266-268; TEST_LDFLAGS is used by no makefile outside indigo_test, so installed/packaged binaries keep DT_RUNPATH. BUILD_LIB is absolute (Makefile.inc), so the exported LD_LIBRARY_PATH/DYLD_LIBRARY_PATH (Makefile:269-270) is valid from any recipe cwd; a missing build/lib only adds a nonexistent entry; recursive makes just duplicate the entry. Statically linked tests and sanitizer builds are unaffected; test_examples.py still overrides the variables itself; valgrind leak runner gets the checkout path. Python launchers prepend only the library variables; run_driver_test.py counting/recording logic untouched. New buildsystem/test_checkout_library.py: 3 tests pass with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib; with master's indigo_test/Makefile temporarily restored all 3 fail (file restored afterwards, worktree clean), and the RUNPATH control proves the reported defect. ldd of a unit binary with the foreign LD_LIBRARY_PATH resolves libindigo.so to the worktree build/lib. flow check (whitespace, unit: 78 suites, exit 0) passed with LD_LIBRARY_PATH set; test-buildsystem 24 tests, only the known unrelated test_agent_mcp_help failure. Non-blocking notes: on macOS /usr/bin/make and /bin/sh are SIP-protected and strip DYLD_* from children, so the DYLD export is mostly inert there, and test_make_puts_this_build_first passes on macOS from make's own expansion only (not a defect: macOS LC_RPATH lookup already is not overridden by a stripped DYLD path); Makefile.inc LDFLAGS carries '.' in the rpath, which as DT_RPATH now also applies to transitive dependencies of test binaries (pre-existing flag, low impact)."
+        },
+        {
+          "at": "2026-11-26T21:50:18.154434Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-26T21:50:50.396083Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Re-review after indigo_test/AGENTS.md was dropped from the ticket. git diff master...HEAD is 8 files, 168 insertions, matching the previously reviewed change without indigo_test/AGENTS.md (that file has no diff against master). indigo_test/Makefile:266-270 adds -Wl,--disable-new-dtags to TEST_LDFLAGS on non-Darwin, so the existing -rpath to this checkout's build/lib is stored as DT_RPATH. That flag is only in indigo_test, so installed binaries are not affected. The same lines export LD_LIBRARY_PATH and DYLD_LIBRARY_PATH with this checkout's BUILD_LIB first and keep the caller's value after it. Nested makes may repeat the entry, which does no harm. The five Python launchers prepend their own build/lib the same way: run_scheduler_simulators.py:338, run_sequencer_simulators.py:225, run_server_leak_check.py:99, run_driver_test.py:419 and scheduler_sandbox.py:540. run_driver_test.py changes only the child environment, so the recording contract is unchanged. buildsystem/test_checkout_library.py places a decoy copy of libindigo in a foreign directory. It checks a DT_RPATH probe started directly, the make export, and a DT_RUNPATH control that loads the decoy when started directly and this build when started from a recipe. The test is sound. The pbxproj entry sits in the buildsystem group. Ran: unittest test_checkout_library.py with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib, 3/3 ok. readelf on build/unit shows RPATH including the worktree's build/lib. ldd test_protocol_xml with the owner's LD_LIBRARY_PATH resolves the worktree's libindigo.so. git diff --check is clean. No defects found."
+        }
+      ],
+      "result": {
+        "summary": "Re-review after indigo_test/AGENTS.md was dropped from the ticket. git diff master...HEAD is 8 files, 168 insertions, matching the previously reviewed change without indigo_test/AGENTS.md (that file has no diff against master). indigo_test/Makefile:266-270 adds -Wl,--disable-new-dtags to TEST_LDFLAGS on non-Darwin, so the existing -rpath to this checkout's build/lib is stored as DT_RPATH. That flag is only in indigo_test, so installed binaries are not affected. The same lines export LD_LIBRARY_PATH and DYLD_LIBRARY_PATH with this checkout's BUILD_LIB first and keep the caller's value after it. Nested makes may repeat the entry, which does no harm. The five Python launchers prepend their own build/lib the same way: run_scheduler_simulators.py:338, run_sequencer_simulators.py:225, run_server_leak_check.py:99, run_driver_test.py:419 and scheduler_sandbox.py:540. run_driver_test.py changes only the child environment, so the recording contract is unchanged. buildsystem/test_checkout_library.py places a decoy copy of libindigo in a foreign directory. It checks a DT_RPATH probe started directly, the make export, and a DT_RUNPATH control that loads the decoy when started directly and this build when started from a recipe. The test is sound. The pbxproj entry sits in the buildsystem group. Ran: unittest test_checkout_library.py with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib, 3/3 ok. readelf on build/unit shows RPATH including the worktree's build/lib. ldd test_protocol_xml with the owner's LD_LIBRARY_PATH resolves the worktree's libindigo.so. git diff --check is clean. No defects found.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 242996.705,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "4345e478-74eb-43fa-9215-86cdf5778af6",
+      "event": "ticket/created",
+      "at": "2026-11-26T21:19:58.827502Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "48af8909-631b-4554-a21d-477af06e8f91",
+      "event": "ticket/confirmed",
+      "at": "2026-11-26T21:25:42.847125Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "49c3fbd4-bb88-4e0d-b9ee-b75b34cadd26",
+      "event": "task/progress",
+      "at": "2026-11-26T21:25:54.611785Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Implementation started on branch ticket/b2c12d5d-dfae-4110-a26e-93fab7f02f33"
+    },
+    {
+      "event_id": "5e525625-bfa8-43e9-9937-15b290ad1571",
+      "event": "ticket/started",
+      "at": "2026-11-26T21:25:54.612556Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/b2c12d5d-dfae-4110-a26e-93fab7f02f33",
+      "base": "master"
+    },
+    {
+      "event_id": "9c37083b-8ddb-463d-9f50-c714221f1d2a",
+      "event": "task/progress",
+      "at": "2026-11-26T21:26:18.358810Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Implementer launched",
+      "attempt_id": "432cea01-5c84-4c82-b168-7f236d36e8da",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6f7f4602-7913-4a65-9b8c-3651ba2ff258",
+      "event": "task/progress",
+      "at": "2026-11-26T21:26:50.181767Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Implementer launched; surveying how tests locate libindigo",
+      "attempt_id": "432cea01-5c84-4c82-b168-7f236d36e8da",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7ec09a2b-3679-491d-ad7c-ca760650b17c",
+      "event": "task/progress",
+      "at": "2026-11-26T21:28:03.595650Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Building worktree libindigo and unit prerequisites"
+    },
+    {
+      "event_id": "92a5fe2d-78af-4bf5-92f6-260f096922f4",
+      "event": "task/progress",
+      "at": "2026-11-26T21:29:56.208160Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Running new buildsystem test test_checkout_library.py with foreign LD_LIBRARY_PATH"
+    },
+    {
+      "event_id": "8b8b4c54-d079-44a3-aafc-5e222ba25866",
+      "event": "task/progress",
+      "at": "2026-11-26T21:30:40.875064Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c738276a-fe64-4c6c-8c58-b2677dac3a66",
+      "event": "task/progress",
+      "at": "2026-11-26T21:30:40.913408Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "067c720a-345b-474b-9668-154588eeabf7",
+      "event": "task/progress",
+      "at": "2026-11-26T21:30:40.918182Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "ed1a4bc6-8e79-4858-b750-193a4d60d848",
+      "event": "task/progress",
+      "at": "2026-11-26T21:32:48.453710Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "8bb6267f-abf3-454c-8fa2-31ca1f084e12",
+      "event": "check/passed",
+      "at": "2026-11-26T21:32:48.459154Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "b1fa3d16b6ab61da1443c0fb3545bf41acb12501",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "94cabe7e-0593-41c9-bcbb-d6eb73a34ab9",
+      "event": "task/progress",
+      "at": "2026-11-26T21:33:06.098835Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Check command-1 started: make -C indigo_test test-buildsystem"
+    },
+    {
+      "event_id": "687e4741-97e5-4c88-b934-f1bbfd7305b3",
+      "event": "task/progress",
+      "at": "2026-11-26T21:33:10.526806Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Check command-1 failed: 1 of 24 tests failed"
+    },
+    {
+      "event_id": "d9c279c8-c3f3-4c43-aca1-f735531aaddf",
+      "event": "check/failed",
+      "at": "2026-11-26T21:33:10.532526Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "b1fa3d16b6ab61da1443c0fb3545bf41acb12501",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "96c3c4f9-73f6-4aa1-b692-57c370b97487",
+      "event": "task/progress",
+      "at": "2026-11-26T21:33:19.267625Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Check command-1 started: cd indigo_test && python3 -B -m unittest -v buildsystem/test_checkout_library.py"
+    },
+    {
+      "event_id": "2808f19e-5a76-419b-bf49-8dcac757bd08",
+      "event": "task/progress",
+      "at": "2026-11-26T21:33:19.640907Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Check command-1 passed: 3 tests"
+    },
+    {
+      "event_id": "d70a62ea-0268-49b4-acaf-7ac264f388e8",
+      "event": "check/passed",
+      "at": "2026-11-26T21:33:19.645800Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "b1fa3d16b6ab61da1443c0fb3545bf41acb12501",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "fbeafb70-439d-4895-a216-dc98289cd053",
+      "event": "task/progress",
+      "at": "2026-11-26T21:33:25.080791Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2b268eb9-a7d8-4820-af31-239400b66920",
+      "text": "Implementation done; unit check passed with foreign LD_LIBRARY_PATH set"
+    },
+    {
+      "event_id": "b1d00de6-f157-4fdf-a1c7-145207f3ca6b",
+      "event": "task/progress",
+      "at": "2026-11-26T21:34:00.703826Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f536900c-06e7-4e5d-95ab-04b3b9fb3fd3",
+      "event": "review/started",
+      "at": "2026-11-26T21:34:00.704530Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "5e8c656b-2be1-4129-b2a1-ffd8c089b049",
+      "event": "task/progress",
+      "at": "2026-11-26T21:34:00.921344Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Reviewer launched",
+      "attempt_id": "941ddac8-fecf-44c2-af7d-603e1ceb9173",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ebc4f3a1-bb14-416b-a9f8-3d5a0be5dc49",
+      "event": "task/progress",
+      "at": "2026-11-26T21:34:09.352241Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Reviewer reading the diff",
+      "attempt_id": "941ddac8-fecf-44c2-af7d-603e1ceb9173",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ef05de8c-8748-4c17-b989-582b224fd84e",
+      "event": "task/progress",
+      "at": "2026-11-26T21:35:04.065195Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Running buildsystem/test_checkout_library.py with LD_LIBRARY_PATH set"
+    },
+    {
+      "event_id": "e16677d0-2ae4-4668-b234-a9d5d47c5022",
+      "event": "task/progress",
+      "at": "2026-11-26T21:35:17.840033Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "cceb4f5c-9294-499c-b0b2-6db2bd23f7e8",
+      "event": "task/progress",
+      "at": "2026-11-26T21:35:17.877776Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "cb6e0934-8da1-4432-94f8-fc044f27457e",
+      "event": "task/progress",
+      "at": "2026-11-26T21:35:17.882755Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "f3aa8213-0d29-4fd5-95f0-1ea74bf12637",
+      "event": "task/progress",
+      "at": "2026-11-26T21:37:01.911613Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "3d1b9a59-a502-4cf8-8aa5-6f57a707f829",
+      "event": "check/passed",
+      "at": "2026-11-26T21:37:01.916777Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "b1fa3d16b6ab61da1443c0fb3545bf41acb12501",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "fc1f3450-c94d-497b-8ade-f0d51eea9c2e",
+      "event": "task/progress",
+      "at": "2026-11-26T21:37:31.458881Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "100a6137-22af-4d70-9e29-b054fa62e937",
+      "event": "review/passed",
+      "at": "2026-11-26T21:37:31.459566Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "b1fa3d16b6ab61da1443c0fb3545bf41acb12501"
+    },
+    {
+      "event_id": "28a9af3a-7ce9-4368-b300-af37526b5b0b",
+      "event": "task/progress",
+      "at": "2026-11-26T21:48:16.636370Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3533fad3-4215-47c5-b843-9a6614f7df77",
+      "event": "task/progress",
+      "at": "2026-11-26T21:48:16.675954Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "fc9a84e4-8b4a-4a18-ad60-bd5b8c45adc6",
+      "event": "task/progress",
+      "at": "2026-11-26T21:48:16.682066Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "3eb8a055-ae61-4f8f-aff1-a144457f998c",
+      "event": "task/progress",
+      "at": "2026-11-26T21:50:03.970361Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "1957592c-2d62-4218-8466-cc210115e465",
+      "event": "check/passed",
+      "at": "2026-11-26T21:50:03.977650Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "722025a31a283b45ca2929a9d11b67338c56ae17",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "9353e5ec-41df-4fdd-b0ea-c7eb29f2452f",
+      "event": "task/progress",
+      "at": "2026-11-26T21:50:18.154524Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Review started"
+    },
+    {
+      "event_id": "082e8664-24a3-4c4a-bc8c-2b63383d4c90",
+      "event": "review/started",
+      "at": "2026-11-26T21:50:18.155217Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "1b4c6389-95e9-491c-8f3c-039dc770d81f",
+      "event": "task/progress",
+      "at": "2026-11-26T21:50:18.371568Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Reviewer launched after splitting out AGENTS.md",
+      "attempt_id": "6d3a7ea9-2025-450f-ac8c-b34bb7dd0ebf",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "2f095795-6af2-4d2b-b60b-d3807efadadd",
+      "event": "task/progress",
+      "at": "2026-11-26T21:50:26.524951Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Reviewing diff after AGENTS.md removal",
+      "attempt_id": "6d3a7ea9-2025-450f-ac8c-b34bb7dd0ebf",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "2263bc1c-a495-4e1b-a26c-a1735838eece",
+      "event": "task/progress",
+      "at": "2026-11-26T21:50:36.345374Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Running test_checkout_library.py with owner LD_LIBRARY_PATH"
+    },
+    {
+      "event_id": "3c3c2115-6785-4994-8c9c-30ec4cf39aff",
+      "event": "task/progress",
+      "at": "2026-11-26T21:50:50.396159Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "6beb5bf4-c752-4e23-8f2d-ff344b76fd43",
+      "event": "review/passed",
+      "at": "2026-11-26T21:50:50.396862Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "5fbbedff-406a-40c5-9470-fb6be29f6a4c",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "722025a31a283b45ca2929a9d11b67338c56ae17"
+    },
+    {
+      "event_id": "56067df8-560a-4490-94cf-6512cd00a1b3",
+      "event": "ticket/title_changed",
+      "at": "2026-11-26T21:51:11.785470Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_test: unit and integration tests load libindigo from LD_LIBRARY_PATH instead of the checkout they were built in",
+      "title": "indigo_test: tests load libindigo, indigo_server and drivers from their own checkout regardless of LD_LIBRARY_PATH"
+    },
+    {
+      "event_id": "1ad63d40-ba74-4238-a5a8-837a7aa02f40",
+      "event": "ticket/closed",
+      "at": "2026-11-26T21:51:12.084278Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-26T21:51:12.084224Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "72e37b31525b1d923c83f345e528121d051d58f4"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "command-1",
+        "command": "cd indigo_test && python3 -B -m unittest -v buildsystem/test_checkout_library.py",
+        "commit": "b1fa3d16b6ab61da1443c0fb3545bf41acb12501",
+        "tree": "59c221351a043b9f6f360d572a2cdea787e52ce3",
+        "exit_code": 0,
+        "counts": {
+          "executed": 3,
+          "failed": 0,
+          "skipped": 0
+        },
+        "passed": true,
+        "at": "2026-11-26T21:33:19.640131Z",
+        "duration_s": 0.4,
+        "log": "/tmp/factory-flow/b2c12d5d-dfae-4110-a26e-93fab7f02f33/59c221351a04-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "b1fa3d16b6ab61da1443c0fb3545bf41acb12501",
+        "tree": "59c221351a043b9f6f360d572a2cdea787e52ce3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:35:17.876881Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b2c12d5d-dfae-4110-a26e-93fab7f02f33/59c221351a04-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "b1fa3d16b6ab61da1443c0fb3545bf41acb12501",
+        "tree": "59c221351a043b9f6f360d572a2cdea787e52ce3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:37:01.910698Z",
+        "duration_s": 104.0,
+        "log": "/tmp/factory-flow/b2c12d5d-dfae-4110-a26e-93fab7f02f33/59c221351a04-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "722025a31a283b45ca2929a9d11b67338c56ae17",
+        "tree": "ce7354d844df3a87ade3fcd029d466afbe535884",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:48:16.674850Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b2c12d5d-dfae-4110-a26e-93fab7f02f33/ce7354d844df-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "722025a31a283b45ca2929a9d11b67338c56ae17",
+        "tree": "ce7354d844df3a87ade3fcd029d466afbe535884",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-26T21:50:03.968937Z",
+        "duration_s": 107.3,
+        "log": "/tmp/factory-flow/b2c12d5d-dfae-4110-a26e-93fab7f02f33/ce7354d844df-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. -Wl,--disable-new-dtags is added only to TEST_LDFLAGS in indigo_test/Makefile:266-268; TEST_LDFLAGS is used by no makefile outside indigo_test, so installed/packaged binaries keep DT_RUNPATH. BUILD_LIB is absolute (Makefile.inc), so the exported LD_LIBRARY_PATH/DYLD_LIBRARY_PATH (Makefile:269-270) is valid from any recipe cwd; a missing build/lib only adds a nonexistent entry; recursive makes just duplicate the entry. Statically linked tests and sanitizer builds are unaffected; test_examples.py still overrides the variables itself; valgrind leak runner gets the checkout path. Python launchers prepend only the library variables; run_driver_test.py counting/recording logic untouched. New buildsystem/test_checkout_library.py: 3 tests pass with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib; with master's indigo_test/Makefile temporarily restored all 3 fail (file restored afterwards, worktree clean), and the RUNPATH control proves the reported defect. ldd of a unit binary with the foreign LD_LIBRARY_PATH resolves libindigo.so to the worktree build/lib. flow check (whitespace, unit: 78 suites, exit 0) passed with LD_LIBRARY_PATH set; test-buildsystem 24 tests, only the known unrelated test_agent_mcp_help failure. Non-blocking notes: on macOS /usr/bin/make and /bin/sh are SIP-protected and strip DYLD_* from children, so the DYLD export is mostly inert there, and test_make_puts_this_build_first passes on macOS from make's own expansion only (not a defect: macOS LC_RPATH lookup already is not overridden by a stripped DYLD path); Makefile.inc LDFLAGS carries '.' in the rpath, which as DT_RPATH now also applies to transitive dependencies of test binaries (pre-existing flag, low impact).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "b1fa3d16b6ab61da1443c0fb3545bf41acb12501",
+        "tree": "59c221351a043b9f6f360d572a2cdea787e52ce3",
+        "at": "2026-11-26T21:37:31.458768Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review after indigo_test/AGENTS.md was dropped from the ticket. git diff master...HEAD is 8 files, 168 insertions, matching the previously reviewed change without indigo_test/AGENTS.md (that file has no diff against master). indigo_test/Makefile:266-270 adds -Wl,--disable-new-dtags to TEST_LDFLAGS on non-Darwin, so the existing -rpath to this checkout's build/lib is stored as DT_RPATH. That flag is only in indigo_test, so installed binaries are not affected. The same lines export LD_LIBRARY_PATH and DYLD_LIBRARY_PATH with this checkout's BUILD_LIB first and keep the caller's value after it. Nested makes may repeat the entry, which does no harm. The five Python launchers prepend their own build/lib the same way: run_scheduler_simulators.py:338, run_sequencer_simulators.py:225, run_server_leak_check.py:99, run_driver_test.py:419 and scheduler_sandbox.py:540. run_driver_test.py changes only the child environment, so the recording contract is unchanged. buildsystem/test_checkout_library.py places a decoy copy of libindigo in a foreign directory. It checks a DT_RPATH probe started directly, the make export, and a DT_RUNPATH control that loads the decoy when started directly and this build when started from a recipe. The test is sound. The pbxproj entry sits in the buildsystem group. Ran: unittest test_checkout_library.py with LD_LIBRARY_PATH=/home/rumen/work/indigo.git/build/lib, 3/3 ok. readelf on build/unit shows RPATH including the worktree's build/lib. ldd test_protocol_xml with the owner's LD_LIBRARY_PATH resolves the worktree's libindigo.so. git diff --check is clean. No defects found.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "722025a31a283b45ca2929a9d11b67338c56ae17",
+        "tree": "ce7354d844df3a87ade3fcd029d466afbe535884",
+        "at": "2026-11-26T21:50:50.396058Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "72e37b31525b1d923c83f345e528121d051d58f4",
+      "tree": "ce7354d844df3a87ade3fcd029d466afbe535884",
+      "base": "master",
+      "at": "2026-11-26T21:51:11.993568Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-26T21:19:58.826719Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-26T21:25:42.847080Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 729088.739,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 52,
+    "sha256": "6c0caf5c3c9aef095127f0e9be45f883868fb14e2ada6cb3c6061a8787417350"
+  }
+}
