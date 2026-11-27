@@ -1,0 +1,410 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e771bdb6-4110-42ef-836b-0a50c7c0d187",
+  "revision": 17,
+  "title": "indigo_mount_lx200: rename the ToupTek SH20 meridian offset to X_TOUPTEK_MERIDIAN_OFFSET.OFFSET labelled \"Meridian offset (degrees)\"",
+  "description": "Owner request 2026-11-27, for the SH20 meridian flip offset added by ticket 4209a50f (merged today, not released):\n1. Rename the property X_TOUPTEK_MERIDIAN_LIMIT to X_TOUPTEK_MERIDIAN_OFFSET and its item LIMIT to OFFSET, so it is X_TOUPTEK_MERIDIAN_OFFSET.OFFSET. Rename the matching .driver identifiers (TOUPTEK_MERIDIAN_LIMIT -> TOUPTEK_MERIDIAN_OFFSET, its property/item macros and any helper or comment naming it) consistently.\n2. Change the item label from \"Offset past the meridian (° assumed, negative before it, undocumented)\" to exactly \"Meridian offset (degrees)\". The property label (\"Meridian flip offset\"), range -15..15, step and behaviour stay unchanged.\nEdit indigo_drivers/mount_lx200/indigo_mount_lx200.driver, regenerate the checked-in indigo_mount_lx200.c (.h/_main.c if they change) with the unchanged generator, bump the driver version. Update every reference: indigo_docs/PROPERTIES.md (custom property list and SH20 paragraph; keep the statement that ToupTek has not documented unit, sign or range), indigo_drivers/mount_lx200/PROTOCOL.md, indigo_test/integration/test_mount_lx200_simulator.c and any other file in the repository (search with git grep / grep, excluding .factory2/archive). The ZWO AM X_ZWO_MERIDIAN_LIMIT stays unchanged. Run the touptek and zwo cases of test_mount_lx200_simulator and the full suite.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-27T16:04:05.135753Z",
+  "status": "closed",
+  "branch": "ticket/e771bdb6-4110-42ef-836b-0a50c7c0d187",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "1907f8ea-7045-4519-9cef-3b5ed6c80415",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "cd994649-d963-4631-a51d-391d58a5248c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T16:13:39.606891Z",
+          "last_activity_at": "2026-11-27T16:53:59.159426Z",
+          "ended_at": "2026-11-27T16:53:59.159426Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2419552.535,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T16:13:39.606891Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/e771bdb6-4110-42ef-836b-0a50c7c0d187"
+        },
+        {
+          "at": "2026-11-27T16:53:59.159426Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 2419552.535,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "d2a07e45-adaa-4fd2-b9da-e548c86b3d0a",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "64fd7455-5070-4c97-be4d-db6c0ee52d13",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T16:53:59.159462Z",
+          "last_activity_at": "2026-11-27T17:03:07.848138Z",
+          "ended_at": "2026-11-27T17:03:07.848138Z",
+          "outcome": {
+            "summary": "Pass. Diff master...HEAD (dd5fa3764, no uncommitted changes) is only the rename X_TOUPTEK_MERIDIAN_LIMIT.LIMIT -> X_TOUPTEK_MERIDIAN_OFFSET.OFFSET (.driver identifiers, macros, private field, handler name, comments), the item label now exactly 'Meridian offset (degrees)', and version 93 -> 94 (DRIVER_VERSION 0x0300005D -> 0x0300005E). Property label 'Meridian flip offset', range -15..15, step 1, format and logic unchanged. git grep outside .factory2/archive (and grep of untracked files) finds no TOUPTEK_MERIDIAN_LIMIT, touptek_meridian_limit or old label. ZWO_MERIDIAN_LIMIT counts identical to master in docs, .driver, .c and test; no ZWO line changed. X_ prefix kept. Unchanged generator (indigo_tools has no diff) regenerates .c/.h/_main.c byte-identical. PROPERTIES.md list order stays alphabetical (MERIDIAN < MERIDIAN_OFFSET < SPEED_LIMIT), SH20 paragraph names OFFSET and still says ToupTek does not document unit, sign or range; PROTOCOL.md updated. git diff --check clean. Rebuilt test_mount_lx200_simulator in the worktree: INDIGO_TEST_CASE_FILTER=touptek 26 PASS 0 FAIL, zwo 13 PASS 0 FAIL; test-clean run afterwards. No defects found.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 548688.676,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T16:53:59.159462Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T17:03:07.848138Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Diff master...HEAD (dd5fa3764, no uncommitted changes) is only the rename X_TOUPTEK_MERIDIAN_LIMIT.LIMIT -> X_TOUPTEK_MERIDIAN_OFFSET.OFFSET (.driver identifiers, macros, private field, handler name, comments), the item label now exactly 'Meridian offset (degrees)', and version 93 -> 94 (DRIVER_VERSION 0x0300005D -> 0x0300005E). Property label 'Meridian flip offset', range -15..15, step 1, format and logic unchanged. git grep outside .factory2/archive (and grep of untracked files) finds no TOUPTEK_MERIDIAN_LIMIT, touptek_meridian_limit or old label. ZWO_MERIDIAN_LIMIT counts identical to master in docs, .driver, .c and test; no ZWO line changed. X_ prefix kept. Unchanged generator (indigo_tools has no diff) regenerates .c/.h/_main.c byte-identical. PROPERTIES.md list order stays alphabetical (MERIDIAN < MERIDIAN_OFFSET < SPEED_LIMIT), SH20 paragraph names OFFSET and still says ToupTek does not document unit, sign or range; PROTOCOL.md updated. git diff --check clean. Rebuilt test_mount_lx200_simulator in the worktree: INDIGO_TEST_CASE_FILTER=touptek 26 PASS 0 FAIL, zwo 13 PASS 0 FAIL; test-clean run afterwards. No defects found."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Diff master...HEAD (dd5fa3764, no uncommitted changes) is only the rename X_TOUPTEK_MERIDIAN_LIMIT.LIMIT -> X_TOUPTEK_MERIDIAN_OFFSET.OFFSET (.driver identifiers, macros, private field, handler name, comments), the item label now exactly 'Meridian offset (degrees)', and version 93 -> 94 (DRIVER_VERSION 0x0300005D -> 0x0300005E). Property label 'Meridian flip offset', range -15..15, step 1, format and logic unchanged. git grep outside .factory2/archive (and grep of untracked files) finds no TOUPTEK_MERIDIAN_LIMIT, touptek_meridian_limit or old label. ZWO_MERIDIAN_LIMIT counts identical to master in docs, .driver, .c and test; no ZWO line changed. X_ prefix kept. Unchanged generator (indigo_tools has no diff) regenerates .c/.h/_main.c byte-identical. PROPERTIES.md list order stays alphabetical (MERIDIAN < MERIDIAN_OFFSET < SPEED_LIMIT), SH20 paragraph names OFFSET and still says ToupTek does not document unit, sign or range; PROTOCOL.md updated. git diff --check clean. Rebuilt test_mount_lx200_simulator in the worktree: INDIGO_TEST_CASE_FILTER=touptek 26 PASS 0 FAIL, zwo 13 PASS 0 FAIL; test-clean run afterwards. No defects found.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 548688.676,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "fd6efa9d-c07d-42c5-a7f4-f06dacdc5998",
+      "event": "ticket/created",
+      "at": "2026-11-27T16:04:05.136986Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "05f3d68b-2283-4cf3-beca-9120f19182c5",
+      "event": "ticket/title_changed",
+      "at": "2026-11-27T16:06:00.907704Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_mount_lx200: label the ToupTek SH20 meridian offset item \"Meridian offset (degrees)\"",
+      "title": "indigo_mount_lx200: rename the ToupTek SH20 meridian offset to X_TOUPTEK_MERIDIAN_OFFSET.OFFSET labelled \"Meridian offset (degrees)\""
+    },
+    {
+      "event_id": "504e67f8-0568-4d90-8144-3bc9019b65b3",
+      "event": "ticket/description_changed",
+      "at": "2026-11-27T16:06:00.907728Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_description": "Owner request 2026-11-27: change the label of the item X_TOUPTEK_MERIDIAN_LIMIT.LIMIT from \"Offset past the meridian (° assumed, negative before it, undocumented)\" to exactly \"Meridian offset (degrees)\". The property label (\"Meridian flip offset\"), name, item name, range and behaviour stay unchanged. Edit indigo_drivers/mount_lx200/indigo_mount_lx200.driver (item TOUPTEK_MERIDIAN_LIMIT, around line 4630), regenerate the checked-in indigo_mount_lx200.c with the unchanged generator, bump the driver version. PROPERTIES.md and PROTOCOL.md keep their statement that the unit, sign and range are undocumented (they do not quote the label; check and adjust only if they do). Run the touptek cases of test_mount_lx200_simulator; no new test is needed unless a test checks the label.",
+      "description": "Owner request 2026-11-27, for the SH20 meridian flip offset added by ticket 4209a50f (merged today, not released):\n1. Rename the property X_TOUPTEK_MERIDIAN_LIMIT to X_TOUPTEK_MERIDIAN_OFFSET and its item LIMIT to OFFSET, so it is X_TOUPTEK_MERIDIAN_OFFSET.OFFSET. Rename the matching .driver identifiers (TOUPTEK_MERIDIAN_LIMIT -> TOUPTEK_MERIDIAN_OFFSET, its property/item macros and any helper or comment naming it) consistently.\n2. Change the item label from \"Offset past the meridian (° assumed, negative before it, undocumented)\" to exactly \"Meridian offset (degrees)\". The property label (\"Meridian flip offset\"), range -15..15, step and behaviour stay unchanged.\nEdit indigo_drivers/mount_lx200/indigo_mount_lx200.driver, regenerate the checked-in indigo_mount_lx200.c (.h/_main.c if they change) with the unchanged generator, bump the driver version. Update every reference: indigo_docs/PROPERTIES.md (custom property list and SH20 paragraph; keep the statement that ToupTek has not documented unit, sign or range), indigo_drivers/mount_lx200/PROTOCOL.md, indigo_test/integration/test_mount_lx200_simulator.c and any other file in the repository (search with git grep / grep, excluding .factory2/archive). The ZWO AM X_ZWO_MERIDIAN_LIMIT stays unchanged. Run the touptek and zwo cases of test_mount_lx200_simulator and the full suite."
+    },
+    {
+      "event_id": "58091f04-9ef8-40aa-b3d6-2b5ec2e6dbed",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T16:13:28.010643Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "4e7d5909-5fb3-47a6-8641-df1bb4f80468",
+      "event": "task/progress",
+      "at": "2026-11-27T16:13:39.607093Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1907f8ea-7045-4519-9cef-3b5ed6c80415",
+      "text": "Implementation started on branch ticket/e771bdb6-4110-42ef-836b-0a50c7c0d187"
+    },
+    {
+      "event_id": "a12e1135-015c-43ad-99bc-1beaf4795fea",
+      "event": "ticket/started",
+      "at": "2026-11-27T16:13:39.608156Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/e771bdb6-4110-42ef-836b-0a50c7c0d187",
+      "base": "master"
+    },
+    {
+      "event_id": "5bc2be17-3eb7-4d68-a685-27ac07bcb1fc",
+      "event": "task/progress",
+      "at": "2026-11-27T16:13:55.605857Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1907f8ea-7045-4519-9cef-3b5ed6c80415",
+      "text": "Implementer launched; renaming SH20 meridian offset property",
+      "attempt_id": "cd994649-d963-4631-a51d-391d58a5248c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e3828973-dff4-4e37-aeea-fb511ffbaeaf",
+      "event": "task/progress",
+      "at": "2026-11-27T16:16:10.208668Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1907f8ea-7045-4519-9cef-3b5ed6c80415",
+      "text": "Building mount_lx200 and running test_mount_lx200_simulator touptek/zwo cases"
+    },
+    {
+      "event_id": "bb41cfd8-8f56-4de9-b782-252e44f3d248",
+      "event": "task/progress",
+      "at": "2026-11-27T16:19:31.105502Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1907f8ea-7045-4519-9cef-3b5ed6c80415",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "85b2d755-433b-476b-8ffc-e37459967374",
+      "event": "task/progress",
+      "at": "2026-11-27T16:19:31.143268Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1907f8ea-7045-4519-9cef-3b5ed6c80415",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b5ea521b-f2f1-4f20-959a-121c5fa8019a",
+      "event": "check/passed",
+      "at": "2026-11-27T16:19:31.149342Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "dd5fa3764162ad0cf298bd84fa2c0c63e5b7b239",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "484ca6c0-1ccd-4dd7-955b-5d78d699d189",
+      "event": "task/progress",
+      "at": "2026-11-27T16:24:07.517073Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1907f8ea-7045-4519-9cef-3b5ed6c80415",
+      "text": "Running full test_mount_lx200_simulator suite"
+    },
+    {
+      "event_id": "9fab0a81-177f-4613-a6c4-bd7f3655b1d7",
+      "event": "task/progress",
+      "at": "2026-11-27T16:53:59.159530Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d2a07e45-adaa-4fd2-b9da-e548c86b3d0a",
+      "text": "Review started"
+    },
+    {
+      "event_id": "ec871756-80d4-47db-919d-a35184ae1990",
+      "event": "review/started",
+      "at": "2026-11-27T16:53:59.160121Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "90d116a9-6073-44f9-a7eb-8979a809d535",
+      "event": "task/progress",
+      "at": "2026-11-27T16:54:18.064271Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d2a07e45-adaa-4fd2-b9da-e548c86b3d0a",
+      "text": "Reviewer started: reading the diff",
+      "attempt_id": "64fd7455-5070-4c97-be4d-db6c0ee52d13",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "c1bdbf76-1a25-44c5-8433-479ce0901a08",
+      "event": "task/progress",
+      "at": "2026-11-27T16:54:39.889139Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d2a07e45-adaa-4fd2-b9da-e548c86b3d0a",
+      "text": "Regenerating mount_lx200 with the unchanged generator into scratch"
+    },
+    {
+      "event_id": "87bc53ed-cf94-4780-baf6-17568756e60c",
+      "event": "task/progress",
+      "at": "2026-11-27T16:54:58.030498Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d2a07e45-adaa-4fd2-b9da-e548c86b3d0a",
+      "text": "Building and running test_mount_lx200_simulator touptek and zwo cases"
+    },
+    {
+      "event_id": "3bfb00d8-18d4-4707-900d-45301d57fb47",
+      "event": "task/progress",
+      "at": "2026-11-27T17:03:07.848215Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d2a07e45-adaa-4fd2-b9da-e548c86b3d0a",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "2cbf9f0c-38bb-4ad0-8c08-f058101a317a",
+      "event": "review/passed",
+      "at": "2026-11-27T17:03:07.848853Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d2a07e45-adaa-4fd2-b9da-e548c86b3d0a",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "dd5fa3764162ad0cf298bd84fa2c0c63e5b7b239"
+    },
+    {
+      "event_id": "777d423b-c004-47a1-975a-ccb99f692a4f",
+      "event": "ticket/closed",
+      "at": "2026-11-27T17:28:31.093213Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-27T17:28:31.093183Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "31c76f529bbf216981366fc7cfb588bba6266384"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "dd5fa3764162ad0cf298bd84fa2c0c63e5b7b239",
+        "tree": "1a2e995cee53e6adb29b504bfbc2f93bda3c90a0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T16:19:31.142551Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/e771bdb6-4110-42ef-836b-0a50c7c0d187/1a2e995cee53-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Diff master...HEAD (dd5fa3764, no uncommitted changes) is only the rename X_TOUPTEK_MERIDIAN_LIMIT.LIMIT -> X_TOUPTEK_MERIDIAN_OFFSET.OFFSET (.driver identifiers, macros, private field, handler name, comments), the item label now exactly 'Meridian offset (degrees)', and version 93 -> 94 (DRIVER_VERSION 0x0300005D -> 0x0300005E). Property label 'Meridian flip offset', range -15..15, step 1, format and logic unchanged. git grep outside .factory2/archive (and grep of untracked files) finds no TOUPTEK_MERIDIAN_LIMIT, touptek_meridian_limit or old label. ZWO_MERIDIAN_LIMIT counts identical to master in docs, .driver, .c and test; no ZWO line changed. X_ prefix kept. Unchanged generator (indigo_tools has no diff) regenerates .c/.h/_main.c byte-identical. PROPERTIES.md list order stays alphabetical (MERIDIAN < MERIDIAN_OFFSET < SPEED_LIMIT), SH20 paragraph names OFFSET and still says ToupTek does not document unit, sign or range; PROTOCOL.md updated. git diff --check clean. Rebuilt test_mount_lx200_simulator in the worktree: INDIGO_TEST_CASE_FILTER=touptek 26 PASS 0 FAIL, zwo 13 PASS 0 FAIL; test-clean run afterwards. No defects found.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "dd5fa3764162ad0cf298bd84fa2c0c63e5b7b239",
+        "tree": "1a2e995cee53e6adb29b504bfbc2f93bda3c90a0",
+        "at": "2026-11-27T17:03:07.848113Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "31c76f529bbf216981366fc7cfb588bba6266384",
+      "tree": "1a2e995cee53e6adb29b504bfbc2f93bda3c90a0",
+      "base": "master",
+      "at": "2026-11-27T17:28:30.977398Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T16:04:05.135753Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-27T16:13:28.010614Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2968241.211,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 24,
+    "sha256": "d5b7e80e5c8770634f03b10524c8c053297b60dd42ad7bc7b2b548ccd2cb9d82"
+  }
+}
