@@ -1,0 +1,608 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4209a50f-7dca-4fd8-b88e-d71364082ee3",
+  "revision": 30,
+  "title": "indigo_mount_lx200: add the ToupTek SH20 meridian flip offset",
+  "description": "Add the meridian flip offset of :STaab±DD# / :GTa# (ATLAS SH20 Developer Protocol V1.3 sections 7.3 and 10.6) to the TOUPTEK mount type in indigo_drivers/mount_lx200 (edit the .driver, regenerate). The document only says to send +00 and does not give the unit, sign meaning or range of DD.\n\nHardware probe 2026-11-27 (firmware 1.0.0.20261101, flip kept off, original setting 10+00 restored): :STa00±NN# answered 1# and :GTa# read back the same value for every NN tried: 0, ±1, ±5, ±10, ±15, ±16, ±30, ±99. The firmware stores any signed two-digit value without validation; the effect on an actual flip was not observed.\n\nOwner decision (2026-11-27): implement like the ZWO AM (X_ZWO_MERIDIAN_LIMIT) and the INDI SH20 driver:\n- New number property X_TOUPTEK_MERIDIAN_LIMIT, item LIMIT, range -15 to +15, step 1, integer format, group MOUNT_ADVANCED_GROUP, equatorial mode only (hidden like X_TOUPTEK_MERIDIAN in alt-az mode).\n- Units assumed degrees past the meridian (negative before it), as for the ZWO AM; label, PROPERTIES.md and PROTOCOL.md must say plainly that ToupTek has not documented the unit, sign or range, and that this follows the ZWO AM / INDI convention.\n- Read with :GTa# at connect and on the existing settings poll (every 5th status poll, with the BUSY guard; skip while either X_TOUPTEK_MERIDIAN or X_TOUPTEK_MERIDIAN_LIMIT is BUSY since both share :STa), publish only on change. A value outside -15..15 read from the mount (set elsewhere) is shown as read, not clamped.\n- Writing the offset sends :STa with the current AUTO_FLIP and RESUME_TRACKING, then reads back :GTa#. Changing X_TOUPTEK_MERIDIAN must keep the current offset instead of sending +00 as it does now (it would wipe an offset set on the hand controller or through the new property).\n- Update PROPERTIES.md (custom property list and the SH20 paragraph, which currently says the mount takes no meridian offset), PROTOCOL.md (SH20 meridian row), bump the driver version, extend the simulator if needed and add integration tests: read at connect, write and readback, X_TOUPTEK_MERIDIAN change keeps the offset, a hand-controller offset change appears on the poll, an out-of-range mount value is shown, refusal (0#) leaves ALERT with the mount's value, hidden in alt-az mode. README.md is not changed without approval.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-27T13:39:10.457026Z",
+  "status": "closed",
+  "branch": "ticket/4209a50f-7dca-4fd8-b88e-d71364082ee3",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "50426068-889e-42fe-a087-3786431e28a6",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T13:41:40.052191Z",
+          "last_activity_at": "2026-11-27T14:24:33.448059Z",
+          "ended_at": "2026-11-27T14:24:33.448059Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2573395.868,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T13:41:40.052191Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/4209a50f-7dca-4fd8-b88e-d71364082ee3"
+        },
+        {
+          "at": "2026-11-27T14:24:33.448059Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 2573395.868,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "1d4aa312-3489-423a-b81a-c42d4ede228d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T14:24:33.448102Z",
+          "last_activity_at": "2026-11-27T14:38:35.764803Z",
+          "ended_at": "2026-11-27T14:38:35.764803Z",
+          "outcome": {
+            "summary": "Independent review of master...HEAD (2f0bf8e5a, clean worktree). No blocking defects. X_TOUPTEK_MERIDIAN_LIMIT (X_ prefix, LIMIT, -15..15 step 1 %.0f, MOUNT_ADVANCED_GROUP) is hidden in meade_init_mount and unhidden only in the equatorial :GTa# success branch (driver:3233); the alt-az test asserts it stays undefined (test:5998). Read at connect, write through touptek_set_meridian (-99..99 guard, driver:2941-2948) followed by :GTa# readback; on refusal ALERT plus the mount's value (test:5774-5776). Out-of-range mount values are stored unclamped (poll test +30, re-sent as STa10+30). Poll (driver:3384) skips :GTa# when either property is BUSY, rechecks both after the read and publishes each property only on change. ZWO zwo_set_meridian/X_ZWO_MERIDIAN* unchanged. Regenerating the .driver with the unchanged generator gives byte-identical .c/.h/_main.c; no generator change. Version 92->93 (0x5D), simulator 8->9, MIGRATION_STATUS only test count 189->191. PROPERTIES.md and PROTOCOL.md match the code and state the undocumented unit/sign/range and the ZWO/INDI convention. Built with -Werror; test_mount_lx200_simulator lx200_touptek: 22/22 PASS; lx200_zwo cases passed. Undecided choices: (1) sending the shown offset/switches without a fresh :GTa# is the same pattern as the ZWO AM handlers; the residual race (hand-controller change in the <=5 s before a client change is overwritten) is narrow and not a defect against the ticket; a fresh read would narrow it but is optional and an owner call. (2) updating only the changed property is fine; the other is corrected on the next poll. (3) -99..99 is correct, it only guards the %+03d format. Limitation (not blocking, beyond the listed tests): the offset part of lx200_touptek_settings_poll_keeps_a_pending_change (test:6490-6501) drops the :GTa# reply, so the poll read fails and neither the pre-read nor the post-read BUSY check of the meridian properties is actually exercised; it only shows that the request is sent and kept.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 842316.701,
+          "tokens": null
+        },
+        {
+          "attempt_id": "994a6226-8dad-401f-af71-b3da95ab5806",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T15:37:34.453930Z",
+          "last_activity_at": "2026-11-27T15:47:41.191210Z",
+          "ended_at": "2026-11-27T15:47:41.191210Z",
+          "outcome": {
+            "summary": "Independent review of master...96916bf05 (no uncommitted changes). Pre-read: both handlers read :GTa# before :STa (touptek_read_meridian_offset/_flip, .driver:2950-2977), take the unchanged field from it, send nothing and end ALERT with a message when it fails (.driver:4581-4585, 4616-4618), and read back after :STa. BUSY exception is sound: handlers share the device queue, the generator sets the handler's own state OK in its prologue, so when both properties are changed in quick succession the first handler sends the mount's value of the other field without overwriting the pending request, and the second handler pre-reads the first's result and sends its own request; the end state carries both. Publish only on change in helpers and poll; settings poll guard checks both BUSY states before and after :GTa# (.driver:3411). ZWO zwo_get/set_meridian unchanged (-15..15 clamp kept); SH20 uses touptek_set_meridian (-99..99). Regeneration with the unchanged generator is byte-identical for .c/.h/_main.c; no generator change; version 92->93. PROPERTIES.md and PROTOCOL.md describe the delivered behaviour and the undocumented unit/sign/range; MIGRATION_STATUS.md only the count column 189->193 (4 new tests). Tests: keeps_hand_controller_settings proves the GTa immediately precedes STa (event_before) and that the hand-controller value is sent and shown; without_a_fresh_read proves no STa at all after a dropped pre-read for both properties; both would fail on the previous code. Ran test_mount_lx200_simulator touptek subset (26/26 pass) and zwo subset (13/13 pass); test-clean done. Non-blocking observation: after a failed pre-read the changed property keeps the client's unsent value in ALERT until the next settings poll (about 5 s) shows the mount's value; this matches the owner's 'leave ALERT and say so' decision.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 606737.28,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T14:24:33.448102Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T14:38:35.764803Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of master...HEAD (2f0bf8e5a, clean worktree). No blocking defects. X_TOUPTEK_MERIDIAN_LIMIT (X_ prefix, LIMIT, -15..15 step 1 %.0f, MOUNT_ADVANCED_GROUP) is hidden in meade_init_mount and unhidden only in the equatorial :GTa# success branch (driver:3233); the alt-az test asserts it stays undefined (test:5998). Read at connect, write through touptek_set_meridian (-99..99 guard, driver:2941-2948) followed by :GTa# readback; on refusal ALERT plus the mount's value (test:5774-5776). Out-of-range mount values are stored unclamped (poll test +30, re-sent as STa10+30). Poll (driver:3384) skips :GTa# when either property is BUSY, rechecks both after the read and publishes each property only on change. ZWO zwo_set_meridian/X_ZWO_MERIDIAN* unchanged. Regenerating the .driver with the unchanged generator gives byte-identical .c/.h/_main.c; no generator change. Version 92->93 (0x5D), simulator 8->9, MIGRATION_STATUS only test count 189->191. PROPERTIES.md and PROTOCOL.md match the code and state the undocumented unit/sign/range and the ZWO/INDI convention. Built with -Werror; test_mount_lx200_simulator lx200_touptek: 22/22 PASS; lx200_zwo cases passed. Undecided choices: (1) sending the shown offset/switches without a fresh :GTa# is the same pattern as the ZWO AM handlers; the residual race (hand-controller change in the <=5 s before a client change is overwritten) is narrow and not a defect against the ticket; a fresh read would narrow it but is optional and an owner call. (2) updating only the changed property is fine; the other is corrected on the next poll. (3) -99..99 is correct, it only guards the %+03d format. Limitation (not blocking, beyond the listed tests): the offset part of lx200_touptek_settings_poll_keeps_a_pending_change (test:6490-6501) drops the :GTa# reply, so the poll read fails and neither the pre-read nor the post-read BUSY check of the meridian properties is actually exercised; it only shows that the request is sent and kept."
+        },
+        {
+          "at": "2026-11-27T15:37:34.453930Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T15:47:41.191210Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of master...96916bf05 (no uncommitted changes). Pre-read: both handlers read :GTa# before :STa (touptek_read_meridian_offset/_flip, .driver:2950-2977), take the unchanged field from it, send nothing and end ALERT with a message when it fails (.driver:4581-4585, 4616-4618), and read back after :STa. BUSY exception is sound: handlers share the device queue, the generator sets the handler's own state OK in its prologue, so when both properties are changed in quick succession the first handler sends the mount's value of the other field without overwriting the pending request, and the second handler pre-reads the first's result and sends its own request; the end state carries both. Publish only on change in helpers and poll; settings poll guard checks both BUSY states before and after :GTa# (.driver:3411). ZWO zwo_get/set_meridian unchanged (-15..15 clamp kept); SH20 uses touptek_set_meridian (-99..99). Regeneration with the unchanged generator is byte-identical for .c/.h/_main.c; no generator change; version 92->93. PROPERTIES.md and PROTOCOL.md describe the delivered behaviour and the undocumented unit/sign/range; MIGRATION_STATUS.md only the count column 189->193 (4 new tests). Tests: keeps_hand_controller_settings proves the GTa immediately precedes STa (event_before) and that the hand-controller value is sent and shown; without_a_fresh_read proves no STa at all after a dropped pre-read for both properties; both would fail on the previous code. Ran test_mount_lx200_simulator touptek subset (26/26 pass) and zwo subset (13/13 pass); test-clean done. Non-blocking observation: after a failed pre-read the changed property keeps the client's unsent value in ALERT until the next settings poll (about 5 s) shows the mount's value; this matches the owner's 'leave ALERT and say so' decision."
+        }
+      ],
+      "result": {
+        "summary": "Independent review of master...96916bf05 (no uncommitted changes). Pre-read: both handlers read :GTa# before :STa (touptek_read_meridian_offset/_flip, .driver:2950-2977), take the unchanged field from it, send nothing and end ALERT with a message when it fails (.driver:4581-4585, 4616-4618), and read back after :STa. BUSY exception is sound: handlers share the device queue, the generator sets the handler's own state OK in its prologue, so when both properties are changed in quick succession the first handler sends the mount's value of the other field without overwriting the pending request, and the second handler pre-reads the first's result and sends its own request; the end state carries both. Publish only on change in helpers and poll; settings poll guard checks both BUSY states before and after :GTa# (.driver:3411). ZWO zwo_get/set_meridian unchanged (-15..15 clamp kept); SH20 uses touptek_set_meridian (-99..99). Regeneration with the unchanged generator is byte-identical for .c/.h/_main.c; no generator change; version 92->93. PROPERTIES.md and PROTOCOL.md describe the delivered behaviour and the undocumented unit/sign/range; MIGRATION_STATUS.md only the count column 189->193 (4 new tests). Tests: keeps_hand_controller_settings proves the GTa immediately precedes STa (event_before) and that the hand-controller value is sent and shown; without_a_fresh_read proves no STa at all after a dropped pre-read for both properties; both would fail on the previous code. Ran test_mount_lx200_simulator touptek subset (26/26 pass) and zwo subset (13/13 pass); test-clean done. Non-blocking observation: after a failed pre-read the changed property keeps the client's unsent value in ALERT until the next settings poll (about 5 s) shows the mount's value; this matches the owner's 'leave ALERT and say so' decision.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1449053.981,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "fe3e2c5c-38dc-4b4c-99f8-233bc46dced1",
+      "event": "ticket/created",
+      "at": "2026-11-27T13:39:10.457836Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "e7235180-2058-4437-89de-d76512bbc4a3",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T13:41:28.143016Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "19912c3d-28ab-4758-bc12-cb1e3c56620f",
+      "event": "task/progress",
+      "at": "2026-11-27T13:41:40.052401Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "text": "Implementation started on branch ticket/4209a50f-7dca-4fd8-b88e-d71364082ee3"
+    },
+    {
+      "event_id": "d9448159-1e09-4fe6-b3c2-486c7106b704",
+      "event": "ticket/started",
+      "at": "2026-11-27T13:41:40.053771Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/4209a50f-7dca-4fd8-b88e-d71364082ee3",
+      "base": "master"
+    },
+    {
+      "event_id": "65b08bb8-f3db-4c4f-996a-026764028fa7",
+      "event": "task/progress",
+      "at": "2026-11-27T13:41:58.728311Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "text": "Implementer started: SH20 meridian limit",
+      "attempt_id": "50426068-889e-42fe-a087-3786431e28a6",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b4800071-ab2d-4571-8959-5ccaa14ce940",
+      "event": "task/progress",
+      "at": "2026-11-27T13:42:50.797121Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "text": "Building library and generator in the worktree"
+    },
+    {
+      "event_id": "2a82e7ff-d084-42cc-9c04-e25f169ce0e3",
+      "event": "task/progress",
+      "at": "2026-11-27T13:46:30.876691Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "text": "Running test_mount_lx200_simulator touptek cases"
+    },
+    {
+      "event_id": "2d08e294-b9b4-4a0a-8ffb-9d04ab4aaa04",
+      "event": "task/progress",
+      "at": "2026-11-27T13:50:13.011864Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c0084bbc-7092-4433-b7fc-7ad71f563b0b",
+      "event": "task/progress",
+      "at": "2026-11-27T13:50:13.049306Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f1981a62-53f0-459f-b845-b0fe6b26d819",
+      "event": "check/passed",
+      "at": "2026-11-27T13:50:13.054125Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "03e5ed8c3a86352bad00a13a36e0b0c44077972a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "297a1fd3-a8bd-4fba-a050-2df27c6ca8c1",
+      "event": "task/progress",
+      "at": "2026-11-27T13:54:57.496956Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "text": "Running full test_mount_lx200_simulator suite"
+    },
+    {
+      "event_id": "ecf4eb97-ae58-4042-a398-1d1e034f1755",
+      "event": "task/progress",
+      "at": "2026-11-27T14:24:06.738228Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "a675b843-4bda-42fd-80f4-75ca7685162b",
+      "event": "task/progress",
+      "at": "2026-11-27T14:24:06.777621Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e062a03f-aae1-4851-a2a6-35eb40bc5e3c",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "365ecb4b-5a37-46fb-a1fd-fdc713e206b3",
+      "event": "check/passed",
+      "at": "2026-11-27T14:24:06.782729Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "2f0bf8e5a7fd8acc164d56ea9f3e4a587265e45e",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "f6375406-729c-4c6c-92e2-da958b55d105",
+      "event": "task/progress",
+      "at": "2026-11-27T14:24:33.448174Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a4c9e886-6198-4c22-bf55-6f7ec2d722de",
+      "event": "review/started",
+      "at": "2026-11-27T14:24:33.448802Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "986ea804-2f6e-4741-bfd8-809fe926539e",
+      "event": "task/progress",
+      "at": "2026-11-27T14:24:50.368383Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "text": "Reviewer launched: reading the diff",
+      "attempt_id": "1d4aa312-3489-423a-b81a-c42d4ede228d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "23915ae3-06d8-48ba-8a48-d59c758aa031",
+      "event": "task/progress",
+      "at": "2026-11-27T14:25:58.162154Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "text": "Building and running test_mount_lx200_simulator ToupTek cases"
+    },
+    {
+      "event_id": "e66d4dcf-74b6-45b2-b8ac-88750a0ab42f",
+      "event": "task/progress",
+      "at": "2026-11-27T14:38:35.765036Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "3b234b66-9cdd-4ffe-9128-8732d8d85cf3",
+      "event": "review/passed",
+      "at": "2026-11-27T14:38:35.767058Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "2f0bf8e5a7fd8acc164d56ea9f3e4a587265e45e"
+    },
+    {
+      "event_id": "22da2adc-739c-492f-b91e-87e8953e303d",
+      "event": "ticket/note",
+      "at": "2026-11-27T14:59:17.199347Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision 2026-11-27 after review pass: read :GTa# immediately before every :STa write, in both the X_TOUPTEK_MERIDIAN and X_TOUPTEK_MERIDIAN_LIMIT handlers. Keep the field the client is not changing from that fresh read (offset when the switches change; AUTO_FLIP/RESUME_TRACKING when the offset changes). If the fresh :GTa# read fails, do not send :STa; leave the property in ALERT and say so.",
+      "tokens": null
+    },
+    {
+      "event_id": "d964d299-c675-4167-b8fc-49bcf5a4c0d7",
+      "event": "task/progress",
+      "at": "2026-11-27T14:59:41.395776Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Owner change: fresh :GTa# read before every SH20 :STa write"
+    },
+    {
+      "event_id": "8b413e0b-d149-425e-a2a5-ca45babe4468",
+      "event": "task/progress",
+      "at": "2026-11-27T15:01:05.920474Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Running touptek cases of test_mount_lx200_simulator"
+    },
+    {
+      "event_id": "83607873-bac0-4e26-8d9c-63f3caec9909",
+      "event": "task/progress",
+      "at": "2026-11-27T15:07:37.534143Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Running full test_mount_lx200_simulator suite"
+    },
+    {
+      "event_id": "dc0a0c7e-77e0-4162-8de9-d1c5d55bb209",
+      "event": "task/progress",
+      "at": "2026-11-27T15:37:03.201228Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bddc2ffa-e8fa-404e-a25e-09d8d8715ddb",
+      "event": "task/progress",
+      "at": "2026-11-27T15:37:03.240934Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a330392e-820f-4900-a19a-ac2d8762d2a2",
+      "event": "check/passed",
+      "at": "2026-11-27T15:37:03.247401Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "96916bf0581b9560887af7067f1350246937579c",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "71b28a8a-968c-46ea-a7c2-535f539bed80",
+      "event": "task/progress",
+      "at": "2026-11-27T15:37:34.454145Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "text": "Review started"
+    },
+    {
+      "event_id": "0397744b-08c5-4dab-b716-7bb496d5cc33",
+      "event": "review/started",
+      "at": "2026-11-27T15:37:34.454864Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "958d269f-01a9-4ec2-9492-2eb8d1e2666a",
+      "event": "task/progress",
+      "at": "2026-11-27T15:37:50.407356Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "text": "Reviewer launched: reviewing pre-read round",
+      "attempt_id": "994a6226-8dad-401f-af71-b3da95ab5806",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "02ab4ae3-bfa7-426a-ae0a-5350f3c0d10a",
+      "event": "task/progress",
+      "at": "2026-11-27T15:38:27.705792Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "text": "Building and running test_mount_lx200_simulator in the worktree"
+    },
+    {
+      "event_id": "07ccb9fb-4c84-42ad-808c-c7500f2fe50e",
+      "event": "task/progress",
+      "at": "2026-11-27T15:47:41.191289Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "46ecec3e-7b21-4396-849f-389936126017",
+      "event": "review/passed",
+      "at": "2026-11-27T15:47:41.191999Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "11c7ef45-91f5-4da8-9ef1-91a6273aeeaa",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "96916bf0581b9560887af7067f1350246937579c"
+    },
+    {
+      "event_id": "85ce380a-7304-4a01-a10e-573d9d044cc0",
+      "event": "ticket/closed",
+      "at": "2026-11-27T15:51:14.006726Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-27T15:51:14.006693Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "6c749ee518c74a3ea59256c10ebd35921e36144f"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "03e5ed8c3a86352bad00a13a36e0b0c44077972a",
+        "tree": "85bc36c8a86bb1f904ed9712a0577bafb7d4fa6c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T13:50:13.048605Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/4209a50f-7dca-4fd8-b88e-d71364082ee3/85bc36c8a86b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "2f0bf8e5a7fd8acc164d56ea9f3e4a587265e45e",
+        "tree": "5897ef65d6267382b29f7ffcccb7e12bb3004c6c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T14:24:06.776855Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/4209a50f-7dca-4fd8-b88e-d71364082ee3/5897ef65d626-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "96916bf0581b9560887af7067f1350246937579c",
+        "tree": "6809f8d20c440cc3d9afba0c2b81b81de26a933f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T15:37:03.239986Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/4209a50f-7dca-4fd8-b88e-d71364082ee3/6809f8d20c44-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of master...HEAD (2f0bf8e5a, clean worktree). No blocking defects. X_TOUPTEK_MERIDIAN_LIMIT (X_ prefix, LIMIT, -15..15 step 1 %.0f, MOUNT_ADVANCED_GROUP) is hidden in meade_init_mount and unhidden only in the equatorial :GTa# success branch (driver:3233); the alt-az test asserts it stays undefined (test:5998). Read at connect, write through touptek_set_meridian (-99..99 guard, driver:2941-2948) followed by :GTa# readback; on refusal ALERT plus the mount's value (test:5774-5776). Out-of-range mount values are stored unclamped (poll test +30, re-sent as STa10+30). Poll (driver:3384) skips :GTa# when either property is BUSY, rechecks both after the read and publishes each property only on change. ZWO zwo_set_meridian/X_ZWO_MERIDIAN* unchanged. Regenerating the .driver with the unchanged generator gives byte-identical .c/.h/_main.c; no generator change. Version 92->93 (0x5D), simulator 8->9, MIGRATION_STATUS only test count 189->191. PROPERTIES.md and PROTOCOL.md match the code and state the undocumented unit/sign/range and the ZWO/INDI convention. Built with -Werror; test_mount_lx200_simulator lx200_touptek: 22/22 PASS; lx200_zwo cases passed. Undecided choices: (1) sending the shown offset/switches without a fresh :GTa# is the same pattern as the ZWO AM handlers; the residual race (hand-controller change in the <=5 s before a client change is overwritten) is narrow and not a defect against the ticket; a fresh read would narrow it but is optional and an owner call. (2) updating only the changed property is fine; the other is corrected on the next poll. (3) -99..99 is correct, it only guards the %+03d format. Limitation (not blocking, beyond the listed tests): the offset part of lx200_touptek_settings_poll_keeps_a_pending_change (test:6490-6501) drops the :GTa# reply, so the poll read fails and neither the pre-read nor the post-read BUSY check of the meridian properties is actually exercised; it only shows that the request is sent and kept.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "2f0bf8e5a7fd8acc164d56ea9f3e4a587265e45e",
+        "tree": "5897ef65d6267382b29f7ffcccb7e12bb3004c6c",
+        "at": "2026-11-27T14:38:35.764736Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of master...96916bf05 (no uncommitted changes). Pre-read: both handlers read :GTa# before :STa (touptek_read_meridian_offset/_flip, .driver:2950-2977), take the unchanged field from it, send nothing and end ALERT with a message when it fails (.driver:4581-4585, 4616-4618), and read back after :STa. BUSY exception is sound: handlers share the device queue, the generator sets the handler's own state OK in its prologue, so when both properties are changed in quick succession the first handler sends the mount's value of the other field without overwriting the pending request, and the second handler pre-reads the first's result and sends its own request; the end state carries both. Publish only on change in helpers and poll; settings poll guard checks both BUSY states before and after :GTa# (.driver:3411). ZWO zwo_get/set_meridian unchanged (-15..15 clamp kept); SH20 uses touptek_set_meridian (-99..99). Regeneration with the unchanged generator is byte-identical for .c/.h/_main.c; no generator change; version 92->93. PROPERTIES.md and PROTOCOL.md describe the delivered behaviour and the undocumented unit/sign/range; MIGRATION_STATUS.md only the count column 189->193 (4 new tests). Tests: keeps_hand_controller_settings proves the GTa immediately precedes STa (event_before) and that the hand-controller value is sent and shown; without_a_fresh_read proves no STa at all after a dropped pre-read for both properties; both would fail on the previous code. Ran test_mount_lx200_simulator touptek subset (26/26 pass) and zwo subset (13/13 pass); test-clean done. Non-blocking observation: after a failed pre-read the changed property keeps the client's unsent value in ALERT until the next settings poll (about 5 s) shows the mount's value; this matches the owner's 'leave ALERT and say so' decision.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "96916bf0581b9560887af7067f1350246937579c",
+        "tree": "6809f8d20c440cc3d9afba0c2b81b81de26a933f",
+        "at": "2026-11-27T15:47:41.191186Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-27T14:59:17.198508Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision 2026-11-27 after review pass: read :GTa# immediately before every :STa write, in both the X_TOUPTEK_MERIDIAN and X_TOUPTEK_MERIDIAN_LIMIT handlers. Keep the field the client is not changing from that fresh read (offset when the switches change; AUTO_FLIP/RESUME_TRACKING when the offset changes). If the fresh :GTa# read fails, do not send :STa; leave the property in ALERT and say so.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "6c749ee518c74a3ea59256c10ebd35921e36144f",
+      "tree": "6809f8d20c440cc3d9afba0c2b81b81de26a933f",
+      "base": "master",
+      "at": "2026-11-27T15:51:13.895344Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T13:39:10.457026Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-27T13:41:28.142985Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 4022449.849,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 40,
+    "sha256": "b5107dcd1027879c7200caaa4a27fdafce8881d741b0e2c1b98590bc829a5541"
+  }
+}
