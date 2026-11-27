@@ -1,0 +1,481 @@
+{
+  "schema_version": 1,
+  "ticket_id": "82cb3505-dc76-41d7-990e-687da25e8058",
+  "revision": 23,
+  "title": "indigo_test: fix the scheduler simulator below_horizon case, use a target that rises later and check that a never-rising target is UNREACHABLE",
+  "description": "Found in review of ticket 6e5a3a63. indigo_test/integration/run_scheduler_simulators.py around line 477 (below_horizon case) waits for the task South (declination -89) to show WAITING. At the default site latitude 48.15 N such a target never rises, so since the global minimum altitude (20 degrees) and the UNREACHABLE marking were introduced by an earlier ticket the scheduler lists it as UNREACHABLE ('never rises above the horizon'), and the check fails on master independently of 6e5a3a63 (source inspection by two agents; not yet reproduced by running the suite).\n\nExpected: reproduce with the scheduler simulator acceptance suite (make target test-scheduler-simulators or the documented runner). Then either choose a target that is below the horizon now but rises later (so WAITING with 'target below the horizon' is tested as intended) and, if useful, add a separate check that a never-rising target is UNREACHABLE with its reason. Keep the case deterministic with respect to the run date and time. Test-only change; no driver change expected.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-27T22:05:42.504941Z",
+  "status": "closed",
+  "branch": "ticket/82cb3505-dc76-41d7-990e-687da25e8058",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "877eb597-1506-449c-808d-5fd271b4b15e",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T22:31:28.991710Z",
+          "last_activity_at": "2026-11-27T22:52:04.745875Z",
+          "ended_at": "2026-11-27T22:52:04.745875Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1235754.165,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T22:31:28.991710Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/82cb3505-dc76-41d7-990e-687da25e8058"
+        },
+        {
+          "at": "2026-11-27T22:52:04.745875Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1235754.165,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "87bba21b-476f-4dfb-ba59-342a1f86d5b2",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "8a186f3a-8fe5-472c-b3b4-7f71f59be03c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T22:52:04.745923Z",
+          "last_activity_at": "2026-11-27T22:59:02.960773Z",
+          "ended_at": "2026-11-27T22:59:02.960773Z",
+          "outcome": {
+            "summary": "Pass. Reviewed git diff master...HEAD (8b6669e73, only indigo_test/integration/run_scheduler_simulators.py) against the ticket, the scheduler sources and SCHEDULER.md.\n- South check (run_scheduler_simulators.py:476-481): upper culmination 90-|48.15-(-89)| < 0, so is_unreachable gives 'never rises above the horizon'; label suffix and the one-time message match SCHEDULER.md:372/409/779 and indigo_agent_scheduler.c:1103-1105. Uploaded with start=False while the scheduler is stopped, then deleted and awaited; date-independent.\n- Rising (484-496): site_at(22) puts the equator at 22h mean solar time. Plan end is indigo_scheduler_night_end() (sky.c:521, next sun altitude >= 0) or a later scheduler night end (indigo_agent_scheduler.c:3057-3064); equatorial sunrise is about 5:40-6:12 mean time in every season, so the plan lasts >= 7.5 h. Target dec 0 at HA -7h: alt = asin(cos 105 deg) = -15 deg, rises after ~1 h, reaches MIN_ALTITUDE 20 deg at HA -4.67h (~2.3 h), sets after ~13 h, so a 10 s run is planned (not UNPLANNED), and it is not eligible now (not RUNNING). sky_point_ok (sky.c) checks altitude <= 0 before the altitude limit, so REASON is 'target below the horizon'. LST: the test uses indigo_lst (mean GST + lon/15, fmod handles 0-360 longitudes) as indigo_radec_to_altaz does in the scheduler grid; jnow_to_j2k vs the scheduler's j2k_to_eq of date differs by arcseconds to arcminutes, irrelevant against the 15 deg / 2.3 h margins. The ' | -' check is not a transient: WAITING is set in select_task and process_night/update_plan runs (plan_dirty after the upload) before refresh publishes, and is_unplanned would override the WAITING label.\n- Side effects: shutdown_hook's STOP and the START in night_hooks' first upload reset the night state (indigo_agent_scheduler.c:3725), so the NIGHT_START decided at the 22h site does not suppress night_hooks' 'No task can run tonight' message; night_hooks deletes Rising and moves the site anyway; fresh_start restores the original site. Non-b",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 418214.85,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T22:52:04.745923Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T22:59:02.960773Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. Reviewed git diff master...HEAD (8b6669e73, only indigo_test/integration/run_scheduler_simulators.py) against the ticket, the scheduler sources and SCHEDULER.md.\n- South check (run_scheduler_simulators.py:476-481): upper culmination 90-|48.15-(-89)| < 0, so is_unreachable gives 'never rises above the horizon'; label suffix and the one-time message match SCHEDULER.md:372/409/779 and indigo_agent_scheduler.c:1103-1105. Uploaded with start=False while the scheduler is stopped, then deleted and awaited; date-independent.\n- Rising (484-496): site_at(22) puts the equator at 22h mean solar time. Plan end is indigo_scheduler_night_end() (sky.c:521, next sun altitude >= 0) or a later scheduler night end (indigo_agent_scheduler.c:3057-3064); equatorial sunrise is about 5:40-6:12 mean time in every season, so the plan lasts >= 7.5 h. Target dec 0 at HA -7h: alt = asin(cos 105 deg) = -15 deg, rises after ~1 h, reaches MIN_ALTITUDE 20 deg at HA -4.67h (~2.3 h), sets after ~13 h, so a 10 s run is planned (not UNPLANNED), and it is not eligible now (not RUNNING). sky_point_ok (sky.c) checks altitude <= 0 before the altitude limit, so REASON is 'target below the horizon'. LST: the test uses indigo_lst (mean GST + lon/15, fmod handles 0-360 longitudes) as indigo_radec_to_altaz does in the scheduler grid; jnow_to_j2k vs the scheduler's j2k_to_eq of date differs by arcseconds to arcminutes, irrelevant against the 15 deg / 2.3 h margins. The ' | -' check is not a transient: WAITING is set in select_task and process_night/update_plan runs (plan_dirty after the upload) before refresh publishes, and is_unplanned would override the WAITING label.\n- Side effects: shutdown_hook's STOP and the START in night_hooks' first upload reset the night state (indigo_agent_scheduler.c:3725), so the NIGHT_START decided at the 22h site does not suppress night_hooks' 'No task can run tonight' message; night_hooks deletes Rising and moves the site anyway; fresh_start restores the original site. Non-b"
+        }
+      ],
+      "result": {
+        "summary": "Pass. Reviewed git diff master...HEAD (8b6669e73, only indigo_test/integration/run_scheduler_simulators.py) against the ticket, the scheduler sources and SCHEDULER.md.\n- South check (run_scheduler_simulators.py:476-481): upper culmination 90-|48.15-(-89)| < 0, so is_unreachable gives 'never rises above the horizon'; label suffix and the one-time message match SCHEDULER.md:372/409/779 and indigo_agent_scheduler.c:1103-1105. Uploaded with start=False while the scheduler is stopped, then deleted and awaited; date-independent.\n- Rising (484-496): site_at(22) puts the equator at 22h mean solar time. Plan end is indigo_scheduler_night_end() (sky.c:521, next sun altitude >= 0) or a later scheduler night end (indigo_agent_scheduler.c:3057-3064); equatorial sunrise is about 5:40-6:12 mean time in every season, so the plan lasts >= 7.5 h. Target dec 0 at HA -7h: alt = asin(cos 105 deg) = -15 deg, rises after ~1 h, reaches MIN_ALTITUDE 20 deg at HA -4.67h (~2.3 h), sets after ~13 h, so a 10 s run is planned (not UNPLANNED), and it is not eligible now (not RUNNING). sky_point_ok (sky.c) checks altitude <= 0 before the altitude limit, so REASON is 'target below the horizon'. LST: the test uses indigo_lst (mean GST + lon/15, fmod handles 0-360 longitudes) as indigo_radec_to_altaz does in the scheduler grid; jnow_to_j2k vs the scheduler's j2k_to_eq of date differs by arcseconds to arcminutes, irrelevant against the 15 deg / 2.3 h margins. The ' | -' check is not a transient: WAITING is set in select_task and process_night/update_plan runs (plan_dirty after the upload) before refresh publishes, and is_unplanned would override the WAITING label.\n- Side effects: shutdown_hook's STOP and the START in night_hooks' first upload reset the night state (indigo_agent_scheduler.c:3725), so the NIGHT_START decided at the 22h site does not suppress night_hooks' 'No task can run tonight' message; night_hooks deletes Rising and moves the site anyway; fresh_start restores the original site. Non-b",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 418214.85,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9d5562e0-1a31-4734-8f0f-2125dce500b3",
+      "event": "ticket/created",
+      "at": "2026-11-27T22:05:42.505573Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "0b5cbba5-575c-4004-866a-46f3f1376d01",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T22:07:58.201028Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "252fe195-a388-4dea-9219-fe3a65abf476",
+      "event": "task/progress",
+      "at": "2026-11-27T22:31:28.991810Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Implementation started on branch ticket/82cb3505-dc76-41d7-990e-687da25e8058"
+    },
+    {
+      "event_id": "b7bcbfb8-643f-4f5a-954e-a3273292e56f",
+      "event": "ticket/started",
+      "at": "2026-11-27T22:31:28.992503Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/82cb3505-dc76-41d7-990e-687da25e8058",
+      "base": "master"
+    },
+    {
+      "event_id": "aad86eb6-5f28-49ca-848a-371c2cc5f2b5",
+      "event": "task/progress",
+      "at": "2026-11-27T22:31:41.649405Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Implementer launched",
+      "attempt_id": "877eb597-1506-449c-808d-5fd271b4b15e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "fef99984-8ef2-463d-823f-11c6e9f3fac1",
+      "event": "task/progress",
+      "at": "2026-11-27T22:31:51.075296Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Implementer started: reading the below_horizon case",
+      "attempt_id": "877eb597-1506-449c-808d-5fd271b4b15e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "01247049-0c68-40b4-bd84-82e029b2bb20",
+      "event": "task/progress",
+      "at": "2026-11-27T22:33:57.015096Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Building library, server and the nine suite drivers in the worktree"
+    },
+    {
+      "event_id": "a523d00a-07a3-4fdd-9fd5-ad03e711af53",
+      "event": "task/progress",
+      "at": "2026-11-27T22:35:54.146854Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Reproducing: running make test-scheduler-simulators on the unchanged tree"
+    },
+    {
+      "event_id": "74ccb216-a9fb-4e19-8ea1-38b8efdfe7ce",
+      "event": "task/progress",
+      "at": "2026-11-27T22:40:44.638911Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Running make test-scheduler-simulators with the fixed below_horizon case"
+    },
+    {
+      "event_id": "b92798e2-58a1-4614-a7b7-fab16e8435f2",
+      "event": "task/progress",
+      "at": "2026-11-27T22:45:00.060766Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "7f2eefcf-0638-4cbe-b597-037e788a3170",
+      "event": "task/progress",
+      "at": "2026-11-27T22:45:00.074231Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "42c04b52-fb67-4648-a2b8-545461782c30",
+      "event": "check/passed",
+      "at": "2026-11-27T22:45:00.078811Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "8b6669e7312b8ec6244ad1cba13a464fdf367f4a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "f789918e-f5d4-4e35-b24f-db8763eabd13",
+      "event": "task/progress",
+      "at": "2026-11-27T22:45:07.881456Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Check command-1 started: make -C indigo_test test-scheduler-simulators"
+    },
+    {
+      "event_id": "6915b2f3-eb3b-4cfa-a7e2-4d2e0394c821",
+      "event": "task/progress",
+      "at": "2026-11-27T22:49:00.615814Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "8686f0d4-89f3-4d82-bc3e-204258370e68",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "41954041-04b1-4881-b2fe-17b426195a7c",
+      "event": "check/passed",
+      "at": "2026-11-27T22:49:00.623244Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "8b6669e7312b8ec6244ad1cba13a464fdf367f4a",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "c0e0f9ff-b4ae-46db-a15f-95653c904ac5",
+      "event": "ticket/note",
+      "at": "2026-11-27T22:51:37.628304Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction (2026-11-27 22:36 UTC, worktree at master cfd3c7008, library, server and the nine suite drivers built in the worktree): make -C indigo_test test-scheduler-simulators gave 11 passed, 1 failed; 'target below the horizon waits' timed out waiting for South in WAITING. Snapshot: 'South | UNREACHABLE | normal 50 | run 0/1 | retries left 0 | 0h10 set | never rises above the horizon' (Alert), message \"Task 'South' can never run: the target never rises above the horizon\", REASON 'all tasks finished'. No other case failed; none relates to the 7-column labels, UNPLANNED or the removed plan rows. Fix (test only, indigo_test/integration/run_scheduler_simulators.py): the case first checks that South (dec -89 at 48.15 N) is UNREACHABLE with reason 'never rises above the horizon' in the label and its message, deletes it, moves the site with site_at(22) to the equator two hours before local midnight (plan lasts about 8 h until sunrise in every season), and uploads Rising on the celestial equator 7 h east of the meridian at that site (about 15 deg below the horizon, rises in 1 h, passes MIN_ALTITUDE 20 deg in about 2.3 h); it expects WAITING with reason column '-', REASON containing 'target below the horizon' and no start. night_hooks now deletes Rising instead of South. After the fix: the suite passed 12/12 twice (22:41 UTC run, and flow check --command at 22:45 UTC); plain flow check (whitespace) passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "f3d4daac-815e-478a-bce8-04646f1f10c5",
+      "event": "task/progress",
+      "at": "2026-11-27T22:52:04.746155Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "87bba21b-476f-4dfb-ba59-342a1f86d5b2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a7186f5d-0516-4367-b2d7-fb9baed32806",
+      "event": "review/started",
+      "at": "2026-11-27T22:52:04.746930Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "946d9a1c-777c-49ac-9c6d-5aa712225475",
+      "event": "task/progress",
+      "at": "2026-11-27T22:52:04.947815Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "87bba21b-476f-4dfb-ba59-342a1f86d5b2",
+      "text": "Reviewer launched",
+      "attempt_id": "8a186f3a-8fe5-472c-b3b4-7f71f59be03c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b3ff777b-3f16-4932-a718-ff14303d1658",
+      "event": "task/progress",
+      "at": "2026-11-27T22:52:12.549714Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "87bba21b-476f-4dfb-ba59-342a1f86d5b2",
+      "text": "Reviewer started: reading diff and scheduler plan rules",
+      "attempt_id": "8a186f3a-8fe5-472c-b3b4-7f71f59be03c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "bccd56ef-9047-4854-9fb6-45bc4650cec6",
+      "event": "task/progress",
+      "at": "2026-11-27T22:54:45.028149Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "87bba21b-476f-4dfb-ba59-342a1f86d5b2",
+      "text": "Running make -C indigo_test test-scheduler-simulators in the worktree"
+    },
+    {
+      "event_id": "4636f93e-3130-4259-a0b0-a41954479123",
+      "event": "task/progress",
+      "at": "2026-11-27T22:59:02.960851Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "87bba21b-476f-4dfb-ba59-342a1f86d5b2",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "1786618c-310c-49a6-a249-06d07482bcf3",
+      "event": "review/passed",
+      "at": "2026-11-27T22:59:02.961789Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "87bba21b-476f-4dfb-ba59-342a1f86d5b2",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "8b6669e7312b8ec6244ad1cba13a464fdf367f4a"
+    },
+    {
+      "event_id": "4f820657-4a09-456c-be9d-cc4fd6718216",
+      "event": "ticket/title_changed",
+      "at": "2026-11-27T23:08:18.880419Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_test: run_scheduler_simulators.py below_horizon case waits for South (dec -89) to be WAITING, but the target is UNREACHABLE at the default site",
+      "title": "indigo_test: fix the scheduler simulator below_horizon case, use a target that rises later and check that a never-rising target is UNREACHABLE"
+    },
+    {
+      "event_id": "77103445-bf87-4f14-9db9-41b9d97f6bb1",
+      "event": "ticket/closed",
+      "at": "2026-11-27T23:08:19.181738Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-27T23:08:19.181708Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "951b94c73ee674e48f556e12a82a06e2036da9ba"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8b6669e7312b8ec6244ad1cba13a464fdf367f4a",
+        "tree": "089794abc8b1ceef2ce40ac47a34c408ed3727b2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T22:45:00.073530Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/82cb3505-dc76-41d7-990e-687da25e8058/089794abc8b1-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-scheduler-simulators",
+        "commit": "8b6669e7312b8ec6244ad1cba13a464fdf367f4a",
+        "tree": "089794abc8b1ceef2ce40ac47a34c408ed3727b2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T22:49:00.614758Z",
+        "duration_s": 232.7,
+        "log": "/tmp/factory-flow/82cb3505-dc76-41d7-990e-687da25e8058/089794abc8b1-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Reviewed git diff master...HEAD (8b6669e73, only indigo_test/integration/run_scheduler_simulators.py) against the ticket, the scheduler sources and SCHEDULER.md.\n- South check (run_scheduler_simulators.py:476-481): upper culmination 90-|48.15-(-89)| < 0, so is_unreachable gives 'never rises above the horizon'; label suffix and the one-time message match SCHEDULER.md:372/409/779 and indigo_agent_scheduler.c:1103-1105. Uploaded with start=False while the scheduler is stopped, then deleted and awaited; date-independent.\n- Rising (484-496): site_at(22) puts the equator at 22h mean solar time. Plan end is indigo_scheduler_night_end() (sky.c:521, next sun altitude >= 0) or a later scheduler night end (indigo_agent_scheduler.c:3057-3064); equatorial sunrise is about 5:40-6:12 mean time in every season, so the plan lasts >= 7.5 h. Target dec 0 at HA -7h: alt = asin(cos 105 deg) = -15 deg, rises after ~1 h, reaches MIN_ALTITUDE 20 deg at HA -4.67h (~2.3 h), sets after ~13 h, so a 10 s run is planned (not UNPLANNED), and it is not eligible now (not RUNNING). sky_point_ok (sky.c) checks altitude <= 0 before the altitude limit, so REASON is 'target below the horizon'. LST: the test uses indigo_lst (mean GST + lon/15, fmod handles 0-360 longitudes) as indigo_radec_to_altaz does in the scheduler grid; jnow_to_j2k vs the scheduler's j2k_to_eq of date differs by arcseconds to arcminutes, irrelevant against the 15 deg / 2.3 h margins. The ' | -' check is not a transient: WAITING is set in select_task and process_night/update_plan runs (plan_dirty after the upload) before refresh publishes, and is_unplanned would override the WAITING label.\n- Side effects: shutdown_hook's STOP and the START in night_hooks' first upload reset the night state (indigo_agent_scheduler.c:3725), so the NIGHT_START decided at the 22h site does not suppress night_hooks' 'No task can run tonight' message; night_hooks deletes Rising and moves the site anyway; fresh_start restores the original site. Non-blocking note: a SCHEDULER_SIMULATORS_ONLY subset with below_horizon and night_hooks but without shutdown_hook would keep the scheduler running through the same night and likely miss that message; the suite is ordered and earlier cases already depend on order, so not a defect of this ticket.\n- Conventions: tabs, no new files, temp output removed on success; no docs describe the case.\nVerification: reran make -C indigo_test test-scheduler-simulators in the worktree on tree 8b6669e73: 12 passed, 0 failed; results directory removed, no leftover server from the run.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "8b6669e7312b8ec6244ad1cba13a464fdf367f4a",
+        "tree": "089794abc8b1ceef2ce40ac47a34c408ed3727b2",
+        "at": "2026-11-27T22:59:02.960748Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-27T22:51:37.627672Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction (2026-11-27 22:36 UTC, worktree at master cfd3c7008, library, server and the nine suite drivers built in the worktree): make -C indigo_test test-scheduler-simulators gave 11 passed, 1 failed; 'target below the horizon waits' timed out waiting for South in WAITING. Snapshot: 'South | UNREACHABLE | normal 50 | run 0/1 | retries left 0 | 0h10 set | never rises above the horizon' (Alert), message \"Task 'South' can never run: the target never rises above the horizon\", REASON 'all tasks finished'. No other case failed; none relates to the 7-column labels, UNPLANNED or the removed plan rows. Fix (test only, indigo_test/integration/run_scheduler_simulators.py): the case first checks that South (dec -89 at 48.15 N) is UNREACHABLE with reason 'never rises above the horizon' in the label and its message, deletes it, moves the site with site_at(22) to the equator two hours before local midnight (plan lasts about 8 h until sunrise in every season), and uploads Rising on the celestial equator 7 h east of the meridian at that site (about 15 deg below the horizon, rises in 1 h, passes MIN_ALTITUDE 20 deg in about 2.3 h); it expects WAITING with reason column '-', REASON containing 'target below the horizon' and no start. night_hooks now deletes Rising instead of South. After the fix: the suite passed 12/12 twice (22:41 UTC run, and flow check --command at 22:45 UTC); plain flow check (whitespace) passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "951b94c73ee674e48f556e12a82a06e2036da9ba",
+      "tree": "089794abc8b1ceef2ce40ac47a34c408ed3727b2",
+      "base": "master",
+      "at": "2026-11-27T23:08:19.081121Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T22:05:42.504941Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-27T22:07:58.200998Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1653969.015,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 29,
+    "sha256": "dc4c60a25c263ba5cf5972f2545c45a37920e8a5d011bd29840efc3dcebc1b95"
+  }
+}
