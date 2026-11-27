@@ -401,9 +401,10 @@ typedef struct {
 typedef struct {
 	const plan_context *ctx;
 	const plan_state *state;
-	// minute g starts at base + g * VIS_STEP, the starts are the minutes 0 to minutes - 1
+	// minute g starts at base + g * VIS_STEP, the starts are the minutes 0 to minutes - 1; the plan starts at the minute origin (0 or negative), the first whole minute after the running task or hook, and base is the first minute a run may start
 	time_t base;
 	int minutes;
+	int origin;
 	// per task: the run length in minutes, the first minute of its first run, the repeat spacing in minutes, whether its run may start at each minute and its run quality there weighted by the run duration (NULL for a task without runs to plan), the minute of the best value and whether it may start at all
 	int length[MAX_PLAN_TASKS];
 	int lower[MAX_PLAN_TASKS];
@@ -493,9 +494,47 @@ static void vis_table(vis_context *vc, int i) {
 	}
 }
 
-static vis_context *vis_prepare(const plan_context *ctx, const plan_state *state) {
+// the first whole minute from origin on at which a run may start: the first whole minute at which a task with runs to plan is past its delay and its constraints hold for its duration, as vis_table() checks them, or the minute of an urgent run pinned at pinned (0 for none); the end of the plan when no run may start
+static time_t vis_first_start(const plan_context *ctx, const plan_state *state, time_t origin, time_t pinned) {
+	time_t first = ctx->end;
+	if (pinned > 0) {
+		first = (pinned + VIS_STEP - 1) / VIS_STEP * VIS_STEP;
+	}
+	for (int i = 0; i < ctx->count && first > origin; i++) {
+		if (state->runs_left[i] <= 0) {
+			continue;
+		}
+		time_t from = state->available_from[i] > origin ? (state->available_from[i] + VIS_STEP - 1) / VIS_STEP * VIS_STEP : origin;
+		if (from >= first) {
+			continue;
+		}
+		const scheduler_header *header = ctx->tasks[i].header;
+		if (header->window_kind == SCHEDULER_WINDOW_NONE) {
+			// without a window the constraints change only on the sky grid points, which the search visits
+			time_t start = indigo_scheduler_points_next(ctx->sky, ctx->tasks[i].points, header, from, ctx->tasks[i].duration, first + ctx->tasks[i].duration, NULL);
+			start = start / VIS_STEP * VIS_STEP;
+			if (start > 0 && start < first) {
+				first = start;
+			}
+		} else {
+			// a window opens on any whole minute, every minute is checked
+			const char *reason;
+			for (time_t start = from; start < first; start += VIS_STEP) {
+				if (indigo_scheduler_points_ok(ctx->sky, ctx->tasks[i].points, header, start, start + ctx->tasks[i].duration, &reason)) {
+					first = start;
+					break;
+				}
+			}
+		}
+	}
+	return first > origin ? first : origin;
+}
+
+static vis_context *vis_prepare(const plan_context *ctx, const plan_state *state, time_t pinned) {
 	int pending = ctx->hook_count - state->next_hook;
-	time_t base = (state->t + VIS_STEP - 1) / VIS_STEP * VIS_STEP;
+	time_t origin = (state->t + VIS_STEP - 1) / VIS_STEP * VIS_STEP;
+	// the grid starts at the first minute a run may start, not at now: a plan made by day to the end of the next night may last longer than VIS_MAX_MINUTES
+	time_t base = vis_first_start(ctx, state, origin, pinned);
 	int minutes = ctx->end > base ? (int)((ctx->end - base + VIS_STEP - 1) / VIS_STEP) : 0;
 	if (pending > VIS_MAX_HOOKS || minutes > VIS_MAX_MINUTES) {
 		return NULL;
@@ -506,6 +545,7 @@ static vis_context *vis_prepare(const plan_context *ctx, const plan_state *state
 	vc->state = state;
 	vc->base = base;
 	vc->minutes = minutes;
+	vc->origin = -(int)((base - origin) / VIS_STEP);
 	if (minutes <= 0) {
 		return vc;
 	}
@@ -702,14 +742,14 @@ static double vis_arrange(vis_context *vc, const vis_run *runs, int count, int *
 			back[x] = -1;
 		}
 		if (k == 0) {
-			// the hooks due up to the first start run before it, after the running task or hook
+			// the hooks due up to the first start run before it, after the running task or hook at the minute origin
 			int due = 0;
 			for (int g = 0; g < grid; g++) {
 				while (due < hook_count && vc->hook_minute[due] <= g) {
 					due++;
 				}
 				double value = vis_value(vc, runs, g, lower[0]);
-				if (value > VIS_NONE && (due == 0 || max_int(vc->hook_shift[0][due], vc->hook_floor[0][due]) <= g)) {
+				if (value > VIS_NONE && (due == 0 || max_int(vc->origin + vc->hook_shift[0][due], vc->hook_floor[0][due]) <= g)) {
 					layer[g * w + initial] = value;
 				}
 			}
@@ -1255,9 +1295,17 @@ int indigo_scheduler_plan_visibility(const scheduler_sky_grid *sky, const schedu
 	}
 	info->runs = info->compact_runs;
 	info->value = info->compact_value;
-	vis_context *vc = too_large ? NULL : vis_prepare(&ctx, state);
+	// the earliest start of an urgent run, which keeps its COMPACT start
+	time_t pinned = 0;
+	for (int k = 0; k < compact->count; k++) {
+		if (is_urgent_task(&ctx, compact->runs[k].task) && (pinned == 0 || compact_start[k] < pinned)) {
+			pinned = compact_start[k];
+		}
+	}
+	vis_context *vc = too_large ? NULL : vis_prepare(&ctx, state, pinned);
 	if (vc == NULL) {
-		info->result = SCHEDULER_VISIBILITY_TOO_LARGE;
+		// without task runs to arrange the empty COMPACT plan is not worse, however long the night
+		info->result = compact->count == 0 && !too_large ? SCHEDULER_VISIBILITY_NOT_BETTER : SCHEDULER_VISIBILITY_TOO_LARGE;
 	} else {
 		// an urgent run keeps its COMPACT start, the others are free
 		bool pins_ok = true;
@@ -1370,7 +1418,7 @@ double indigo_scheduler_plan_order(const scheduler_sky_grid *sky, const schedule
 	init_context(&ctx, sky, tasks, count, hooks, hook_count, now, end, 0, 0);
 	plan_state *state = indigo_safe_malloc(sizeof(plan_state));
 	init_state(&ctx, state, NULL, 0);
-	vis_context *vc = vis_prepare(&ctx, state);
+	vis_context *vc = vis_prepare(&ctx, state, 0);
 	double result = -1;
 	if (vc != NULL) {
 		vis_order *arranged = indigo_safe_malloc(sizeof(vis_order));

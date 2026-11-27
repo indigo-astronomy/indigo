@@ -1112,10 +1112,10 @@ See also: [Priorities](#priorities).
 **Fallbacks to `COMPACT`.** The scheduler uses the `COMPACT` plan in these cases:
 
 - a new `VISIBILITY` plan is not better than `COMPACT`; a plan kept from before stays unless `COMPACT` has more runs;
-- the night has more than 64 runs, or the plan reaches more than 24 hours ahead;
+- the night has more than 64 runs, or more than 24 hours lie between the first time a run can start and the end of the plan;
 - a planned run cannot start at its time, even after the night is planned again.
 
-In the second case, a message says so once a night: `The night has too many task runs or lasts too long for the VISIBILITY strategy, the COMPACT plan is used`.
+In the second case, a message says so once a night: `The night has too many task runs or lasts too long for the VISIBILITY strategy, the COMPACT plan is used`. A plan made during the day counts its time from the first moment a task can run, usually dusk, so it does not get the message; a plan without any task run never does.
 
 **When the plan is made again.** After every run, and after every change: an upload, an edit, an urgent task, a new setting, a new site, a change of `MERIDIAN_FLIP`, the night hooks. While nothing changes, the plan and its times stay. A failed run with `@retry` is planned again after its delay.
 

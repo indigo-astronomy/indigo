@@ -31,6 +31,7 @@
 
 #include "indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.h"
 #include "indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.h"
+#include "indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h"
 #include "../test_runner.h"
 
 #define T_NOVEMBER_NOON		1794484800	// 2026-11-12 12:00 UTC
@@ -1527,6 +1528,112 @@ static void test_visibility_limits(void) {
 	ASSERT_EQ_INT(4, count_runs(runs, count, counts, 2));
 }
 
+static scheduler_plan_run day_runs[512];
+
+// a plan made as the scheduler makes it when the nautical night of T_VISIBILITY_NOON ends: from a second after the night end until the end of the next nautical night, more than 24 hours and 1440 whole minutes later in November
+static void day_after_night(double latitude, double longitude, time_t *now, time_t *end) {
+	scheduler_nights nights;
+	indigo_scheduler_nights_build(&nights, T_VISIBILITY_NOON, latitude, longitude, 0, -12, 0, 0);
+	const scheduler_night *night = indigo_scheduler_night_next(&nights, T_VISIBILITY_NOON);
+	ASSERT_TRUE(night != NULL && night->end_known);
+	*now = night->end + 1;
+	indigo_scheduler_nights_build(&nights, *now, latitude, longitude, 0, -12, 0, 0);
+	night = indigo_scheduler_night_next(&nights, *now);
+	ASSERT_TRUE(night != NULL && night->end_known);
+	*end = indigo_scheduler_night_end(&sky, *now);
+	if (night->end > *end) {
+		*end = night->end;
+	}
+	ASSERT_TRUE(*end - *now > 24 * 3600 + 60);
+}
+
+// planned right after the night ends until the end of the next night, more than 24 hours: the grid starts at the first minute a run may start, the plan is the one made at noon
+static void test_visibility_day_after_night(void) {
+	owner_night();
+	time_t now, end, noon = T_VISIBILITY_NOON + 24 * 3600;
+	day_after_night(42, 23, &now, &end);
+	scheduler_plan_info info;
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, now, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
+	print_plan("VISIBILITY after the night", runs, count);
+	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
+	ASSERT_EQ_INT(6, count);
+	ASSERT_EQ_INT(6, info.runs);
+	ASSERT_TRUE(plan_constraints_hold(runs, count, 6, now, end));
+	int noon_count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, noon, end, 1, 1, NULL, NULL, 0, day_runs, 512, &info);
+	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
+	ASSERT_TRUE(same_runs(day_runs, noon_count, runs, count));
+}
+
+// without task runs to arrange the empty plan is not worse, also for a plan longer than 24 hours and with more hooks than VISIBILITY arranges
+static void test_visibility_day_without_runs(void) {
+	owner_night();
+	time_t now, end;
+	day_after_night(42, 23, &now, &end);
+	for (int i = 0; i < 6; i++) {
+		tasks[i].selectable = i % 2 == 0;
+		tasks[i].runs_left = 0;
+	}
+	scheduler_plan_info info;
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 6, NULL, 0, now, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
+	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_NOT_BETTER, info.result);
+	ASSERT_EQ_INT(0, count);
+	ASSERT_EQ_INT(0, info.compact_runs);
+	scheduler_plan_hook hooks[9];
+	for (int h = 0; h < 9; h++) {
+		hooks[h].time = now + 3600 + h * 1800;
+		hooks[h].duration = 600;
+		hooks[h].running = false;
+	}
+	count = indigo_scheduler_plan_visibility(&sky, tasks, 6, hooks, 9, now, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
+	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_NOT_BETTER, info.result);
+	ASSERT_EQ_INT(9, count);
+	ASSERT_EQ_INT(0, info.compact_runs);
+}
+
+// planned by day, a hook due before the first minute a run may start still delays it: a run without a target in the dark starts when the hook ends
+static void test_visibility_day_hook_before_first_start(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
+	time_t now, end;
+	day_after_night(LATITUDE, LONGITUDE, &now, &end);
+	time_t dark = dark_from(now);
+	add_task(0, "dark", SCHEDULER_PRIORITY_NORMAL, 50, 30);
+	build_task(0);
+	scheduler_plan_hook hooks[] = { { dark - 3600, 5400, false } };
+	const int order[] = { 0 };
+	time_t starts[1];
+	ASSERT_TRUE(indigo_scheduler_plan_order(&sky, tasks, 1, hooks, 1, now, end, order, 1, starts) >= 0);
+	ASSERT_EQ_INT((int)(dark + 1800), (int)starts[0]);
+	ASSERT_TRUE(indigo_scheduler_plan_order(&sky, tasks, 1, NULL, 0, now, end, order, 1, starts) >= 0);
+	ASSERT_EQ_INT((int)dark, (int)starts[0]);
+}
+
+// the first minute a run may start is not rounded to the sky grid: a nightly window opening at 23:03 UTC, off the 5-minute grid, and too short to reach the next grid point plus the run, still starts the run at 23:03
+static void test_visibility_window_off_sky_grid(void) {
+	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
+	time_t end = indigo_scheduler_night_end(&sky, T_VISIBILITY_NOON), opens = T_VISIBILITY_NOON + 11 * 3600 + 3 * 60;
+	add_task(0, "late", SCHEDULER_PRIORITY_NORMAL, 50, 10);
+	headers[0].window_kind = SCHEDULER_WINDOW_NIGHTLY;
+	headers[0].has_window_start = headers[0].has_window_end = true;
+	headers[0].window_start_minute = 23 * 60 + 3;
+	headers[0].window_end_minute = 23 * 60 + 13;
+	build_task(0);
+	const int order[] = { 0 };
+	time_t starts[1];
+	ASSERT_TRUE(indigo_scheduler_plan_order(&sky, tasks, 1, NULL, 0, T_VISIBILITY_NOON, end, order, 1, starts) >= 0);
+	ASSERT_EQ_INT((int)opens, (int)starts[0]);
+	scheduler_plan_info info;
+	int count = indigo_scheduler_plan_visibility(&sky, tasks, 1, NULL, 0, T_VISIBILITY_NOON, end, 1, 1, NULL, NULL, 0, runs, 512, &info);
+	ASSERT_EQ_INT(SCHEDULER_VISIBILITY_PLANNED, info.result);
+	ASSERT_EQ_INT(1, count);
+	ASSERT_EQ_INT(0, runs[0].task);
+	ASSERT_EQ_INT((int)opens, (int)runs[0].start);
+	// a longer window opening at 23:03 starts the run there too
+	headers[0].window_end_minute = 23 * 60 + 59;
+	build_task(0);
+	ASSERT_TRUE(indigo_scheduler_plan_order(&sky, tasks, 1, NULL, 0, T_VISIBILITY_NOON, end, order, 1, starts) >= 0);
+	ASSERT_EQ_INT((int)opens, (int)starts[0]);
+}
+
 // the cost stays within the work budget: 64 runs of 5 minutes with and without windows, 128 tasks and the random queues
 static void test_visibility_performance(void) {
 	indigo_scheduler_sky_build(&sky, T_VISIBILITY_NOON, LATITUDE, LONGITUDE, 140);
@@ -1852,6 +1959,10 @@ int main(void) {
 		{ "visibility_kept_off_grid", test_visibility_kept_off_grid },
 		{ "visibility_deterministic", test_visibility_deterministic },
 		{ "visibility_limits", test_visibility_limits },
+		{ "visibility_day_after_night", test_visibility_day_after_night },
+		{ "visibility_day_without_runs", test_visibility_day_without_runs },
+		{ "visibility_day_hook_before_first_start", test_visibility_day_hook_before_first_start },
+		{ "visibility_window_off_sky_grid", test_visibility_window_off_sky_grid },
 		{ "visibility_performance", test_visibility_performance },
 		{ "flip_loss_offsets", test_flip_loss_offsets },
 		{ "visibility_flip_moves_short_task", test_visibility_flip_moves_short_task },

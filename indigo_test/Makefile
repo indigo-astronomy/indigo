@@ -558,7 +558,7 @@ $(UNIT_BUILD)/test_agent_scheduler_header: unit/test_agent_scheduler_header.c te
 $(UNIT_BUILD)/test_agent_scheduler_sky: unit/test_agent_scheduler_sky.c test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(TEST_LDFLAGS) -lindigocat
 
-$(UNIT_BUILD)/test_agent_scheduler_plan: unit/test_agent_scheduler_plan.c test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a | $(UNIT_BUILD)
+$(UNIT_BUILD)/test_agent_scheduler_plan: unit/test_agent_scheduler_plan.c test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(TEST_LDFLAGS) -lindigocat
 
 $(UNIT_BUILD)/test_agent_scheduler_night: unit/test_agent_scheduler_night.c test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a | $(UNIT_BUILD)
