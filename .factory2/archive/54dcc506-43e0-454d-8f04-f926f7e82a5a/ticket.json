@@ -1,0 +1,439 @@
+{
+  "schema_version": 1,
+  "ticket_id": "54dcc506-43e0-454d-8f04-f926f7e82a5a",
+  "revision": 20,
+  "title": "indigo_mount_lx200: define X_GEMINI_STARTUP only while the mount type is DETECT or GEMINI",
+  "description": "X_GEMINI_STARTUP is currently always defined. Show it only when it can apply.\n\nBehaviour:\n- The property is defined while X_MOUNT_TYPE is DETECT (the default; gemini_startup() also runs during detection) or GEMINI, and deleted/hidden when another type is selected explicitly. In the MOUNT_TYPE on_change block: if GEMINI or DETECT is selected and the property is hidden, clear hidden and define it; otherwise, if it is not hidden, delete it and then set hidden = true. No duplicate define when the type is selected again, no delete of a property that was never defined.\n- When autodetection in meade_detect_mount() identifies a mount other than Gemini, the property is hidden the same way (delete, then hidden = true). When it detects Gemini the property stays defined. Check what happens to the type and the property after disconnect, so the property is visible again whenever the type is DETECT or GEMINI.\n- The property stays persistent; MOUNT_TYPE is saved before X_GEMINI_STARTUP, so a saved startup mode still loads for DETECT/GEMINI.\n\nWork: edit indigo_mount_lx200.driver (source of truth), bump version 94 -> 95, regenerate .c/.h/_main.c with the unchanged indigo_generator, build. The owner's uncommitted prototype of this change in the generated indigo_mount_lx200.c of the primary checkout (hidden = true at attach, define/delete in mount_type_handler) is superseded by this ticket and has a defect (else branch leaves hidden = false); do not copy it. Update indigo_docs/PROPERTIES.md (the X_GEMINI_STARTUP sentence about when it is defined). Extend indigo_test/integration/test_mount_lx200_simulator.c: property present for DETECT and GEMINI before connection, absent after selecting another type, absent after detection of a non-Gemini mount, present after detection of Gemini; the existing lx200_gemini_startup_mode_is_selected case must keep passing. Run only the mount_lx200 tests. Do not modify README.md.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-27T17:58:30.078408Z",
+  "status": "closed",
+  "branch": "ticket/54dcc506-43e0-454d-8f04-f926f7e82a5a",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "1dbac6a9-1356-4e92-82f7-74e94f213e3d",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3d2016be-70b1-4677-b411-18c72a04755c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T18:00:49.561054Z",
+          "last_activity_at": "2026-11-27T18:38:36.635516Z",
+          "ended_at": "2026-11-27T18:38:36.635516Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 2267074.462,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T18:00:49.561054Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/54dcc506-43e0-454d-8f04-f926f7e82a5a"
+        },
+        {
+          "at": "2026-11-27T18:38:36.635516Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 2267074.462,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "f51c595b-e427-4c08-af3c-b536fdcd5e46",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "63d2b44b-cfef-4094-b531-71ae47cf934f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T18:38:36.635672Z",
+          "last_activity_at": "2026-11-27T18:43:32.903053Z",
+          "ended_at": "2026-11-27T18:43:32.903053Z",
+          "outcome": {
+            "summary": "Pass. gemini_update_startup_visibility() (indigo_mount_lx200.driver:475-489) covers every place X_MOUNT_TYPE changes: client selection (MOUNT_TYPE on_change, synchronous on the bus thread since asynchronous_change = false), meade_detect_mount() for every detected type before its MOUNT_TYPE update (a failed detection keeps DETECT and the property), and the NYX/ZWO USB-template selection in lx200_open(). Slave guider/focuser/aux paths call lx200_open()/meade_detect_mount() with device->master_device (generated .c 6033-6412), so the helper gets the mount device; the property lives in the shared private data. The delete comes before hidden = true and the define after hidden = false; there is no duplicate define and no delete of a never-defined property. Re-enumeration skips the hidden property. A deleted property is not changeable (defined = false). Config: save skips hidden properties and the restore pops unavailable ones; deleting X_GEMINI_STARTUP during the MOUNT_TYPE restore does not fail it because the name differs. Disconnect keeps the type. The generated .c/.h/_main.c are byte-identical to a scratch regeneration with the unchanged generator. The version goes 94 -> 95 (0x5F) and the README line reports 3.0.0.95. PROPERTIES.md is accurate. Counts are consistent: 191 default cases (README 191/191, TEST_SUMMARY) and 194 = 191 + 3 opt-in TCP cases in MIGRATION_STATUS. Ran the gemini_startup cases on the ticket build: both PASS. Linked the new case against master's driver (v94): FAIL at test:1469 after selecting MEADE. Minor, not blocking: after a failure in the first loop iteration the test still runs the Gemini iteration; the MOUNT_TYPE sync change and the detection on the connection queue can race on the hidden flag, which the MOUNT_TYPE switch already does today.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 296267.381,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T18:38:36.635672Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T18:43:32.903053Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Pass. gemini_update_startup_visibility() (indigo_mount_lx200.driver:475-489) covers every place X_MOUNT_TYPE changes: client selection (MOUNT_TYPE on_change, synchronous on the bus thread since asynchronous_change = false), meade_detect_mount() for every detected type before its MOUNT_TYPE update (a failed detection keeps DETECT and the property), and the NYX/ZWO USB-template selection in lx200_open(). Slave guider/focuser/aux paths call lx200_open()/meade_detect_mount() with device->master_device (generated .c 6033-6412), so the helper gets the mount device; the property lives in the shared private data. The delete comes before hidden = true and the define after hidden = false; there is no duplicate define and no delete of a never-defined property. Re-enumeration skips the hidden property. A deleted property is not changeable (defined = false). Config: save skips hidden properties and the restore pops unavailable ones; deleting X_GEMINI_STARTUP during the MOUNT_TYPE restore does not fail it because the name differs. Disconnect keeps the type. The generated .c/.h/_main.c are byte-identical to a scratch regeneration with the unchanged generator. The version goes 94 -> 95 (0x5F) and the README line reports 3.0.0.95. PROPERTIES.md is accurate. Counts are consistent: 191 default cases (README 191/191, TEST_SUMMARY) and 194 = 191 + 3 opt-in TCP cases in MIGRATION_STATUS. Ran the gemini_startup cases on the ticket build: both PASS. Linked the new case against master's driver (v94): FAIL at test:1469 after selecting MEADE. Minor, not blocking: after a failure in the first loop iteration the test still runs the Gemini iteration; the MOUNT_TYPE sync change and the detection on the connection queue can race on the hidden flag, which the MOUNT_TYPE switch already does today."
+        }
+      ],
+      "result": {
+        "summary": "Pass. gemini_update_startup_visibility() (indigo_mount_lx200.driver:475-489) covers every place X_MOUNT_TYPE changes: client selection (MOUNT_TYPE on_change, synchronous on the bus thread since asynchronous_change = false), meade_detect_mount() for every detected type before its MOUNT_TYPE update (a failed detection keeps DETECT and the property), and the NYX/ZWO USB-template selection in lx200_open(). Slave guider/focuser/aux paths call lx200_open()/meade_detect_mount() with device->master_device (generated .c 6033-6412), so the helper gets the mount device; the property lives in the shared private data. The delete comes before hidden = true and the define after hidden = false; there is no duplicate define and no delete of a never-defined property. Re-enumeration skips the hidden property. A deleted property is not changeable (defined = false). Config: save skips hidden properties and the restore pops unavailable ones; deleting X_GEMINI_STARTUP during the MOUNT_TYPE restore does not fail it because the name differs. Disconnect keeps the type. The generated .c/.h/_main.c are byte-identical to a scratch regeneration with the unchanged generator. The version goes 94 -> 95 (0x5F) and the README line reports 3.0.0.95. PROPERTIES.md is accurate. Counts are consistent: 191 default cases (README 191/191, TEST_SUMMARY) and 194 = 191 + 3 opt-in TCP cases in MIGRATION_STATUS. Ran the gemini_startup cases on the ticket build: both PASS. Linked the new case against master's driver (v94): FAIL at test:1469 after selecting MEADE. Minor, not blocking: after a failure in the first loop iteration the test still runs the Gemini iteration; the MOUNT_TYPE sync change and the detection on the connection queue can race on the hidden flag, which the MOUNT_TYPE switch already does today.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 296267.381,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "fbb89cb4-f481-48ee-95e9-655a6e372e1f",
+      "event": "ticket/created",
+      "at": "2026-11-27T17:58:30.080157Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "40d99086-5bc8-47be-a79f-3b443c64a8de",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T18:00:43.551310Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "749f11e9-3384-4ebe-8c23-ed08a3f9de7d",
+      "event": "task/progress",
+      "at": "2026-11-27T18:00:49.561418Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1dbac6a9-1356-4e92-82f7-74e94f213e3d",
+      "text": "Implementation started on branch ticket/54dcc506-43e0-454d-8f04-f926f7e82a5a"
+    },
+    {
+      "event_id": "cb19d9c2-2646-4304-b9d8-9fc02a9227a2",
+      "event": "ticket/started",
+      "at": "2026-11-27T18:00:49.563188Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/54dcc506-43e0-454d-8f04-f926f7e82a5a",
+      "base": "master"
+    },
+    {
+      "event_id": "be08d90d-3dd7-47d8-8471-88971c1af5f7",
+      "event": "task/progress",
+      "at": "2026-11-27T18:01:24.104050Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1dbac6a9-1356-4e92-82f7-74e94f213e3d",
+      "text": "Implementer launched; reading driver source and instructions",
+      "attempt_id": "3d2016be-70b1-4677-b411-18c72a04755c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "755d219b-b1ca-4295-8530-b1e7a75929cf",
+      "event": "task/progress",
+      "at": "2026-11-27T18:03:13.601332Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1dbac6a9-1356-4e92-82f7-74e94f213e3d",
+      "text": "Editing the .driver: X_GEMINI_STARTUP visibility helper, MOUNT_TYPE on_change, detection"
+    },
+    {
+      "event_id": "485b12b0-085e-4216-b2e8-2b8265bf8092",
+      "event": "task/progress",
+      "at": "2026-11-27T18:05:59.457825Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1dbac6a9-1356-4e92-82f7-74e94f213e3d",
+      "text": "Running lx200 simulator tests: gemini_startup cases (intermediate)"
+    },
+    {
+      "event_id": "971e1ede-cf12-469a-b044-acdfe613fbf9",
+      "event": "ticket/note",
+      "at": "2026-11-27T18:07:14.326364Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduction: the new case lx200_gemini_startup_follows_the_mount_type, linked against the pre-change driver (HEAD indigo_mount_lx200.c, version 94), fails at the first absence check after selecting X_MOUNT_TYPE.MEADE (X_GEMINI_STARTUP stays defined). With the changed driver (version 95) the case and lx200_gemini_startup_mode_is_selected pass.",
+      "tokens": null
+    },
+    {
+      "event_id": "ba2673d5-6282-4dc7-b20b-f68b59565fa5",
+      "event": "task/progress",
+      "at": "2026-11-27T18:07:14.414231Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1dbac6a9-1356-4e92-82f7-74e94f213e3d",
+      "text": "Running recorded simulator run: tools/run_driver_test.py mount_lx200"
+    },
+    {
+      "event_id": "7188114a-e283-4d82-b899-665ec60a236d",
+      "event": "task/progress",
+      "at": "2026-11-27T18:37:58.954221Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1dbac6a9-1356-4e92-82f7-74e94f213e3d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "8f5070cc-1f66-4c09-a330-6a921388093c",
+      "event": "task/progress",
+      "at": "2026-11-27T18:37:58.977953Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "1dbac6a9-1356-4e92-82f7-74e94f213e3d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b5215c51-53da-4795-a956-1342dfa6406d",
+      "event": "check/passed",
+      "at": "2026-11-27T18:37:58.979763Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "f5276873971edecfe36b073b7f94ec1ac958bbf8",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "620a050b-0f09-4ed4-b00f-d5cddd8c9271",
+      "event": "ticket/note",
+      "at": "2026-11-27T18:38:07.484411Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Implemented gemini_update_startup_visibility(device) in the shared code of indigo_mount_lx200.driver (version 95), called from the MOUNT_TYPE on_change, from meade_detect_mount() before its MOUNT_TYPE update (covers every detected type, including AP and GENERIC; a failed detection leaves DETECT and the property defined) and from lx200_open() after the USB-template selection of NYX/ZWO, the only other place the driver changes the type itself. Disconnect keeps the detected type (on_disconnect only makes MOUNT_TYPE writable again), so the property stays hidden for a detected non-Gemini mount until DETECT or GEMINI is selected. Config: indigo_save_property() skips hidden properties and the restore skips unavailable ones, so a stale X_GEMINI_STARTUP for a non-Gemini type is ignored without an alert. Verification: python3 tools/run_driver_test.py mount_lx200 -> 191/191 OK (mac arm64 simulator, recorded in README.md Testing and TEST_SUMMARY.md); MIGRATION_STATUS.md sim count 193 -> 194. Not covered by a test: the lx200_open NYX/ZWO USB-template path (needs a matched hot-plug pattern), the guider/focuser/aux-initiated detection paths (same helper on the master device), and config restore with a non-Gemini saved type. Not run: Linux/Windows, hardware.",
+      "tokens": null
+    },
+    {
+      "event_id": "771c64a9-866c-43bb-bbe1-fc1c2f905dd5",
+      "event": "task/progress",
+      "at": "2026-11-27T18:38:36.635746Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f51c595b-e427-4c08-af3c-b536fdcd5e46",
+      "text": "Review started"
+    },
+    {
+      "event_id": "eee0c9ff-fc01-463e-91b5-50673b0948bb",
+      "event": "review/started",
+      "at": "2026-11-27T18:38:36.636985Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "e8dbb6ed-c902-40d9-badd-f245347c178c",
+      "event": "task/progress",
+      "at": "2026-11-27T18:38:54.860123Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f51c595b-e427-4c08-af3c-b536fdcd5e46",
+      "text": "Reviewer launched: reading the diff",
+      "attempt_id": "63d2b44b-cfef-4094-b531-71ae47cf934f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "418414cb-6388-48b6-a624-752ac9bd835f",
+      "event": "task/progress",
+      "at": "2026-11-27T18:40:38.648306Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f51c595b-e427-4c08-af3c-b536fdcd5e46",
+      "text": "Regenerating the driver in a scratch directory to compare with the checked-in output"
+    },
+    {
+      "event_id": "ee9171b6-f382-4698-a8fc-db5ac9f6cce1",
+      "event": "task/progress",
+      "at": "2026-11-27T18:41:55.691997Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f51c595b-e427-4c08-af3c-b536fdcd5e46",
+      "text": "Running test_mount_lx200_simulator gemini_startup cases against the changed driver"
+    },
+    {
+      "event_id": "3d4d8238-6310-4292-8b8d-363cd8da02fe",
+      "event": "task/progress",
+      "at": "2026-11-27T18:42:42.086338Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f51c595b-e427-4c08-af3c-b536fdcd5e46",
+      "text": "Linking the new case against the master driver (version 94) in scratch to confirm it fails"
+    },
+    {
+      "event_id": "8fe6a295-b679-4c40-b6b7-410118b2a2a5",
+      "event": "task/progress",
+      "at": "2026-11-27T18:43:32.903169Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f51c595b-e427-4c08-af3c-b536fdcd5e46",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "6f6ffef0-0216-4282-a3fa-e0784c96a0c9",
+      "event": "review/passed",
+      "at": "2026-11-27T18:43:32.904423Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "f51c595b-e427-4c08-af3c-b536fdcd5e46",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "f5276873971edecfe36b073b7f94ec1ac958bbf8"
+    },
+    {
+      "event_id": "9a91a0f1-784c-466f-87db-9f2593cf8aa5",
+      "event": "ticket/closed",
+      "at": "2026-11-27T18:44:06.921622Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-27T18:44:06.921597Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "8abf89e3131078996433567edde69eae3a6a4d36"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f5276873971edecfe36b073b7f94ec1ac958bbf8",
+        "tree": "e812dabbdc198f9ae6e922af554338c5e5824ea9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T18:37:58.977210Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/54dcc506-43e0-454d-8f04-f926f7e82a5a/e812dabbdc19-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. gemini_update_startup_visibility() (indigo_mount_lx200.driver:475-489) covers every place X_MOUNT_TYPE changes: client selection (MOUNT_TYPE on_change, synchronous on the bus thread since asynchronous_change = false), meade_detect_mount() for every detected type before its MOUNT_TYPE update (a failed detection keeps DETECT and the property), and the NYX/ZWO USB-template selection in lx200_open(). Slave guider/focuser/aux paths call lx200_open()/meade_detect_mount() with device->master_device (generated .c 6033-6412), so the helper gets the mount device; the property lives in the shared private data. The delete comes before hidden = true and the define after hidden = false; there is no duplicate define and no delete of a never-defined property. Re-enumeration skips the hidden property. A deleted property is not changeable (defined = false). Config: save skips hidden properties and the restore pops unavailable ones; deleting X_GEMINI_STARTUP during the MOUNT_TYPE restore does not fail it because the name differs. Disconnect keeps the type. The generated .c/.h/_main.c are byte-identical to a scratch regeneration with the unchanged generator. The version goes 94 -> 95 (0x5F) and the README line reports 3.0.0.95. PROPERTIES.md is accurate. Counts are consistent: 191 default cases (README 191/191, TEST_SUMMARY) and 194 = 191 + 3 opt-in TCP cases in MIGRATION_STATUS. Ran the gemini_startup cases on the ticket build: both PASS. Linked the new case against master's driver (v94): FAIL at test:1469 after selecting MEADE. Minor, not blocking: after a failure in the first loop iteration the test still runs the Gemini iteration; the MOUNT_TYPE sync change and the detection on the connection queue can race on the hidden flag, which the MOUNT_TYPE switch already does today.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "f5276873971edecfe36b073b7f94ec1ac958bbf8",
+        "tree": "e812dabbdc198f9ae6e922af554338c5e5824ea9",
+        "at": "2026-11-27T18:43:32.902870Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-27T18:07:14.325125Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduction: the new case lx200_gemini_startup_follows_the_mount_type, linked against the pre-change driver (HEAD indigo_mount_lx200.c, version 94), fails at the first absence check after selecting X_MOUNT_TYPE.MEADE (X_GEMINI_STARTUP stays defined). With the changed driver (version 95) the case and lx200_gemini_startup_mode_is_selected pass.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T18:38:07.483048Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Implemented gemini_update_startup_visibility(device) in the shared code of indigo_mount_lx200.driver (version 95), called from the MOUNT_TYPE on_change, from meade_detect_mount() before its MOUNT_TYPE update (covers every detected type, including AP and GENERIC; a failed detection leaves DETECT and the property defined) and from lx200_open() after the USB-template selection of NYX/ZWO, the only other place the driver changes the type itself. Disconnect keeps the detected type (on_disconnect only makes MOUNT_TYPE writable again), so the property stays hidden for a detected non-Gemini mount until DETECT or GEMINI is selected. Config: indigo_save_property() skips hidden properties and the restore skips unavailable ones, so a stale X_GEMINI_STARTUP for a non-Gemini type is ignored without an alert. Verification: python3 tools/run_driver_test.py mount_lx200 -> 191/191 OK (mac arm64 simulator, recorded in README.md Testing and TEST_SUMMARY.md); MIGRATION_STATUS.md sim count 193 -> 194. Not covered by a test: the lx200_open NYX/ZWO USB-template path (needs a matched hot-plug pattern), the guider/focuser/aux-initiated detection paths (same helper on the master device), and config restore with a non-Gemini saved type. Not run: Linux/Windows, hardware.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "8abf89e3131078996433567edde69eae3a6a4d36",
+      "tree": "e812dabbdc198f9ae6e922af554338c5e5824ea9",
+      "base": "master",
+      "at": "2026-11-27T18:44:06.850280Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T17:58:30.078408Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-27T18:00:43.551138Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 2563341.843,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 26,
+    "sha256": "c0024edbf38d6eba7f6e43498f4f2cefe1eb9e8ace5cd92b5f26831ac764aeab"
+  }
+}
