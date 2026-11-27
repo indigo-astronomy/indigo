@@ -5684,7 +5684,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		if (TOUPTEK_MERIDIAN_OFFSET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(TOUPTEK_MERIDIAN_OFFSET_ITEM, TOUPTEK_MERIDIAN_OFFSET_ITEM_NAME, "Meridian offset (degrees)", -15, 15, 1, 0);
+		indigo_init_number_item(TOUPTEK_MERIDIAN_OFFSET_ITEM, TOUPTEK_MERIDIAN_OFFSET_ITEM_NAME, "Meridian offset (°)", -15, 15, 1, 0);
 		strcpy(TOUPTEK_MERIDIAN_OFFSET_ITEM->number.format, "%.0f");
 		TOUPTEK_MERIDIAN_OFFSET_PROPERTY->hidden = true;
 		TOUPTEK_STATUS_PROPERTY = indigo_init_text_property(NULL, device->name, TOUPTEK_STATUS_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Device status", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);

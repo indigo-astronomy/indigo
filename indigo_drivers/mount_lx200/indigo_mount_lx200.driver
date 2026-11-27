@@ -4627,7 +4627,7 @@ driver lx200 {
 			}
 			item TOUPTEK_MERIDIAN_OFFSET {
 				name = "OFFSET";
-				label = "Meridian offset (degrees)";
+				label = "Meridian offset (°)";
 				value = 0;
 				min = -15;
 				max = 15;
