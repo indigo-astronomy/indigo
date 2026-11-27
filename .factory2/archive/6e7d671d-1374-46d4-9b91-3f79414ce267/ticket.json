@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6e7d671d-1374-46d4-9b91-3f79414ce267",
+  "revision": 12,
+  "title": "indigo_agent_scheduler: SCHEDULER.md, the first VISIBILITY minute counts from the end of the running run or hook",
+  "description": "indigo_drivers/agent_scheduler/doc/SCHEDULER.md (VISIBILITY Algorithm step 1, line 719) says the first minute is the earliest whole minute 'from now on' at which a task can start. vis_first_start() counts from the planning state's time, which is the end of the running task run or hook when one is running, otherwise now (review note of fd0dfe3b). Correct the wording; documentation only, no code change.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-27T12:58:32.577581Z",
+  "status": "closed",
+  "branch": "ticket/6e7d671d-1374-46d4-9b91-3f79414ce267",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "a6c0f379-ac36-4e25-a98e-9e43db613cc4",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "dcf70f2b-5bb5-46c9-b5b9-dea1e05f4adb",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T12:59:06.291521Z",
+          "last_activity_at": "2026-11-27T12:59:16.179987Z",
+          "ended_at": "2026-11-27T12:59:16.179987Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 9888.466,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T12:59:06.291521Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/6e7d671d-1374-46d4-9b91-3f79414ce267"
+        },
+        {
+          "at": "2026-11-27T12:59:16.179987Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 9888.466,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "d19c9c63-20c4-4cc7-9f55-206dee7d0f8e",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "172cc316-ffd7-47f0-a371-39be687e8bea",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": null
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T12:59:16.180060Z",
+          "last_activity_at": "2026-11-27T12:59:33.726167Z",
+          "ended_at": "2026-11-27T12:59:33.726167Z",
+          "outcome": {
+            "summary": "Wording verified against plan.c: init_state() sets state->t = now, then raises it to the end of each running hook (line 209) and running task run (line 226); vis_prepare() rounds state->t up to a whole minute as origin and vis_first_start() counts from that origin. 'from now or from the end of the running task run or hook' is accurate. Doc-only, one sentence, no other changes.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 17546.107,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T12:59:16.180060Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T12:59:33.726167Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Wording verified against plan.c: init_state() sets state->t = now, then raises it to the end of each running hook (line 209) and running task run (line 226); vis_prepare() rounds state->t up to a whole minute as origin and vis_first_start() counts from that origin. 'from now or from the end of the running task run or hook' is accurate. Doc-only, one sentence, no other changes."
+        }
+      ],
+      "result": {
+        "summary": "Wording verified against plan.c: init_state() sets state->t = now, then raises it to the end of each running hook (line 209) and running task run (line 226); vis_prepare() rounds state->t up to a whole minute as origin and vis_first_start() counts from that origin. 'from now or from the end of the running task run or hook' is accurate. Doc-only, one sentence, no other changes.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 17546.107,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "01e83cd9-0edb-4616-8328-8e0c5c3e5dfc",
+      "event": "ticket/created",
+      "at": "2026-11-27T12:58:32.578388Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "499f2b6d-0551-4999-99c5-19a3e9ac2c11",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T12:58:54.619816Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "570a460e-c81a-4181-9174-f5c05f4bd384",
+      "event": "task/progress",
+      "at": "2026-11-27T12:59:06.291650Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6c0f379-ac36-4e25-a98e-9e43db613cc4",
+      "text": "Implementation started on branch ticket/6e7d671d-1374-46d4-9b91-3f79414ce267"
+    },
+    {
+      "event_id": "3c915cf3-0ae9-4c29-973d-29d3652182e8",
+      "event": "ticket/started",
+      "at": "2026-11-27T12:59:06.292660Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/6e7d671d-1374-46d4-9b91-3f79414ce267",
+      "base": "master"
+    },
+    {
+      "event_id": "564052dd-f084-4785-b9d4-d4c8332b3d5e",
+      "event": "task/progress",
+      "at": "2026-11-27T12:59:11.225814Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6c0f379-ac36-4e25-a98e-9e43db613cc4",
+      "text": "Correcting the first-minute wording in SCHEDULER.md",
+      "attempt_id": "dcf70f2b-5bb5-46c9-b5b9-dea1e05f4adb",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "d0a76b17-b218-4c62-88e2-dc18959b3e88",
+      "event": "task/progress",
+      "at": "2026-11-27T12:59:12.797410Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6c0f379-ac36-4e25-a98e-9e43db613cc4",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "368eb9d5-3255-4719-9a9d-1ec7ebe9d47d",
+      "event": "task/progress",
+      "at": "2026-11-27T12:59:12.812875Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6c0f379-ac36-4e25-a98e-9e43db613cc4",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f5db845f-ff29-43a3-a5f4-5138f85b6834",
+      "event": "check/passed",
+      "at": "2026-11-27T12:59:12.819098Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "f5170d1bbf7a0869a22d24f1f9b55eda4a1683c1",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "028e7a0d-c44b-4dff-8a59-6f684fcb36ec",
+      "event": "task/progress",
+      "at": "2026-11-27T12:59:16.180143Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d19c9c63-20c4-4cc7-9f55-206dee7d0f8e",
+      "text": "Review started"
+    },
+    {
+      "event_id": "201033bc-147c-47d7-a380-8f84c129334c",
+      "event": "review/started",
+      "at": "2026-11-27T12:59:16.180687Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "16e71808-b1ff-45b2-b1bf-de51596cdf6d",
+      "event": "task/progress",
+      "at": "2026-11-27T12:59:27.731133Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d19c9c63-20c4-4cc7-9f55-206dee7d0f8e",
+      "text": "Reviewing SCHEDULER.md wording against plan.c",
+      "attempt_id": "172cc316-ffd7-47f0-a371-39be687e8bea",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": null
+      }
+    },
+    {
+      "event_id": "987fa94b-6690-47ee-be1f-8e79debe6244",
+      "event": "task/progress",
+      "at": "2026-11-27T12:59:33.726248Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d19c9c63-20c4-4cc7-9f55-206dee7d0f8e",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b900c7e8-32ff-4344-99ac-ccc737fe5878",
+      "event": "review/passed",
+      "at": "2026-11-27T12:59:33.726874Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d19c9c63-20c4-4cc7-9f55-206dee7d0f8e",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "f5170d1bbf7a0869a22d24f1f9b55eda4a1683c1"
+    },
+    {
+      "event_id": "af99207f-cd9e-4082-93e8-c1ba770ef196",
+      "event": "ticket/closed",
+      "at": "2026-11-27T13:05:20.438375Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-27T13:05:20.438325Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "7cad2abc47e9aed5ee85168ee5a6d1a6e4c2b7d0"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T12:58:32.577581Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-27T12:58:54.619763Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 27434.573,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 18,
+    "sha256": "e8de72b26c7f9faebaf3053f0ec518abc4517778a23ad56859125fcc7fa0ae92"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f5170d1bbf7a0869a22d24f1f9b55eda4a1683c1",
+        "tree": "f8b191869f8da319b8375a2c127fa7c696824d3d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T12:59:12.812202Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/6e7d671d-1374-46d4-9b91-3f79414ce267/f8b191869f8d-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Wording verified against plan.c: init_state() sets state->t = now, then raises it to the end of each running hook (line 209) and running task run (line 226); vis_prepare() rounds state->t up to a whole minute as origin and vis_first_start() counts from that origin. 'from now or from the end of the running task run or hook' is accurate. Doc-only, one sentence, no other changes.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "f5170d1bbf7a0869a22d24f1f9b55eda4a1683c1",
+        "tree": "f8b191869f8da319b8375a2c127fa7c696824d3d",
+        "at": "2026-11-27T12:59:33.726139Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "7cad2abc47e9aed5ee85168ee5a6d1a6e4c2b7d0",
+      "tree": "f8b191869f8da319b8375a2c127fa7c696824d3d",
+      "base": "master",
+      "at": "2026-11-27T13:05:20.360779Z"
+    }
+  }
+}
