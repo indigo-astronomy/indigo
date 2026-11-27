@@ -1,0 +1,694 @@
+{
+  "schema_version": 1,
+  "ticket_id": "fd0dfe3b-616f-4ab5-8224-15fe873b537b",
+  "revision": 33,
+  "title": "indigo_agent_scheduler: no false VISIBILITY too-large notice after the night ends",
+  "description": "After the night end hook completes, update_plan() plans from now to the end of the next scheduler night (tomorrow's nautical dawn). Right after dawn in late November that window is slightly longer than 24 h, so vis_prepare() rejects it (VIS_MAX_MINUTES = 1440) and plan_visibility() sends 'The night has too many task runs or lasts too long for the VISIBILITY strategy, the COMPACT plan is used', even with no task runs to arrange (observed on the running server at 10:50:52 EET 2026-11-27, queue finished, all remaining tasks done or disabled). The notice is sent once per night, so it also suppresses a genuine notice for the coming night. Fix: (1) with no COMPACT task runs to arrange, do not report TOO_LARGE (an empty plan is planned); (2) start the VISIBILITY minute grid at the first minute a run can start rather than at now, so daytime replans do not exceed the window; (3) add a test planning just after night end that expects no notice and the VISIBILITY plan. Bump the driver version and keep the scheduler docs consistent.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-27T09:05:48.965949Z",
+  "status": "closed",
+  "branch": "ticket/fd0dfe3b-616f-4ab5-8224-15fe873b537b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "00d4bec9-c082-4389-9696-ed963995d13a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T09:07:51.773320Z",
+          "last_activity_at": "2026-11-27T09:27:56.290577Z",
+          "ended_at": "2026-11-27T09:27:56.290577Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1204517.257,
+          "tokens": null
+        },
+        {
+          "attempt_id": "dcd26c28-b5ed-413e-a32d-4a4e8ae1b896",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-27T09:31:55.419381Z",
+          "last_activity_at": "2026-11-27T09:45:35.020650Z",
+          "ended_at": "2026-11-27T09:45:35.020650Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 819601.269,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T09:07:51.773320Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/fd0dfe3b-616f-4ab5-8224-15fe873b537b"
+        },
+        {
+          "at": "2026-11-27T09:27:56.290577Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-27T09:31:55.419381Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-27T09:45:35.020650Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2024118.526,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d8b0ca12-5f5b-43e0-8f39-082744181aa8",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-27T09:27:56.290625Z",
+          "last_activity_at": "2026-11-27T09:31:55.419296Z",
+          "ended_at": "2026-11-27T09:31:55.419296Z",
+          "outcome": {
+            "summary": "1) indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c:498-518 (vis_first_start) can put the grid base after a feasible start, so the start is lost. indigo_scheduler_points_next (indigo_agent_scheduler_sky.c:442-479) moves forward in SCHEDULER_GRID_STEP = 300 s steps. That is exact for sky points, and for an absolute window it jumps to window_start, but a NIGHTLY window opens at any whole minute (window_start_minute). simulate() at plan.c:269-270 already says so: a nightly window may open at any minute. So for a nightly window opening at 23:03 the function returns 23:05, and base skips minutes 23:03 and 23:04 that vis_table used to mark ok. I checked this with a scratch probe that links master's plan.c and this branch's plan.c against the same archive. Setup: T_VISIBILITY_NOON, LATITUDE/LONGITUDE sky, one 10 min task without a target, twilight astronomical, nightly window 23:03 to 23:59 UTC. plan_order start: master 23:03, branch 23:05. Same task with window 23:03 to 23:13 (the run fits only at 23:03): master VISIBILITY gives PLANNED with 1 run at 23:03 (COMPACT 0 runs); branch gives NOT_BETTER with 0 runs, and plan_order returns -1 where master returned 0. This is a regression: VISIBILITY no longer finds runs that COMPACT's 5 min stepping misses, and the SCHEDULER.md step 1 text ('the earliest whole minute ... at which ... its constraints hold') is not true for nightly windows. Suggested fix: for a task with window_kind == SCHEDULER_WINDOW_NIGHTLY, also call points_next from each nightly opening (day + window_start_minute * 60) in [from, first), or step by VIS_STEP inside the grid step before the result. Taking start - SCHEDULER_GRID_STEP is not enough for the short-window case, where points_next finds no start at all. Add a unit case with a nightly window opening off the 5 min grid (for example the 23:03 to 23:13 case above) that expects the run at 23:03. 2) Everything else checked out. The origin term in the k == 0 hook condition (plan.c:740) is right, a",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 239128.671,
+          "tokens": null
+        },
+        {
+          "attempt_id": "7b32942a-e13e-4d79-9c21-20521ca3d439",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T09:45:35.020669Z",
+          "last_activity_at": "2026-11-27T09:52:02.884493Z",
+          "ended_at": "2026-11-27T09:52:02.884493Z",
+          "outcome": {
+            "summary": "Round 2 review of 14a7347aa: pass. Lower bound verified independently: a probe compiled master and branch indigo_agent_scheduler_plan.c (plus master with VIS_MAX_MINUTES raised to 4000) and ran 3600+ random cases (NONE/NIGHTLY/ABSOLUTE windows with off-grid minutes, targets with altitude/twilight, odd-second durations, retry delays, repeat spacing, urgent tasks, up to 9 hooks incl. running hook, running task, flips, replans with the previous plan). A brute-force scan of every whole minute from origin found vis_first_start() equal to the true first startable minute in all 2400 checks (never later, never earlier). Plans with grids under 1440 minutes are identical to master; after-dawn plans match the raised-limit master except where budget splits change the search (one case, branch value higher). Remaining differences are intended: empty COMPACT plans with >8 hooks or >24 h now NOT_BETTER, and TOO_LARGE only where a task can run at once and the night is >1440 minutes away. Reasoning: windowless tasks are monotone within a 5-minute sky step (first point fixed, last point only grows), so points_next (which tries from and every sky point) finds the earliest minute; windowed tasks are scanned per minute; pinned urgent start and available_from use the same ceil as vis_minute(); hook_minute/hook_floor stay relative to base and the k==0 chain uses origin + hook_shift, covered by visibility_day_hook_before_first_start. plan unit binary passes; version 0x0300002D = 3.0.0.45; git diff --check clean; formatting OK; docs consistent. Non-blocking notes: (1) indigo_agent_scheduler_plan.c:1328 - with base == end (no startable whole minute) minutes is 0, so a kept previous plan whose only valid starts are sub-minute is no longer kept exactly (master entered the search because origin < end); very contrived, COMPACT is used then. (2) SCHEDULER.md:719 says the first minute is counted 'from now on'; it is from the end of the running task or hook (origin).",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 387863.824,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T09:27:56.290625Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T09:31:55.419296Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "1) indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c:498-518 (vis_first_start) can put the grid base after a feasible start, so the start is lost. indigo_scheduler_points_next (indigo_agent_scheduler_sky.c:442-479) moves forward in SCHEDULER_GRID_STEP = 300 s steps. That is exact for sky points, and for an absolute window it jumps to window_start, but a NIGHTLY window opens at any whole minute (window_start_minute). simulate() at plan.c:269-270 already says so: a nightly window may open at any minute. So for a nightly window opening at 23:03 the function returns 23:05, and base skips minutes 23:03 and 23:04 that vis_table used to mark ok. I checked this with a scratch probe that links master's plan.c and this branch's plan.c against the same archive. Setup: T_VISIBILITY_NOON, LATITUDE/LONGITUDE sky, one 10 min task without a target, twilight astronomical, nightly window 23:03 to 23:59 UTC. plan_order start: master 23:03, branch 23:05. Same task with window 23:03 to 23:13 (the run fits only at 23:03): master VISIBILITY gives PLANNED with 1 run at 23:03 (COMPACT 0 runs); branch gives NOT_BETTER with 0 runs, and plan_order returns -1 where master returned 0. This is a regression: VISIBILITY no longer finds runs that COMPACT's 5 min stepping misses, and the SCHEDULER.md step 1 text ('the earliest whole minute ... at which ... its constraints hold') is not true for nightly windows. Suggested fix: for a task with window_kind == SCHEDULER_WINDOW_NIGHTLY, also call points_next from each nightly opening (day + window_start_minute * 60) in [from, first), or step by VIS_STEP inside the grid step before the result. Taking start - SCHEDULER_GRID_STEP is not enough for the short-window case, where points_next finds no start at all. Add a unit case with a nightly window opening off the 5 min grid (for example the 23:03 to 23:13 case above) that expects the run at 23:03. 2) Everything else checked out. The origin term in the k == 0 hook condition (plan.c:740) is right, a"
+        },
+        {
+          "at": "2026-11-27T09:45:35.020669Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T09:52:02.884493Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2 review of 14a7347aa: pass. Lower bound verified independently: a probe compiled master and branch indigo_agent_scheduler_plan.c (plus master with VIS_MAX_MINUTES raised to 4000) and ran 3600+ random cases (NONE/NIGHTLY/ABSOLUTE windows with off-grid minutes, targets with altitude/twilight, odd-second durations, retry delays, repeat spacing, urgent tasks, up to 9 hooks incl. running hook, running task, flips, replans with the previous plan). A brute-force scan of every whole minute from origin found vis_first_start() equal to the true first startable minute in all 2400 checks (never later, never earlier). Plans with grids under 1440 minutes are identical to master; after-dawn plans match the raised-limit master except where budget splits change the search (one case, branch value higher). Remaining differences are intended: empty COMPACT plans with >8 hooks or >24 h now NOT_BETTER, and TOO_LARGE only where a task can run at once and the night is >1440 minutes away. Reasoning: windowless tasks are monotone within a 5-minute sky step (first point fixed, last point only grows), so points_next (which tries from and every sky point) finds the earliest minute; windowed tasks are scanned per minute; pinned urgent start and available_from use the same ceil as vis_minute(); hook_minute/hook_floor stay relative to base and the k==0 chain uses origin + hook_shift, covered by visibility_day_hook_before_first_start. plan unit binary passes; version 0x0300002D = 3.0.0.45; git diff --check clean; formatting OK; docs consistent. Non-blocking notes: (1) indigo_agent_scheduler_plan.c:1328 - with base == end (no startable whole minute) minutes is 0, so a kept previous plan whose only valid starts are sub-minute is no longer kept exactly (master entered the search because origin < end); very contrived, COMPACT is used then. (2) SCHEDULER.md:719 says the first minute is counted 'from now on'; it is from the end of the running task or hook (origin)."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 review of 14a7347aa: pass. Lower bound verified independently: a probe compiled master and branch indigo_agent_scheduler_plan.c (plus master with VIS_MAX_MINUTES raised to 4000) and ran 3600+ random cases (NONE/NIGHTLY/ABSOLUTE windows with off-grid minutes, targets with altitude/twilight, odd-second durations, retry delays, repeat spacing, urgent tasks, up to 9 hooks incl. running hook, running task, flips, replans with the previous plan). A brute-force scan of every whole minute from origin found vis_first_start() equal to the true first startable minute in all 2400 checks (never later, never earlier). Plans with grids under 1440 minutes are identical to master; after-dawn plans match the raised-limit master except where budget splits change the search (one case, branch value higher). Remaining differences are intended: empty COMPACT plans with >8 hooks or >24 h now NOT_BETTER, and TOO_LARGE only where a task can run at once and the night is >1440 minutes away. Reasoning: windowless tasks are monotone within a 5-minute sky step (first point fixed, last point only grows), so points_next (which tries from and every sky point) finds the earliest minute; windowed tasks are scanned per minute; pinned urgent start and available_from use the same ceil as vis_minute(); hook_minute/hook_floor stay relative to base and the k==0 chain uses origin + hook_shift, covered by visibility_day_hook_before_first_start. plan unit binary passes; version 0x0300002D = 3.0.0.45; git diff --check clean; formatting OK; docs consistent. Non-blocking notes: (1) indigo_agent_scheduler_plan.c:1328 - with base == end (no startable whole minute) minutes is 0, so a kept previous plan whose only valid starts are sub-minute is no longer kept exactly (master entered the search because origin < end); very contrived, COMPACT is used then. (2) SCHEDULER.md:719 says the first minute is counted 'from now on'; it is from the end of the running task or hook (origin).",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 626992.495,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "acd6ba88-c040-4b25-8088-faa9f0543407",
+      "event": "ticket/created",
+      "at": "2026-11-27T09:05:48.966768Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "d75178f2-3d0f-4629-b794-a31c63146056",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T09:07:38.596770Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "42270201-c4b8-4814-8cf3-b42e797f889c",
+      "event": "task/progress",
+      "at": "2026-11-27T09:07:51.773449Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Implementation started on branch ticket/fd0dfe3b-616f-4ab5-8224-15fe873b537b"
+    },
+    {
+      "event_id": "9f8e5fcf-9e63-4168-9a4b-61a12e3bd10a",
+      "event": "ticket/started",
+      "at": "2026-11-27T09:07:51.774278Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/fd0dfe3b-616f-4ab5-8224-15fe873b537b",
+      "base": "master"
+    },
+    {
+      "event_id": "83acc501-0306-4fb9-8f51-68e3334e4917",
+      "event": "task/progress",
+      "at": "2026-11-27T09:08:26.335305Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Implementer started: reading scheduler plan code",
+      "attempt_id": "00d4bec9-c082-4389-9696-ed963995d13a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "403c0c1b-f60b-4f91-9814-468af1032dba",
+      "event": "task/progress",
+      "at": "2026-11-27T09:10:56.471818Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Reproducing with a plan unit test after nautical dawn"
+    },
+    {
+      "event_id": "5b731cc0-90a0-49e4-bcb0-fea175e3770f",
+      "event": "task/progress",
+      "at": "2026-11-27T09:12:49.279200Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Building library and scheduler archive in the worktree"
+    },
+    {
+      "event_id": "2b1979ac-78d0-4cc9-9746-2ce79c2a9ec8",
+      "event": "task/progress",
+      "at": "2026-11-27T09:16:29.162824Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Running test_agent_scheduler_plan with the fix"
+    },
+    {
+      "event_id": "091615e1-0e55-4713-82a0-4eba0c1bcb04",
+      "event": "task/progress",
+      "at": "2026-11-27T09:17:27.738054Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Running integration tests: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "1b4e1b0d-87f6-49e7-a3af-c4bd513084d6",
+      "event": "ticket/note",
+      "at": "2026-11-27T09:25:15.845803Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: with the original indigo_agent_scheduler_plan.c, the new unit tests visibility_day_after_night, visibility_day_without_runs and visibility_day_hook_before_first_start fail with SCHEDULER_VISIBILITY_TOO_LARGE (plan from a second after nautical dawn 2026-11-20 to the next nautical dawn, >1440 minutes; empty plan and 9 hooks; plan_order returns -1). After the fix all 52 plan unit cases pass; integration test_agent_scheduler 200/200 passed. The only change in existing outputs is the budget-limited visibility_performance print (plans from noon: 54 -> 55 runs, work counted on a shorter grid).",
+      "tokens": null
+    },
+    {
+      "event_id": "14deba64-d261-46b4-a008-cf10d6387dce",
+      "event": "task/progress",
+      "at": "2026-11-27T09:25:16.190394Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d158697d-3a33-4f75-9112-64b79147666b",
+      "event": "task/progress",
+      "at": "2026-11-27T09:25:16.211986Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c21939b2-a3df-4b28-8f0d-742227cf2413",
+      "event": "task/progress",
+      "at": "2026-11-27T09:25:16.216796Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "041e6d47-a247-4452-bcf0-70b733118b8b",
+      "event": "task/progress",
+      "at": "2026-11-27T09:27:21.655215Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "2394a24b-9ab9-45f8-ab9d-7db2656c0883",
+      "event": "check/passed",
+      "at": "2026-11-27T09:27:21.663067Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "51cc8d43f1a18699ad03a596b6739a72cb2ce31a",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "b77011c9-71b2-4155-a9c8-9b2fe9aed674",
+      "event": "task/progress",
+      "at": "2026-11-27T09:27:56.290700Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "text": "Review started"
+    },
+    {
+      "event_id": "5d3e5328-0f48-4406-af41-aa8cee48137d",
+      "event": "review/started",
+      "at": "2026-11-27T09:27:56.291335Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "28d9e7fe-3388-4511-afc1-e9050a30401c",
+      "event": "task/progress",
+      "at": "2026-11-27T09:28:10.899357Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "text": "Reviewer started: reading diff of plan.c, tests and docs",
+      "attempt_id": "d8b0ca12-5f5b-43e0-8f39-082744181aa8",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0ea472c0-9f12-4bfa-b059-e7c391863ecd",
+      "event": "task/progress",
+      "at": "2026-11-27T09:30:29.478538Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "text": "Running a scratch probe of nightly-window first start against the plan library"
+    },
+    {
+      "event_id": "e351c3a7-fe7c-4686-bcb2-a3aff832902a",
+      "event": "task/progress",
+      "at": "2026-11-27T09:31:55.419372Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "2ab0debf-4a74-404c-9bc0-0dec50b84aa5",
+      "event": "task/progress",
+      "at": "2026-11-27T09:31:55.419409Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "cb59d0c6-29f0-4d86-9a49-9afe7176f230",
+      "event": "review/changes_requested",
+      "at": "2026-11-27T09:31:55.420030Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "51cc8d43f1a18699ad03a596b6739a72cb2ce31a"
+    },
+    {
+      "event_id": "49cfd939-c546-4c5a-8cdc-3ea807e07e62",
+      "event": "task/progress",
+      "at": "2026-11-27T09:32:23.429381Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Fixing review: first start lost nightly window minutes off the 5-minute grid"
+    },
+    {
+      "event_id": "bc397f42-ae23-40ff-ac69-602221638d7a",
+      "event": "task/progress",
+      "at": "2026-11-27T09:33:57.935872Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "0f1dcd13-6fb1-485a-9d90-28ae3e83d7ff",
+      "event": "task/progress",
+      "at": "2026-11-27T09:33:57.957504Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "9c37acd8-5c97-4811-81f1-224a379cfb98",
+      "event": "task/progress",
+      "at": "2026-11-27T09:33:57.962821Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a7c8c8c9-16f5-46bf-94a9-93b4227cff2b",
+      "event": "task/progress",
+      "at": "2026-11-27T09:35:58.828089Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "d6b642d0-32b0-44c2-8ee4-38337a6f2c25",
+      "event": "check/passed",
+      "at": "2026-11-27T09:35:58.845058Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "14a7347aaf626b983648a5ac59099e965b31d5f0",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "64548da3-e9bd-465b-a1f9-89416dcfdc9f",
+      "event": "task/progress",
+      "at": "2026-11-27T09:36:05.265039Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b7b5c002-32e2-48f9-903d-5ff22847e660",
+      "text": "Running integration tests: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "9ec263d5-4e30-4ef1-a881-0e19c8a17e22",
+      "event": "ticket/note",
+      "at": "2026-11-27T09:45:10.754684Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Review fix: vis_first_start() checks every whole minute for tasks with a window (points_next steps on the 5-minute sky grid and missed nightly windows opening off it). New unit test visibility_window_off_sky_grid (nightly 23:03-23:13 and 23:03-23:59) fails on the previous branch code (plan_order -1) and passes now; plan unit 53/53, integration test_agent_scheduler 200/200, flow check passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "5b53a693-6bf4-4b0a-a254-f57d0a5ac745",
+      "event": "task/progress",
+      "at": "2026-11-27T09:45:35.020743Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e2f990ec-ebbc-482a-aade-ec51cf856dad",
+      "event": "review/started",
+      "at": "2026-11-27T09:45:35.021391Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "6bdd1955-81e0-4b26-92c9-380577ec2a2b",
+      "event": "task/progress",
+      "at": "2026-11-27T09:45:51.243875Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "text": "Round 2 review started: reading diff",
+      "attempt_id": "7b32942a-e13e-4d79-9c21-20521ca3d439",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "787322e1-42bc-4510-88fa-1c1b224a660d",
+      "event": "task/progress",
+      "at": "2026-11-27T09:47:55.530674Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "text": "Writing master-vs-branch plan.c probe in scratch dir"
+    },
+    {
+      "event_id": "48c11911-c67d-4e3b-9ced-8e24c49a0c0e",
+      "event": "task/progress",
+      "at": "2026-11-27T09:51:22.602470Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "text": "Running plan unit test binary test_agent_scheduler_plan"
+    },
+    {
+      "event_id": "fab10a3b-f316-485e-a5ba-e947de4c7994",
+      "event": "task/progress",
+      "at": "2026-11-27T09:52:02.884570Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "87d859a4-5a3e-46ed-8363-7421dbee53f8",
+      "event": "review/passed",
+      "at": "2026-11-27T09:52:02.885298Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e603689f-31df-4e40-9092-a97325297781",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "14a7347aaf626b983648a5ac59099e965b31d5f0"
+    },
+    {
+      "event_id": "48c759f6-d2f1-497d-9a57-484193f5f1f8",
+      "event": "ticket/closed",
+      "at": "2026-11-27T12:26:26.393104Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-27T12:26:26.393079Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "39671e109f311cfa59a0094693bd076046a3f160"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T09:05:48.965949Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-27T09:07:38.596742Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 2651111.021,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 46,
+    "sha256": "6ebf672b6acfc2e2bf19d194126868da0772d5b6d30e4d48c09019b295b692ee"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "51cc8d43f1a18699ad03a596b6739a72cb2ce31a",
+        "tree": "6cc34f8379d25506af0a0ffd9e5874417c1b1887",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T09:25:16.211281Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/fd0dfe3b-616f-4ab5-8224-15fe873b537b/6cc34f8379d2-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "51cc8d43f1a18699ad03a596b6739a72cb2ce31a",
+        "tree": "6cc34f8379d25506af0a0ffd9e5874417c1b1887",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T09:27:21.654166Z",
+        "duration_s": 125.4,
+        "log": "/tmp/factory-flow/fd0dfe3b-616f-4ab5-8224-15fe873b537b/6cc34f8379d2-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "14a7347aaf626b983648a5ac59099e965b31d5f0",
+        "tree": "c22943272b9fc05ab6ff00496d52bf9c39e929e0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T09:33:57.956584Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/fd0dfe3b-616f-4ab5-8224-15fe873b537b/c22943272b9f-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "14a7347aaf626b983648a5ac59099e965b31d5f0",
+        "tree": "c22943272b9fc05ab6ff00496d52bf9c39e929e0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T09:35:58.827168Z",
+        "duration_s": 120.9,
+        "log": "/tmp/factory-flow/fd0dfe3b-616f-4ab5-8224-15fe873b537b/c22943272b9f-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "1) indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c:498-518 (vis_first_start) can put the grid base after a feasible start, so the start is lost. indigo_scheduler_points_next (indigo_agent_scheduler_sky.c:442-479) moves forward in SCHEDULER_GRID_STEP = 300 s steps. That is exact for sky points, and for an absolute window it jumps to window_start, but a NIGHTLY window opens at any whole minute (window_start_minute). simulate() at plan.c:269-270 already says so: a nightly window may open at any minute. So for a nightly window opening at 23:03 the function returns 23:05, and base skips minutes 23:03 and 23:04 that vis_table used to mark ok. I checked this with a scratch probe that links master's plan.c and this branch's plan.c against the same archive. Setup: T_VISIBILITY_NOON, LATITUDE/LONGITUDE sky, one 10 min task without a target, twilight astronomical, nightly window 23:03 to 23:59 UTC. plan_order start: master 23:03, branch 23:05. Same task with window 23:03 to 23:13 (the run fits only at 23:03): master VISIBILITY gives PLANNED with 1 run at 23:03 (COMPACT 0 runs); branch gives NOT_BETTER with 0 runs, and plan_order returns -1 where master returned 0. This is a regression: VISIBILITY no longer finds runs that COMPACT's 5 min stepping misses, and the SCHEDULER.md step 1 text ('the earliest whole minute ... at which ... its constraints hold') is not true for nightly windows. Suggested fix: for a task with window_kind == SCHEDULER_WINDOW_NIGHTLY, also call points_next from each nightly opening (day + window_start_minute * 60) in [from, first), or step by VIS_STEP inside the grid step before the result. Taking start - SCHEDULER_GRID_STEP is not enough for the short-window case, where points_next finds no start at all. Add a unit case with a nightly window opening off the 5 min grid (for example the 23:03 to 23:13 case above) that expects the run at 23:03. 2) Everything else checked out. The origin term in the k == 0 hook condition (plan.c:740) is right, and visibility_day_hook_before_first_start fails without it (max(90, 30) instead of max(origin + 90, 30)). Negative hook_minute values are handled by the existing from/to clamps in the k > 0 branch. vis_valid, vis_starts and vis_exact_starts work in seconds and stay consistent. lower uses the same ceil rounding as from. Urgent COMPACT starts are covered by pinned, and pin >= 0 holds. Retry and repeat delays come in through available_from, and a running task or hook through state->t and origin. The flip only changes values, not feasibility. The empty-plan NOT_BETTER at plan.c:1296 matches the existing compact->count == 0 rule at plan.c:1375, and both branches are tested (minutes 0, and 9 hooks). Version 0x0300002D (3.0.0.45), the guide text, the Makefile dependency and the formatting are fine (git diff --check is clean). Plan unit tests pass on this tree (build cleaned with test-clean).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "51cc8d43f1a18699ad03a596b6739a72cb2ce31a",
+        "tree": "6cc34f8379d25506af0a0ffd9e5874417c1b1887",
+        "at": "2026-11-27T09:31:55.419270Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 review of 14a7347aa: pass. Lower bound verified independently: a probe compiled master and branch indigo_agent_scheduler_plan.c (plus master with VIS_MAX_MINUTES raised to 4000) and ran 3600+ random cases (NONE/NIGHTLY/ABSOLUTE windows with off-grid minutes, targets with altitude/twilight, odd-second durations, retry delays, repeat spacing, urgent tasks, up to 9 hooks incl. running hook, running task, flips, replans with the previous plan). A brute-force scan of every whole minute from origin found vis_first_start() equal to the true first startable minute in all 2400 checks (never later, never earlier). Plans with grids under 1440 minutes are identical to master; after-dawn plans match the raised-limit master except where budget splits change the search (one case, branch value higher). Remaining differences are intended: empty COMPACT plans with >8 hooks or >24 h now NOT_BETTER, and TOO_LARGE only where a task can run at once and the night is >1440 minutes away. Reasoning: windowless tasks are monotone within a 5-minute sky step (first point fixed, last point only grows), so points_next (which tries from and every sky point) finds the earliest minute; windowed tasks are scanned per minute; pinned urgent start and available_from use the same ceil as vis_minute(); hook_minute/hook_floor stay relative to base and the k==0 chain uses origin + hook_shift, covered by visibility_day_hook_before_first_start. plan unit binary passes; version 0x0300002D = 3.0.0.45; git diff --check clean; formatting OK; docs consistent. Non-blocking notes: (1) indigo_agent_scheduler_plan.c:1328 - with base == end (no startable whole minute) minutes is 0, so a kept previous plan whose only valid starts are sub-minute is no longer kept exactly (master entered the search because origin < end); very contrived, COMPACT is used then. (2) SCHEDULER.md:719 says the first minute is counted 'from now on'; it is from the end of the running task or hook (origin).",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "14a7347aaf626b983648a5ac59099e965b31d5f0",
+        "tree": "c22943272b9fc05ab6ff00496d52bf9c39e929e0",
+        "at": "2026-11-27T09:52:02.884467Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-27T09:25:15.845286Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: with the original indigo_agent_scheduler_plan.c, the new unit tests visibility_day_after_night, visibility_day_without_runs and visibility_day_hook_before_first_start fail with SCHEDULER_VISIBILITY_TOO_LARGE (plan from a second after nautical dawn 2026-11-20 to the next nautical dawn, >1440 minutes; empty plan and 9 hooks; plan_order returns -1). After the fix all 52 plan unit cases pass; integration test_agent_scheduler 200/200 passed. The only change in existing outputs is the budget-limited visibility_performance print (plans from noon: 54 -> 55 runs, work counted on a shorter grid).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T09:45:10.754031Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Review fix: vis_first_start() checks every whole minute for tasks with a window (points_next steps on the 5-minute sky grid and missed nightly windows opening off it). New unit test visibility_window_off_sky_grid (nightly 23:03-23:13 and 23:03-23:59) fails on the previous branch code (plan_order -1) and passes now; plan unit 53/53, integration test_agent_scheduler 200/200, flow check passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "39671e109f311cfa59a0094693bd076046a3f160",
+      "tree": "c22943272b9fc05ab6ff00496d52bf9c39e929e0",
+      "base": "master",
+      "at": "2026-11-27T12:26:26.258055Z"
+    }
+  }
+}
