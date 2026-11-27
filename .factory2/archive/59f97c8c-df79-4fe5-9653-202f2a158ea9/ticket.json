@@ -1,0 +1,425 @@
+{
+  "schema_version": 1,
+  "ticket_id": "59f97c8c-df79-4fe5-9653-202f2a158ea9",
+  "revision": 19,
+  "title": "indigo_mount_lx200: ToupTek SH20 fault reporting from :GES# and speed limit (:SRl/:GRl)",
+  "description": "Implement two V1.3 functions of the ATLAS SH20 Developer Protocol (ATLAS_Command_Protocol_V1.3_EN.pdf, firmware 0.5.2.20261029) for the TOUPTEK mount type in indigo_drivers/mount_lx200 (edit the .driver, regenerate).\n\n1. Fault reporting from :GES# (sections 9.2 and 10.1). Reply: ten digits and #. Digits 1-6: brake 0/1, altitude limits 0/1, motor error 0/1, protection 0 clear / 1 acting / 2 ended but locked, initialization 0 incomplete / 1 complete, automatic flip 0 standby / 1 waiting / 2 ready / 3 moving / 4 disabled. Digits 7-10: system code 0000 none, 0003 parking/parked, 0004 home, 0005 goto, 0006 guiding, 0020 motor error, protection or initialization incomplete. Proposal: poll :GES# with the existing TouptTek state update; publish a read-only X_TOUPTEK_STATUS property (motor error, protection, initialization, brake, flip stage) and send an ALERT message when a fault (motor error, protection acting or locked, initialization incomplete) appears or clears. While such a fault is present, refuse new motion (goto, manual move, park, home, guiding) with an alert, as the protocol requires the fault to be resolved first. An unreadable :GES# is unknown state, not a fault and not clear.\n\n2. Speed limit (sections 4.3 and 10.4). :GRl# -> 720# / 1440# / 0#; :SRl720# / :SRl1440# -> 1# / 0#. Proposal: a writable X_TOUPTEK_SPEED_LIMIT switch property (720, 1440), read at connect; change it only while stopped with tracking off (refuse otherwise); after a change read back :GRl#, reselect the current slew-rate preset and read :GRV#. The 720/1440 limit changes what the presets :R8#/:R9# mean (720/1440 vs 360/720); reflect that in the reported rates where the driver shows them. When :GRl# answers 0# (unknown configuration), refuse manual motion with an alert, as the protocol says not to start manual motion then.\n\nAlso: bump the driver version, update indigo_docs/PROPERTIES.md and indigo_drivers/mount_lx200/PROTOCOL.md (SH20 table, mark the commands as sent), extend the SH20 part of the serial simulator (mount_lx200_simulator) with :GES# fault injection and :SRl/:GRl, and add integration tests in indigo_test/integration/test_mount_lx200_simulator.c covering status decoding, fault alert and motion refusal, speed-limit change and readback, rejection while tracking or moving, and the 0# manual-motion refusal. README.md is not changed without approval. Property names and the motion-refusal policy are proposals for the owner to confirm before implementation.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-27T00:16:06.582288Z",
+  "status": "closed",
+  "branch": "ticket/59f97c8c-df79-4fe5-9653-202f2a158ea9",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "059a0c58-5fff-4b17-9d77-2c07774a9a47",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "094f67d8-aa31-4723-bf2e-ec8a03be68be",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T00:17:42.978392Z",
+          "last_activity_at": "2026-11-27T01:03:31.090812Z",
+          "ended_at": "2026-11-27T01:03:31.090812Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2748112.42,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T00:17:42.978392Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/59f97c8c-df79-4fe5-9653-202f2a158ea9"
+        },
+        {
+          "at": "2026-11-27T01:03:31.090812Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2748112.42,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "a6f8bd02-5b0f-4153-9e59-befd6df40268",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a751d5be-fb59-4b5a-aa75-2baefb25386b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T01:03:31.090860Z",
+          "last_activity_at": "2026-11-27T01:35:54.218947Z",
+          "ended_at": "2026-11-27T01:35:54.218947Z",
+          "outcome": {
+            "summary": "Independent review of master...ed0c395e0 (no uncommitted changes). Verified: :GES# decoding matches ATLAS V1.3 sec 9.2 (positions 1-6 brake/alt-limits/motor/protection/init/flip, range-checked, 10 digits; fault = motor error, protection 1 or 2, init 0; unreadable -> IDLE, touptek_fault=false, no clear/new message). :GRl#/:SRl handling per 4.3/10.4: change only with :GTS# 0#, :GU# N and no driver manual motion; readback, preset reselection (lastSlewRate reset, :R9#) and :GRV# ordering confirmed by the test. :GRl# read before each manual move (sec 4.2 step 2), 0# refuses it and leaves neither item selected with ALERT. Fault refusal covers goto (meade_slew), manual motion, park, home and both guide axes; all changes are gated on MOUNT_TYPE_TOUPTEK_ITEM, no other dialect affected. Regenerating indigo_mount_lx200.driver with the unchanged generator reproduces the checked-in .c/.h/_main.c byte for byte; no generator change. Version 90->91. PROPERTIES.md and PROTOCOL.md describe the delivered behavior accurately. MIGRATION_STATUS.md changes only the Automated Tests (Sim/HW) status column 180->184; Comment untouched. Formatting conforms. Ran test_mount_lx200_simulator in the worktree: all 181 table cases passed, including the 4 new ones, which do exercise the claimed scenarios (each of four fault kinds with ALERT + message, refusals with no MS/Mn/Me/MP1/MH sent, DROP of :GES# giving IDLE without messages, guider-only fault refusal with :GES# read per pulse, :SRl/:GRl/:R9/:GRV order, rejection by mount, while tracking and while moving, 0# refusal persisting over reconnect). Test build cleaned. Non-blocking notes for the owner: (1) indigo_mount_lx200.driver:3229 sends the fault-cleared message as OK, while the confirmed ticket text says an ALERT message when a fault appears or clears; OK is the more sensible state but it is a deviation the owner may want to confirm. (2) :GES# is read before every guide pulse (driver:1976, 2008) in addition to every poll (3316): one extra seri",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1943128.087,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T01:03:31.090860Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T01:35:54.218947Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of master...ed0c395e0 (no uncommitted changes). Verified: :GES# decoding matches ATLAS V1.3 sec 9.2 (positions 1-6 brake/alt-limits/motor/protection/init/flip, range-checked, 10 digits; fault = motor error, protection 1 or 2, init 0; unreadable -> IDLE, touptek_fault=false, no clear/new message). :GRl#/:SRl handling per 4.3/10.4: change only with :GTS# 0#, :GU# N and no driver manual motion; readback, preset reselection (lastSlewRate reset, :R9#) and :GRV# ordering confirmed by the test. :GRl# read before each manual move (sec 4.2 step 2), 0# refuses it and leaves neither item selected with ALERT. Fault refusal covers goto (meade_slew), manual motion, park, home and both guide axes; all changes are gated on MOUNT_TYPE_TOUPTEK_ITEM, no other dialect affected. Regenerating indigo_mount_lx200.driver with the unchanged generator reproduces the checked-in .c/.h/_main.c byte for byte; no generator change. Version 90->91. PROPERTIES.md and PROTOCOL.md describe the delivered behavior accurately. MIGRATION_STATUS.md changes only the Automated Tests (Sim/HW) status column 180->184; Comment untouched. Formatting conforms. Ran test_mount_lx200_simulator in the worktree: all 181 table cases passed, including the 4 new ones, which do exercise the claimed scenarios (each of four fault kinds with ALERT + message, refusals with no MS/Mn/Me/MP1/MH sent, DROP of :GES# giving IDLE without messages, guider-only fault refusal with :GES# read per pulse, :SRl/:GRl/:R9/:GRV order, rejection by mount, while tracking and while moving, 0# refusal persisting over reconnect). Test build cleaned. Non-blocking notes for the owner: (1) indigo_mount_lx200.driver:3229 sends the fault-cleared message as OK, while the confirmed ticket text says an ALERT message when a fault appears or clears; OK is the more sensible state but it is a deviation the owner may want to confirm. (2) :GES# is read before every guide pulse (driver:1976, 2008) in addition to every poll (3316): one extra seri"
+        }
+      ],
+      "result": {
+        "summary": "Independent review of master...ed0c395e0 (no uncommitted changes). Verified: :GES# decoding matches ATLAS V1.3 sec 9.2 (positions 1-6 brake/alt-limits/motor/protection/init/flip, range-checked, 10 digits; fault = motor error, protection 1 or 2, init 0; unreadable -> IDLE, touptek_fault=false, no clear/new message). :GRl#/:SRl handling per 4.3/10.4: change only with :GTS# 0#, :GU# N and no driver manual motion; readback, preset reselection (lastSlewRate reset, :R9#) and :GRV# ordering confirmed by the test. :GRl# read before each manual move (sec 4.2 step 2), 0# refuses it and leaves neither item selected with ALERT. Fault refusal covers goto (meade_slew), manual motion, park, home and both guide axes; all changes are gated on MOUNT_TYPE_TOUPTEK_ITEM, no other dialect affected. Regenerating indigo_mount_lx200.driver with the unchanged generator reproduces the checked-in .c/.h/_main.c byte for byte; no generator change. Version 90->91. PROPERTIES.md and PROTOCOL.md describe the delivered behavior accurately. MIGRATION_STATUS.md changes only the Automated Tests (Sim/HW) status column 180->184; Comment untouched. Formatting conforms. Ran test_mount_lx200_simulator in the worktree: all 181 table cases passed, including the 4 new ones, which do exercise the claimed scenarios (each of four fault kinds with ALERT + message, refusals with no MS/Mn/Me/MP1/MH sent, DROP of :GES# giving IDLE without messages, guider-only fault refusal with :GES# read per pulse, :SRl/:GRl/:R9/:GRV order, rejection by mount, while tracking and while moving, 0# refusal persisting over reconnect). Test build cleaned. Non-blocking notes for the owner: (1) indigo_mount_lx200.driver:3229 sends the fault-cleared message as OK, while the confirmed ticket text says an ALERT message when a fault appears or clears; OK is the more sensible state but it is a deviation the owner may want to confirm. (2) :GES# is read before every guide pulse (driver:1976, 2008) in addition to every poll (3316): one extra seri",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1943128.087,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "17196ab6-505c-4dd3-ab66-55559eeffbca",
+      "event": "ticket/created",
+      "at": "2026-11-27T00:16:06.583265Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "19aabe5b-3c4d-45b2-b37d-29a28995ee8e",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T00:17:30.112677Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "d17ec269-5a77-471c-a35a-53b8caf8a980",
+      "event": "task/progress",
+      "at": "2026-11-27T00:17:42.978628Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "059a0c58-5fff-4b17-9d77-2c07774a9a47",
+      "text": "Implementation started on branch ticket/59f97c8c-df79-4fe5-9653-202f2a158ea9"
+    },
+    {
+      "event_id": "2fe31908-4250-4810-85df-aa47ad923490",
+      "event": "ticket/started",
+      "at": "2026-11-27T00:17:42.979840Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/59f97c8c-df79-4fe5-9653-202f2a158ea9",
+      "base": "master"
+    },
+    {
+      "event_id": "ba263a88-4121-494f-a576-a0383d7b46f5",
+      "event": "ticket/note",
+      "at": "2026-11-27T00:17:57.831796Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner confirmed on 2026-11-27 the proposed design as written: read-only X_TOUPTEK_STATUS from :GES# with fault alerts and refusal of new motion (goto, manual move, park, home, guiding) while a fault is present; writable X_TOUPTEK_SPEED_LIMIT (720/1440), changed only while stopped with tracking off, followed by :GRl# readback, preset reselection and :GRV#; manual motion refused when :GRl# answers 0#. The protocol text extracted from the PDF is at /tmp/claude-1000/-home-rumen-work-indigo-git/03856bc6-7a17-49dd-9bf8-2cc9591bc866/scratchpad/pdf/atlas.txt.",
+      "tokens": null
+    },
+    {
+      "event_id": "82c5422d-17f5-460f-ad3e-3abb4e85d6bf",
+      "event": "task/progress",
+      "at": "2026-11-27T00:18:18.766759Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "059a0c58-5fff-4b17-9d77-2c07774a9a47",
+      "text": "Implementer launched; reading driver, simulator and protocol",
+      "attempt_id": "094f67d8-aa31-4723-bf2e-ec8a03be68be",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "041b7cbe-c68e-4faf-9e2a-b3663dddf693",
+      "event": "task/progress",
+      "at": "2026-11-27T00:24:15.767571Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "059a0c58-5fff-4b17-9d77-2c07774a9a47",
+      "text": "Building libindigo, generator and regenerating indigo_mount_lx200"
+    },
+    {
+      "event_id": "7e26e4fa-a09c-4c72-a80f-818d58aac9ad",
+      "event": "task/progress",
+      "at": "2026-11-27T00:28:23.879721Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "059a0c58-5fff-4b17-9d77-2c07774a9a47",
+      "text": "Running test_mount_lx200_simulator filtered to touptek cases"
+    },
+    {
+      "event_id": "e6fd086f-23d8-4309-ade9-d18150760f31",
+      "event": "task/progress",
+      "at": "2026-11-27T00:35:51.434174Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "059a0c58-5fff-4b17-9d77-2c07774a9a47",
+      "text": "Running full test_mount_lx200_simulator and test_mount_asi_simulator"
+    },
+    {
+      "event_id": "5d923636-1902-4d21-8dc1-08f3cdd9af05",
+      "event": "task/progress",
+      "at": "2026-11-27T00:35:51.654968Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "059a0c58-5fff-4b17-9d77-2c07774a9a47",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "4e4be896-b9db-49fe-ba83-815a3000d03f",
+      "event": "task/progress",
+      "at": "2026-11-27T00:35:51.692344Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "059a0c58-5fff-4b17-9d77-2c07774a9a47",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "49aec2cd-2845-40e1-a2f0-6205b1eaf5e2",
+      "event": "check/passed",
+      "at": "2026-11-27T00:35:51.697064Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "ed0c395e062bbffd07b1e5cfa5cd4c93033aad62",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a815c788-b099-4e96-9c31-7ee98071d0af",
+      "event": "task/progress",
+      "at": "2026-11-27T01:02:53.989247Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "059a0c58-5fff-4b17-9d77-2c07774a9a47",
+      "text": "Done: 181/181 lx200 simulator cases passed, flow check passed; ASI suite not run (off-limits archive)"
+    },
+    {
+      "event_id": "5e376d44-cfab-4405-b6d9-6204ad1bd11a",
+      "event": "task/progress",
+      "at": "2026-11-27T01:03:31.090934Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6f8bd02-5b0f-4153-9e59-befd6df40268",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a61a6bb3-0264-4b3a-a1d7-328474655ce6",
+      "event": "review/started",
+      "at": "2026-11-27T01:03:31.091600Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "9f01b312-fce9-4465-95d0-e84233b92db4",
+      "event": "task/progress",
+      "at": "2026-11-27T01:03:50.851448Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6f8bd02-5b0f-4153-9e59-befd6df40268",
+      "text": "Reviewer launched: reading diff",
+      "attempt_id": "a751d5be-fb59-4b5a-aa75-2baefb25386b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7deda8cb-b425-4c2b-8398-80c1706da842",
+      "event": "task/progress",
+      "at": "2026-11-27T01:04:26.427180Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6f8bd02-5b0f-4153-9e59-befd6df40268",
+      "text": "Regenerating the driver to verify generated output"
+    },
+    {
+      "event_id": "8ebbe3dc-f8b7-4b19-b770-cabcb863cc0b",
+      "event": "task/progress",
+      "at": "2026-11-27T01:05:26.876061Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6f8bd02-5b0f-4153-9e59-befd6df40268",
+      "text": "Building and running test_mount_lx200_simulator"
+    },
+    {
+      "event_id": "6e09816b-3bab-48d2-a73e-9939b38fc6bf",
+      "event": "task/progress",
+      "at": "2026-11-27T01:35:54.219027Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6f8bd02-5b0f-4153-9e59-befd6df40268",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "a64b3bf9-0a3c-4e85-9871-f5678abd583f",
+      "event": "review/passed",
+      "at": "2026-11-27T01:35:54.219628Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "a6f8bd02-5b0f-4153-9e59-befd6df40268",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "ed0c395e062bbffd07b1e5cfa5cd4c93033aad62"
+    },
+    {
+      "event_id": "824c1d63-33dd-4dc6-b856-bea2c494e88c",
+      "event": "ticket/closed",
+      "at": "2026-11-27T08:20:13.711114Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-27T08:20:13.711074Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "e77b3afcd2ed9f734a5053ad06c4016decf99be9"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ed0c395e062bbffd07b1e5cfa5cd4c93033aad62",
+        "tree": "93ed779a225c1cddba4b9a227a4149e413c9f1e5",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T00:35:51.691589Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/59f97c8c-df79-4fe5-9653-202f2a158ea9/93ed779a225c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of master...ed0c395e0 (no uncommitted changes). Verified: :GES# decoding matches ATLAS V1.3 sec 9.2 (positions 1-6 brake/alt-limits/motor/protection/init/flip, range-checked, 10 digits; fault = motor error, protection 1 or 2, init 0; unreadable -> IDLE, touptek_fault=false, no clear/new message). :GRl#/:SRl handling per 4.3/10.4: change only with :GTS# 0#, :GU# N and no driver manual motion; readback, preset reselection (lastSlewRate reset, :R9#) and :GRV# ordering confirmed by the test. :GRl# read before each manual move (sec 4.2 step 2), 0# refuses it and leaves neither item selected with ALERT. Fault refusal covers goto (meade_slew), manual motion, park, home and both guide axes; all changes are gated on MOUNT_TYPE_TOUPTEK_ITEM, no other dialect affected. Regenerating indigo_mount_lx200.driver with the unchanged generator reproduces the checked-in .c/.h/_main.c byte for byte; no generator change. Version 90->91. PROPERTIES.md and PROTOCOL.md describe the delivered behavior accurately. MIGRATION_STATUS.md changes only the Automated Tests (Sim/HW) status column 180->184; Comment untouched. Formatting conforms. Ran test_mount_lx200_simulator in the worktree: all 181 table cases passed, including the 4 new ones, which do exercise the claimed scenarios (each of four fault kinds with ALERT + message, refusals with no MS/Mn/Me/MP1/MH sent, DROP of :GES# giving IDLE without messages, guider-only fault refusal with :GES# read per pulse, :SRl/:GRl/:R9/:GRV order, rejection by mount, while tracking and while moving, 0# refusal persisting over reconnect). Test build cleaned. Non-blocking notes for the owner: (1) indigo_mount_lx200.driver:3229 sends the fault-cleared message as OK, while the confirmed ticket text says an ALERT message when a fault appears or clears; OK is the more sensible state but it is a deviation the owner may want to confirm. (2) :GES# is read before every guide pulse (driver:1976, 2008) in addition to every poll (3316): one extra serial round trip per pulse, justified for guider-only connections; the protocol calls :GES# optional. (3) driver:4539: if the :GRl# readback after a refused or failed change is unreadable (-1), the switch keeps the client's requested item with ALERT rather than the previous value; cosmetic.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "ed0c395e062bbffd07b1e5cfa5cd4c93033aad62",
+        "tree": "93ed779a225c1cddba4b9a227a4149e413c9f1e5",
+        "at": "2026-11-27T01:35:54.218923Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-27T00:17:57.831276Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner confirmed on 2026-11-27 the proposed design as written: read-only X_TOUPTEK_STATUS from :GES# with fault alerts and refusal of new motion (goto, manual move, park, home, guiding) while a fault is present; writable X_TOUPTEK_SPEED_LIMIT (720/1440), changed only while stopped with tracking off, followed by :GRl# readback, preset reselection and :GRV#; manual motion refused when :GRl# answers 0#. The protocol text extracted from the PDF is at /tmp/claude-1000/-home-rumen-work-indigo-git/03856bc6-7a17-49dd-9bf8-2cc9591bc866/scratchpad/pdf/atlas.txt.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "e77b3afcd2ed9f734a5053ad06c4016decf99be9",
+      "tree": "93ed779a225c1cddba4b9a227a4149e413c9f1e5",
+      "base": "master",
+      "at": "2026-11-27T08:20:13.512902Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-27T00:16:06.582288Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-27T00:17:30.112641Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 4691240.507,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 25,
+    "sha256": "8ed1e1e7dc9a26abe0ae5e24f089736035a5def3d59fca1b5264ce211593e571"
+  }
+}
