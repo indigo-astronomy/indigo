@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300005C
+#define DRIVER_VERSION       0x0300005D
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -260,6 +260,12 @@ typedef enum {
 #define TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM_NAME       "AUTO_FLIP"
 #define TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM_NAME "RESUME_TRACKING"
 
+#define TOUPTEK_MERIDIAN_LIMIT_PROPERTY      (PRIVATE_DATA->touptek_meridian_limit_property)
+#define TOUPTEK_MERIDIAN_LIMIT_ITEM          (TOUPTEK_MERIDIAN_LIMIT_PROPERTY->items + 0)
+
+#define TOUPTEK_MERIDIAN_LIMIT_PROPERTY_NAME "X_TOUPTEK_MERIDIAN_LIMIT"
+#define TOUPTEK_MERIDIAN_LIMIT_ITEM_NAME     "LIMIT"
+
 #define TOUPTEK_STATUS_PROPERTY                 (PRIVATE_DATA->touptek_status_property)
 #define TOUPTEK_STATUS_MOTOR_ERROR_ITEM         (TOUPTEK_STATUS_PROPERTY->items + 0)
 #define TOUPTEK_STATUS_PROTECTION_ITEM          (TOUPTEK_STATUS_PROPERTY->items + 1)
@@ -394,6 +400,7 @@ typedef struct {
 	indigo_property *zwo_max_slew_speed_property;
 	indigo_property *touptek_buzzer_property;
 	indigo_property *touptek_meridian_property;
+	indigo_property *touptek_meridian_limit_property;
 	indigo_property *touptek_status_property;
 	indigo_property *touptek_speed_limit_property;
 	indigo_property *nyx_wifi_ap_property;
@@ -3246,6 +3253,44 @@ static bool zwo_set_meridian(indigo_device *device, bool flip, bool track, int l
 	return meade_simple_reply_command(device, ":STa%c%c%+03d#", flip ? '1' : '0', track ? '1' : '0', limit) && *PRIVATE_DATA->response == '1';
 }
 
+// ToupTek SH20: :STaab±DD# with the offset DD the mount keeps, which takes any signed two digit value (firmware
+// 1.0.0.20261101). A value outside -15 to 15 set elsewhere is sent back as it is, so a change of the flip settings keeps it.
+static bool touptek_set_meridian(indigo_device *device, bool flip, bool resume, int offset) {
+	if (offset < -99 || offset > 99) {
+		return false;
+	}
+	return meade_simple_reply_command(device, ":STa%c%c%+03d#", flip ? '1' : '0', resume ? '1' : '0', offset) && *PRIVATE_DATA->response == '1';
+}
+
+// The fresh :GTa# a change of X_TOUPTEK_MERIDIAN reads before :STa, for the offset it sends. X_TOUPTEK_MERIDIAN_LIMIT shows
+// it, published when it changed, unless a change requested by a client is pending there, which its own handler sends.
+static bool touptek_read_meridian_offset(indigo_device *device, int *offset) {
+	bool flip, resume;
+	if (!zwo_get_meridian(device, &flip, &resume, offset)) {
+		return false;
+	}
+	if (TOUPTEK_MERIDIAN_LIMIT_PROPERTY->state != INDIGO_BUSY_STATE && TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value != *offset) {
+		TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value = TOUPTEK_MERIDIAN_LIMIT_ITEM->number.target = *offset;
+		indigo_update_property(device, TOUPTEK_MERIDIAN_LIMIT_PROPERTY, NULL);
+	}
+	return true;
+}
+
+// The fresh :GTa# a change of X_TOUPTEK_MERIDIAN_LIMIT reads before :STa, for the flip settings it sends. X_TOUPTEK_MERIDIAN
+// shows them in the same way.
+static bool touptek_read_meridian_flip(indigo_device *device, bool *flip, bool *resume) {
+	int offset;
+	if (!zwo_get_meridian(device, flip, resume, &offset)) {
+		return false;
+	}
+	if (TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE && (TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value != *flip || TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value != *resume)) {
+		TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value = *flip;
+		TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value = *resume;
+		indigo_update_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+	}
+	return true;
+}
+
 // The error codes of the ZWO protocol, as :GAT# reports them. Firmware 1.1.1 and later.
 static const char *zwo_tracking_error(int code) {
 	return code > 0 && code < ZWO_ERROR_COUNT ? zwo_error_messages[code] : "";
@@ -3522,14 +3567,15 @@ static void meade_init_touptek_mount(indigo_device *device) {
 	}
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = !equatorial;
 	if (equatorial) {
-		// :GTa# answers ab+00#, a the automatic flip and b the tracking resumed after it; the
-		// offset is always +00.
+		// :GTa# answers ab±DD#, a the automatic flip, b the tracking resumed after it and DD the offset, shown as
+		// read also outside the -15 to 15 a client can set.
 		bool flip, resume;
 		int offset;
 		if (zwo_get_meridian(device, &flip, &resume, &offset)) {
 			TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
 			TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value = resume;
-			TOUPTEK_MERIDIAN_PROPERTY->hidden = false;
+			TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value = TOUPTEK_MERIDIAN_LIMIT_ITEM->number.target = offset;
+			TOUPTEK_MERIDIAN_PROPERTY->hidden = TOUPTEK_MERIDIAN_LIMIT_PROPERTY->hidden = false;
 		}
 	}
 	touptek_read_buzzer(device);
@@ -3672,14 +3718,21 @@ static void meade_update_touptek_state(indigo_device *device) {
 	// poll comes before the properties are defined, so it never reads them. A change a client requests is copied into the
 	// property, which stays BUSY until its handler, queued behind this poll, has sent it, so a BUSY property is neither
 	// read nor, when the request came while the mount was being read, overwritten with the setting it replaces.
+	// X_TOUPTEK_MERIDIAN and X_TOUPTEK_MERIDIAN_LIMIT share :STa#, whose handler sends both, so either one BUSY holds both.
 	if (++PRIVATE_DATA->touptek_settings_polls >= TOUPTEK_SETTINGS_POLLS) {
 		PRIVATE_DATA->touptek_settings_polls = 0;
 		bool flip, resume;
 		int offset;
-		if (!TOUPTEK_MERIDIAN_PROPERTY->hidden && TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE && zwo_get_meridian(device, &flip, &resume, &offset) && TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE && (TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value != flip || TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value != resume)) {
-			TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
-			TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value = resume;
-			indigo_update_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+		if (!TOUPTEK_MERIDIAN_PROPERTY->hidden && TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE && TOUPTEK_MERIDIAN_LIMIT_PROPERTY->state != INDIGO_BUSY_STATE && zwo_get_meridian(device, &flip, &resume, &offset) && TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE && TOUPTEK_MERIDIAN_LIMIT_PROPERTY->state != INDIGO_BUSY_STATE) {
+			if (TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value != flip || TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value != resume) {
+				TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
+				TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value = resume;
+				indigo_update_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+			}
+			if (TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value != offset) {
+				TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value = TOUPTEK_MERIDIAN_LIMIT_ITEM->number.target = offset;
+				indigo_update_property(device, TOUPTEK_MERIDIAN_LIMIT_PROPERTY, NULL);
+			}
 		}
 		if (TOUPTEK_BUZZER_PROPERTY->state != INDIGO_BUSY_STATE && touptek_read_buzzer(device)) {
 			indigo_update_property(device, TOUPTEK_BUZZER_PROPERTY, NULL);
@@ -4101,7 +4154,7 @@ static void meade_init_mount(indigo_device *device) {
 	PRIVATE_DATA->gemini_remaining_ns = PRIVATE_DATA->gemini_remaining_we = 0;
 	GEMINI_PARK_POSITION_PROPERTY->hidden = true;
 	ZWO_MERIDIAN_PROPERTY->hidden = ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = true;
-	TOUPTEK_BUZZER_PROPERTY->hidden = TOUPTEK_MERIDIAN_PROPERTY->hidden = TOUPTEK_STATUS_PROPERTY->hidden = TOUPTEK_SPEED_LIMIT_PROPERTY->hidden = true;
+	TOUPTEK_BUZZER_PROPERTY->hidden = TOUPTEK_MERIDIAN_PROPERTY->hidden = TOUPTEK_MERIDIAN_LIMIT_PROPERTY->hidden = TOUPTEK_STATUS_PROPERTY->hidden = TOUPTEK_SPEED_LIMIT_PROPERTY->hidden = true;
 	PRIVATE_DATA->touptek_park_pending = PRIVATE_DATA->touptek_home_pending = false;
 	// A fault of the previous session says nothing about this one; the status is unknown until it is read.
 	PRIVATE_DATA->touptek_fault = PRIVATE_DATA->touptek_fault_reported = PRIVATE_DATA->touptek_status_changed = false;
@@ -4617,6 +4670,7 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_define_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 			indigo_define_property(device, TOUPTEK_BUZZER_PROPERTY, NULL);
 			indigo_define_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+			indigo_define_property(device, TOUPTEK_MERIDIAN_LIMIT_PROPERTY, NULL);
 			indigo_define_property(device, TOUPTEK_STATUS_PROPERTY, NULL);
 			indigo_define_property(device, TOUPTEK_SPEED_LIMIT_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
@@ -4670,6 +4724,7 @@ static void mount_connection_handler(indigo_device *device) {
 			ZWO_MAX_SLEW_SPEED_PROPERTY,
 			TOUPTEK_BUZZER_PROPERTY,
 			TOUPTEK_MERIDIAN_PROPERTY,
+			TOUPTEK_MERIDIAN_LIMIT_PROPERTY,
 			TOUPTEK_STATUS_PROPERTY,
 			TOUPTEK_SPEED_LIMIT_PROPERTY,
 			NYX_WIFI_AP_PROPERTY,
@@ -4719,6 +4774,7 @@ static void mount_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, TOUPTEK_BUZZER_PROPERTY, NULL);
 		indigo_delete_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+		indigo_delete_property(device, TOUPTEK_MERIDIAN_LIMIT_PROPERTY, NULL);
 		indigo_delete_property(device, TOUPTEK_STATUS_PROPERTY, NULL);
 		indigo_delete_property(device, TOUPTEK_SPEED_LIMIT_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
@@ -4838,18 +4894,47 @@ static void mount_touptek_buzzer_handler(indigo_device *device) {
 static void mount_touptek_meridian_handler(indigo_device *device) {
 	TOUPTEK_MERIDIAN_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.TOUPTEK_MERIDIAN.on_change
-	// :STaab+00#, a the automatic flip, b the tracking resumed after it; the offset is always +00.
-	if (!zwo_set_meridian(device, TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value, TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value, 0)) {
-		TOUPTEK_MERIDIAN_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
+	// :STaab±DD#, a the automatic flip, b the tracking resumed after it, DD the offset, which is read with :GTa# just
+	// before, so an offset changed on the hand controller since the last poll is kept.
 	bool flip, resume;
 	int offset;
-	if (zwo_get_meridian(device, &flip, &resume, &offset)) {
-		TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
-		TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value = resume;
+	if (!touptek_read_meridian_offset(device, &offset)) {
+		TOUPTEK_MERIDIAN_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, ALERT_PROPERTY, "The meridian settings were not sent, the current meridian flip offset could not be read");
+	} else {
+		if (!touptek_set_meridian(device, TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value, TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value, offset)) {
+			TOUPTEK_MERIDIAN_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		if (zwo_get_meridian(device, &flip, &resume, &offset)) {
+			TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
+			TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value = resume;
+		}
 	}
 	//- mount.TOUPTEK_MERIDIAN.on_change
 	indigo_update_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+}
+
+static void mount_touptek_meridian_limit_handler(indigo_device *device) {
+	TOUPTEK_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.TOUPTEK_MERIDIAN_LIMIT.on_change
+	// :STaab±DD# with the flip settings read with :GTa# just before, so settings changed on the hand controller since
+	// the last poll are kept. ToupTek documents neither the unit nor the sign nor the range of DD; degrees past the
+	// meridian, negative before it, follow the ZWO AM and the INDI SH20 driver.
+	bool flip, resume;
+	int offset;
+	if (!touptek_read_meridian_flip(device, &flip, &resume)) {
+		TOUPTEK_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, ALERT_PROPERTY, "The meridian flip offset was not sent, the current meridian settings could not be read");
+	} else {
+		if (!touptek_set_meridian(device, flip, resume, (int)TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value)) {
+			TOUPTEK_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		if (zwo_get_meridian(device, &flip, &resume, &offset)) {
+			TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value = TOUPTEK_MERIDIAN_LIMIT_ITEM->number.target = offset;
+		}
+	}
+	//- mount.TOUPTEK_MERIDIAN_LIMIT.on_change
+	indigo_update_property(device, TOUPTEK_MERIDIAN_LIMIT_PROPERTY, NULL);
 }
 
 static void mount_touptek_speed_limit_handler(indigo_device *device) {
@@ -5595,6 +5680,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM, TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM_NAME, "Flip automatically at the meridian", false);
 		indigo_init_switch_item(TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM, TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM_NAME, "Resume tracking after the flip", false);
 		TOUPTEK_MERIDIAN_PROPERTY->hidden = true;
+		TOUPTEK_MERIDIAN_LIMIT_PROPERTY = indigo_init_number_property(NULL, device->name, TOUPTEK_MERIDIAN_LIMIT_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Meridian flip offset", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (TOUPTEK_MERIDIAN_LIMIT_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(TOUPTEK_MERIDIAN_LIMIT_ITEM, TOUPTEK_MERIDIAN_LIMIT_ITEM_NAME, "Offset past the meridian (° assumed, negative before it, undocumented)", -15, 15, 1, 0);
+		strcpy(TOUPTEK_MERIDIAN_LIMIT_ITEM->number.format, "%.0f");
+		TOUPTEK_MERIDIAN_LIMIT_PROPERTY->hidden = true;
 		TOUPTEK_STATUS_PROPERTY = indigo_init_text_property(NULL, device->name, TOUPTEK_STATUS_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Device status", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
 		if (TOUPTEK_STATUS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -5705,6 +5797,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_MAX_SLEW_SPEED_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_BUZZER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_MERIDIAN_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_MERIDIAN_LIMIT_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_STATUS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_SPEED_LIMIT_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_AP_PROPERTY);
@@ -5765,6 +5858,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(TOUPTEK_MERIDIAN_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(TOUPTEK_MERIDIAN_PROPERTY, mount_touptek_meridian_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(TOUPTEK_MERIDIAN_LIMIT_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(TOUPTEK_MERIDIAN_LIMIT_PROPERTY, mount_touptek_meridian_limit_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(TOUPTEK_SPEED_LIMIT_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(TOUPTEK_SPEED_LIMIT_PROPERTY, mount_touptek_speed_limit_handler);
@@ -5893,6 +5989,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(ZWO_MAX_SLEW_SPEED_PROPERTY);
 	indigo_release_property(TOUPTEK_BUZZER_PROPERTY);
 	indigo_release_property(TOUPTEK_MERIDIAN_PROPERTY);
+	indigo_release_property(TOUPTEK_MERIDIAN_LIMIT_PROPERTY);
 	indigo_release_property(TOUPTEK_STATUS_PROPERTY);
 	indigo_release_property(TOUPTEK_SPEED_LIMIT_PROPERTY);
 	indigo_release_property(NYX_WIFI_AP_PROPERTY);
