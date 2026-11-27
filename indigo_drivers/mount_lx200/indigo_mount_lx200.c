@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300005B
+#define DRIVER_VERSION       0x0300005C
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -67,6 +67,8 @@
 #define TOUPTEK_PARK_START_TIMEOUT 5.0
 #define TOUPTEK_HOME_START_TIMEOUT 5.0
 #define TOUPTEK_UNPARK_CONFIRMATION_READS 10
+// The meridian and buzzer settings of a ToupTek SH20 are read on every this many status polls, about every 5 s at rest.
+#define TOUPTEK_SETTINGS_POLLS 5
 
 // A slew in progress stays BUSY over this many consecutive polls whose position readback failed, the next poll
 // retries; one more failure ends it ALERT.
@@ -464,6 +466,8 @@ typedef struct {
 	// The fault :GES# reported at the last poll, which refuses new motion; false while the status cannot be read, which
 	// is not a fault. The fault the client was last told about, and whether X_TOUPTEK_STATUS changed since it was published.
 	bool touptek_fault, touptek_fault_reported, touptek_status_changed;
+	// Status polls since the meridian and buzzer settings were last read.
+	int touptek_settings_polls;
 	char gemini_velocity;
 	int gemini_pulse_chunk, gemini_remaining_ns, gemini_remaining_we;
 	char gemini_direction_ns, gemini_direction_we;
@@ -1362,6 +1366,52 @@ static int touptek_read_speed_limit(indigo_device *device) {
 		return 0;
 	}
 	return -1;
+}
+
+// The slew rate of a ToupTek SH20 is the manual rate :GRV# reports, e.g. 1440.0#. GUIDE is :R1# 0.5x, CENTERING :R4# 4x,
+// FIND :R7# 60x and MAX :R9#, the speed limit X_TOUPTEK_SPEED_LIMIT shows (1440x, 720x at the limit 720). A rate set
+// otherwise, from the hand controller for example, selects the item nearest to it on a logarithmic scale; the preset of
+// that item is then sent again before the next manual motion. A reply that cannot be read leaves the selection as it
+// was and answers false. *changed tells whether the selection changed; the reply stays in the response buffer.
+static bool touptek_read_slew_rate(indigo_device *device, bool *changed) {
+	*changed = false;
+	if (!meade_command(device, ":GRV#")) {
+		return false;
+	}
+	char *end = NULL;
+	double rate = strtod(PRIVATE_DATA->response, &end);
+	if (end == PRIVATE_DATA->response || *end != 0 || !(rate > 0)) {
+		return false;
+	}
+	indigo_item *items[] = { MOUNT_SLEW_RATE_GUIDE_ITEM, MOUNT_SLEW_RATE_CENTERING_ITEM, MOUNT_SLEW_RATE_FIND_ITEM, MOUNT_SLEW_RATE_MAX_ITEM };
+	static const char codes[] = { 'g', 'c', 'm', 's' };
+	double presets[] = { 0.5, 4, 60, TOUPTEK_SPEED_LIMIT_720_ITEM->sw.value ? 720 : 1440 };
+	int nearest = 0;
+	for (int i = 1; i < 4; i++) {
+		if (fabs(log(rate / presets[i])) < fabs(log(rate / presets[nearest]))) {
+			nearest = i;
+		}
+	}
+	PRIVATE_DATA->lastSlewRate = fabs(rate - presets[nearest]) < 0.01 * presets[nearest] ? codes[nearest] : 0;
+	if (!items[nearest]->sw.value) {
+		indigo_set_switch(MOUNT_SLEW_RATE_PROPERTY, items[nearest], true);
+		*changed = true;
+	}
+	return true;
+}
+
+// The buzzer volume of a ToupTek SH20 as :GBz# reports it, an ASCII digit, 0 off, 1 low, 2 high. Answers true when
+// X_TOUPTEK_BUZZER changed. A BUSY switch holds a change requested meanwhile, which the reply must not replace.
+static bool touptek_read_buzzer(indigo_device *device) {
+	if (!meade_command(device, ":GBz#") || *PRIVATE_DATA->response < '0' || *PRIVATE_DATA->response > '2') {
+		return false;
+	}
+	indigo_item *item = TOUPTEK_BUZZER_PROPERTY->items + (*PRIVATE_DATA->response - '0');
+	if (item->sw.value || TOUPTEK_BUZZER_PROPERTY->state == INDIGO_BUSY_STATE) {
+		return false;
+	}
+	indigo_set_switch(TOUPTEK_BUZZER_PROPERTY, item, true);
+	return true;
 }
 
 // Manual motion of a ToupTek SH20 reads the speed limit before it starts, as the manual movement procedure of the protocol
@@ -3482,18 +3532,13 @@ static void meade_init_touptek_mount(indigo_device *device) {
 			TOUPTEK_MERIDIAN_PROPERTY->hidden = false;
 		}
 	}
-	// The buzzer volume as an ASCII digit, 0 off, 1 low, 2 high.
-	if (meade_command(device, ":GBz#")) {
-		if (*PRIVATE_DATA->response == '0') {
-			indigo_set_switch(TOUPTEK_BUZZER_PROPERTY, TOUPTEK_BUZZER_OFF_ITEM, true);
-		} else if (*PRIVATE_DATA->response == '1') {
-			indigo_set_switch(TOUPTEK_BUZZER_PROPERTY, TOUPTEK_BUZZER_LOW_ITEM, true);
-		} else if (*PRIVATE_DATA->response == '2') {
-			indigo_set_switch(TOUPTEK_BUZZER_PROPERTY, TOUPTEK_BUZZER_HIGH_ITEM, true);
-		}
-	}
+	touptek_read_buzzer(device);
 	// The speed limit, 720 or 1440 times sidereal; 0# is a configuration the mount does not know.
 	TOUPTEK_SPEED_LIMIT_PROPERTY->state = touptek_read_speed_limit(device) == 0 ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+	// The slew rate the mount applies, which the MAX preset relates to the speed limit read above.
+	bool changed;
+	touptek_read_slew_rate(device, &changed);
+	PRIVATE_DATA->touptek_settings_polls = 0;
 }
 
 // :GES# answers ten digits (ATLAS SH20 Developer Protocol V1.3): the brake 0/1, the altitude limits 0/1, a motor error
@@ -3622,6 +3667,24 @@ static void meade_update_touptek_state(indigo_device *device) {
 		}
 	}
 	touptek_update_status(device);
+	// The meridian and buzzer settings can change on the hand controller. They are read on every TOUPTEK_SETTINGS_POLLS-th
+	// poll, which keeps the poll short, and published only when they changed. The count starts at connect, whose own
+	// poll comes before the properties are defined, so it never reads them. A change a client requests is copied into the
+	// property, which stays BUSY until its handler, queued behind this poll, has sent it, so a BUSY property is neither
+	// read nor, when the request came while the mount was being read, overwritten with the setting it replaces.
+	if (++PRIVATE_DATA->touptek_settings_polls >= TOUPTEK_SETTINGS_POLLS) {
+		PRIVATE_DATA->touptek_settings_polls = 0;
+		bool flip, resume;
+		int offset;
+		if (!TOUPTEK_MERIDIAN_PROPERTY->hidden && TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE && zwo_get_meridian(device, &flip, &resume, &offset) && TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE && (TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value != flip || TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value != resume)) {
+			TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
+			TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value = resume;
+			indigo_update_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+		}
+		if (TOUPTEK_BUZZER_PROPERTY->state != INDIGO_BUSY_STATE && touptek_read_buzzer(device)) {
+			indigo_update_property(device, TOUPTEK_BUZZER_PROPERTY, NULL);
+		}
+	}
 }
 
 static void meade_init_nyx_mount(indigo_device *device) {
@@ -4807,10 +4870,14 @@ static void mount_touptek_speed_limit_handler(indigo_device *device) {
 		TOUPTEK_SPEED_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (stopped) {
 		// The preset in use is not remapped to the new limit, :R9# means 720x or 1440x now, so it is selected again
-		// and the rate the mount applies is read back.
+		// and the rate the mount applies is read back, which MOUNT_SLEW_RATE follows.
 		PRIVATE_DATA->lastSlewRate = 0;
-		if (meade_set_slew_rate(device) && meade_command(device, ":GRV#")) {
+		bool changed = false;
+		if (meade_set_slew_rate(device) && touptek_read_slew_rate(device, &changed)) {
 			indigo_send_message(device, OK_PROPERTY, "Speed limit %dx, manual rate %sx", limit, PRIVATE_DATA->response);
+		}
+		if (changed) {
+			indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
 		}
 	}
 	//- mount.TOUPTEK_SPEED_LIMIT.on_change

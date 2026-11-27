@@ -6237,6 +6237,196 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The slew rate item that is selected alone, with the property OK.
+static bool touptek_slew_rate_is(const char *expected) {
+	static const char *items[] = { MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME };
+	indigo_property *property = find_cached_property(MOUNT_SLEW_RATE_PROPERTY_NAME);
+	if (property == NULL || property->state != INDIGO_OK_STATE) {
+		fprintf(stderr, "%s is missing or not OK\n", MOUNT_SLEW_RATE_PROPERTY_NAME);
+		return false;
+	}
+	for (int i = 0; i < ARRAY_SIZE(items); i++) {
+		if (cached_switch_value(MOUNT_SLEW_RATE_PROPERTY_NAME, items[i]) != !strcmp(items[i], expected)) {
+			fprintf(stderr, "%s.%s is %s, %s expected\n", MOUNT_SLEW_RATE_PROPERTY_NAME, items[i], cached_switch_value(MOUNT_SLEW_RATE_PROPERTY_NAME, items[i]) ? "ON" : "OFF", expected);
+			return false;
+		}
+	}
+	return true;
+}
+
+// The hand controller sets the manual rate while the driver is disconnected; the next connect reads it.
+static bool touptek_reconnect_at_rate(external_serial_simulator *simulator, const char *rate) {
+	char control[64];
+	snprintf(control, sizeof(control), "touptek-manual-rate %s", rate);
+	disconnect_serial_device(&lx200_mount);
+	return send_control(simulator, control) && connect_serial_device(&lx200_mount, simulator->port);
+}
+
+// MOUNT_SLEW_RATE is read from the mount at connect, :GRV# after :GRl#: each preset rate the driver sends, :R1# 0.5x,
+// :R4# 4x, :R7# 60x and :R9# 1440x at the speed limit 1440, selects its item, as on the hardware that answered 1440.0#
+// while the driver showed GUIDE. A rate the mount is on needs no preset before the next manual motion.
+static void lx200_touptek_slew_rate_read_at_connect(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	double limit_time = 0, rate_time = 0;
+	SERIAL_CHECK_TRUE(first_event_time(&simulator, "GRl", &limit_time));
+	SERIAL_CHECK_TRUE(first_event_time(&simulator, "GRV", &rate_time));
+	SERIAL_CHECK_TRUE(limit_time < rate_time);
+	// The simulator starts at 60x.
+	SERIAL_CHECK_TRUE(touptek_slew_rate_is(MOUNT_SLEW_RATE_FIND_ITEM_NAME));
+	const char *rates[] = { "0.5", "4", "60", "1440" };
+	const char *items[] = { MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME };
+	const char *presets[] = { "R1", "R4", "R7", "R9" };
+	for (int i = 0; i < ARRAY_SIZE(rates); i++) {
+		SERIAL_CHECK_TRUE(touptek_reconnect_at_rate(&simulator, rates[i]));
+		SERIAL_CHECK_TRUE(touptek_slew_rate_is(items[i]));
+		int sent = event_count(&simulator, presets[i], NULL), starts = event_count(&simulator, "Me", NULL);
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, "Me", starts));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false, INDIGO_OK_STATE));
+		SERIAL_CHECK_EQ_INT(sent, settled_event_count(&simulator, presets[i]));
+	}
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A rate that matches no preset, set on the hand controller, selects the nearest item on a logarithmic scale: 8x is
+// CENTERING (4x), 20x FIND (60x), 1x GUIDE (0.5x) and 400x MAX (1440x). Before the next manual motion the preset of that
+// item is sent, so the mount moves at the rate the property shows. A :GRV# reply that cannot be read leaves the
+// selection.
+static void lx200_touptek_unmatched_slew_rate_selects_the_nearest(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	const char *rates[] = { "8", "20", "1", "400" };
+	const char *items[] = { MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME };
+	const char *presets[] = { "R4", "R7", "R1", "R9" };
+	for (int i = 0; i < ARRAY_SIZE(rates); i++) {
+		SERIAL_CHECK_TRUE(touptek_reconnect_at_rate(&simulator, rates[i]));
+		SERIAL_CHECK_TRUE(touptek_slew_rate_is(items[i]));
+		int sent = event_count(&simulator, presets[i], NULL), starts = event_count(&simulator, "Me", NULL);
+		double preset_time = 0, start_time = 0;
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, "Me", starts));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false, INDIGO_OK_STATE));
+		SERIAL_CHECK_EQ_INT(sent + 1, event_count(&simulator, presets[i], &preset_time));
+		event_count(&simulator, "Me", &start_time);
+		SERIAL_CHECK_TRUE(preset_time < start_time);
+	}
+	// MAX stays selected over a reconnect whose :GRV# cannot be read.
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GRV", "fast#"));
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(touptek_slew_rate_is(MOUNT_SLEW_RATE_MAX_ITEM_NAME));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// At the speed limit 720 the MAX preset :R9# is 720x: 720x selects MAX at connect, and so does 250x, which is FIND at the
+// limit 1440. The speed limit change selects the preset again and MOUNT_SLEW_RATE follows the rate :GRV# reports then.
+static void lx200_touptek_slew_rate_at_speed_limit_720(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(touptek_reconnect_at_rate(&simulator, "720"));
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", true);
+	SERIAL_CHECK_TRUE(touptek_slew_rate_is(MOUNT_SLEW_RATE_MAX_ITEM_NAME));
+	int sent = event_count(&simulator, "R9", NULL), starts = event_count(&simulator, "Me", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Me", starts));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(sent, settled_event_count(&simulator, "R9"));
+	SERIAL_CHECK_TRUE(touptek_reconnect_at_rate(&simulator, "250"));
+	SERIAL_CHECK_TRUE(touptek_slew_rate_is(MOUNT_SLEW_RATE_MAX_ITEM_NAME));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_SPEED_LIMIT", "LIMIT_1440", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(touptek_reconnect_at_rate(&simulator, "250"));
+	SERIAL_CHECK_TRUE(touptek_slew_rate_is(MOUNT_SLEW_RATE_FIND_ITEM_NAME));
+	// A rate the mount reports after the limit change other than the preset the driver selected again is followed.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GRV", "1440.0#"));
+	unsigned int revision = property_revision(MOUNT_SLEW_RATE_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(property_revision(MOUNT_SLEW_RATE_PROPERTY_NAME) != revision);
+	SERIAL_CHECK_TRUE(touptek_slew_rate_is(MOUNT_SLEW_RATE_MAX_ITEM_NAME));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// X_TOUPTEK_MERIDIAN (:GTa#) and X_TOUPTEK_BUZZER (:GBz#) changed on the hand controller appear on the status poll, which
+// reads them on fewer polls than the position and publishes them only when they changed.
+static void lx200_touptek_hand_controller_settings_appear_on_the_poll(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(!cached_switch_value("X_TOUPTEK_MERIDIAN", "AUTO_FLIP"));
+	SERIAL_CHECK_TRUE(!cached_switch_value("X_TOUPTEK_MERIDIAN", "RESUME_TRACKING"));
+	assert_switch_item_value("X_TOUPTEK_BUZZER", "OFF", true);
+	unsigned int meridian = property_revision("X_TOUPTEK_MERIDIAN"), buzzer = property_revision("X_TOUPTEK_BUZZER");
+	int polls = event_count(&simulator, "GR", NULL), meridian_reads = event_count(&simulator, "GTa", NULL), buzzer_reads = event_count(&simulator, "GBz", NULL);
+	// Unchanged settings are read and not published.
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 6));
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GTa", NULL) > meridian_reads);
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GBz", NULL) > buzzer_reads);
+	SERIAL_CHECK_EQ_INT(meridian, property_revision("X_TOUPTEK_MERIDIAN"));
+	SERIAL_CHECK_EQ_INT(buzzer, property_revision("X_TOUPTEK_BUZZER"));
+	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-meridian 11"));
+	SERIAL_CHECK_TRUE(wait_for_switch_value("X_TOUPTEK_MERIDIAN", "AUTO_FLIP", true));
+	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "RESUME_TRACKING"));
+	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-buzzer 2"));
+	SERIAL_CHECK_TRUE(wait_for_switch_value("X_TOUPTEK_BUZZER", "HIGH", true));
+	assert_switch_item_value("X_TOUPTEK_BUZZER", "OFF", false);
+	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-meridian 01"));
+	SERIAL_CHECK_TRUE(wait_for_switch_value("X_TOUPTEK_MERIDIAN", "AUTO_FLIP", false));
+	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "RESUME_TRACKING"));
+	// Read on fewer polls than the position.
+	int position_reads = event_count(&simulator, "GR", NULL) - polls;
+	meridian_reads = event_count(&simulator, "GTa", NULL) - meridian_reads;
+	buzzer_reads = event_count(&simulator, "GBz", NULL) - buzzer_reads;
+	SERIAL_CHECK_TRUE(meridian_reads > 0 && meridian_reads * 2 < position_reads);
+	SERIAL_CHECK_TRUE(buzzer_reads > 0 && buzzer_reads * 2 < position_reads);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A buzzer change requested while the settings poll is under way is not reverted by it: the poll is held at :GTa#, which
+// gets no reply, and the change is requested meanwhile. X_TOUPTEK_BUZZER is then BUSY with the request, so the poll skips
+// :GBz# instead of reading the old volume over it; the request is sent to the mount, read back and kept.
+static void lx200_touptek_settings_poll_keeps_a_pending_change(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	assert_switch_item_value("X_TOUPTEK_BUZZER", "OFF", true);
+	int meridian_reads = event_count(&simulator, "GTa", NULL);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GTa", "DROP"));
+	// The settings poll comes on every fifth poll, so the wait is longer than wait_event() allows.
+	for (int i = 0; i < 1000 && event_count(&simulator, "GTa", NULL) <= meridian_reads; i++) {
+		indigo_usleep(10000);
+	}
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GTa", NULL) > meridian_reads);
+	int buzzer_reads = event_count(&simulator, "GBz", NULL);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_BUZZER", "HIGH", true, INDIGO_OK_STATE));
+	// :GBz# after the request is the read-back of the change handler; the poll skipped it while the request was BUSY.
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GBz", NULL) > buzzer_reads);
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "SBz2", NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "SBz0", NULL));
+	assert_switch_item_value("X_TOUPTEK_BUZZER", "HIGH", true);
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 6));
+	assert_switch_item_value("X_TOUPTEK_BUZZER", "HIGH", true);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // The OK publication of an accepted sync carries the position the mount reports after it, not the one from before the
 // sync: a client such as the Mount Agent compares it with its request. Every profile reads it the way its poll does
 // (:GR#/:GD# with the profile's formats, :GRH#/:GDH# for NYX, the Gemini double precision) after its own sync command
@@ -6360,6 +6550,11 @@ int main(int argc, char **argv) {
 		{ "lx200_touptek_guiding_refused_while_faulted", lx200_touptek_guiding_refused_while_faulted },
 		{ "lx200_touptek_speed_limit", lx200_touptek_speed_limit },
 		{ "lx200_touptek_unknown_speed_limit_refuses_manual_motion", lx200_touptek_unknown_speed_limit_refuses_manual_motion },
+		{ "lx200_touptek_slew_rate_read_at_connect", lx200_touptek_slew_rate_read_at_connect },
+		{ "lx200_touptek_unmatched_slew_rate_selects_the_nearest", lx200_touptek_unmatched_slew_rate_selects_the_nearest },
+		{ "lx200_touptek_slew_rate_at_speed_limit_720", lx200_touptek_slew_rate_at_speed_limit_720 },
+		{ "lx200_touptek_hand_controller_settings_appear_on_the_poll", lx200_touptek_hand_controller_settings_appear_on_the_poll },
+		{ "lx200_touptek_settings_poll_keeps_a_pending_change", lx200_touptek_settings_poll_keeps_a_pending_change },
 		{ "lx200_zwo_meridian_slew_speed_and_alignment", lx200_zwo_meridian_slew_speed_and_alignment },
 		{ "lx200_zwo_old_firmware", lx200_zwo_old_firmware },
 		{ "lx200_zwo_park_goes_home_first", lx200_zwo_park_goes_home_first },
