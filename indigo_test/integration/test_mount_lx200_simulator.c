@@ -5626,7 +5626,7 @@ static void lx200_touptek_connect_publishes_the_device_state(void) {
 	SERIAL_CHECK_TRUE(event_count(&simulator, "GPS", NULL) > 0);
 	SERIAL_CHECK_TRUE(event_count(&simulator, "GTS", NULL) > 0);
 	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
-	static const char *foreign[] = { "GVN", "GVF", "GW", "U", "P", "Gps", "Spu", "hP", "hC", "GAT", "GBu", "GRl", "GH", "Rg0.3", "D", "GXI", "MFH" };
+	static const char *foreign[] = { "GVN", "GVF", "GW", "U", "P", "Gps", "Spu", "hP", "hC", "GAT", "GBu", "GH", "Rg0.3", "D", "GXI", "MFH" };
 	for (int i = 0; i < ARRAY_SIZE(foreign); i++) {
 		if (event_count(&simulator, foreign[i], NULL) != 0) {
 			fprintf(stderr, "Unexpected command %s for the ToupTek SH20\n", foreign[i]);
@@ -6051,6 +6051,192 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// X_TOUPTEK_STATUS shows the fields of :GES#. One fault for each field the protocol names (a motor error, a protection
+// that acts or keeps the mount locked, an incomplete initialization) turns it ALERT with an alert message, and its end
+// turns it OK with a message. While the fault is present goto, manual motion, park and home are refused without a motion
+// command, and an unreadable :GES# is unknown: no message, neither the end of the fault nor a new one.
+static void lx200_touptek_status_and_fault_refusals(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GES", NULL) > 0);
+	SERIAL_CHECK_TRUE(wait_for_property_state("X_TOUPTEK_STATUS", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item("X_TOUPTEK_STATUS", "MOTOR_ERROR")->text.value, "Absent"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item("X_TOUPTEK_STATUS", "PROTECTION")->text.value, "Clear"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item("X_TOUPTEK_STATUS", "INITIALIZATION")->text.value, "Complete"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item("X_TOUPTEK_STATUS", "BRAKE")->text.value, "Off"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item("X_TOUPTEK_STATUS", "AUTO_FLIP")->text.value, "Disabled"));
+	// Away from home, so that the home request is not refused as already done.
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	static const char *faults[] = { "motor", "protection-acting", "protection-locked", "uninitialized" };
+	static const char *items[] = { "MOTOR_ERROR", "PROTECTION", "PROTECTION", "INITIALIZATION" };
+	static const char *values[] = { "Present", "Acting", "Locked", "Incomplete" };
+	for (int i = 0; i < ARRAY_SIZE(faults); i++) {
+		char control[64];
+		snprintf(control, sizeof(control), "touptek-fault %s", faults[i]);
+		*lx_last_message = 0;
+		SERIAL_CHECK_TRUE(send_control(&simulator, control));
+		SERIAL_CHECK_TRUE(wait_for_property_state("X_TOUPTEK_STATUS", INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(!strcmp(find_cached_item("X_TOUPTEK_STATUS", items[i])->text.value, values[i]));
+		SERIAL_CHECK_TRUE(strstr(lx_last_message, "reports a fault") != NULL);
+		int motions = motion_command_count(&simulator);
+		int parks = event_count(&simulator, "MP1", NULL), homes = event_count(&simulator, "MH", NULL);
+		*lx_last_message = 0;
+		SERIAL_CHECK_TRUE(lx_coordinates(9, 10, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(strstr(lx_last_message, "Motion refused") != NULL);
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+		assert_switch_item_value(MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false);
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, true, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_ALERT_STATE));
+		assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_ALERT_STATE));
+		SERIAL_CHECK_EQ_INT(motions, motion_command_count(&simulator));
+		SERIAL_CHECK_EQ_INT(parks, settled_event_count(&simulator, "MP1"));
+		SERIAL_CHECK_EQ_INT(homes, settled_event_count(&simulator, "MH"));
+		if (i == 0) {
+			// An unreadable status is unknown: the property goes IDLE, nothing is said, and the fault read next is the
+			// same one, not a new one.
+			*lx_last_message = 0;
+			SERIAL_CHECK_TRUE(inject_reply(&simulator, "GES", "DROP"));
+			SERIAL_CHECK_TRUE(wait_for_property_state("X_TOUPTEK_STATUS", INDIGO_IDLE_STATE));
+			SERIAL_CHECK_TRUE(wait_for_property_state("X_TOUPTEK_STATUS", INDIGO_ALERT_STATE));
+			SERIAL_CHECK_TRUE(strstr(lx_last_message, "cleared") == NULL);
+			SERIAL_CHECK_TRUE(strstr(lx_last_message, "reports a fault") == NULL);
+		}
+		*lx_last_message = 0;
+		SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-fault clear"));
+		SERIAL_CHECK_TRUE(wait_for_property_state("X_TOUPTEK_STATUS", INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(strstr(lx_last_message, "cleared") != NULL);
+		SERIAL_CHECK_TRUE(!strcmp(find_cached_item("X_TOUPTEK_STATUS", items[i])->text.value, i == 0 ? "Absent" : i < 3 ? "Clear" : "Complete"));
+	}
+	// Without the fault the goto is taken again.
+	SERIAL_CHECK_TRUE(lx_coordinates(9, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Guide pulses are refused while :GES# reports a fault, without a :Mg command, and sent again once it is resolved.
+static void lx200_touptek_guiding_refused_while_faulted(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "touptek", NULL));
+	online = true;
+	*lx_last_message = 0;
+	// Only the guider is connected, nothing polls the mount: the pulse reads the status itself.
+	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-fault motor"));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, 100, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(0, settled_event_count(&simulator, "Mgn0100"));
+	SERIAL_CHECK_EQ_INT(0, settled_event_count(&simulator, "Mge0100"));
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GES", NULL) >= 2);
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "Motion refused") != NULL);
+	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-fault clear"));
+	unsigned int revision = property_revision(GUIDER_GUIDE_DEC_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_guider, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Mgn0100", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GUIDER_GUIDE_DEC_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+// X_TOUPTEK_SPEED_LIMIT is read with :GRl# at connect and changed with :SRl720# or :SRl1440# while the mount stands with
+// tracking off; the limit is read back, the slew rate preset is selected again, since :R9# means the limit, and :GRV#
+// reports the rate the mount applies. A limit the mount refuses, tracking and manual motion end ALERT with the limit the
+// mount keeps, without :SRl.
+static void lx200_touptek_speed_limit(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GRl", NULL) > 0);
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_1440", true);
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", false);
+	SERIAL_CHECK_TRUE(find_cached_property("X_TOUPTEK_SPEED_LIMIT")->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true, INDIGO_OK_STATE));
+	const char *items[] = { "LIMIT_720", "LIMIT_1440" };
+	const char *commands[] = { "SRl720", "SRl1440" };
+	const char *rates[] = { "manual rate 720.0x", "manual rate 1440.0x" };
+	for (int i = 0; i < 2; i++) {
+		int presets = event_count(&simulator, "R9", NULL), readbacks = event_count(&simulator, "GRl", NULL);
+		*lx_last_message = 0;
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_SPEED_LIMIT", items[i], true, INDIGO_OK_STATE));
+		assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", items[i], true);
+		SERIAL_CHECK_TRUE(strstr(lx_last_message, rates[i]) != NULL);
+		double set_time = 0, readback_time = 0, preset_time = 0, rate_time = 0;
+		SERIAL_CHECK_EQ_INT(1, event_count(&simulator, commands[i], &set_time));
+		SERIAL_CHECK_EQ_INT(readbacks + 1, event_count(&simulator, "GRl", &readback_time));
+		SERIAL_CHECK_EQ_INT(presets + 1, event_count(&simulator, "R9", &preset_time));
+		event_count(&simulator, "GRV", &rate_time);
+		SERIAL_CHECK_TRUE(set_time < readback_time && readback_time < preset_time && preset_time < rate_time);
+	}
+	// A limit the mount refuses ends ALERT with the one it keeps.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SRl720", "0#"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", true, INDIGO_ALERT_STATE));
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_1440", true);
+	// Not while tracking.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	int sets = event_count(&simulator, "SRl720", NULL);
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "tracking off") != NULL);
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_1440", true);
+	SERIAL_CHECK_EQ_INT(sets, settled_event_count(&simulator, "SRl720"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_OK_STATE));
+	// Not while the mount moves.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", true, INDIGO_ALERT_STATE));
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_1440", true);
+	SERIAL_CHECK_EQ_INT(sets, settled_event_count(&simulator, "SRl720"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false, INDIGO_OK_STATE));
+	// Stopped with tracking off it is taken again.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(sets + 1, settled_event_count(&simulator, "SRl720"));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// :GRl# 0# is a configuration the mount does not know, in which the protocol says not to start manual motion: it is
+// refused without :Me#, the speed limit selects neither item and is ALERT, also after a reconnect, until a limit is set.
+static void lx200_touptek_unknown_speed_limit_refuses_manual_motion(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-speed-limit-unknown"));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	int starts = event_count(&simulator, "Me", NULL);
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "unknown speed limit") != NULL);
+	SERIAL_CHECK_EQ_INT(starts, settled_event_count(&simulator, "Me"));
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", false);
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_1440", false);
+	SERIAL_CHECK_TRUE(find_cached_property("X_TOUPTEK_SPEED_LIMIT")->state == INDIGO_ALERT_STATE);
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_720", false);
+	assert_switch_item_value("X_TOUPTEK_SPEED_LIMIT", "LIMIT_1440", false);
+	SERIAL_CHECK_TRUE(find_cached_property("X_TOUPTEK_SPEED_LIMIT")->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_SPEED_LIMIT", "LIMIT_1440", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Me", starts));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, false, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // The OK publication of an accepted sync carries the position the mount reports after it, not the one from before the
 // sync: a client such as the Mount Agent compares it with its request. Every profile reads it the way its poll does
 // (:GR#/:GD# with the profile's formats, :GRH#/:GDH# for NYX, the Gemini double precision) after its own sync command
@@ -6170,6 +6356,10 @@ int main(int argc, char **argv) {
 		{ "lx200_touptek_side_of_pier_and_altaz_mode", lx200_touptek_side_of_pier_and_altaz_mode },
 		{ "lx200_touptek_bootloader_is_refused", lx200_touptek_bootloader_is_refused },
 		{ "lx200_touptek_guider_pulses_and_timing", lx200_touptek_guider_pulses_and_timing },
+		{ "lx200_touptek_status_and_fault_refusals", lx200_touptek_status_and_fault_refusals },
+		{ "lx200_touptek_guiding_refused_while_faulted", lx200_touptek_guiding_refused_while_faulted },
+		{ "lx200_touptek_speed_limit", lx200_touptek_speed_limit },
+		{ "lx200_touptek_unknown_speed_limit_refuses_manual_motion", lx200_touptek_unknown_speed_limit_refuses_manual_motion },
 		{ "lx200_zwo_meridian_slew_speed_and_alignment", lx200_zwo_meridian_slew_speed_and_alignment },
 		{ "lx200_zwo_old_firmware", lx200_zwo_old_firmware },
 		{ "lx200_zwo_park_goes_home_first", lx200_zwo_park_goes_home_first },

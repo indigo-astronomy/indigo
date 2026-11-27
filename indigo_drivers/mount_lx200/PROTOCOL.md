@@ -660,7 +660,8 @@ passes such a code to the client. ✓ marks the commands the driver sends.
 | Goto and sync in one command | `:SMeqHH:MM:SS&sDD*MM:SS#`, `:SMMCHH:MM:SS&sDD*MM:SS#` → `1#` / `0#` | V1.3; not sent by the driver. |
 | Stop | `:Q#` ✓, `:Qn#` `:Qs#` `:Qe#` `:Qw#` ✓ → ∅ | |
 | Move | `:Mn#` `:Ms#` `:Me#` `:Mw#` ✓ → ∅ | |
-| Rate | `:Rn#` → ∅, n 0 … 9: 0.25x, 0.5x, 1x, 2x, 4x, 8x, 20x, 60x, 720x, 1440x | The driver sends `:R1#`, `:R4#`, `:R7#`, `:R9#` ✓ as for the ZWO AM. |
+| Rate | `:Rn#` → ∅, n 0 … 9: 0.25x, 0.5x, 1x, 2x, 4x, 8x, 20x, 60x, 720x, 1440x at the speed limit 1440, 360x and 720x for 8 and 9 at the limit 720; `:GRV#` ✓ → applied rate, e.g. `60.0#` | The driver sends `:R1#`, `:R4#`, `:R7#`, `:R9#` ✓ as for the ZWO AM. A preset keeps its rate when the limit changes, so the driver selects it again after a change and reads `:GRV#`. `:RVnnnn.nn#` is not sent. |
+| Speed limit | `:SRl720#` ✓ / `:SRl1440#` ✓ → `1#` / `0#`; `:GRl#` ✓ → `720#`, `1440#`, `0#` unknown configuration | The limit also limits goto, park and home. The driver changes it only while `:GTS#` is `0#`, `:GU#` has `N` and no manual motion runs, then reads `:GRl#`. It reads `:GRl#` at connect and before every manual motion and does not start one at `0#`. |
 | Tracking | `:Te#` ✓ / `:Td#` ✓ → `1#` / `0#`; `:GTS#` ✓ → `1#` / `0#` | |
 | Tracking rate | `:TQ#` ✓ sidereal, `:TL#` ✓ lunar, `:TS#` ✓ solar → ∅; `:GT#` ✓ → `0#` / `1#` / `2#` | ASCII digits; the INDI driver reads them as binary. |
 | Guiding | `:MgnDDDD#` `:MgsDDDD#` `:MgeDDDD#` `:MgwDDDD#` ✓ → ∅ | 0 to 3000 ms. |
@@ -669,13 +670,14 @@ passes such a code to the client. ✓ marks the commands the driver sends.
 | Park position | `:SPc#` ✓ → `1#` | Stores the current position. |
 | Home | `:MH#` ✓ goto home → ∅; `:GHS#` ✓ → `0#` not at home, `2#` at home, `1#` `3#` `4#` `5#` busy | The home slew ends at `2#`; `0#` after a busy state is a failure. `:MFH#` (home search) is not in V1.3 and is not sent. |
 | Status | `:GU#` ✓ → five characters: `n`/`0` tracking off/on, `N`/`0` no slew/slew, `H` at home, `G` equatorial, `Z` alt-az | TMount reads a missing `N` as a slew. |
+| Detailed status | `:GES#` ✓ → ten digits: brake 0/1, altitude limits 0/1, motor error 0/1, protection 0 clear / 1 acting / 2 ended but locked, initialization 0 incomplete / 1 complete, automatic flip 0 standby / 1 waiting / 2 ready / 3 moving / 4 disabled, system code `0000` none, `0003` parking or parked, `0004` home, `0005` goto, `0006` guiding, `0020` fault | Read with every status poll and before every guide pulse. A motor error, an acting or locked protection and an incomplete initialization are a fault, which refuses goto, manual motion, park, home and guiding until it is resolved; any other reply is an unknown state, not a fault. |
 | Side of pier | `:Gm#` ✓ → `0#` east, `1#` west | Equatorial mode only. |
 | Mode | `:AP#` equatorial, `:AA#` alt-az → `1#`; `:GEM#` → `1#` equatorial, `0#` alt-az | V1.3: the change stops motion and tracking, `:AP#` sets the upper altitude limit to 90°, `:AA#` to 87° and disables automatic flips. TMount documented a restart. The driver reads the mode from `:GU#` and does not set it. |
 | Meridian | `:STaab+00#` ✓ → `1#` / `0#`; `:GTa#` ✓ → `ab+00#` | Equatorial mode only. a automatic flip, b resume tracking after the flip; the offset is always `+00`. The command letters are the ZWO AM ones, the meaning of b and the fixed offset are not. |
 | Buzzer | `:SBzn#` ✓ → `1#`; `:GBz#` ✓ → `n#` | 0 off, 1 low, 2 high. The ZWO AM uses `:SBu`/`:GBu#`. |
 | Site | `:StsDD*MM:SS#` ✓, `:SgsDDD*MM:SS#` ✓ → `1#`; `:Gt#` ✓, `:Gg#` ✓ | Whole seconds; only target coordinates take decimals. Longitude signed, positive to the east, −180 … +180. |
 | Time | `:SGsHH:MM#` ✓, `:SCMM/DD/YY#` ✓, `:SLHH:MM:SS#` ✓ → `1#`; `:GG#` ✓, `:GC#` ✓, `:GL#` ✓ | The UTC offset has the standard sign (UTC+1 is `:SG+01:00#`), the opposite of Meade, in 15-minute steps; the driver sends whole hours. The driver sends the offset first. `:SDST0#`/`:GDST#` (device DST, to be kept off) are not sent. |
-| Not sent by the driver | V1.3: `:GES#` detailed status, `:RVnnnn.nn#`/`:GRV#` manual rate, `:SRl720#`/`:SRl1440#`/`:GRl#` speed limit, `:Sh`/`:Gh#`, `:So`/`:Go#`, `:SLE#`/`:SLD#`/`:GLC#` altitude limits, `:SasDD*MM:SS#`/`:SzDDD*MM:SS#`/`:MAz#`/`:Ga#`/`:Gz#` horizontal goto, `:Gr#`/`:Gd#` stored target, `:GS#`, `:GA#`, `:GZ#`, `:GmV#` input voltage. TMount only: `:TC`, `:NSC#`, wireless setup (`:GMINF#`, `:SMINF`, `:GBTN#`, `:SBTN`, `:RBTFN#`, `:EBINF`). | |
+| Not sent by the driver | V1.3: `:RVnnnn.nn#` manual rate, `:Sh`/`:Gh#`, `:So`/`:Go#`, `:SLE#`/`:SLD#`/`:GLC#` altitude limits, `:SasDD*MM:SS#`/`:SzDDD*MM:SS#`/`:MAz#`/`:Ga#`/`:Gz#` horizontal goto, `:Gr#`/`:Gd#` stored target, `:GS#`, `:GA#`, `:GZ#`, `:GmV#` input voltage. TMount only: `:TC`, `:NSC#`, wireless setup (`:GMINF#`, `:SMINF`, `:GBTN#`, `:SBTN`, `:RBTFN#`, `:EBINF`). | |
 
 ## Commands whose meaning depends on the dialect
 

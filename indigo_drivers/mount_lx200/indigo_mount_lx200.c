@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300005A
+#define DRIVER_VERSION       0x0300005B
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -258,6 +258,28 @@ typedef enum {
 #define TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM_NAME       "AUTO_FLIP"
 #define TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM_NAME "RESUME_TRACKING"
 
+#define TOUPTEK_STATUS_PROPERTY                 (PRIVATE_DATA->touptek_status_property)
+#define TOUPTEK_STATUS_MOTOR_ERROR_ITEM         (TOUPTEK_STATUS_PROPERTY->items + 0)
+#define TOUPTEK_STATUS_PROTECTION_ITEM          (TOUPTEK_STATUS_PROPERTY->items + 1)
+#define TOUPTEK_STATUS_INITIALIZATION_ITEM      (TOUPTEK_STATUS_PROPERTY->items + 2)
+#define TOUPTEK_STATUS_BRAKE_ITEM               (TOUPTEK_STATUS_PROPERTY->items + 3)
+#define TOUPTEK_STATUS_AUTO_FLIP_ITEM           (TOUPTEK_STATUS_PROPERTY->items + 4)
+
+#define TOUPTEK_STATUS_PROPERTY_NAME            "X_TOUPTEK_STATUS"
+#define TOUPTEK_STATUS_MOTOR_ERROR_ITEM_NAME    "MOTOR_ERROR"
+#define TOUPTEK_STATUS_PROTECTION_ITEM_NAME     "PROTECTION"
+#define TOUPTEK_STATUS_INITIALIZATION_ITEM_NAME "INITIALIZATION"
+#define TOUPTEK_STATUS_BRAKE_ITEM_NAME          "BRAKE"
+#define TOUPTEK_STATUS_AUTO_FLIP_ITEM_NAME      "AUTO_FLIP"
+
+#define TOUPTEK_SPEED_LIMIT_PROPERTY       (PRIVATE_DATA->touptek_speed_limit_property)
+#define TOUPTEK_SPEED_LIMIT_720_ITEM       (TOUPTEK_SPEED_LIMIT_PROPERTY->items + 0)
+#define TOUPTEK_SPEED_LIMIT_1440_ITEM      (TOUPTEK_SPEED_LIMIT_PROPERTY->items + 1)
+
+#define TOUPTEK_SPEED_LIMIT_PROPERTY_NAME  "X_TOUPTEK_SPEED_LIMIT"
+#define TOUPTEK_SPEED_LIMIT_720_ITEM_NAME  "LIMIT_720"
+#define TOUPTEK_SPEED_LIMIT_1440_ITEM_NAME "LIMIT_1440"
+
 #define NYX_WIFI_AP_PROPERTY           (PRIVATE_DATA->nyx_wifi_ap_property)
 #define NYX_WIFI_AP_SSID_ITEM          (NYX_WIFI_AP_PROPERTY->items + 0)
 #define NYX_WIFI_AP_PASSWORD_ITEM      (NYX_WIFI_AP_PROPERTY->items + 1)
@@ -370,6 +392,8 @@ typedef struct {
 	indigo_property *zwo_max_slew_speed_property;
 	indigo_property *touptek_buzzer_property;
 	indigo_property *touptek_meridian_property;
+	indigo_property *touptek_status_property;
+	indigo_property *touptek_speed_limit_property;
 	indigo_property *nyx_wifi_ap_property;
 	indigo_property *nyx_wifi_cl_property;
 	indigo_property *nyx_wifi_reset_property;
@@ -437,6 +461,9 @@ typedef struct {
 	// slew was seen busy is a failure.
 	bool touptek_home_pending, touptek_home_moved;
 	double touptek_home_deadline;
+	// The fault :GES# reported at the last poll, which refuses new motion; false while the status cannot be read, which
+	// is not a fault. The fault the client was last told about, and whether X_TOUPTEK_STATUS changed since it was published.
+	bool touptek_fault, touptek_fault_reported, touptek_status_changed;
 	char gemini_velocity;
 	int gemini_pulse_chunk, gemini_remaining_ns, gemini_remaining_we;
 	char gemini_direction_ns, gemini_direction_we;
@@ -574,6 +601,17 @@ static bool touptek_error_reply(indigo_device *device) {
 	if (indigo_uni_read_section2(PRIVATE_DATA->handle, code, sizeof(code) - 1, "#", "#", INDIGO_DELAY(0.5), INDIGO_DELAY(0.1)) > 0) {
 		indigo_send_message(device, ALERT_PROPERTY, "The mount refused the command (error e%d)", atoi(code));
 	}
+	return true;
+}
+
+// A ToupTek SH20 has to have a fault, an acting or locked protection or an incomplete initialization resolved before
+// it moves again (ATLAS SH20 Developer Protocol V1.3, :GES#), so goto, manual motion, park, home and guiding are refused
+// while the last poll read one. Answers true for a refusal.
+static bool touptek_motion_refused(indigo_device *device) {
+	if (!MOUNT_TYPE_TOUPTEK_ITEM->sw.value || !PRIVATE_DATA->touptek_fault) {
+		return false;
+	}
+	indigo_send_message(device, ALERT_PROPERTY, "Motion refused, the mount reports a fault that has to be resolved first");
 	return true;
 }
 
@@ -1308,7 +1346,50 @@ static bool meade_set_target(indigo_device *device, double ra, double dec) {
 	return true;
 }
 
+// The speed limit of a ToupTek SH20, :GRl# 720# or 1440#, which X_TOUPTEK_SPEED_LIMIT shows. 0# is a configuration the
+// mount does not know and selects neither item; -1 is a reply that cannot be read and leaves the switch as it was.
+static int touptek_read_speed_limit(indigo_device *device) {
+	if (!meade_command(device, ":GRl#")) {
+		return -1;
+	}
+	int limit = atoi(PRIVATE_DATA->response);
+	if (limit == 720 || limit == 1440) {
+		indigo_set_switch(TOUPTEK_SPEED_LIMIT_PROPERTY, limit == 720 ? TOUPTEK_SPEED_LIMIT_720_ITEM : TOUPTEK_SPEED_LIMIT_1440_ITEM, true);
+		return limit;
+	}
+	if (!strcmp(PRIVATE_DATA->response, "0")) {
+		TOUPTEK_SPEED_LIMIT_720_ITEM->sw.value = TOUPTEK_SPEED_LIMIT_1440_ITEM->sw.value = false;
+		return 0;
+	}
+	return -1;
+}
+
+// Manual motion of a ToupTek SH20 reads the speed limit before it starts, as the manual movement procedure of the protocol
+// does, and does not start at 0#, an unknown configuration. A fault refuses it as well. Answers true for a refusal.
+static bool touptek_manual_motion_refused(indigo_device *device) {
+	if (!MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
+		return false;
+	}
+	if (touptek_motion_refused(device)) {
+		return true;
+	}
+	bool low = TOUPTEK_SPEED_LIMIT_720_ITEM->sw.value, high = TOUPTEK_SPEED_LIMIT_1440_ITEM->sw.value;
+	int limit = touptek_read_speed_limit(device);
+	if (low != TOUPTEK_SPEED_LIMIT_720_ITEM->sw.value || high != TOUPTEK_SPEED_LIMIT_1440_ITEM->sw.value) {
+		TOUPTEK_SPEED_LIMIT_PROPERTY->state = limit == 0 ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+		indigo_update_property(device, TOUPTEK_SPEED_LIMIT_PROPERTY, NULL);
+	}
+	if (limit == 0) {
+		indigo_send_message(device, ALERT_PROPERTY, "Manual motion refused, the mount reports an unknown speed limit configuration");
+		return true;
+	}
+	return false;
+}
+
 static bool meade_slew(indigo_device *device, double ra, double dec) {
+	if (touptek_motion_refused(device)) {
+		return false;
+	}
 	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 		if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 			meade_set_tracking(device, true);
@@ -1930,6 +2011,9 @@ static bool meade_park(indigo_device *device) {
 		return zwo_park(device);
 	}
 	if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
+		if (touptek_motion_refused(device)) {
+			return false;
+		}
 		// :MP1# has no reply. The mount reports the park in :GPS#, 1 while it is on its way and 2
 		// once it is parked; a park that has not started within TOUPTEK_PARK_START_TIMEOUT is given
 		// up. See meade_update_touptek_state().
@@ -2051,6 +2135,9 @@ static bool meade_home(indigo_device *device) {
 		return meade_no_reply_command(device, ":hP#");
 	}
 	if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
+		if (touptek_motion_refused(device)) {
+			return false;
+		}
 		// The slew to the home position has no reply and ends when :GHS# reports 2. See
 		// meade_update_touptek_state().
 		PRIVATE_DATA->touptek_home_pending = true;
@@ -2189,8 +2276,14 @@ static bool gemini_guide(indigo_device *device, char direction, int duration, ch
 	return meade_no_reply_command(device, ":Mg%c%04d#", direction, duration);
 }
 
+static void touptek_update_status(indigo_device *device);
+
 static bool meade_guide_dec(indigo_device *device, int north, int south) {
-	if (PRIVATE_DATA->meade_park_silent) {
+	// The guider can be connected without the mount, whose poll reads the status, so a ToupTek SH20 reads it here.
+	if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
+		touptek_update_status(device);
+	}
+	if (PRIVATE_DATA->meade_park_silent || touptek_motion_refused(device)) {
 		return false;
 	}
 	if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
@@ -2218,7 +2311,11 @@ static bool meade_guide_dec(indigo_device *device, int north, int south) {
 }
 
 static bool meade_guide_ra(indigo_device *device, int west, int east) {
-	if (PRIVATE_DATA->meade_park_silent) {
+	// The guider can be connected without the mount, whose poll reads the status, so a ToupTek SH20 reads it here.
+	if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
+		touptek_update_status(device);
+	}
+	if (PRIVATE_DATA->meade_park_silent || touptek_motion_refused(device)) {
 		return false;
 	}
 	if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
@@ -3344,6 +3441,7 @@ static void meade_init_touptek_mount(indigo_device *device) {
 	MOUNT_PARK_SET_PROPERTY->hidden = false;
 	MOUNT_PARK_SET_PROPERTY->count = 1;
 	TOUPTEK_BUZZER_PROPERTY->hidden = false;
+	TOUPTEK_STATUS_PROPERTY->hidden = TOUPTEK_SPEED_LIMIT_PROPERTY->hidden = false;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "ToupTek");
 	strcpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 	if (meade_command(device, ":GVP#") && *PRIVATE_DATA->response) {
@@ -3392,6 +3490,51 @@ static void meade_init_touptek_mount(indigo_device *device) {
 			indigo_set_switch(TOUPTEK_BUZZER_PROPERTY, TOUPTEK_BUZZER_LOW_ITEM, true);
 		} else if (*PRIVATE_DATA->response == '2') {
 			indigo_set_switch(TOUPTEK_BUZZER_PROPERTY, TOUPTEK_BUZZER_HIGH_ITEM, true);
+		}
+	}
+	// The speed limit, 720 or 1440 times sidereal; 0# is a configuration the mount does not know.
+	TOUPTEK_SPEED_LIMIT_PROPERTY->state = touptek_read_speed_limit(device) == 0 ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+}
+
+// :GES# answers ten digits (ATLAS SH20 Developer Protocol V1.3): the brake 0/1, the altitude limits 0/1, a motor error
+// 0/1, the protection 0 clear, 1 acting, 2 ended but still locked, the initialization 0 incomplete, 1 complete, the
+// automatic flip 0 standby, 1 waiting, 2 ready, 3 moving, 4 disabled, and a four digit system code, which repeats the
+// highest priority condition. A motor error, an acting or locked protection and an incomplete initialization are a
+// fault; a reply that cannot be read is an unknown state, neither a fault nor its end.
+static void touptek_update_status(indigo_device *device) {
+	static const char *protection[] = { "Clear", "Acting", "Locked" };
+	static const char *flip[] = { "Standby", "Waiting", "Ready", "Moving", "Disabled" };
+	char *status = PRIVATE_DATA->response;
+	if (!meade_command(device, ":GES#") || strlen(status) != 10 || strspn(status, "0123456789") != 10 || status[0] > '1' || status[1] > '1' || status[2] > '1' || status[3] > '2' || status[4] > '1' || status[5] > '4') {
+		PRIVATE_DATA->touptek_fault = false;
+		if (TOUPTEK_STATUS_PROPERTY->state != INDIGO_IDLE_STATE) {
+			TOUPTEK_STATUS_PROPERTY->state = INDIGO_IDLE_STATE;
+			PRIVATE_DATA->touptek_status_changed = true;
+		}
+		return;
+	}
+	bool motor_error = status[2] == '1', initialized = status[4] == '1';
+	int protection_state = status[3] - '0';
+	const char *values[] = { motor_error ? "Present" : "Absent", protection[protection_state], initialized ? "Complete" : "Incomplete", status[0] == '1' ? "On" : "Off", flip[status[5] - '0'] };
+	for (int i = 0; i < TOUPTEK_STATUS_PROPERTY->count; i++) {
+		if (strcmp(TOUPTEK_STATUS_PROPERTY->items[i].text.value, values[i])) {
+			indigo_set_text_item_value(TOUPTEK_STATUS_PROPERTY->items + i, values[i]);
+			PRIVATE_DATA->touptek_status_changed = true;
+		}
+	}
+	bool fault = motor_error || protection_state != 0 || !initialized;
+	indigo_property_state state = fault ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+	if (TOUPTEK_STATUS_PROPERTY->state != state) {
+		TOUPTEK_STATUS_PROPERTY->state = state;
+		PRIVATE_DATA->touptek_status_changed = true;
+	}
+	PRIVATE_DATA->touptek_fault = fault;
+	if (fault != PRIVATE_DATA->touptek_fault_reported) {
+		PRIVATE_DATA->touptek_fault_reported = fault;
+		if (fault) {
+			indigo_send_message(device, ALERT_PROPERTY, "The mount reports a fault (motor error %s, protection %s, initialization %s), it has to be resolved before the mount moves again", values[0], values[1], values[2]);
+		} else {
+			indigo_send_message(device, OK_PROPERTY, "The mount fault is cleared");
 		}
 	}
 }
@@ -3478,6 +3621,7 @@ static void meade_update_touptek_state(indigo_device *device) {
 			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_IDLE_STATE;
 		}
 	}
+	touptek_update_status(device);
 }
 
 static void meade_init_nyx_mount(indigo_device *device) {
@@ -3894,8 +4038,11 @@ static void meade_init_mount(indigo_device *device) {
 	PRIVATE_DATA->gemini_remaining_ns = PRIVATE_DATA->gemini_remaining_we = 0;
 	GEMINI_PARK_POSITION_PROPERTY->hidden = true;
 	ZWO_MERIDIAN_PROPERTY->hidden = ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = true;
-	TOUPTEK_BUZZER_PROPERTY->hidden = TOUPTEK_MERIDIAN_PROPERTY->hidden = true;
+	TOUPTEK_BUZZER_PROPERTY->hidden = TOUPTEK_MERIDIAN_PROPERTY->hidden = TOUPTEK_STATUS_PROPERTY->hidden = TOUPTEK_SPEED_LIMIT_PROPERTY->hidden = true;
 	PRIVATE_DATA->touptek_park_pending = PRIVATE_DATA->touptek_home_pending = false;
+	// A fault of the previous session says nothing about this one; the status is unknown until it is read.
+	PRIVATE_DATA->touptek_fault = PRIVATE_DATA->touptek_fault_reported = PRIVATE_DATA->touptek_status_changed = false;
+	TOUPTEK_STATUS_PROPERTY->state = INDIGO_IDLE_STATE;
 	// Only the ZWO AM clears its own calibration, otherwise the reset is about the host side points.
 	MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
@@ -4076,6 +4223,10 @@ static void meade_update_mount_state(indigo_device *device) {
 		meade_update_esp32go_state(device);
 	} else if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
 		meade_update_touptek_state(device);
+		if (PRIVATE_DATA->touptek_status_changed) {
+			PRIVATE_DATA->touptek_status_changed = false;
+			indigo_update_property(device, TOUPTEK_STATUS_PROPERTY, NULL);
+		}
 	} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
 		meade_update_ap_state(device);
 	} else {
@@ -4403,6 +4554,8 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_define_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 			indigo_define_property(device, TOUPTEK_BUZZER_PROPERTY, NULL);
 			indigo_define_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+			indigo_define_property(device, TOUPTEK_STATUS_PROPERTY, NULL);
+			indigo_define_property(device, TOUPTEK_SPEED_LIMIT_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
@@ -4454,6 +4607,8 @@ static void mount_connection_handler(indigo_device *device) {
 			ZWO_MAX_SLEW_SPEED_PROPERTY,
 			TOUPTEK_BUZZER_PROPERTY,
 			TOUPTEK_MERIDIAN_PROPERTY,
+			TOUPTEK_STATUS_PROPERTY,
+			TOUPTEK_SPEED_LIMIT_PROPERTY,
 			NYX_WIFI_AP_PROPERTY,
 			NYX_WIFI_CL_PROPERTY,
 			NYX_WIFI_RESET_PROPERTY,
@@ -4501,6 +4656,8 @@ static void mount_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, TOUPTEK_BUZZER_PROPERTY, NULL);
 		indigo_delete_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+		indigo_delete_property(device, TOUPTEK_STATUS_PROPERTY, NULL);
+		indigo_delete_property(device, TOUPTEK_SPEED_LIMIT_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
@@ -4630,6 +4787,34 @@ static void mount_touptek_meridian_handler(indigo_device *device) {
 	}
 	//- mount.TOUPTEK_MERIDIAN.on_change
 	indigo_update_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
+}
+
+static void mount_touptek_speed_limit_handler(indigo_device *device) {
+	TOUPTEK_SPEED_LIMIT_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.TOUPTEK_SPEED_LIMIT.on_change
+	// The protocol changes the limit only while the mount stands with tracking off: :GTS# 0#, N in :GU# and no
+	// manual motion of the driver. The limit the mount keeps is read back either way.
+	int limit = TOUPTEK_SPEED_LIMIT_720_ITEM->sw.value ? 720 : 1440;
+	bool stopped = PRIVATE_DATA->lastMotionNS == 0 && PRIVATE_DATA->lastMotionWE == 0 && meade_command(device, ":GTS#") && !strcmp(PRIVATE_DATA->response, "0") && meade_command(device, ":GU#") && strchr(PRIVATE_DATA->response, 'N') != NULL;
+	if (!stopped) {
+		TOUPTEK_SPEED_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_send_message(device, ALERT_PROPERTY, "The speed limit can be changed only while the mount stands with tracking off");
+	} else if (!meade_simple_reply_command(device, ":SRl%d#", limit) || touptek_error_reply(device) || *PRIVATE_DATA->response != '1') {
+		TOUPTEK_SPEED_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	int kept = touptek_read_speed_limit(device);
+	if (kept != limit) {
+		TOUPTEK_SPEED_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (stopped) {
+		// The preset in use is not remapped to the new limit, :R9# means 720x or 1440x now, so it is selected again
+		// and the rate the mount applies is read back.
+		PRIVATE_DATA->lastSlewRate = 0;
+		if (meade_set_slew_rate(device) && meade_command(device, ":GRV#")) {
+			indigo_send_message(device, OK_PROPERTY, "Speed limit %dx, manual rate %sx", limit, PRIVATE_DATA->response);
+		}
+	}
+	//- mount.TOUPTEK_SPEED_LIMIT.on_change
+	indigo_update_property(device, TOUPTEK_SPEED_LIMIT_PROPERTY, NULL);
 }
 
 static void mount_nyx_wifi_ap_handler(indigo_device *device) {
@@ -5050,7 +5235,12 @@ static void mount_motion_dec_handler(indigo_device *device) {
 		indigo_mount_commit_motion_client(device, MOUNT_MOTION_DEC_PROPERTY);
 		return;
 	}
-	if (meade_set_slew_rate(device) && meade_motion_dec(device)) {
+	if ((MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value) && touptek_manual_motion_refused(device)) {
+		// A refused start still stops a motion of the axis that runs.
+		MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+		meade_motion_dec(device);
+		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (meade_set_slew_rate(device) && meade_motion_dec(device)) {
 		if (PRIVATE_DATA->lastMotionNS) {
 			PRIVATE_DATA->stopping = false;
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -5078,7 +5268,12 @@ static void mount_motion_ra_handler(indigo_device *device) {
 		indigo_mount_commit_motion_client(device, MOUNT_MOTION_RA_PROPERTY);
 		return;
 	}
-	if (meade_set_slew_rate(device) && meade_motion_ra(device)) {
+	if ((MOUNT_MOTION_WEST_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value) && touptek_manual_motion_refused(device)) {
+		// A refused start still stops a motion of the axis that runs.
+		MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
+		meade_motion_ra(device);
+		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (meade_set_slew_rate(device) && meade_motion_ra(device)) {
 		if (PRIVATE_DATA->lastMotionWE) {
 			PRIVATE_DATA->stopping = false;
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -5333,6 +5528,23 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM, TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM_NAME, "Flip automatically at the meridian", false);
 		indigo_init_switch_item(TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM, TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM_NAME, "Resume tracking after the flip", false);
 		TOUPTEK_MERIDIAN_PROPERTY->hidden = true;
+		TOUPTEK_STATUS_PROPERTY = indigo_init_text_property(NULL, device->name, TOUPTEK_STATUS_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Device status", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+		if (TOUPTEK_STATUS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_text_item(TOUPTEK_STATUS_MOTOR_ERROR_ITEM, TOUPTEK_STATUS_MOTOR_ERROR_ITEM_NAME, "Motor error", "");
+		indigo_init_text_item(TOUPTEK_STATUS_PROTECTION_ITEM, TOUPTEK_STATUS_PROTECTION_ITEM_NAME, "Protection", "");
+		indigo_init_text_item(TOUPTEK_STATUS_INITIALIZATION_ITEM, TOUPTEK_STATUS_INITIALIZATION_ITEM_NAME, "Initialization", "");
+		indigo_init_text_item(TOUPTEK_STATUS_BRAKE_ITEM, TOUPTEK_STATUS_BRAKE_ITEM_NAME, "Brake", "");
+		indigo_init_text_item(TOUPTEK_STATUS_AUTO_FLIP_ITEM, TOUPTEK_STATUS_AUTO_FLIP_ITEM_NAME, "Automatic flip", "");
+		TOUPTEK_STATUS_PROPERTY->hidden = true;
+		TOUPTEK_SPEED_LIMIT_PROPERTY = indigo_init_switch_property(NULL, device->name, TOUPTEK_SPEED_LIMIT_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Speed limit", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (TOUPTEK_SPEED_LIMIT_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(TOUPTEK_SPEED_LIMIT_720_ITEM, TOUPTEK_SPEED_LIMIT_720_ITEM_NAME, "720x sidereal", false);
+		indigo_init_switch_item(TOUPTEK_SPEED_LIMIT_1440_ITEM, TOUPTEK_SPEED_LIMIT_1440_ITEM_NAME, "1440x sidereal", false);
+		TOUPTEK_SPEED_LIMIT_PROPERTY->hidden = true;
 		NYX_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_AP_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "AP WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (NYX_WIFI_AP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -5426,6 +5638,8 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_MAX_SLEW_SPEED_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_BUZZER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_MERIDIAN_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_STATUS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_SPEED_LIMIT_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_AP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_CL_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_RESET_PROPERTY);
@@ -5484,6 +5698,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(TOUPTEK_MERIDIAN_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(TOUPTEK_MERIDIAN_PROPERTY, mount_touptek_meridian_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(TOUPTEK_SPEED_LIMIT_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(TOUPTEK_SPEED_LIMIT_PROPERTY, mount_touptek_speed_limit_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(NYX_WIFI_AP_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(NYX_WIFI_AP_PROPERTY, mount_nyx_wifi_ap_handler);
@@ -5609,6 +5826,8 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(ZWO_MAX_SLEW_SPEED_PROPERTY);
 	indigo_release_property(TOUPTEK_BUZZER_PROPERTY);
 	indigo_release_property(TOUPTEK_MERIDIAN_PROPERTY);
+	indigo_release_property(TOUPTEK_STATUS_PROPERTY);
+	indigo_release_property(TOUPTEK_SPEED_LIMIT_PROPERTY);
 	indigo_release_property(NYX_WIFI_AP_PROPERTY);
 	indigo_release_property(NYX_WIFI_CL_PROPERTY);
 	indigo_release_property(NYX_WIFI_RESET_PROPERTY);
