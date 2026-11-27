@@ -5644,8 +5644,8 @@ static void lx200_touptek_connect_publishes_the_device_state(void) {
 	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME) - 30) < 0.001);
 	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "AUTO_FLIP"));
 	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "RESUME_TRACKING"));
-	SERIAL_CHECK_TRUE(has_defined_property("X_TOUPTEK_MERIDIAN_LIMIT"));
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") + 5) < 0.001);
+	SERIAL_CHECK_TRUE(has_defined_property("X_TOUPTEK_MERIDIAN_OFFSET"));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET") + 5) < 0.001);
 	SERIAL_CHECK_EQ_INT(2, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->count);
 	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_PARK_SET_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
@@ -5744,7 +5744,7 @@ static void lx200_touptek_rates_buzzer_and_meridian(void) {
 	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SBz0", "e1#"));
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_BUZZER", "OFF", true, INDIGO_ALERT_STATE));
 	assert_switch_item_value("X_TOUPTEK_BUZZER", "LOW", true);
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT")) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET")) < 0.001);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_MERIDIAN", "RESUME_TRACKING", true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa01+00", 0));
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_MERIDIAN", "AUTO_FLIP", true, INDIGO_OK_STATE));
@@ -5775,7 +5775,7 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// X_TOUPTEK_MERIDIAN_LIMIT goes out as :STaab±DD# with the flip settings X_TOUPTEK_MERIDIAN shows and is read back with
+// X_TOUPTEK_MERIDIAN_OFFSET goes out as :STaab±DD# with the flip settings X_TOUPTEK_MERIDIAN shows and is read back with
 // :GTa#; a change of X_TOUPTEK_MERIDIAN keeps the offset instead of sending +00; an offset the mount refuses with 0# ends
 // ALERT and shows the offset the mount kept; the offset is read again at connect.
 static void lx200_touptek_meridian_offset(void) {
@@ -5783,13 +5783,13 @@ static void lx200_touptek_meridian_offset(void) {
 	bool online = false;
 	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
 	online = true;
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT")) < 0.001);
-	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", 7, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET")) < 0.001);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", 7, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa00+07", 0));
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") - 7) < 0.001);
-	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", -12, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET") - 7) < 0.001);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", -12, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa00-12", 0));
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") + 12) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET") + 12) < 0.001);
 	// The flip settings go out with the offset the mount has.
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_MERIDIAN", "AUTO_FLIP", true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa10-12", 0));
@@ -5797,16 +5797,16 @@ static void lx200_touptek_meridian_offset(void) {
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa11-12", 0));
 	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "STa10+00", NULL));
 	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "STa11+00", NULL));
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") + 12) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET") + 12) < 0.001);
 	// The offset goes out with the flip settings, and a refusal shows the offset the mount kept.
-	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", 15, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", 15, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa11+15", 0));
 	SERIAL_CHECK_TRUE(inject_reply(&simulator, "STa11-03", "0#"));
-	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", -3, INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") - 15) < 0.001);
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", -3, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET") - 15) < 0.001);
 	disconnect_serial_device(&lx200_mount);
 	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") - 15) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET") - 15) < 0.001);
 	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "AUTO_FLIP"));
 	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "RESUME_TRACKING"));
 cleanup:
@@ -6025,7 +6025,7 @@ static void lx200_touptek_side_of_pier_and_altaz_mode(void) {
 	assert_switch_item_value(MOUNT_MODE_PROPERTY_NAME, "ALTAZ", true);
 	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(!has_defined_property("X_TOUPTEK_MERIDIAN"));
-	SERIAL_CHECK_TRUE(!has_defined_property("X_TOUPTEK_MERIDIAN_LIMIT"));
+	SERIAL_CHECK_TRUE(!has_defined_property("X_TOUPTEK_MERIDIAN_OFFSET"));
 	SERIAL_CHECK_TRUE(has_defined_property("X_TOUPTEK_BUZZER"));
 	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
 	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "Gm", NULL));
@@ -6474,19 +6474,19 @@ static void lx200_touptek_hand_controller_meridian_offset_appears_on_the_poll(vo
 	bool online = false;
 	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
 	online = true;
-	unsigned int offset = property_revision("X_TOUPTEK_MERIDIAN_LIMIT");
+	unsigned int offset = property_revision("X_TOUPTEK_MERIDIAN_OFFSET");
 	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 6));
-	SERIAL_CHECK_EQ_INT(offset, property_revision("X_TOUPTEK_MERIDIAN_LIMIT"));
+	SERIAL_CHECK_EQ_INT(offset, property_revision("X_TOUPTEK_MERIDIAN_OFFSET"));
 	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-meridian-offset +03"));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", 3, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", 3, 0.001));
 	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-meridian-offset +30"));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", 30, 0.001));
-	SERIAL_CHECK_TRUE(find_cached_property("X_TOUPTEK_MERIDIAN_LIMIT")->state == INDIGO_OK_STATE);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", 30, 0.001));
+	SERIAL_CHECK_TRUE(find_cached_property("X_TOUPTEK_MERIDIAN_OFFSET")->state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_MERIDIAN", "AUTO_FLIP", true, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa10+30", 0));
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") - 30) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET") - 30) < 0.001);
 	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-meridian-offset -08"));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", -8, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", -8, 0.001));
 	assert_switch_item_value("X_TOUPTEK_MERIDIAN", "AUTO_FLIP", true);
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
@@ -6495,7 +6495,7 @@ cleanup:
 
 // Every :STa is preceded by a fresh :GTa#, whose value fills the field the client does not change: an offset changed on the
 // hand controller just before a client changes X_TOUPTEK_MERIDIAN is sent with it and shown, and flip settings changed on the
-// hand controller just before a client changes X_TOUPTEK_MERIDIAN_LIMIT likewise.
+// hand controller just before a client changes X_TOUPTEK_MERIDIAN_OFFSET likewise.
 static void lx200_touptek_meridian_change_keeps_hand_controller_settings(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -6508,16 +6508,16 @@ static void lx200_touptek_meridian_change_keeps_hand_controller_settings(void) {
 	SERIAL_CHECK_TRUE(event_before(&simulator, "STa10+04", previous, sizeof(previous)));
 	SERIAL_CHECK_TRUE(!strcmp(previous, "GTa"));
 	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "STa10+00", NULL));
-	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", 4, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", 4, 0.001));
 	SERIAL_CHECK_TRUE(send_control(&simulator, "touptek-meridian 01"));
-	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", -6, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", -6, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa01-06", 0));
 	SERIAL_CHECK_TRUE(event_before(&simulator, "STa01-06", previous, sizeof(previous)));
 	SERIAL_CHECK_TRUE(!strcmp(previous, "GTa"));
 	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "STa10-06", NULL));
 	SERIAL_CHECK_TRUE(wait_for_switch_value("X_TOUPTEK_MERIDIAN", "AUTO_FLIP", false));
 	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "RESUME_TRACKING"));
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") + 6) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET") + 6) < 0.001);
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
 	stop_external_serial_simulator(&simulator);
@@ -6549,7 +6549,7 @@ static void lx200_touptek_meridian_change_without_a_fresh_read_is_not_sent(void)
 	SERIAL_CHECK_TRUE(wait_settings_poll(&simulator));
 	SERIAL_CHECK_TRUE(inject_reply(&simulator, "GTa", "DROP"));
 	*lx_last_message = 0;
-	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", 5, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", 5, INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(strstr(lx_last_message, "could not be read") != NULL);
 	// No :STa of any kind reached the mount.
 	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
@@ -6592,10 +6592,10 @@ static void lx200_touptek_settings_poll_keeps_a_pending_change(void) {
 		indigo_usleep(10000);
 	}
 	SERIAL_CHECK_TRUE(event_count(&simulator, "GTa", NULL) > meridian_reads);
-	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", 9, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET", 9, INDIGO_OK_STATE));
 	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "STa00+09", NULL));
 	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 6));
-	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") - 9) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_OFFSET", "OFFSET") - 9) < 0.001);
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
 	stop_external_serial_simulator(&simulator);
