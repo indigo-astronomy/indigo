@@ -314,7 +314,7 @@ __read-wifi-credentials() {
 __read-wifi-channel() {
 
     local wifi_ch=$(__nm_get "802-11-wireless.channel")
-    [[ -z ${WIFI_AP_CH} ]] || WIFI_AP_CH=$(__nm_get "802-11-wireless.channel")
+    [[ -z ${wifi_ch} ]] || WIFI_AP_CH=${wifi_ch}
 }
 
 ###############################################
@@ -372,7 +372,8 @@ __get-wifi-server() {
     [[ -z ${WIFI_AP_SSID} ]] && __ALERT "'ssid' not found"
 
     WIFI_AP_PW=$(__nm_get "802-11-wireless-security.psk")
-    [[ -z ${WIFI_AP_PW} ]] && __ALERT "'psk' not found"
+    # A profile without key-mgmt is an open network: empty password.
+    [[ -z ${WIFI_AP_PW} && -n $(__nm_get "802-11-wireless-security.key-mgmt") ]] && __ALERT "'psk' not found"
 
     if [[ ${OPT_VERBOSE} -eq 1 ]]; then
         { echo -e "${WIFI_AP_SSID}\t${WIFI_AP_PW}"; exit 0; }
@@ -446,14 +447,20 @@ __set-wifi-channel() {
 __set-wifi-client() {
 
     [[ -z ${WIFI_CN_SSID} ]] && __ALERT "WIFI_CN_SSID not set"
-    [[ -z ${WIFI_CN_PW} ]] && __ALERT "WIFI_CN_PW not set"
-    [[ ${#WIFI_CN_PW} -lt 8 ]] && "WIFI_CN_PW length < 8"
-    [[ ${#WIFI_CN_PW} -gt 63 ]] && "WIFI_CN_PW length > 63"
+    # An empty password joins an open network.
+    if [[ -n ${WIFI_CN_PW} ]]; then
+        [[ ${#WIFI_CN_PW} -lt 8 ]] && __ALERT "WIFI_CN_PW length < 8"
+        [[ ${#WIFI_CN_PW} -gt 63 ]] && __ALERT "WIFI_CN_PW length > 63"
+    fi
 
     ${NM_CLI} con down ${CON_NAME} >/dev/null 2>&1
     ${NM_CLI} con delete ${CON_NAME} >/dev/null 2>&1
     sleep 3
-    ${NM_CLI} dev wifi connect "${WIFI_CN_SSID}" password "${WIFI_CN_PW}" >/dev/null 2>&1
+    if [[ -z ${WIFI_CN_PW} ]]; then
+        ${NM_CLI} dev wifi connect "${WIFI_CN_SSID}" >/dev/null 2>&1
+    else
+        ${NM_CLI} dev wifi connect "${WIFI_CN_SSID}" password "${WIFI_CN_PW}" >/dev/null 2>&1
+    fi
     local res=$?
 
     ${NM_CLI} con modify "${WIFI_CN_SSID}" con-name ${CON_NAME} connection.autoconnect yes >/dev/null 2>&1
@@ -480,7 +487,8 @@ __get-wifi-client() {
     [[ -z ${WIFI_CN_SSID} ]] && __ALERT "'ssid' not found"
 
     WIFI_CN_PW=$(__nm_get "802-11-wireless-security.psk")
-    [[ -z ${WIFI_CN_PW} ]] && __ALERT "'psk' not found"
+    # A profile without key-mgmt is an open network: empty password.
+    [[ -z ${WIFI_CN_PW} && -n $(__nm_get "802-11-wireless-security.key-mgmt") ]] && __ALERT "'psk' not found"
 
 
     if [[ ${OPT_VERBOSE} -eq 1 ]]; then
@@ -543,7 +551,10 @@ __list-available-versions() {
 __install-version() {
 
     [[ "$#" -ne 1 ]] && { __ALERT "wrong number of arguments"; }
-    ${APT_GET_EXE} install -y --allow-downgrades indigo=${1} >/dev/null 2>&1
+    # __list-available-versions lists indigo and indigo3 versions; install the package that has this version.
+    local package=indigo
+    [[ -n $(${APT_CACHE_EXE} show "indigo3=${1}" 2>/dev/null) ]] && package=indigo3
+    ${APT_GET_EXE} install -y --allow-downgrades ${package}=${1} >/dev/null 2>&1
     local res=$?
     [[ ${res} -eq 100 ]] && { __ALERT "the software updater is busy, please try again later"; }
     [[ ${res} -ne 0 ]] && { __ALERT "cannot install indigo version ${1}, please try again later" ; }
@@ -655,7 +666,7 @@ do
 	    OPT_VERBOSE=1
 	    ;;
 	*)
-	    echo "unknown argument ${2}"
+	    echo "unknown argument ${1}"
 	    __usage
 	    ;;
     esac
