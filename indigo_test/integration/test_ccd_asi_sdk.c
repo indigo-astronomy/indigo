@@ -2092,14 +2092,31 @@ static void shutdown_pending_discovery_and_capacity(void) {
 		usb_event(i, true);
 	}
 	ASSERT_TRUE(drain_discovery());
-	ASSERT_EQ_INT(4, attached); // generator default is five logical slots; pairs require two.
-	ASSERT_TRUE(logical[4] == NULL);
+	// Four ST-4 cameras must enumerate both the CCD and its matching guider.
+	ASSERT_EQ_INT(8, attached);
+	for (int i = 0; i < 4; i++) {
+		ASSERT_TRUE(logical[2 * i] != NULL);
+		ASSERT_TRUE(logical[2 * i + 1] != NULL);
+		ASSERT_TRUE(logical[2 * i + 1]->master_device == logical[2 * i]);
+		for (int guider = 0; guider < 2; guider++) {
+			int index = 2 * i + guider;
+			ASSERT_EQ_INT(INDIGO_OK_STATE, state(index, "CONNECTION"));
+			indigo_property *info = snapshot(index, "INFO");
+			ASSERT_TRUE(info != NULL);
+			indigo_item *interface = indigo_get_item(info, "DEVICE_INTERFACE");
+			ASSERT_TRUE(interface != NULL);
+			ASSERT_EQ_INT(guider ? INDIGO_INTERFACE_GUIDER : INDIGO_INTERFACE_CCD, atoi(interface->text.value));
+			indigo_release_property(info);
+		}
+	}
+	ASSERT_TRUE(logical[8] == NULL);
 	cameras[0].visible = false;
 	usb_event(0, false);
-	ASSERT_TRUE(wait_count(&attached, 2));
-	usb_event(2, true);
-	ASSERT_TRUE(wait_count(&attached, 4));
-	ASSERT_TRUE(logical[4] != NULL);
+	ASSERT_TRUE(wait_count(&attached, 6));
+	usb_event(4, true);
+	ASSERT_TRUE(wait_count(&attached, 8));
+	ASSERT_TRUE(logical[8] != NULL);
+	ASSERT_TRUE(logical[9] != NULL);
 	cameras[0].visible = true;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_ccd_asi(INDIGO_DRIVER_SHUTDOWN, NULL));
 	ASSERT_EQ_INT(0, attached);

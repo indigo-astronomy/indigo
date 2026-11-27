@@ -126,13 +126,13 @@
 | ccd_asi | 2026-09-21 21:17 | 3.0.0.65 | mac arm64 | ASI294MC Pro | 28 / 28 | ✅ OK |
 |  | 2026-09-26 19:59 | 3.0.0.68 | mac arm64 | ZWO ASI120MC-S (hot-plug) | 32 / 32 | ✅ OK |
 |  | 2026-09-27 08:50 | 3.0.0.70 | linux x64 | fake SDK | 54 / 54 | ✅ OK |
-|  | 2026-09-27 21:26 | 3.0.0.70 | mac arm64 | fake SDK | 54 / 54 | ✅ OK |
 |  | 2026-09-30 18:17 | 3.0.0.70 | linux arm64 | ZWO ASI120MC-S | 28 / 28 | ✅ OK |
 |  | 2026-09-30 18:19 | 3.0.0.70 | linux arm64 | ZWO ASI294MC Pro | 28 / 28 | ✅ OK |
 |  | 2026-10-01 23:12 | 3.0.0.70 | linux x64 | ZWO ASI071MC-Cool | 28 / 28 | ✅ OK |
 |  | 2026-10-01 23:15 | 3.0.0.70 | linux x64 | ZWO ASI224MC | 28 / 28 | ✅ OK |
 |  | 2026-10-02 20:48 | 3.0.0.70 | mac arm64 | ZWO ASI120MC-S | 28 / 28 | ✅ OK |
 |  | 2026-10-02 20:50 | 3.0.0.70 | mac arm64 | ZWO ASI294MC Pro | 28 / 28 | ✅ OK |
+|  | 2026-11-27 19:51 | 3.0.0.71 | mac arm64 | fake SDK | 54 / 54 | ✅ OK |
 | ccd_atik | 2026-09-22 13:22 | 3.0.0.44 | mac arm64 | Atik Horizon | 1 / 1 | ✅ OK |
 |  | 2026-09-22 14:31 | 3.0.0.45 | mac arm64 | Atik 11000 | 1 / 1 | ✅ OK |
 |  | 2026-09-26 17:43 | 3.0.0.46 | linux arm64 | fake SDK | 43 / 43 | ✅ OK |

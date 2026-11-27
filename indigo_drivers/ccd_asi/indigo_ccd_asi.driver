@@ -29,7 +29,8 @@ driver asi {
 	label = "ZWO ASI Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o. and Rumen G. Bogdanovski";
-	version = 70;
+	version = 71;
+	max_devices = 8; // Four cameras with one CCD and one ST-4 guider each.
 	multi_device_support = true;
 	include {
 		#include <assert.h>

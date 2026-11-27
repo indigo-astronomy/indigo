@@ -44,12 +44,12 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000046
+#define DRIVER_VERSION       0x03000047
 #define DRIVER_NAME          "indigo_ccd_asi"
 #define DRIVER_LABEL         "ZWO ASI Camera"
 #define CCD_DEVICE_NAME      "%s"
 #define GUIDER_DEVICE_NAME   "%s"
-#define MAX_DEVICES          5
+#define MAX_DEVICES          8
 #define PRIVATE_DATA         ((asi_private_data *)device->private_data)
 
 //+ define
