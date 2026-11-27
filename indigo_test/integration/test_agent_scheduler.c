@@ -865,13 +865,13 @@ static bool plan_times(const char *label, int *start, int *end) {
 	return true;
 }
 
-// splits a label into exactly 6 columns on " | ", the last column takes the rest; returns false if a column is missing or empty
-static bool split_label(const char *label, char columns[6][INDIGO_VALUE_SIZE]) {
+// splits a label into exactly count columns on " | " (6 for the plan and the history, 7 for the task list), the last column takes the rest; returns false if a column is missing or empty
+static bool split_label(const char *label, int count, char columns[][INDIGO_VALUE_SIZE]) {
 	const char *rest = label;
-	for (int i = 0; i < 6; i++) {
-		const char *end = i < 5 ? strstr(rest, " | ") : NULL;
+	for (int i = 0; i < count; i++) {
+		const char *end = i < count - 1 ? strstr(rest, " | ") : NULL;
 		size_t length = end ? (size_t)(end - rest) : strlen(rest);
-		if ((i < 5 && end == NULL) || length == 0) {
+		if ((i < count - 1 && end == NULL) || length == 0) {
 			return false;
 		}
 		memcpy(columns[i], rest, length);
@@ -881,17 +881,17 @@ static bool split_label(const char *label, char columns[6][INDIGO_VALUE_SIZE]) {
 	return true;
 }
 
-// every label of a light property has 6 non-empty columns and no byte above 0x7f (the tested names and reasons are ASCII); the count of items is returned or -1
-static int check_columns(const char *property_name) {
+// every label of a light property has count non-empty columns and no byte above 0x7f (the tested names and reasons are ASCII); the count of items is returned or -1
+static int check_columns(const char *property_name, int count) {
 	indigo_property *property = snapshot(property_name);
 	if (property == NULL) {
 		return -1;
 	}
 	int result = property->count;
 	for (int i = 0; i < property->count; i++) {
-		char columns[6][INDIGO_VALUE_SIZE];
-		if (!split_label(property->items[i].label, columns)) {
-			fprintf(stderr, "label '%s' of %s has no 6 columns\n", property->items[i].label, property_name);
+		char columns[7][INDIGO_VALUE_SIZE];
+		if (!split_label(property->items[i].label, count, columns)) {
+			fprintf(stderr, "label '%s' of %s has no %d columns\n", property->items[i].label, property_name, count);
 			result = -1;
 			break;
 		}
@@ -905,6 +905,35 @@ static int check_columns(const char *property_name) {
 	}
 	indigo_release_property(property);
 	return result;
+}
+
+static bool task_light(const char *name, indigo_property_state expected) {
+	char label[INDIGO_VALUE_SIZE];
+	indigo_property_state state = INDIGO_IDLE_STATE;
+	CHECK(task_label(name, label, &state));
+	CHECK(state == expected);
+	return true;
+}
+
+// waits until the task list label of the task has the state in its second column and the reason in its seventh, "-" for none; with prefix the reason only has to start with the text
+static bool wait_task_columns(const char *name, const char *state_name, const char *reason, bool prefix, double timeout) {
+	char label[INDIGO_VALUE_SIZE] = "", columns[7][INDIGO_VALUE_SIZE];
+	for (double t = 0; t < timeout; t += 0.01) {
+		if (task_label(name, label, NULL) && split_label(label, 7, columns) && !strcmp(columns[1], state_name) && (prefix ? !strncmp(columns[6], reason, strlen(reason)) : !strcmp(columns[6], reason))) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for task '%s' in state %s with the reason '%s', label '%s'\n", name, state_name, reason, label);
+	return false;
+}
+
+static bool wait_task_reason(const char *name, const char *state_name, const char *reason, double timeout) {
+	return wait_task_columns(name, state_name, reason, false, timeout);
+}
+
+static bool wait_task_reason_prefix(const char *name, const char *state_name, const char *reason, double timeout) {
+	return wait_task_columns(name, state_name, reason, true, timeout);
 }
 
 static int minutes_between(int from, int to) {
@@ -1097,6 +1126,8 @@ static void cleanup(void) {
 // -------------------------------------------------------------------------------- Cases
 
 static bool upload_placed(const char *name, double hour_angle, double declination, const char *header);
+static double longitude_at_hour(double hour);
+static bool waits_with_reason(const char *name, const char *reason);
 
 static void store_edit_and_delete(void) {
 	REQUIRE(upload("// @task Alpha\n// @priority high 70\n\n" BODY_WAIT(1)));
@@ -1180,6 +1211,8 @@ static void run_order_by_priority(void) {
 }
 
 static void window_wait_and_expiry(void) {
+	// at 20:00 local time on the equator the plan lasts until sunrise, about ten hours
+	set_site(0, longitude_at_hour(20));
 	time_t now = time(NULL);
 	char start[32], end[32], short_end[32];
 	// the window opens at the next whole minute, at least 10 s ahead so the case sees it closed first
@@ -1198,6 +1231,8 @@ static void window_wait_and_expiry(void) {
 	REQUIRE(upload(text));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Window", "WAITING", 5));
+	// no run fits the window of TooShort, it is UNPLANNED until it expires
+	ASSERT_TRUE(wait_task_reason("TooShort", "UNPLANNED", "window ends before the task can finish", 5));
 	ASSERT_TRUE(wait_reason("window", 5));
 	indigo_property *current = snapshot(AGENT_SCHEDULER_CURRENT_PROPERTY_NAME);
 	REQUIRE(current != NULL);
@@ -1210,17 +1245,17 @@ static void window_wait_and_expiry(void) {
 	ASSERT_TRUE(time(NULL) >= open);
 	ASSERT_TRUE(wait_task_state("Window", "DONE", 10));
 	ASSERT_TRUE(wait_task_state("TooShort", "EXPIRED", 5));
+	// a finished task is never UNPLANNED
+	ASSERT_TRUE(wait_task_reason("TooShort", "EXPIRED", "-", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'TooShort'"));
 }
 
 static void target_below_horizon_waits(void) {
-	// a target that never rises can never run and is UNREACHABLE (see plan_lists_the_night), this one is 30 degrees below the horizon and rises in four hours
-	set_site(0, 17.11);
+	// a target that never rises can never run and is UNREACHABLE (see plan_lists_the_night), this one is 30 degrees below the horizon and above the minimum altitude in about eleven hours; at noon the plan lasts until the sunrise after the next sunset, about 18 hours, so it has a run and waits
+	set_site(0, longitude_at_hour(12));
 	REQUIRE(upload_placed("South", 8, 0, "// @duration 1\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(wait_task_state("South", "WAITING", 5));
-	ASSERT_TRUE(wait_reason("target below the horizon", 5));
-	ASSERT_EQ_INT(0, count_messages("Starting task 'South'"));
+	ASSERT_TRUE(waits_with_reason("South", "target below the horizon"));
 }
 
 static void repeat_retry_and_failures(void) {
@@ -1291,6 +1326,8 @@ static void preempted_task_fails_when_asked(void) {
 }
 
 static void urgent_waits_for_eligibility(void) {
+	// at 20:00 local time on the equator the plan lasts until sunrise, so the window that opens within an hour has a run
+	set_site(0, longitude_at_hour(20));
 	REQUIRE(upload("// @task Steady\n" BODY_WAIT(4)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Steady", "RUNNING", 15));
@@ -1302,7 +1339,7 @@ static void urgent_waits_for_eligibility(void) {
 	REQUIRE(urgent(text));
 	ASSERT_TRUE(wait_message("Task 'Steady' completed", 1, 15));
 	ASSERT_EQ_INT(0, count_messages("preempted"));
-	ASSERT_TRUE(wait_task_state("Later", "WAITING", 5));
+	ASSERT_TRUE(wait_task_reason("Later", "WAITING", "-", 5));
 }
 
 static void second_urgent_waits_for_the_first(void) {
@@ -1806,7 +1843,7 @@ static void night_hooks_run_at_dusk_and_dawn(void) {
 	// the plan shows both night hooks of the coming night
 	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | ", true, 15));
 	ASSERT_TRUE(wait_plan_contains(" | Morning | - | hook night end | ", true, 5));
-	ASSERT_TRUE(check_columns(AGENT_SCHEDULER_PLAN_PROPERTY_NAME) > 0);
+	ASSERT_TRUE(check_columns(AGENT_SCHEDULER_PLAN_PROPERTY_NAME, 6) > 0);
 	// before the night the idle hook puts the equipment away
 	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
 	wait_until(dusk - 2);
@@ -2384,15 +2421,11 @@ static void no_night_is_reported(void) {
 	set_site(northern_summer ? 85 : -85, 17.11);
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("The Sun does not go below the night limit within a day, the night hooks do not run", 1, 15));
-	ASSERT_TRUE(wait_plan_contains("| NOT TONIGHT | no night at the night limit", true, 10));
-	ASSERT_TRUE(check_columns(AGENT_SCHEDULER_PLAN_PROPERTY_NAME) > 0);
-	char notice[6][INDIGO_VALUE_SIZE];
-	indigo_property *plan = snapshot(AGENT_SCHEDULER_PLAN_PROPERTY_NAME);
-	REQUIRE(plan != NULL);
-	ASSERT_TRUE(split_label(plan->items[plan->count - 1].label, notice));
-	ASSERT_STREQ("NOT TONIGHT", notice[4]);
-	ASSERT_STREQ("-", notice[0]);
-	indigo_release_property(plan);
+	// the plan lists only the planned runs, neither the night hook nor a note on the missing night
+	ASSERT_TRUE(wait_plan_contains(" | Work | ", true, 10));
+	ASSERT_TRUE(wait_plan_contains("Evening", false, 5));
+	ASSERT_TRUE(wait_plan_contains("no night", false, 5));
+	ASSERT_TRUE(check_columns(AGENT_SCHEDULER_PLAN_PROPERTY_NAME, 6) > 0);
 	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
 	ASSERT_EQ_INT(0, count_messages("Starting hook 'Evening'"));
 }
@@ -2572,7 +2605,7 @@ static void hook_priority_class_keeps_a_task_from_running(void) {
 	REQUIRE(upload("// @task Park\n// @priority hook\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_task_state("Park", "| HOOK | hook | ", 5));
 	ASSERT_TRUE(task_label("Park", label, &light));
-	ASSERT_STREQ("Park | HOOK | hook | - | - | -", label);
+	ASSERT_STREQ("Park | HOOK | hook | - | - | - | -", label);
 	ASSERT_EQ_INT(INDIGO_IDLE_STATE, light);
 	indigo_usleep(3000000);
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Park'"));
@@ -2601,9 +2634,10 @@ static void hook_priority_class_task_is_not_planned_or_counted(void) {
 	site_at_evening();
 	REQUIRE(upload("// @task Work\n// @duration 1\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Hook only\n// @priority hook\n// @duration 1\n" BODY_WAIT(1)));
-	// neither planned nor listed as NOT TONIGHT
+	// neither planned nor UNPLANNED
 	ASSERT_TRUE(wait_plan(1, "Work", 10));
 	ASSERT_TRUE(wait_plan_contains("Hook only", false, 2));
+	ASSERT_TRUE(wait_task_state("Hook only", "Hook only | HOOK | hook | - | - | - | -", 5));
 	// the automatic stop does not wait for it
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
@@ -2794,9 +2828,9 @@ static void hhmm(time_t t, char *text) {
 	sprintf(text, "%02d:%02d", tm.tm_hour, tm.tm_min);
 }
 
-// a waiting task never started, with the scheduler's reason
+// a waiting task never started that has a run in the plan, WAITING without a reason in the task list, with the scheduler's reason
 static bool waits_with_reason(const char *name, const char *reason) {
-	CHECK(wait_task_state(name, "WAITING", 10));
+	CHECK(wait_task_reason(name, "WAITING", "-", 10));
 	CHECK(wait_reason(reason, 10));
 	char text[128];
 	snprintf(text, sizeof(text), "Starting task '%s'", name);
@@ -2804,8 +2838,20 @@ static bool waits_with_reason(const char *name, const char *reason) {
 	return true;
 }
 
+// a task never started that has no run in the plan, UNPLANNED in the task list with the reason the scheduler also gives, the reason at the current time
+static bool unplanned_with_reason(const char *name, const char *reason) {
+	CHECK(wait_task_reason(name, "UNPLANNED", reason, 10));
+	CHECK(wait_reason(reason, 10));
+	char text[128];
+	snprintf(text, sizeof(text), "Starting task '%s'", name);
+	CHECK(count_messages(text) == 0);
+	return true;
+}
+
+// the sky cases run at noon on the equator with @twilight none: the plan lasts until the sunrise after the next sunset, about 18 hours, so a target that meets its constraints within hours has a run and is WAITING
 static void altitude_limit_decides_and_follows_the_sky(void) {
-	set_site(0, 17.11);
+	double longitude = longitude_at_hour(12);
+	set_site(0, longitude);
 	// at the equator a target on the celestial equator stands 15 degrees lower per hour of hour angle: 45 degrees, rising
 	REQUIRE(upload_placed("Steep", -3, 0, "// @priority high\n// @altitude > 70\n// @duration 5\n"));
 	REQUIRE(upload_placed("Moderate", -3, 0, "// @altitude > 30\n// @duration 5\n"));
@@ -2813,13 +2859,13 @@ static void altitude_limit_decides_and_follows_the_sky(void) {
 	ASSERT_TRUE(wait_task_state("Moderate", "DONE", 15));
 	ASSERT_TRUE(waits_with_reason("Steep", "target below the altitude limit"));
 	// three hours of sidereal time later, the target culminates and the waiting task runs by itself
-	set_site(0, 17.11 + 45);
+	set_site(0, fmod(longitude + 45, 360));
 	ASSERT_TRUE(wait_task_state("Steep", "DONE", 15));
 }
 
 // the global limits hold back every task with @target: the minimum beats a lower @altitude, the maximum is a ceiling, relaxing them lets the tasks run
 static void global_altitude_limits_decide_and_recover(void) {
-	set_site(0, 17.11);
+	set_site(0, longitude_at_hour(12));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, 80));
 	// 15 degrees high and rising, below the default minimum of 20 degrees although its own limit is lower
 	REQUIRE(upload_placed("Low", -5, 0, "// @priority high\n// @altitude > 10\n// @duration 5\n"));
@@ -2827,7 +2873,7 @@ static void global_altitude_limits_decide_and_recover(void) {
 	REQUIRE(upload_placed("Steep", -0.5, 0, "// @duration 5\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(waits_with_reason("Low", "target below the altitude limit"));
-	ASSERT_TRUE(wait_task_state("Steep", "WAITING", 5));
+	ASSERT_TRUE(wait_task_reason("Steep", "WAITING", "-", 5));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, 10));
 	ASSERT_TRUE(wait_task_state("Low", "DONE", 15));
 	ASSERT_TRUE(waits_with_reason("Steep", "target above the altitude limit"));
@@ -2836,17 +2882,19 @@ static void global_altitude_limits_decide_and_recover(void) {
 	ASSERT_EQ_INT(0, count_messages("can never run"));
 }
 
-// a target above the minimum for only a few minutes around its culmination finds no time tonight, the plan follows a relaxed minimum
+// a target above the minimum for only a few minutes around its culmination finds no time tonight, it is UNPLANNED with the reason and not in the plan; the plan follows a relaxed minimum
 static void global_minimum_altitude_rules_out_the_night(void) {
 	set_site(0, longitude_at_hour(20));
 	// 60 degrees high, culminating at the zenith in two hours
 	REQUIRE(upload_placed("Zenith", -2, 0, "// @duration 60\n"));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, 89));
-	ASSERT_TRUE(wait_plan_contains("- | Zenith | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit", true, 10));
+	ASSERT_TRUE(wait_task_reason("Zenith", "UNPLANNED", "target below the altitude limit", 10));
+	ASSERT_TRUE(task_light("Zenith", INDIGO_IDLE_STATE));
+	ASSERT_TRUE(wait_plan_contains("Zenith", false, 5));
 	ASSERT_EQ_INT(0, count_messages("can never run"));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, 20));
 	ASSERT_TRUE(wait_plan_contains(" | Zenith | run 1/1 | normal 50 | PLANNED | ", true, 10));
-	ASSERT_TRUE(wait_plan_contains("NOT TONIGHT", false, 5));
+	ASSERT_TRUE(wait_task_reason("Zenith", "QUEUED", "-", 5));
 }
 
 // a minimum at or above the maximum is refused and the old values are kept
@@ -2878,19 +2926,31 @@ static void crossed_altitude_limits_are_refused(void) {
 	indigo_release_property(settings);
 }
 
-// the plan item of a task that can never run, with its reason
-static bool unreachable_in_plan(const char *name, const char *reason) {
+// a task that can never run is UNREACHABLE in the task list with the reason of its message in the last column, and it is not in the plan
+static bool unreachable_listed(const char *name, const char *reason) {
 	char text[INDIGO_VALUE_SIZE];
-	snprintf(text, sizeof(text), "- | %s | run 0/1 | normal 50 | UNREACHABLE | %s", name, reason);
-	return wait_plan_contains(text, true, 5);
+	CHECK(wait_task_reason_prefix(name, "UNREACHABLE", reason, 5));
+	snprintf(text, sizeof(text), " | %s | ", name);
+	CHECK(wait_plan_contains(text, false, 5));
+	return true;
 }
 
-static bool task_light(const char *name, indigo_property_state expected) {
-	char label[INDIGO_VALUE_SIZE];
-	indigo_property_state state = INDIGO_IDLE_STATE;
-	CHECK(task_label(name, label, &state));
-	CHECK(state == expected);
-	return true;
+// a task that can run again is QUEUED without a reason, or UNPLANNED with a reason of the plan when the target does not stand within the limits before the end of the night, which depends on the date; the reasons of an unreachable task have a degree sign, the plan reasons of a task with @twilight none do not
+static bool wait_task_reachable(const char *name, double timeout) {
+	char label[INDIGO_VALUE_SIZE] = "", columns[7][INDIGO_VALUE_SIZE];
+	for (double t = 0; t < timeout; t += 0.01) {
+		if (task_label(name, label, NULL) && split_label(label, 7, columns)) {
+			if (!strcmp(columns[1], "QUEUED") && !strcmp(columns[6], "-")) {
+				return true;
+			}
+			if (!strcmp(columns[1], "UNPLANNED") && strstr(columns[6], "°") == NULL) {
+				return true;
+			}
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for task '%s' to be reachable, label '%s'\n", name, label);
+	return false;
 }
 
 // tasks that can never run within the altitude limits are UNREACHABLE, told once, skipped, and runnable again when the limits or the site allow it
@@ -2903,31 +2963,23 @@ static void unreachable_tasks_are_marked_and_skipped(void) {
 	ASSERT_EQ_INT(1, count_messages("°, below the minimum altitude 20°"));
 	ASSERT_TRUE(wait_task_state("Low", "Low | UNREACHABLE | normal 50 | run 0/1", 5));
 	ASSERT_TRUE(task_light("Low", INDIGO_ALERT_STATE));
-	ASSERT_TRUE(unreachable_in_plan("Low", "culminates at 1"));
-	char labels[16][INDIGO_VALUE_SIZE], columns[6][INDIGO_VALUE_SIZE];
-	indigo_property_state states[16];
-	int count = plan_items(labels, states, 16);
-	REQUIRE(count >= 1);
-	for (int i = 0; i < count; i++) {
-		if (strstr(labels[i], " | Low | ")) {
-			ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[i]);
-			ASSERT_TRUE(split_label(labels[i], columns));
-			ASSERT_TRUE(strstr(columns[5], "°, below the minimum altitude 20°") != NULL);
-		}
-	}
+	ASSERT_TRUE(unreachable_listed("Low", "culminates at 1"));
+	char label[INDIGO_VALUE_SIZE], columns[7][INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(task_label("Low", label, NULL) && split_label(label, 7, columns));
+	ASSERT_TRUE(strstr(columns[6], "°, below the minimum altitude 20°") != NULL);
 	// Polaris never sinks below about 47.4 degrees
 	REQUIRE(upload("// @task Polar\n// @target 02:31:49 89:15:51\n// @twilight none\n// @altitude > 30\n// @duration 5\n" BODY_WAIT(1)));
-	ASSERT_TRUE(wait_task_state("Polar", "Polar | QUEUED", 5));
+	ASSERT_TRUE(wait_task_reason("Polar", "QUEUED", "-", 5));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, 45));
 	ASSERT_TRUE(wait_message("Task 'Polar' can never run: the target is never below 4", 1, 5));
 	ASSERT_EQ_INT(1, count_messages("°, above the maximum altitude 45°"));
 	ASSERT_TRUE(wait_task_state("Polar", "UNREACHABLE", 5));
 	ASSERT_TRUE(task_light("Polar", INDIGO_ALERT_STATE));
-	ASSERT_TRUE(unreachable_in_plan("Polar", "never below 4"));
+	ASSERT_TRUE(unreachable_listed("Polar", "never below 4"));
 	// an empty range: the maximum is not above the task's own @altitude
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, 30));
 	ASSERT_TRUE(wait_message("Task 'Polar' can never run: maximum altitude 30° is not above the task's @altitude 30°", 1, 5));
-	ASSERT_TRUE(unreachable_in_plan("Polar", "maximum altitude 30° is not above the task's @altitude 30°"));
+	ASSERT_TRUE(unreachable_listed("Polar", "maximum altitude 30° is not above the task's @altitude 30°"));
 	// the reason of Low did not change, it was not told again
 	ASSERT_EQ_INT(1, count_messages("Task 'Low' can never run"));
 	// the scheduler skips both and finishes
@@ -2946,8 +2998,8 @@ static void unreachable_tasks_are_marked_and_skipped(void) {
 	ASSERT_TRUE(wait_message("Task 'Low' can never run", 2, 5));
 	// relaxed limits make both runnable again
 	REQUIRE(set_altitude_limits(10, 90, INDIGO_OK_STATE, NULL));
-	ASSERT_TRUE(wait_task_state("Low", "Low | QUEUED", 5));
-	ASSERT_TRUE(wait_task_state("Polar", "Polar | QUEUED", 5));
+	ASSERT_TRUE(wait_task_reachable("Low", 5));
+	ASSERT_TRUE(wait_task_reachable("Polar", 5));
 	ASSERT_TRUE(task_light("Low", INDIGO_IDLE_STATE));
 	ASSERT_TRUE(task_light("Polar", INDIGO_IDLE_STATE));
 	ASSERT_TRUE(wait_plan_contains("UNREACHABLE", false, 5));
@@ -2957,7 +3009,7 @@ static void unreachable_tasks_are_marked_and_skipped(void) {
 	ASSERT_TRUE(wait_task_state("Low", "UNREACHABLE", 5));
 	// at the equator Low culminates at about 60 degrees, Polaris at about 0.7 degrees, below its own @altitude
 	set_site(0, 17.11);
-	ASSERT_TRUE(wait_task_state("Low", "Low | QUEUED", 5));
+	ASSERT_TRUE(wait_task_reachable("Low", 5));
 	ASSERT_TRUE(wait_plan_contains(" | Low | run 0/1 | normal 50 | UNREACHABLE", false, 5));
 	ASSERT_TRUE(wait_message("Task 'Polar' can never run: the target culminates at 0.", 1, 5));
 	ASSERT_EQ_INT(1, count_messages("°, below the task's @altitude 30°"));
@@ -2965,12 +3017,12 @@ static void unreachable_tasks_are_marked_and_skipped(void) {
 	// at 10 S Polaris never rises
 	set_site(-10, 17.11);
 	ASSERT_TRUE(wait_message("Task 'Polar' can never run: the target never rises above the horizon", 1, 5));
-	ASSERT_TRUE(unreachable_in_plan("Polar", "never rises above the horizon"));
-	ASSERT_TRUE(wait_task_state("Low", "Low | QUEUED", 5));
+	ASSERT_TRUE(unreachable_listed("Polar", "never rises above the horizon"));
+	ASSERT_TRUE(wait_task_reachable("Low", 5));
 	set_site(48.15, 17.11);
 	ASSERT_TRUE(wait_message("Task 'Low' can never run", 4, 5));
 	ASSERT_TRUE(wait_task_state("Low", "UNREACHABLE", 5));
-	ASSERT_TRUE(wait_task_state("Polar", "Polar | QUEUED", 5));
+	ASSERT_TRUE(wait_task_reachable("Polar", 5));
 	ASSERT_EQ_INT(4, count_messages("Task 'Polar' can never run"));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Low'"));
 }
@@ -2983,6 +3035,9 @@ static void hook_tasks_are_never_unreachable(void) {
 	REQUIRE(upload("// @task Spare\n// @priority hook\n// @target 06:00:00 -30:00:00\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_task_state("Park", "Park | HOOK | hook shutdown", 5));
 	ASSERT_TRUE(wait_task_state("Spare", "Spare | HOOK | hook", 5));
+	// a hook has no reason column
+	ASSERT_TRUE(wait_task_reason("Park", "HOOK", "-", 5));
+	ASSERT_TRUE(wait_task_reason("Spare", "HOOK", "-", 5));
 	ASSERT_TRUE(task_light("Park", INDIGO_IDLE_STATE));
 	ASSERT_TRUE(task_light("Spare", INDIGO_IDLE_STATE));
 	indigo_usleep(2000000);
@@ -2997,23 +3052,27 @@ static void hook_tasks_are_never_unreachable(void) {
 	REQUIRE(set_hooks("", "", ""));
 	ASSERT_TRUE(wait_message("Task 'Park' can never run: the target culminates at 1", 1, 5));
 	ASSERT_TRUE(wait_task_state("Park", "Park | UNREACHABLE", 5));
+	ASSERT_TRUE(wait_task_reason_prefix("Park", "UNREACHABLE", "culminates at 1", 5));
 	ASSERT_EQ_INT(0, count_messages("Task 'Spare' can never run"));
 }
 
 static void airmass_limit_decides_and_follows_the_sky(void) {
-	set_site(0, 17.11);
+	double longitude = longitude_at_hour(12);
+	set_site(0, longitude);
 	// 30 degrees high, airmass 2
 	REQUIRE(upload_placed("Thin air", -4, 0, "// @priority high\n// @airmass < 1.5\n// @duration 5\n"));
 	REQUIRE(upload_placed("Thick air", -4, 0, "// @airmass < 2.5\n// @duration 5\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Thick air", "DONE", 15));
 	ASSERT_TRUE(waits_with_reason("Thin air", "airmass too high"));
-	set_site(0, 17.11 + 60);
+	set_site(0, fmod(longitude + 60, 360));
 	ASSERT_TRUE(wait_task_state("Thin air", "DONE", 15));
 }
 
+// at noon on the equator the plan lasts until the sunrise after the next sunset, about 18 hours: shorter than the 21 hours East waits for its range, longer than the hours Low sides waits
 static void hour_angle_ranges_including_wrapped(void) {
-	set_site(0, 17.11);
+	double longitude = longitude_at_hour(12);
+	set_site(0, longitude);
 	// one hour west of the meridian, 75 degrees high
 	REQUIRE(upload_placed("East", 1, 0, "// @priority high\n// @ha -2 .. 0\n// @duration 5\n"));
 	// a range from 3h through 12h to -3h, which excludes the meridian
@@ -3024,13 +3083,13 @@ static void hour_angle_ranges_including_wrapped(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("West", "DONE", 15));
 	ASSERT_TRUE(wait_task_state("Off meridian", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("East", "hour angle out of range"));
-	ASSERT_TRUE(wait_task_state("Low sides", "WAITING", 5));
-	// two hours earlier in sidereal time the target is at -1h: East runs, the meridian is still outside 3 .. -3
-	set_site(0, 17.11 - 30);
+	ASSERT_TRUE(unplanned_with_reason("East", "hour angle out of range"));
+	ASSERT_TRUE(wait_task_reason("Low sides", "WAITING", "-", 5));
+	// two hours earlier in sidereal time the target is at -1h: East runs, the meridian is still outside 3 .. -3 and Low sides waits four hours, within the plan
+	set_site(0, fmod(longitude - 30 + 360, 360));
 	ASSERT_TRUE(wait_task_state("East", "DONE", 15));
 	indigo_usleep(2000000);
-	ASSERT_TRUE(wait_task_state("Low sides", "WAITING", 5));
+	ASSERT_TRUE(wait_task_reason("Low sides", "WAITING", "-", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Low sides'"));
 }
 
@@ -3040,7 +3099,7 @@ static void twilight_limit_follows_the_sun(void) {
 	REQUIRE(upload("// @task Any time\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Any time", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("Night only", "too bright (twilight)"));
+	ASSERT_TRUE(waits_with_reason("Night only", "sun above -12°"));
 	// at midnight even the astronomical limit holds
 	set_site(0, longitude_at_hour(0));
 	ASSERT_TRUE(wait_task_state("Night only", "DONE", 15));
@@ -3061,16 +3120,17 @@ static void moon_separation_and_brightness(void) {
 	free(sky);
 	REQUIRE(moon_high);
 	set_site(moon_dec, longitude);
-	// the separations are measured from the moon along the meridian
-	REQUIRE(upload_placed("Beside", 0, moon_dec + 3, "// @priority high\n// @moon > 30\n// @duration 5\n"));
+	// the separations are measured from the moon along the meridian, towards the equator: such a target is below the horizon whenever the moon is, so a moon limit it fails rules out the whole plan
+	double toward = moon_dec >= 0 ? -1 : 1;
+	REQUIRE(upload_placed("Beside", 0, moon_dec + toward * 3, "// @priority high\n// @moon > 30\n// @duration 5\n"));
 	REQUIRE(upload_placed("Away", 0, moon_dec - 40, "// @moon > 30\n// @duration 5\n"));
-	// the Lorentzian limit of this moon age, a fixed limit just above the same separation
+	// the Lorentzian limit of this moon age, met by the separation, and a fixed limit 16 degrees above the same separation, which the moon cannot leave behind within the plan of up to a day although it moves 12-15 degrees in RA and about 6 degrees in declination
 	double limit = indigo_scheduler_moon_limit(40, 3, days_from_full);
 	double separation = fmin(limit + 8, 70);
 	char header[128];
-	snprintf(header, sizeof(header), "// @priority high\n// @moon > %.0f\n// @duration 5\n", ceil(separation + 8));
-	REQUIRE(upload_placed("Fixed", 0, moon_dec - separation, header));
-	REQUIRE(upload_placed("Lorentzian", 0, moon_dec - separation, "// @moon > 40 width 3\n// @duration 5\n"));
+	snprintf(header, sizeof(header), "// @priority high\n// @moon > %.0f\n// @duration 5\n", ceil(separation + 16));
+	REQUIRE(upload_placed("Fixed", 0, moon_dec + toward * separation, header));
+	REQUIRE(upload_placed("Lorentzian", 0, moon_dec + toward * separation, "// @moon > 40 width 3\n// @duration 5\n"));
 	// a limit the moon above the horizon can never meet, and one it always meets
 	REQUIRE(upload("// @task Never\n// @priority high\n// @target 0 0\n// @twilight none\n// @illumination < 0\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(upload_placed("Any phase", 0, moon_dec - 40, "// @illumination < 100\n// @duration 5\n"));
@@ -3078,14 +3138,14 @@ static void moon_separation_and_brightness(void) {
 	ASSERT_TRUE(wait_task_state("Away", "DONE", 15));
 	ASSERT_TRUE(wait_task_state("Lorentzian", "DONE", 15));
 	ASSERT_TRUE(wait_task_state("Any phase", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("Beside", "too close to the moon"));
-	ASSERT_TRUE(wait_task_state("Fixed", "WAITING", 5));
+	ASSERT_TRUE(unplanned_with_reason("Beside", "too close to the moon"));
+	ASSERT_TRUE(wait_task_reason("Fixed", "UNPLANNED", "too close to the moon", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Fixed'"));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Beside", INDIGO_OK_STATE, NULL));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Fixed", INDIGO_OK_STATE, NULL));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Never", INDIGO_OK_STATE, NULL));
-	REQUIRE(upload_placed("Never", 0, moon_dec - 40, "// @priority high\n// @illumination < 0\n// @duration 5\n"));
-	ASSERT_TRUE(waits_with_reason("Never", "moon too bright"));
+	REQUIRE(upload_placed("Never", 0, moon_dec + toward * 40, "// @priority high\n// @illumination < 0\n// @duration 5\n"));
+	ASSERT_TRUE(unplanned_with_reason("Never", "moon too bright"));
 	// twelve hours of sidereal time later the moon is below the horizon and its limits are ignored
 	set_site(moon_dec, fmod(longitude + 180, 360));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Never", INDIGO_OK_STATE, NULL));
@@ -3094,6 +3154,8 @@ static void moon_separation_and_brightness(void) {
 }
 
 static void nightly_windows(void) {
+	// at 20:00 local time on the equator the plan lasts until sunrise, about ten hours: windows opening in one or two hours have a run, one that opens again tomorrow has none
+	set_site(0, longitude_at_hour(20));
 	time_t now = time(NULL);
 	char a[8], b[8], text[512];
 	// the windows are given around the current time; one that crosses midnight works the same way
@@ -3123,16 +3185,17 @@ static void nightly_windows(void) {
 	ASSERT_TRUE(wait_task_state("Inside", "DONE", 15));
 	ASSERT_TRUE(wait_task_state("Around", "DONE", 15));
 	ASSERT_TRUE(waits_with_reason("Outside", "outside of the nightly window"));
-	ASSERT_TRUE(wait_task_state("Gap", "WAITING", 5));
+	ASSERT_TRUE(wait_task_reason("Gap", "WAITING", "-", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Gap'"));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Outside", INDIGO_OK_STATE, NULL));
-	ASSERT_TRUE(waits_with_reason("Too short", "nightly window ends before the task can finish"));
+	ASSERT_TRUE(unplanned_with_reason("Too short", "nightly window ends before the task can finish"));
 	// a nightly window never expires
 	ASSERT_EQ_INT(0, count_messages("expired"));
 }
 
 static void duration_must_fit_before_the_target_sets(void) {
-	set_site(0, 17.11);
+	// at noon the plan lasts about 18 hours and the target rises again in about twelve and a half
+	set_site(0, longitude_at_hour(12));
 	// the case is about the horizon, the default minimum altitude of 20 degrees would hold both tasks
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, 0));
 	// 7.5 degrees high and setting, below the horizon in about 30 minutes
@@ -3150,8 +3213,9 @@ static void unknown_site_blocks_only_sky_constraints(void) {
 	REQUIRE(upload("// @task Anywhere\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Anywhere", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("Placed", "site coordinates unknown"));
-	ASSERT_TRUE(wait_task_state("Dark only", "WAITING", 5));
+	// without a site no sky point passes, neither task has a run
+	ASSERT_TRUE(unplanned_with_reason("Placed", "site coordinates unknown"));
+	ASSERT_TRUE(wait_task_reason("Dark only", "UNPLANNED", "site coordinates unknown", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Dark only'"));
 	// the site appears at midnight with the target at the zenith
 	set_site(0, longitude_at_hour(0));
@@ -3718,47 +3782,53 @@ static void labels_have_uniform_columns(void) {
 	utc(time(NULL) + 3 * 86400, window);
 	snprintf(later, sizeof(later), "// @task Later\n// @window %s ..\n// @duration 1\n" BODY_WAIT(1), window);
 	REQUIRE(upload(later));
-	ASSERT_TRUE(wait_plan(5, "Good", 10));
-	// the task list
-	char label[INDIGO_VALUE_SIZE], columns[6][INDIGO_VALUE_SIZE];
-	ASSERT_EQ_INT(5, check_columns(AGENT_SCHEDULER_TASK_STATE_PROPERTY_NAME));
-	ASSERT_TRUE(task_label("Good", label, NULL) && split_label(label, columns));
+	ASSERT_TRUE(wait_plan(3, "Good", 10));
+	ASSERT_TRUE(wait_task_state("Later", "Later | UNPLANNED", 5));
+	// the task list: seven columns, the reason last
+	char label[INDIGO_VALUE_SIZE], columns[7][INDIGO_VALUE_SIZE];
+	indigo_property_state light;
+	ASSERT_EQ_INT(5, check_columns(AGENT_SCHEDULER_TASK_STATE_PROPERTY_NAME, 7));
+	ASSERT_TRUE(task_label("Good", label, NULL) && split_label(label, 7, columns));
 	ASSERT_STREQ("Good", columns[0]);
 	ASSERT_STREQ("QUEUED", columns[1]);
 	ASSERT_STREQ("normal 50", columns[2]);
 	ASSERT_STREQ("run 0/2", columns[3]);
 	ASSERT_STREQ("retries left 1", columns[4]);
 	ASSERT_TRUE(!strncmp(columns[5], "0h01 ", 5));
-	ASSERT_TRUE(task_label("Park", label, NULL) && split_label(label, columns));
+	ASSERT_STREQ("-", columns[6]);
+	ASSERT_TRUE(task_label("Park", label, NULL) && split_label(label, 7, columns));
 	ASSERT_STREQ("HOOK", columns[1]);
 	ASSERT_STREQ("hook shutdown", columns[2]);
 	ASSERT_STREQ("-", columns[3]);
 	ASSERT_STREQ("-", columns[4]);
 	ASSERT_STREQ("-", columns[5]);
-	ASSERT_TRUE(task_label("Off", label, NULL) && split_label(label, columns));
+	ASSERT_STREQ("-", columns[6]);
+	ASSERT_TRUE(task_label("Off", label, NULL) && split_label(label, 7, columns));
 	ASSERT_STREQ("DISABLED", columns[1]);
-	// the night plan: planned runs and tasks that do not run tonight
-	ASSERT_EQ_INT(5, check_columns(AGENT_SCHEDULER_PLAN_PROPERTY_NAME));
+	ASSERT_STREQ("-", columns[6]);
+	// a task without a run in the plan is UNPLANNED with the reason, an Idle light
+	ASSERT_TRUE(task_label("Later", label, &light) && split_label(label, 7, columns));
+	ASSERT_STREQ("UNPLANNED", columns[1]);
+	ASSERT_STREQ("run 0/1", columns[3]);
+	ASSERT_STREQ("window not open yet", columns[6]);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, light);
+	// the night plan: only the planned runs
+	ASSERT_EQ_INT(3, check_columns(AGENT_SCHEDULER_PLAN_PROPERTY_NAME, 6));
 	char labels[16][INDIGO_VALUE_SIZE];
 	indigo_property_state states[16];
-	REQUIRE(plan_items(labels, states, 16) == 5);
+	REQUIRE(plan_items(labels, states, 16) == 3);
 	int start, end;
-	ASSERT_TRUE(split_label(labels[0], columns) && plan_times(columns[0], &start, &end));
+	ASSERT_TRUE(split_label(labels[0], 6, columns) && plan_times(columns[0], &start, &end));
 	ASSERT_EQ_INT(22, (int)strlen(columns[0]));
 	ASSERT_STREQ("Good", columns[1]);
 	ASSERT_STREQ("run 1/2", columns[2]);
 	ASSERT_STREQ("normal 50", columns[3]);
 	ASSERT_STREQ("PLANNED", columns[4]);
 	ASSERT_STREQ("-", columns[5]);
-	ASSERT_TRUE(split_label(labels[3], columns));
-	ASSERT_STREQ("-", columns[0]);
-	ASSERT_STREQ("Off", columns[1]);
-	ASSERT_STREQ("run 0/1", columns[2]);
-	ASSERT_STREQ("NOT TONIGHT", columns[4]);
-	ASSERT_STREQ("disabled", columns[5]);
-	ASSERT_TRUE(split_label(labels[4], columns));
-	ASSERT_STREQ("Later", columns[1]);
-	ASSERT_STREQ("window not open yet", columns[5]);
+	for (int i = 0; i < 3; i++) {
+		ASSERT_EQ_INT(INDIGO_IDLE_STATE, states[i]);
+		ASSERT_TRUE(strstr(labels[i], " | Off | ") == NULL && strstr(labels[i], " | Later | ") == NULL);
+	}
 	// the history: a long reason with a separator is cut in the last column only
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Task 'Good' completed", 2, 30));
@@ -3766,14 +3836,14 @@ static void labels_have_uniform_columns(void) {
 		indigo_usleep(20000);
 	}
 	ASSERT_EQ_INT(3, history_count());
-	ASSERT_EQ_INT(history_count(), check_columns(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME));
-	ASSERT_TRUE(history_label("Good #2", 0, label) && split_label(label, columns));
+	ASSERT_EQ_INT(history_count(), check_columns(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME, 6));
+	ASSERT_TRUE(history_label("Good #2", 0, label) && split_label(label, 6, columns));
 	ASSERT_STREQ("Good", columns[1]);
 	ASSERT_STREQ("run 2", columns[2]);
 	ASSERT_STREQ("task", columns[3]);
 	ASSERT_STREQ("SUCCEEDED", columns[4]);
 	ASSERT_STREQ("-", columns[5]);
-	ASSERT_TRUE(history_label("Bad #1", 0, label) && split_label(label, columns));
+	ASSERT_TRUE(history_label("Bad #1", 0, label) && split_label(label, 6, columns));
 	ASSERT_STREQ("FAILED", columns[4]);
 	ASSERT_TRUE(!strncmp(columns[5], "Error: a | b xxx", 16));
 	ASSERT_TRUE(strlen(label) < INDIGO_VALUE_SIZE);
@@ -3824,17 +3894,19 @@ static void plan_lists_the_night(void) {
 	REQUIRE(upload("// @task Off\n// @duration 1\n" BODY_WAIT(1)));
 	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
 	REQUIRE(upload("// @task South\n// @target 06:00:00 -89:00:00\n// @twilight none\n// @duration 1\n" BODY_WAIT(1)));
-	// the plan is a preview, it is shown before the scheduler starts
-	ASSERT_TRUE(wait_plan(7, "High", 10));
+	// the plan is a preview, it is shown before the scheduler starts; it lists only the planned runs, not the disabled and the unreachable task
+	ASSERT_TRUE(wait_plan(5, "High", 10));
+	ASSERT_TRUE(wait_task_reason("South", "UNREACHABLE", "never rises above the horizon", 5));
 	char labels[16][INDIGO_VALUE_SIZE];
 	indigo_property_state states[16];
-	REQUIRE(plan_items(labels, states, 16) == 7);
-	const char *expected[] = { " | High | run 1/1 | high 0 | PLANNED | -", " | Normal | run 1/1 | normal 10 | PLANNED | -", " | Low | run 1/1 | low 90 | PLANNED | -", " | Twice | run 1/2 | low 0 | PLANNED | -", " | Twice | run 2/2 | low 0 | PLANNED | -", "- | Off | run 0/1 | normal 50 | NOT TONIGHT | disabled", "- | South | run 0/1 | normal 50 | UNREACHABLE | never rises above the horizon" };
+	REQUIRE(plan_items(labels, states, 16) == 5);
+	const char *expected[] = { " | High | run 1/1 | high 0 | PLANNED | -", " | Normal | run 1/1 | normal 10 | PLANNED | -", " | Low | run 1/1 | low 90 | PLANNED | -", " | Twice | run 1/2 | low 0 | PLANNED | -", " | Twice | run 2/2 | low 0 | PLANNED | -" };
 	const int durations[] = { 20, 5, 10, 1, 1 };
-	for (int i = 0; i < 7; i++) {
+	for (int i = 0; i < 5; i++) {
 		ASSERT_TRUE(strstr(labels[i], expected[i]) != NULL);
-		ASSERT_EQ_INT(i < 5 ? INDIGO_IDLE_STATE : INDIGO_ALERT_STATE, states[i]);
+		ASSERT_EQ_INT(INDIGO_IDLE_STATE, states[i]);
 	}
+	ASSERT_TRUE(wait_task_reason("Off", "DISABLED", "-", 5));
 	// the runs follow each other from now on
 	struct tm now;
 	time_t t = time(NULL);
@@ -3853,16 +3925,17 @@ static void plan_lists_the_night(void) {
 	}
 	// an upload and an urgent submission change the plan at once
 	REQUIRE(upload("// @task Top\n// @priority high 50\n// @duration 1\n" BODY_WAIT(1)));
-	ASSERT_TRUE(wait_plan(8, " | Top | run 1/1 | high 50 | ", 5));
+	ASSERT_TRUE(wait_plan(6, " | Top | run 1/1 | high 50 | ", 5));
 	REQUIRE(urgent("// @task Rush\n// @priority low\n// @duration 1\n" BODY_WAIT(1)));
-	ASSERT_TRUE(wait_plan(9, " | Rush | run 1/1 | urgent | ", 5));
+	ASSERT_TRUE(wait_plan(7, " | Rush | run 1/1 | urgent | ", 5));
 	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
-	ASSERT_TRUE(wait_plan_item(9, 8, "- | South | run 0/1 | normal 50 | UNREACHABLE | ", 5));
-	REQUIRE(plan_items(labels, states, 16) == 9);
+	ASSERT_TRUE(wait_plan_item(8, 3, " | Off | run 1/1 | normal 50 | ", 5));
+	REQUIRE(plan_items(labels, states, 16) == 8);
 	ASSERT_TRUE(strstr(labels[0], " | Rush | run 1/1 | urgent | ") != NULL);
 	ASSERT_TRUE(strstr(labels[3], " | Off | run 1/1 | normal 50 | ") != NULL);
 	for (int i = 0; i < 8; i++) {
 		ASSERT_EQ_INT(INDIGO_IDLE_STATE, states[i]);
+		ASSERT_TRUE(strstr(labels[i], " | South | ") == NULL);
 	}
 }
 
@@ -3894,21 +3967,38 @@ static void plan_follows_the_run(void) {
 	ASSERT_TRUE(wait_plan_first(" | Second | run 1/1 | normal 50 | PLANNED | ", INDIGO_IDLE_STATE, 5));
 }
 
+// the plan lists only the planned runs; a task that could run without a run in the plan is UNPLANNED in the task list with the reason, a task with a script error keeps its state
 static void plan_gives_the_reasons(void) {
 	site_at_evening();
 	REQUIRE(upload("// @task Thrown\n// @duration 1\nthrow new Error(\"always\");\n"));
 	// a run may start before the end of the night and last beyond it, a second one then finds no time
 	REQUIRE(upload("// @task Endless\n// @priority high\n// @duration 1380\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Later\n// @duration 1380\n" BODY_WAIT(1)));
-	ASSERT_TRUE(wait_plan_item(3, 1, "- | Thrown | run 0/1 | normal 50 | NOT TONIGHT | script error", 15));
+	ASSERT_TRUE(wait_task_reason("Thrown", "SCRIPT ERROR", "-", 15));
+	ASSERT_TRUE(task_light("Thrown", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_task_reason("Later", "UNPLANNED", "no time left tonight", 5));
+	ASSERT_TRUE(task_light("Later", INDIGO_IDLE_STATE));
+	ASSERT_TRUE(wait_task_reason("Endless", "QUEUED", "-", 5));
+	ASSERT_TRUE(wait_plan(1, " | Endless | run 1/1 | high 50 | ", 5));
 	char labels[16][INDIGO_VALUE_SIZE];
 	indigo_property_state states[16];
-	REQUIRE(plan_items(labels, states, 16) == 3);
-	ASSERT_TRUE(strstr(labels[0], " | Endless | run 1/1 | high 50 | ") != NULL);
+	REQUIRE(plan_items(labels, states, 16) == 1);
 	ASSERT_EQ_INT(INDIGO_IDLE_STATE, states[0]);
-	ASSERT_TRUE(strstr(labels[2], "- | Later | run 0/1 | normal 50 | NOT TONIGHT | no time left tonight") != NULL);
-	ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[1]);
-	ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[2]);
+	// with the long task disabled the other one is planned and no longer UNPLANNED, the disabled task is not UNPLANNED
+	REQUIRE(command("Endless", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_plan(1, " | Later | run 1/1 | normal 50 | ", 5));
+	ASSERT_TRUE(wait_task_reason("Later", "QUEUED", "-", 5));
+	ASSERT_TRUE(wait_task_reason("Endless", "DISABLED", "-", 5));
+	// enabled again it has the higher priority, the other one is UNPLANNED once more
+	REQUIRE(command("Endless", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_task_reason("Later", "UNPLANNED", "no time left tonight", 5));
+	ASSERT_TRUE(wait_task_reason("Endless", "QUEUED", "-", 5));
+	// a running and a finished task are never UNPLANNED
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_reason("Endless", "RUNNING", "-", 15));
+	ASSERT_TRUE(wait_task_reason("Endless", "DONE", "-", 15));
+	ASSERT_TRUE(wait_task_reason("Later", "DONE", "-", 15));
+	ASSERT_TRUE(wait_task_reason("Thrown", "SCRIPT ERROR", "-", 5));
 }
 
 // waits until the plan is exactly the given items, read from one snapshot so that a run ending in between cannot mix two plans
@@ -5880,7 +5970,7 @@ static void agents_survive_a_restart(void) {
 	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_SOLVER_AGENT_LIST_AUTOMATIC_ITEM_NAME, NULL, 5));
 	REQUIRE(upload_placed("Placed", 0, 48, "// @duration 5\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(waits_with_reason("Placed", "site coordinates unknown"));
+	ASSERT_TRUE(unplanned_with_reason("Placed", "site coordinates unknown"));
 	// once it is attached it is listed, selected and gives the site
 	indigo_property *mount_properties[] = { mount_info, site_property };
 	REQUIRE(rename_standin(&mount_standin, mount_properties, 2, "Mount Agent @ obs2"));

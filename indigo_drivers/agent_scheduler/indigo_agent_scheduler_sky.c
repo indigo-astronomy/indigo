@@ -172,8 +172,9 @@ static bool needs_sky(const scheduler_header *header) {
 
 bool indigo_scheduler_sky_point_ok(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, int index, const char **reason) {
 	static const double twilight_limit[] = { 90, -6, -12, -18 };
+	static const char *twilight_reason[] = { "", "sun above -6°", "sun above -12°", "sun above -18°" };
 	if (header->twilight != SCHEDULER_TWILIGHT_NONE && sky->sun_altitude[index] >= twilight_limit[header->twilight]) {
-		*reason = "too bright (twilight)";
+		*reason = twilight_reason[header->twilight];
 		return false;
 	}
 	if (!header->has_target) {

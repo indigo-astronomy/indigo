@@ -208,7 +208,14 @@ static void test_twilight(void) {
 	ASSERT_TRUE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
 	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
 	ASSERT_FALSE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
-	ASSERT_STREQ("too bright (twilight)", reason);
+	ASSERT_STREQ("sun above -18°", reason);
+	// the reason names the Sun altitude limit of the task
+	header.twilight = SCHEDULER_TWILIGHT_NAUTICAL;
+	ASSERT_FALSE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
+	ASSERT_STREQ("sun above -12°", reason);
+	header.twilight = SCHEDULER_TWILIGHT_CIVIL;
+	ASSERT_FALSE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
+	ASSERT_STREQ("sun above -6°", reason);
 	header.twilight = SCHEDULER_TWILIGHT_NONE;
 	ASSERT_TRUE(indigo_scheduler_sky_point_ok(&sky, &target, &header, 0, &reason));
 }
@@ -318,7 +325,7 @@ static void test_interval_next_eligible_and_time_to_set(void) {
 	dark.twilight = SCHEDULER_TWILIGHT_ASTRONOMICAL;
 	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
 	time_t next = indigo_scheduler_next_eligible(&sky, &target, &dark, T_NOVEMBER_NOON, 3600, &reason);
-	ASSERT_STREQ("too bright (twilight)", reason);
+	ASSERT_STREQ("sun above -18°", reason);
 	ASSERT_TRUE(next > T_NOVEMBER_NOON + 4 * 3600 && next < T_NOVEMBER_NOON + 7 * 3600);
 	ASSERT_TRUE(indigo_scheduler_interval_ok(&sky, &target, &dark, next, next + 3600, &reason));
 }

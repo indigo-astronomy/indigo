@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300002D
+#define DRIVER_VERSION 0x0300002E
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -63,7 +63,7 @@
 #define ESTIMATE_TIMEOUT					10
 #define MAX_DURATION							86400
 #define MAX_PLAN_RUNS							256
-#define MAX_PLAN_ITEMS						(MAX_PLAN_RUNS + MAX_TASKS)
+#define MAX_PLAN_ITEMS						MAX_PLAN_RUNS
 #define LIBRARY_RETRY_INTERVAL		30
 #define SAVE_DELAY								2
 #define SKY_REFRESH_INTERVAL			3600
@@ -300,6 +300,9 @@ typedef struct {
 	bool script_error;
 	// why the target can never stand within the altitude limits, empty when it can
 	char unreachable[INDIGO_VALUE_SIZE];
+	// set by the latest plan for a task that could run but has no run in it, with the reason
+	bool unplanned;
+	char unplanned_reason[INDIGO_VALUE_SIZE];
 	scheduler_target_grid target;
 	scheduler_task_points points;
 	indigo_property *property;
@@ -539,6 +542,11 @@ static bool is_enabled(scheduler_task *task) {
 // a task that can never run within the altitude limits; a running or finished task keeps its state
 static bool is_unreachable(scheduler_task *task) {
 	return *task->unreachable && task->state != TASK_RUNNING && !is_terminal_state(task->state);
+}
+
+// a task without a run in the latest plan that could run otherwise; a running or finished task keeps its state
+static bool is_unplanned(scheduler_task *task) {
+	return task->unplanned && is_enabled(task) && !task->script_error && !is_unreachable(task) && task->state != TASK_RUNNING && !is_terminal_state(task->state);
 }
 
 // the hook a task serves, RUN_TASK for an ordinary task
@@ -1091,18 +1099,21 @@ static const char *task_priority_text(indigo_device *device, scheduler_task *tas
 }
 
 static void build_task_state_label(indigo_device *device, scheduler_task *task, char *label, size_t size) {
-	const char *state = is_hook(device, task) ? is_enabled(task) ? "HOOK" : "DISABLED" : task->script_error ? "SCRIPT ERROR" : is_unreachable(task) ? "UNREACHABLE" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
+	bool hook = is_hook(device, task);
+	const char *state = hook ? is_enabled(task) ? "HOOK" : "DISABLED" : task->script_error ? "SCRIPT ERROR" : is_unreachable(task) ? "UNREACHABLE" : !is_enabled(task) ? "DISABLED" : is_unplanned(task) ? "UNPLANNED" : task_state_names[task->state];
+	// the reason column is filled only for an unreachable or unplanned task
+	const char *reason = hook || task->script_error ? "" : is_unreachable(task) ? task->unreachable : is_unplanned(task) ? task->unplanned_reason : "";
 	char priority[48], runs[32] = "", retries[32] = "", duration[48] = "";
 	const char *priority_text = task_priority_text(device, task, priority, sizeof(priority));
-	if (!is_hook(device, task)) {
+	if (!hook) {
 		const char *source;
 		snprintf(runs, sizeof(runs), "run %d/%d", task->runs, task->header.repeat);
 		snprintf(retries, sizeof(retries), "retries left %d", task->header.retry - task->retries_used);
 		int minutes = (task_duration(task, &source) + 59) / 60;
 		snprintf(duration, sizeof(duration), "%dh%02d %s", minutes / 60, minutes % 60, source);
 	}
-	const char *columns[] = { task->header.name, state, priority_text, runs, retries, duration };
-	join_label(label, size, 6, columns);
+	const char *columns[] = { task->header.name, state, priority_text, runs, retries, duration, reason };
+	join_label(label, size, 7, columns);
 }
 
 static indigo_property_state task_light_state(indigo_device *device, scheduler_task *task) {
@@ -3126,41 +3137,38 @@ static void update_plan(indigo_device *device, time_t now) {
 			planned[plan_runs[i].task] = true;
 		}
 	}
-	// tasks without a run before the end of the night follow with the reason
-	for (int i = 0; i < count && items < MAX_PLAN_ITEMS; i++) {
-		if (planned[i]) {
+	// the plan lists only the planned runs, a task that could run without a run in it is UNPLANNED in the task list with the reason
+	bool unplanned[MAX_TASKS] = { false };
+	const char *reasons[MAX_TASKS] = { NULL };
+	for (int i = 0; i < count; i++) {
+		scheduler_task *task = PRIVATE_DATA->tasks + plan_slots[i];
+		if (planned[i] || !plan_tasks[i].selectable || task->state == TASK_RUNNING) {
 			continue;
 		}
-		scheduler_task *task = PRIVATE_DATA->tasks + plan_slots[i];
+		time_t from = plan_tasks[i].available_from > now ? plan_tasks[i].available_from : now;
 		const char *reason = NULL;
-		const char *state = "NOT TONIGHT";
-		if (task->script_error) {
-			reason = "script error";
-		} else if (is_unreachable(task)) {
-			state = "UNREACHABLE";
-			reason = task->unreachable;
-		} else if (!is_enabled(task)) {
-			reason = "disabled";
-		} else {
-			time_t from = plan_tasks[i].available_from > now ? plan_tasks[i].available_from : now;
-			time_t start = indigo_scheduler_points_next(&PRIVATE_DATA->sky, &task->points, &task->header, from, plan_tasks[i].duration, end, &reason);
-			if (start > 0 || reason == NULL) {
-				reason = "no time left tonight";
-			}
+		time_t start = indigo_scheduler_points_next(&PRIVATE_DATA->sky, &task->points, &task->header, from, plan_tasks[i].duration, end, &reason);
+		if (start > 0 || reason == NULL) {
+			reason = "no time left tonight";
 		}
-		char runs[32], priority[48];
-		snprintf(runs, sizeof(runs), "run %d/%d", task->runs, task->header.repeat);
-		const char *columns[] = { "-", task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), state, reason };
-		join_label(labels[items], INDIGO_VALUE_SIZE, 6, columns);
-		states[items++] = INDIGO_ALERT_STATE;
+		unplanned[plan_slots[i]] = true;
+		reasons[plan_slots[i]] = reason;
 	}
-	if (PRIVATE_DATA->nights.valid && night == NULL && night_hooks_named(device) && items < MAX_PLAN_ITEMS) {
-		const char *columns[] = { "-", "-", "-", "-", "NOT TONIGHT", "no night at the night limit within a day, the night hooks do not run" };
-		join_label(labels[items], INDIGO_VALUE_SIZE, 6, columns);
-		states[items++] = INDIGO_ALERT_STATE;
+	bool tasks_changed = false;
+	for (int slot = 0; slot < MAX_TASKS; slot++) {
+		scheduler_task *task = PRIVATE_DATA->tasks + slot;
+		const char *reason = unplanned[slot] ? reasons[slot] : "";
+		if (task->unplanned != unplanned[slot] || strcmp(task->unplanned_reason, reason)) {
+			task->unplanned = unplanned[slot];
+			INDIGO_COPY_VALUE(task->unplanned_reason, reason);
+			tasks_changed = true;
+		}
 	}
 	PRIVATE_DATA->plan_changed = false;
 	publish_plan(device, labels, states, items);
+	if (tasks_changed) {
+		update_task_state_property(device);
+	}
 	update_current(device);
 }
 

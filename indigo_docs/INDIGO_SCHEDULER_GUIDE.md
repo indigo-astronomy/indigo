@@ -35,7 +35,7 @@ See also: [Sequencer.js](../indigo_drivers/agent_scripting/library/Sequencer.md)
 - The duration of a run comes from `@duration`, from the last successful run or from an estimate of the sequence. See [Task duration](#task-duration).
 - Every task has a priority class, `low`, `normal`, `high` or `urgent`, and a level. Within a class, a score adds bonuses for setting targets and for targets near culmination. See [Priorities](#priorities).
 - Two strategies: `COMPACT` starts the best task at once, `VISIBILITY` plans the night so that targets run close to their culmination. See [Choosing a strategy](#choosing-a-strategy).
-- The night plan shows the expected runs and hooks for the rest of the night, and the tasks that will not run tonight with the reason. See [The night plan](#the-night-plan).
+- The night plan shows the expected runs and hooks for the rest of the night. The task list marks the tasks without a planned run as `UNPLANNED`, with the reason. See [The night plan](#the-night-plan).
 - The night plan takes meridian flips into account, and `VISIBILITY` avoids short flips. See [Meridian flips](#meridian-flips).
 
 **Runs**
@@ -144,7 +144,7 @@ This walk-through needs only the Scheduler and Scripting Agents. The test task w
 
    An accepted upload ends with `[OK]`. A rejected one ends with `[ALERT]` and a message that names the problem, for example `Scheduler Agent: Task rejected: line 2: @bogus: unknown key`.
 
-   The task appears in the task list `AGENT_SCHEDULER_TASK_STATE` as `Test | QUEUED | normal 50 | run 0/1 | retries left 0 | 0h01 set`. `indigo_prop_tool list -e "Scheduler Agent.AGENT_SCHEDULER_TASK_STATE"` shows it. The last column is the duration and where it comes from. `set` means that it comes from `@duration`. The task also gets its own property, `AGENT_SCHEDULER_TASK_0`.
+   The task appears in the task list `AGENT_SCHEDULER_TASK_STATE` as `Test | QUEUED | normal 50 | run 0/1 | retries left 0 | 0h01 set | -`. `indigo_prop_tool list -e "Scheduler Agent.AGENT_SCHEDULER_TASK_STATE"` shows it. The column before the last is the duration and where it comes from. `set` means that it comes from `@duration`. The last column is the reason why a task will not run, `-` here. The task also gets its own property, `AGENT_SCHEDULER_TASK_0`.
 
 3. Start the scheduler:
 
@@ -265,7 +265,7 @@ The Moon keys apply only while the Moon is above the horizon.
 
 The default `MIN_ALTITUDE` of 20° holds every target with a lower `@altitude`, or without one, at 20°. Set `MIN_ALTITUDE` to 0 to let such tasks run down to their own `@altitude` or to the horizon.
 
-A task whose target can never stand within the limits shows `UNREACHABLE`. This happens when `MAX_ALTITUDE` is not above the task's `@altitude`, when the target culminates below the effective minimum, or when a circumpolar target never sinks below `MAX_ALTITUDE`. A message says why, for example `Task 'M31' can never run: the target culminates at 15.3°, below the minimum altitude 20°`. The task is skipped until a change of the limits, the site or the task makes it reachable again. A target that never rises at all is reported as `never rises above the horizon`. A hook task is never marked: hooks ignore the sky constraints.
+A task whose target can never stand within the limits shows `UNREACHABLE`. This happens when `MAX_ALTITUDE` is not above the task's `@altitude`, when the target culminates below the effective minimum, or when a circumpolar target never sinks below `MAX_ALTITUDE`. A message says why, for example `Task 'M31' can never run: the target culminates at 15.3°, below the minimum altitude 20°`, and the last column of its label in the task list gives the same reason, `culminates at 15.3°, below the minimum altitude 20°`. The task is skipped until a change of the limits, the site or the task makes it reachable again. A target that never rises at all is reported as `never rises above the horizon`. A hook task is never marked: hooks ignore the sky constraints.
 
 **Time windows.** A window has a start, an end, or both:
 
@@ -517,12 +517,9 @@ The night plan `AGENT_SCHEDULER_PLAN` shows what the scheduler expects to do for
 2026-11-20 23:36-01:28 | M31 LRGB | run 2/2 | normal 60 | PLANNED | -
 2026-11-21 01:45-02:45 | M81 | run 1/1 | normal 50 | PLANNED | -
 2026-11-21 05:10-05:12 | Morning | - | hook night end | PLANNED | -
-- | M42 | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit
-- | NGC 891 | run 0/1 | normal 50 | NOT TONIGHT | disabled
-- | NGC 253 | run 0/1 | normal 50 | UNREACHABLE | culminates at 16.7°, below the minimum altitude 20°
 ```
 
-Each run shows its expected start and end in UTC, the task, the run number and the priority. The night hooks appear at their expected times, such as `Morning` above. A gap between two runs is idle time. With `COMPACT`, nothing can run in the gap. With `VISIBILITY`, the plan waits there for a better time. At the end come the tasks that will not run tonight, with the reason.
+Each run shows its expected start and end in UTC, the task, the run number and the priority. The night hooks appear at their expected times, such as `Morning` above. A gap between two runs is idle time. With `COMPACT`, nothing can run in the gap. With `VISIBILITY`, the plan waits there for a better time. The plan lists only the planned runs. A task that will not run before the end of the plan is not listed: the task list shows it as `UNPLANNED`, with the reason in the last column, for example `M42 | UNPLANNED | normal 50 | run 0/1 | retries left 0 | 1h00 set | target below the altitude limit`. Disabled tasks, tasks with a script error and `UNREACHABLE` tasks keep their states there.
 
 **The plan is a forecast.** It assumes that every run succeeds and takes its expected duration. It cannot show where an urgent task will interrupt a run. During the day the plan shows the coming night. While the scheduler is stopped, it shows the plan that `START` would follow.
 
@@ -1435,42 +1432,46 @@ See also: [Starting, stopping and restarting](#starting-stopping-and-restarting)
 
 ### Label format
 
-The item labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are meant to be parsed by clients. Every item label has exactly six columns, always in the same order. The columns are joined by ` | `: space, pipe, space.
+The item labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are meant to be parsed by clients. Every item label of the task list has exactly seven columns, and every item label of the night plan and the history exactly six, always in the same order. The columns are joined by ` | `: space, pipe, space.
 
 - An empty column is `-`.
 - The separators, placeholders, fixed words and times are ASCII. The times are UTC. Names and reasons are UTF-8 text.
 - A time range is `YYYY-MM-DD HH:MM-HH:MM`, dated by its start.
 - State and result are fixed words in capitals.
-- The only free text, a reason, is the last column. It may contain ` | `. Split an item label at the first five separators only.
+- The only free text, a reason, is the last column. It may contain ` | `. Split an item label at the first six separators of the task list, or the first five of the night plan and the history, only.
 - An item label is at most 511 bytes. When it is longer, only the last column is cut.
 - Task names cannot contain `|`. A task with such a name in its `@task` line has a header error.
 
 | List | Columns |
 |---|---|
-| task list | name, state, priority, runs, retries, duration |
+| task list | name, state, priority, runs, retries, duration, reason |
 | night plan | when, name, run, priority, state, reason |
 | history | when, name, run, kind, result, reason |
 
 ### The task list
 
-`AGENT_SCHEDULER_TASK_STATE` has one light item per task, in list order. The columns are the name, state, priority, completed runs, retries left and duration:
+`AGENT_SCHEDULER_TASK_STATE` has one light item per task, in list order. The columns are the name, state, priority, completed runs, retries left, duration and reason:
 
 ```
-M31 LRGB | REPEAT | normal 60 | run 1/2 | retries left 1 | 1h52 estimated
-SN 2026abc | RUNNING | urgent | run 0/1 | retries left 0 | 0h30 set
-Park | HOOK | hook shutdown | - | - | -
+M31 LRGB | REPEAT | normal 60 | run 1/2 | retries left 1 | 1h52 estimated | -
+SN 2026abc | RUNNING | urgent | run 0/1 | retries left 0 | 0h30 set | -
+M42 | UNPLANNED | normal 50 | run 0/1 | retries left 0 | 1h00 set | target below the altitude limit
+NGC 253 | UNREACHABLE | normal 50 | run 0/1 | retries left 0 | 1h00 set | culminates at 16.7°, below the minimum altitude 20°
+Park | HOOK | hook shutdown | - | - | - | -
 ```
 
 - **Priority.** `urgent`, or the class and level such as `normal 60`. A task that serves as a hook shows its hook: `hook startup`, `hook shutdown`, `hook night start`, `hook night end`, `hook idle` or `hook resume`. A task with `@priority hook` that no hook names shows `hook`.
 - **Runs.** `run <done>/<repeat>`, always shown.
 - **Retries.** `retries left <n>`, always shown.
 - **Duration.** Hours and minutes, followed by the source: `set`, `measured`, `estimated` or `default`.
-- A hook task has `-` for the runs, the retries and the duration.
+- **Reason.** Why the task will not run: for an `UNPLANNED` task the reason of the night plan, see [Reasons](#reasons), or `no time left tonight` for a task that finds no room after the planned runs; for an `UNREACHABLE` task the reason of its `can never run` message. It is `-` for every other task, hooks included.
+- A hook task has `-` for the runs, the retries, the duration and the reason.
 
 | State | Light | Meaning |
 |---|---|---|
 | `QUEUED` | Idle | Ready to run |
 | `WAITING` | Idle | Its constraints do not hold now. The night plan shows when they will |
+| `UNPLANNED` | Idle | It could run, but the night plan has no run of it before its end. The reason column says why. Shown instead of `QUEUED`, `WAITING`, `RETRY` or `REPEAT`; it is not a state of its own, and the scheduler selects the task as before when it can run |
 | `RUNNING` | Busy | Its sequence is executing |
 | `RETRY` | Idle | Failed or interrupted. It will run again after the retry delay |
 | `REPEAT` | Idle | Completed a run. More runs follow after the repeat interval |
@@ -1479,7 +1480,7 @@ Park | HOOK | hook shutdown | - | - | -
 | `EXPIRED` | Alert | The end of its `@window` passed before it completed |
 | `DISABLED` | Idle | `@enabled no`, or disabled by command. A disabled hook task shows it too, with its hook in the priority column |
 | `SCRIPT ERROR` | Alert | The body has an error. Fix it with an edit |
-| `UNREACHABLE` | Alert | The target can never stand within the altitude limits. The night plan gives the reason. Change the limits or the task |
+| `UNREACHABLE` | Alert | The target can never stand within the altitude limits. The reason column gives the numbers. Change the limits or the task |
 | `HOOK` | Idle | The task is named in `AGENT_SCHEDULER_HOOKS` or has `@priority hook`. Its state is not tracked |
 
 ### Night plan items
@@ -1489,9 +1490,7 @@ The columns of `AGENT_SCHEDULER_PLAN` are when, name, run, priority, state and r
 - **States.** `RUNNING` (Busy light) marks the running task or hook. `PLANNED` (Idle light) marks a planned run.
 - **Reasons.** The reason of a planned run is `-`, or `meridian flip` for a run that is expected to flip.
 - **Night hooks** have `-` as the run and `hook night start` or `hook night end` as the priority.
-- **Not tonight.** The tasks that will not run tonight have an Alert light, `-` as the time and the state `NOT TONIGHT`. Typical reasons are a constraint that never holds tonight, `disabled` and `script error`. `no time left tonight` marks a task that finds no room after the others.
-- **Unreachable.** A task whose target can never stand within the altitude limits has an Alert light, `-` as the time and the state `UNREACHABLE` instead of `NOT TONIGHT`. The reason gives the numbers: `never rises above the horizon`, `culminates at 15.3°, below the minimum altitude 20°` (or `below the task's @altitude 40°`), `never below 50.2°, above the maximum altitude 45°`, or `maximum altitude 30° is not above the task's @altitude 40°`.
-- **No night.** A day without night, with night hooks set, adds the item `- | - | - | - | NOT TONIGHT | no night at the night limit within a day, the night hooks do not run`.
+- **Only planned runs.** Tasks without a run before the end of the plan are not listed. The task list shows such a task as `UNPLANNED` with the reason. Disabled tasks, tasks with a script error and `UNREACHABLE` tasks are not listed either; their reasons are in the task list too. The reason of an `UNREACHABLE` task gives the numbers: `never rises above the horizon`, `culminates at 15.3°, below the minimum altitude 20°` (or `below the task's @altitude 40°`), `never below 50.2°, above the maximum altitude 45°`, or `maximum altitude 30° is not above the task's @altitude 40°`.
 
 **Hook items.** A running hook of any kind is the first item, for example `2026-11-20 19:58-20:03 | Evening | - | hook night start | RUNNING | -`. Its end is its start plus its duration, but not earlier than a minute from now. The planned runs follow from that end. A running night hook replaces its planned item. Only the night hooks are forecast. `STARTUP`, `SHUTDOWN`, `IDLE` and `RESUME` show up only while they run.
 
@@ -1559,7 +1558,7 @@ A rejected request puts the property you changed into the Alert state. A message
 
 ### Reasons
 
-`REASON` in `AGENT_SCHEDULER_CURRENT` and the `NOT TONIGHT` items of the night plan explain why a task does not run:
+`REASON` in `AGENT_SCHEDULER_CURRENT` and the reason column of an `UNPLANNED` task in the task list explain why a task does not run:
 
 | Reason | Meaning |
 |---|---|
@@ -1570,7 +1569,7 @@ A rejected request puts the property you changed into the Alert state. A message
 | `hour angle out of range` | `@ha` |
 | `too close to the moon` | `@moon` |
 | `moon too bright` | `@illumination` |
-| `too bright (twilight)` | `@twilight`, or `@target` without `@twilight` |
+| `sun above -6°`, `sun above -12°`, `sun above -18°` | `@twilight civil`, `nautical` or `astronomical`, the last also for `@target` without `@twilight` |
 | `window not open yet`, `outside of the nightly window` | `@window` |
 | `window ends before the task can finish`, `nightly window ends before the task can finish` | The run does not fit in `@window` |
 | `site coordinates unknown` | The Mount Agent of `AGENT_SCHEDULER_AGENTS` is not loaded, or it has no site coordinates |
@@ -1609,7 +1608,7 @@ See also: [Starting, stopping and restarting](#starting-stopping-and-restarting)
 | The Scripting Agent warns `... agent '...' ignored, '...' is used (agents of Scheduler Agent)` | A task or a sequence started by hand asks for other agents than those of `AGENT_SCHEDULER_AGENTS`. Configure the agents there. To run a sequence on other agents, stop the scheduler first |
 | `SEQUENCER_OWNER` names the Scheduler Agent, but no scheduler runs | The scheduler was gone before it could release the sequencer. A started Scheduler Agent releases it by itself; otherwise set `SEQUENCER_RELEASE` of the Scripting Agent, or restart the Scripting Agent |
 | The upload is rejected | The message of the Scheduler Agent names the line and the problem. See [Header keys](#header-keys) |
-| A task shows `UNREACHABLE` | Its target can never stand within `MIN_ALTITUDE`, `MAX_ALTITUDE` and its `@altitude` at this site. The night plan and the message give the numbers. Lower `MIN_ALTITUDE` or the task's `@altitude`, or raise `MAX_ALTITUDE` |
+| A task shows `UNREACHABLE` | Its target can never stand within `MIN_ALTITUDE`, `MAX_ALTITUDE` and its `@altitude` at this site. The reason column of the task list and the message give the numbers. Lower `MIN_ALTITUDE` or the task's `@altitude`, or raise `MAX_ALTITUDE` |
 | A low target waits with `target below the altitude limit`, although its `@altitude` is lower | `MIN_ALTITUDE` (default 20°) is higher. Lower it |
 | A task shows `SCRIPT ERROR` | The message names the JavaScript error. Fix the body with an edit. Or `RESET` the task after fixing an agent the body needed |
 | A task shows `1h00 default` | The duration cannot be estimated from the sequence. Set `@duration`. See [Task duration](#task-duration) |
