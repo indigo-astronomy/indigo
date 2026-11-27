@@ -1,0 +1,784 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7759af9c-e572-491f-b69c-73df07c6cc88",
+  "revision": 37,
+  "title": "indigo_mount_lx200: read the ToupTek SH20 slew rate at connect and refresh the meridian and buzzer settings while connected",
+  "description": "Found on hardware (SH20 firmware 1.0.0.20261101, driver 3.0.0.91, /dev/ttyACM0, 2026-11-27):\n\n1. MOUNT_SLEW_RATE is never read from the mount. At connect the driver showed GUIDE while :GRV# answered 1440.0 (MAX at speed limit 1440). Read :GRV# at connect (after :GRl#) and select the item whose preset gives that rate: GUIDE = :R1# 0.5x, CENTERING = :R4# 4x, FIND = :R7# 60x, MAX = :R9# = the speed limit (720 or 1440; 360/720 per protocol 4.3 when the limit is 720 -- check against the presets the driver actually sends). A rate that matches none of the four (set from the hand controller, e.g. 8x) leaves the property with no item selected, state OK; an unreadable :GRV# leaves the current selection. Also re-read :GRV# after the speed-limit change, which already reads it, so the property follows.\n\n2. X_TOUPTEK_MERIDIAN (:GTa#) and X_TOUPTEK_BUZZER (:GBz#) are read only at connect and after a change from INDIGO, so a change on the hand controller is never shown. Re-read both in meade_update_touptek_state() and publish only when the value changes. To keep the poll short, read them at a lower rate than the position poll (for example every 10th status update); the implementer chooses and documents the interval.\n\nVerified on hardware: the meridian read at connect itself is correct (:GTa# -> 00+00 shown as OFF/OFF; set to 11+00, it survived a reconnect). Power-cycle persistence was not tested.\n\nAlso: bump the driver version, update PROTOCOL.md (:GRV# read at connect, :GTa#/:GBz# polled), extend the SH20 simulator if needed (control lines to change the manual rate, flip settings and buzzer behind the driver's back), and add integration tests in indigo_test/integration/test_mount_lx200_simulator.c: slew rate read at connect for each of the four rates, an unmatched rate, limit 720 MAX mapping, and the hand-controller change of the meridian and buzzer settings appearing on the poll. README.md is not changed without approval.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-27T08:36:41.366683Z",
+  "status": "closed",
+  "branch": "ticket/7759af9c-e572-491f-b69c-73df07c6cc88",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "2370f17b-024c-4320-aaf5-e9c316c4b103",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T08:38:46.153792Z",
+          "last_activity_at": "2026-11-27T09:18:39.687281Z",
+          "ended_at": "2026-11-27T09:18:39.687281Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2393533.489,
+          "tokens": null
+        },
+        {
+          "attempt_id": "a1cacc74-7155-429c-a0a2-e2c25db93a75",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-27T09:28:04.309737Z",
+          "last_activity_at": "2026-11-27T10:03:12.554776Z",
+          "ended_at": "2026-11-27T10:03:12.554776Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2108245.039,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T08:38:46.153792Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/7759af9c-e572-491f-b69c-73df07c6cc88"
+        },
+        {
+          "at": "2026-11-27T09:18:39.687281Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-27T09:28:04.309737Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-27T10:03:12.554776Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 4501778.528,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "8b1d0eae-66a0-415a-9dac-536bb582d731",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-27T09:18:39.687316Z",
+          "last_activity_at": "2026-11-27T09:28:04.309631Z",
+          "ended_at": "2026-11-27T09:28:04.309631Z",
+          "outcome": {
+            "summary": "One defect. Race between the new settings poll and a client change of X_TOUPTEK_MERIDIAN / X_TOUPTEK_BUZZER (indigo_mount_lx200.driver:3369 and :3374, meade_update_touptek_state). INDIGO_COPY_VALUES_PROCESS_CHANGE (indigo_mount_lx200.c:5762, :5765) copies the requested values into the property on the bus thread, sets BUSY and queues the handler behind an already running or queued mount_timer_callback. When that poll is the 5th one it reads :GTa#/:GBz# (the old mount value), sees it differ from the just-copied request, overwrites the items with the old value and publishes; the queued handler then sends :STa/:SBz with the old values, reads them back equal and reports OK, so the user's change is silently lost. Fix: skip each read in the poll while its property is BUSY (e.g. TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE before zwo_get_meridian, the same for TOUPTEK_BUZZER_PROPERTY before touptek_read_buzzer), and mention it in the comment. Everything else checked and fine: :GRV# mapping (presets 0.5/4/60/limit match :R1/:R4/:R7/:R9 actually sent; MAX 720 at limit 720 per protocol table 4.3, 1440 also at unknown limit 0 where both switches are false), nearest by |ln(rate/preset)| per owner decision, 1% exact tolerance with lastSlewRate=0 forcing a re-send before the next motion, unreadable reply keeps selection, counter reset in init so the connect poll never publishes before definition, states untouched, all changes inside TOUPTEK paths, .driver edited and regenerated output byte-identical (regenerated in a scratch dir), version 91->92, simulator v8 control lines, PROTOCOL.md accurate, MIGRATION_STATUS.md only the test count column. The four new tests exercise what they claim (preset counts before/after motion, ordering of :GRl#/:GRV#, preset re-send before Me, revision checks for publish-only-on-change, read-rate ratio). Ran INDIGO_TEST_CASE_FILTER=lx200_touptek build/integration/test_mount_lx200_simulator in the worktree: all passed; test-clean afterwards. Ful",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 564622.315,
+          "tokens": null
+        },
+        {
+          "attempt_id": "7f1ed6ee-0695-4bcc-a150-6a8708d782e2",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T10:03:12.554795Z",
+          "last_activity_at": "2026-11-27T10:34:53.180472Z",
+          "ended_at": "2026-11-27T10:34:53.180472Z",
+          "outcome": {
+            "summary": "Round 2 review of master...HEAD (worktree clean, no uncommitted changes). The round-1 finding is closed: the settings poll skips X_TOUPTEK_MERIDIAN/X_TOUPTEK_BUZZER while BUSY and re-checks BUSY after the serial read (indigo_mount_lx200.driver meade_update_touptek_state ~3367-3378, touptek_read_buzzer ~1098). INDIGO_COPY_VALUES_PROCESS_CHANGE (indigo_bus.h:974) sets BUSY before queueing the handler, and the handler runs on the same device queue as the poll. The only gap left is a request copied between the post-read check and indigo_set_switch, a few instructions wide. The framework has no lock to close it, so it is acceptable. Not having a deterministic meridian test is also acceptable, because the guard is the same as for the buzzer. Re-checked: the mapping matches the presets sent (R1 0.5, R4 4, R7 60, R9 = 720 at limit 720 else 1440, unknown limit -> 1440), consistent with ATLAS V1.3 sec. 4.3. The log-nearest rule follows the owner decision. lastSlewRate is set only on a 1% match, otherwise 0, so the preset is sent again before the next motion. A :GRV# reply that cannot be read leaves the selection. The poll publishes only on change. The other dialects are unaffected: the new code is under the TOUPTEK branches and lastSlewRate is reset only in the TOUPTEK speed-limit handler. Regenerating with the unchanged indigo_generator gives byte-identical .c/.h/_main.c. Version is 91 -> 92. Simulator is v8. PROTOCOL.md is accurate. Only the MIGRATION_STATUS.md test-count column changed (184 -> 189). Formatting follows the rules. Tests: touptek filter 22/22 PASS. lx200_touptek_settings_poll_keeps_a_pending_change passed 3/3 repeats. The full suite run passed 163 cases with 0 failures before my 1200 s timeout cut it off, so it is not complete. Minor, non-blocking: in the new test, the comment 'The poll read :GBz# after the request was made' (test_mount_lx200_simulator.c ~6416) is inaccurate. With the fix the poll skips :GBz# while BUSY, so the counted :GBz# is the handler's ",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1900625.677,
+          "tokens": null
+        },
+        {
+          "attempt_id": "31c3af3f-913c-42b7-9b85-9cffa614bd67",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T12:23:51.524703Z",
+          "last_activity_at": "2026-11-27T12:32:09.111896Z",
+          "ended_at": "2026-11-27T12:32:09.111896Z",
+          "outcome": {
+            "summary": "Since the passed tree 0790fcd4e the only change (558dc4bfe) is two comments in indigo_test/integration/test_mount_lx200_simulator.c (header of lx200_touptek_settings_poll_keeps_a_pending_change ~6400 and above the GBz assertion ~6418). Both now match the driver: meade_update_touptek_state() skips touptek_read_buzzer() while X_TOUPTEK_BUZZER is BUSY (indigo_mount_lx200.driver:3376), and the GBz read counted after the request is the on_change read-back after :SBz%d# (driver ~4498); the fix itself is guarded by SBz2==1, SBz0==0 and HIGH kept across 6 polls. git diff --check clean, no formatting issues. INDIGO_TEST_CASE_FILTER=touptek test_mount_lx200_simulator: 22/22 PASS; test-clean run afterwards. No defects.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 497587.193,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T09:18:39.687316Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T09:28:04.309631Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "One defect. Race between the new settings poll and a client change of X_TOUPTEK_MERIDIAN / X_TOUPTEK_BUZZER (indigo_mount_lx200.driver:3369 and :3374, meade_update_touptek_state). INDIGO_COPY_VALUES_PROCESS_CHANGE (indigo_mount_lx200.c:5762, :5765) copies the requested values into the property on the bus thread, sets BUSY and queues the handler behind an already running or queued mount_timer_callback. When that poll is the 5th one it reads :GTa#/:GBz# (the old mount value), sees it differ from the just-copied request, overwrites the items with the old value and publishes; the queued handler then sends :STa/:SBz with the old values, reads them back equal and reports OK, so the user's change is silently lost. Fix: skip each read in the poll while its property is BUSY (e.g. TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE before zwo_get_meridian, the same for TOUPTEK_BUZZER_PROPERTY before touptek_read_buzzer), and mention it in the comment. Everything else checked and fine: :GRV# mapping (presets 0.5/4/60/limit match :R1/:R4/:R7/:R9 actually sent; MAX 720 at limit 720 per protocol table 4.3, 1440 also at unknown limit 0 where both switches are false), nearest by |ln(rate/preset)| per owner decision, 1% exact tolerance with lastSlewRate=0 forcing a re-send before the next motion, unreadable reply keeps selection, counter reset in init so the connect poll never publishes before definition, states untouched, all changes inside TOUPTEK paths, .driver edited and regenerated output byte-identical (regenerated in a scratch dir), version 91->92, simulator v8 control lines, PROTOCOL.md accurate, MIGRATION_STATUS.md only the test count column. The four new tests exercise what they claim (preset counts before/after motion, ordering of :GRl#/:GRV#, preset re-send before Me, revision checks for publish-only-on-change, read-rate ratio). Ran INDIGO_TEST_CASE_FILTER=lx200_touptek build/integration/test_mount_lx200_simulator in the worktree: all passed; test-clean afterwards. Ful"
+        },
+        {
+          "at": "2026-11-27T10:03:12.554795Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T10:34:53.180472Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2 review of master...HEAD (worktree clean, no uncommitted changes). The round-1 finding is closed: the settings poll skips X_TOUPTEK_MERIDIAN/X_TOUPTEK_BUZZER while BUSY and re-checks BUSY after the serial read (indigo_mount_lx200.driver meade_update_touptek_state ~3367-3378, touptek_read_buzzer ~1098). INDIGO_COPY_VALUES_PROCESS_CHANGE (indigo_bus.h:974) sets BUSY before queueing the handler, and the handler runs on the same device queue as the poll. The only gap left is a request copied between the post-read check and indigo_set_switch, a few instructions wide. The framework has no lock to close it, so it is acceptable. Not having a deterministic meridian test is also acceptable, because the guard is the same as for the buzzer. Re-checked: the mapping matches the presets sent (R1 0.5, R4 4, R7 60, R9 = 720 at limit 720 else 1440, unknown limit -> 1440), consistent with ATLAS V1.3 sec. 4.3. The log-nearest rule follows the owner decision. lastSlewRate is set only on a 1% match, otherwise 0, so the preset is sent again before the next motion. A :GRV# reply that cannot be read leaves the selection. The poll publishes only on change. The other dialects are unaffected: the new code is under the TOUPTEK branches and lastSlewRate is reset only in the TOUPTEK speed-limit handler. Regenerating with the unchanged indigo_generator gives byte-identical .c/.h/_main.c. Version is 91 -> 92. Simulator is v8. PROTOCOL.md is accurate. Only the MIGRATION_STATUS.md test-count column changed (184 -> 189). Formatting follows the rules. Tests: touptek filter 22/22 PASS. lx200_touptek_settings_poll_keeps_a_pending_change passed 3/3 repeats. The full suite run passed 163 cases with 0 failures before my 1200 s timeout cut it off, so it is not complete. Minor, non-blocking: in the new test, the comment 'The poll read :GBz# after the request was made' (test_mount_lx200_simulator.c ~6416) is inaccurate. With the fix the poll skips :GBz# while BUSY, so the counted :GBz# is the handler's "
+        },
+        {
+          "at": "2026-11-27T12:23:51.524703Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T12:32:09.111896Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Since the passed tree 0790fcd4e the only change (558dc4bfe) is two comments in indigo_test/integration/test_mount_lx200_simulator.c (header of lx200_touptek_settings_poll_keeps_a_pending_change ~6400 and above the GBz assertion ~6418). Both now match the driver: meade_update_touptek_state() skips touptek_read_buzzer() while X_TOUPTEK_BUZZER is BUSY (indigo_mount_lx200.driver:3376), and the GBz read counted after the request is the on_change read-back after :SBz%d# (driver ~4498); the fix itself is guarded by SBz2==1, SBz0==0 and HIGH kept across 6 polls. git diff --check clean, no formatting issues. INDIGO_TEST_CASE_FILTER=touptek test_mount_lx200_simulator: 22/22 PASS; test-clean run afterwards. No defects."
+        }
+      ],
+      "result": {
+        "summary": "Since the passed tree 0790fcd4e the only change (558dc4bfe) is two comments in indigo_test/integration/test_mount_lx200_simulator.c (header of lx200_touptek_settings_poll_keeps_a_pending_change ~6400 and above the GBz assertion ~6418). Both now match the driver: meade_update_touptek_state() skips touptek_read_buzzer() while X_TOUPTEK_BUZZER is BUSY (indigo_mount_lx200.driver:3376), and the GBz read counted after the request is the on_change read-back after :SBz%d# (driver ~4498); the fix itself is guarded by SBz2==1, SBz0==0 and HIGH kept across 6 polls. git diff --check clean, no formatting issues. INDIGO_TEST_CASE_FILTER=touptek test_mount_lx200_simulator: 22/22 PASS; test-clean run afterwards. No defects.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 2962835.185,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "b44ab010-870e-4c87-a437-be31d46aea77",
+      "event": "ticket/created",
+      "at": "2026-11-27T08:36:41.367517Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "29254607-545f-4327-b411-4443dfee2447",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T08:38:33.335653Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "248e062c-3513-459a-bfd6-8f893c951141",
+      "event": "ticket/note",
+      "at": "2026-11-27T08:38:33.479944Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision 2026-11-27: a :GRV# rate that matches none of the four presets selects the NEAREST slew-rate item (not none). Compare on a logarithmic scale (rates span 0.5x to 1440x); document the rule in PROTOCOL.md and test an unmatched rate (e.g. 8x -> CENTERING, 20x -> FIND by log distance). The rest of the ticket description stands. Protocol text: /tmp/claude-1000/-home-rumen-work-indigo-git/03856bc6-7a17-49dd-9bf8-2cc9591bc866/scratchpad/pdf/atlas.txt.",
+      "tokens": null
+    },
+    {
+      "event_id": "67fd39f3-53bc-4600-8a99-afae09f8aeef",
+      "event": "task/progress",
+      "at": "2026-11-27T08:38:46.153926Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Implementation started on branch ticket/7759af9c-e572-491f-b69c-73df07c6cc88"
+    },
+    {
+      "event_id": "60189787-2e69-4e79-8b8d-917cd9e497f7",
+      "event": "ticket/started",
+      "at": "2026-11-27T08:38:46.155317Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/7759af9c-e572-491f-b69c-73df07c6cc88",
+      "base": "master"
+    },
+    {
+      "event_id": "6a87bc6a-9fd5-43f2-ab9c-1c43c975b30a",
+      "event": "task/progress",
+      "at": "2026-11-27T08:39:05.131974Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Implementer launched; reading driver and simulator",
+      "attempt_id": "2370f17b-024c-4320-aaf5-e9c316c4b103",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f5a3f9f1-e9bb-46ef-9e4f-10fd7528070c",
+      "event": "task/progress",
+      "at": "2026-11-27T08:41:39.833338Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Building library and generator in the worktree to regenerate the driver"
+    },
+    {
+      "event_id": "4e2855d5-afa5-4def-9796-86cd4ea69e7d",
+      "event": "task/progress",
+      "at": "2026-11-27T08:44:46.070278Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Building driver and running new touptek cases of test_mount_lx200_simulator"
+    },
+    {
+      "event_id": "fad7e596-4b2e-4bf4-a5df-56a4cf8fc243",
+      "event": "task/progress",
+      "at": "2026-11-27T08:50:06.207967Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Running the full test_mount_lx200_simulator suite"
+    },
+    {
+      "event_id": "c52e708f-aee5-4728-9c74-23e2ca24ad6f",
+      "event": "task/progress",
+      "at": "2026-11-27T09:18:03.963960Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "58894d21-a925-42dc-b086-e0060ad4f24c",
+      "event": "task/progress",
+      "at": "2026-11-27T09:18:04.003268Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "65dc0fae-f18e-400c-b692-a0cbb92aa9d1",
+      "event": "check/passed",
+      "at": "2026-11-27T09:18:04.011518Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "242ecfab5ac80c42385f6dd69b2384e02ffeb620",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "ba262549-2473-4472-9396-900a7770aeea",
+      "event": "ticket/note",
+      "at": "2026-11-27T09:18:12.039452Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction: the 4 new cases (lx200_touptek_slew_rate_read_at_connect, _unmatched_slew_rate_selects_the_nearest, _slew_rate_at_speed_limit_720, _hand_controller_settings_appear_on_the_poll) were run against the unchanged driver (version 91) with the extended simulator: all 4 FAIL (MOUNT_SLEW_RATE stays GUIDE at 1440x/720x/400x; meridian/buzzer never refreshed). After the fix (driver 92): all 4 PASS; full test_mount_lx200_simulator 185/185 PASS (the 3 lx200_tcp_* cases are the opt-in TCP target, not run). Decisions: unmatched rate -> nearest item by |ln(rate/preset)|, MAX = 720 at limit 720 else 1440 (also when the limit is unknown); an exact match (within 1%) marks the preset as already active, an unmatched one makes the driver send the selected item's preset before the next manual motion; :GTa#/:GBz# polled every 5th status poll (TOUPTEK_SETTINGS_POLLS, ~5 s at rest, ~2.5 s while BUSY), published only on change, state left as it was. Hardware not re-run.",
+      "tokens": null
+    },
+    {
+      "event_id": "f2980e28-b96b-4065-950c-c3393f1b8363",
+      "event": "task/progress",
+      "at": "2026-11-27T09:18:39.687381Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Review started"
+    },
+    {
+      "event_id": "de9d68ba-90e5-462b-aff7-9547465cf3ba",
+      "event": "review/started",
+      "at": "2026-11-27T09:18:39.687940Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "8b0d61a1-82b6-4ace-a9f4-ee37e6614722",
+      "event": "task/progress",
+      "at": "2026-11-27T09:18:54.773624Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Reviewer launched: reading the diff",
+      "attempt_id": "8b1d0eae-66a0-415a-9dac-536bb582d731",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "78752d7f-2e94-4579-b2bf-12d462535fe7",
+      "event": "task/progress",
+      "at": "2026-11-27T09:20:14.995493Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Running test_mount_lx200_simulator (4 new ToupTek cases) in the worktree"
+    },
+    {
+      "event_id": "154ad69d-553b-4d0a-8458-5f503c7aedba",
+      "event": "task/progress",
+      "at": "2026-11-27T09:28:04.309728Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "fdb9be54-2923-4202-86be-43970e65244f",
+      "event": "task/progress",
+      "at": "2026-11-27T09:28:04.309766Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "2670f0a4-4dcb-46b8-9a64-b506897ea899",
+      "event": "review/changes_requested",
+      "at": "2026-11-27T09:28:04.310469Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "242ecfab5ac80c42385f6dd69b2384e02ffeb620"
+    },
+    {
+      "event_id": "c196dbdd-7840-4a93-b7b6-e0e46b3ff263",
+      "event": "task/progress",
+      "at": "2026-11-27T09:28:33.793289Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Fixing review finding: settings poll must not revert a pending client change"
+    },
+    {
+      "event_id": "16405ccf-bf4e-4b35-b877-3f44407079d3",
+      "event": "task/progress",
+      "at": "2026-11-27T09:34:32.708939Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Running the full test_mount_lx200_simulator suite after the review fix"
+    },
+    {
+      "event_id": "0b4d6692-b92f-4b95-99bf-1ddbd0b45afe",
+      "event": "task/progress",
+      "at": "2026-11-27T10:02:45.841871Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "7b6852d3-623a-4161-931a-e21095009306",
+      "event": "task/progress",
+      "at": "2026-11-27T10:02:45.881832Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "b12ccd6c-4dcd-44a0-95ae-53fcbc6a1879",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "8977333e-da4f-4970-908e-63a819df401a",
+      "event": "check/passed",
+      "at": "2026-11-27T10:02:45.887739Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "0790fcd4e43539784ea82b322fb49e489b032f6b",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "654b5d2b-10fa-4f58-9a81-a43e4c93e54b",
+      "event": "ticket/note",
+      "at": "2026-11-27T10:02:53.181829Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Review fix (poll reverting a pending client change): reproduced with the new case lx200_touptek_settings_poll_keeps_a_pending_change (the poll is held at :GTa# by a dropped reply, X_TOUPTEK_BUZZER HIGH is requested meanwhile, the poll then reads :GBz#). Before the fix it FAILED: no :SBz2# was sent, the poll overwrote the BUSY request with OFF and the handler sent the old volume. Fix: the settings poll skips X_TOUPTEK_MERIDIAN / X_TOUPTEK_BUZZER while BUSY and checks BUSY again after the read before it writes. INDIGO_COPY_VALUES_PROCESS_CHANGE sets BUSY on the bus thread before queueing the handler; the generated handler sets OK only inside its own body on the same device queue as the poll, so BUSY covers the whole time the request is pending. Remaining window: a request that is copied between the post-read BUSY check and the item write, a few instructions apart. It cannot be closed without a lock that the framework does not provide, and it was not reproduced. After the fix: touptek cases 22/22 PASS; full test_mount_lx200_simulator 186/186 PASS (3 opt-in lx200_tcp_* cases not run); flow check passed. The meridian path uses the same guard but has no deterministic test, because :GTa# is the first read of the settings poll and no earlier command blocks only on that poll.",
+      "tokens": null
+    },
+    {
+      "event_id": "5e3679ed-dd07-4d3b-bda4-dfeefc4ca5c3",
+      "event": "task/progress",
+      "at": "2026-11-27T10:03:12.554866Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Review started"
+    },
+    {
+      "event_id": "7113a236-a5d3-40ef-a59f-431cee537f4c",
+      "event": "review/started",
+      "at": "2026-11-27T10:03:12.555495Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "977de560-517b-4a2e-ac6d-8ea6743346bd",
+      "event": "task/progress",
+      "at": "2026-11-27T10:03:29.956938Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Second-round review: reading diff",
+      "attempt_id": "7f1ed6ee-0695-4bcc-a150-6a8708d782e2",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f5225445-c55a-487f-81c5-351a448fa627",
+      "event": "task/progress",
+      "at": "2026-11-27T10:04:12.720215Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Regenerating driver and running test_mount_lx200_simulator"
+    },
+    {
+      "event_id": "b970fb49-57e5-4a98-807a-1d52ce83fd9e",
+      "event": "task/progress",
+      "at": "2026-11-27T10:34:53.180552Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "be5e2728-5f63-4fe8-bdb9-4eefcdd942fe",
+      "event": "review/passed",
+      "at": "2026-11-27T10:34:53.181460Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0790fcd4e43539784ea82b322fb49e489b032f6b"
+    },
+    {
+      "event_id": "a95c0d8e-1b1d-4b4d-a170-e6d3c6f70c2f",
+      "event": "task/progress",
+      "at": "2026-11-27T12:15:51.024628Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Correcting the comments of lx200_touptek_settings_poll_keeps_a_pending_change"
+    },
+    {
+      "event_id": "dd61031d-1742-4001-bafd-dc590408637e",
+      "event": "task/progress",
+      "at": "2026-11-27T12:15:56.543267Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bae0244b-1e63-4ba2-9e7e-0adf7a2591b1",
+      "event": "task/progress",
+      "at": "2026-11-27T12:15:56.581863Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "d523af50-c9d6-4832-830c-a02853e9f8dc",
+      "event": "check/passed",
+      "at": "2026-11-27T12:15:56.587223Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "558dc4bfeea06caebb7fd3ec4e89f5e136809839",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7f25a0ea-2f13-4e20-a73c-4d92eed42916",
+      "event": "ticket/note",
+      "at": "2026-11-27T12:23:51.380236Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision 2026-11-27: keep the assertion event_count(GBz) > buzzer_reads in lx200_touptek_settings_poll_keeps_a_pending_change with the corrected comment (it now confirms the handler's read-back; the fix is guarded by :SBz2# once, :SBz0# never and HIGH kept).",
+      "tokens": null
+    },
+    {
+      "event_id": "1c0ee8f2-9586-40e0-85e0-0783eff5e3ed",
+      "event": "task/progress",
+      "at": "2026-11-27T12:23:51.524784Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Review started"
+    },
+    {
+      "event_id": "6dcdf503-151a-424f-93e6-4e6895ab19d9",
+      "event": "review/started",
+      "at": "2026-11-27T12:23:51.525470Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "22f374e3-529c-4ad4-80e6-94d5863b38c5",
+      "event": "task/progress",
+      "at": "2026-11-27T12:24:04.987531Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Reviewing comment correction in settings-poll pending-change test",
+      "attempt_id": "31c3af3f-913c-42b7-9b85-9cffa614bd67",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3d99582d-95ee-4930-859f-ce3032f8a501",
+      "event": "task/progress",
+      "at": "2026-11-27T12:24:25.115734Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Running test_mount_lx200_simulator with INDIGO_TEST_CASE_FILTER=touptek"
+    },
+    {
+      "event_id": "6463eb0e-5335-42ec-9847-1608227bdc3d",
+      "event": "task/progress",
+      "at": "2026-11-27T12:32:09.112040Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b21b2283-1a3c-4b31-94e7-de73afe5ba07",
+      "event": "review/passed",
+      "at": "2026-11-27T12:32:09.113309Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "e9b59ab0-e683-4057-9e83-3ba15495b178",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "558dc4bfeea06caebb7fd3ec4e89f5e136809839"
+    },
+    {
+      "event_id": "9aaceaa3-328d-401f-9b2b-2d62e98e4bdf",
+      "event": "ticket/closed",
+      "at": "2026-11-27T12:59:30.002396Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-27T12:59:30.002339Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "2dfb979868536101619e5b28f564e6b461b1ebdd"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "242ecfab5ac80c42385f6dd69b2384e02ffeb620",
+        "tree": "c18b3d8593e845700c848114899e34b6af4af21e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T09:18:04.002491Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/7759af9c-e572-491f-b69c-73df07c6cc88/c18b3d8593e8-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0790fcd4e43539784ea82b322fb49e489b032f6b",
+        "tree": "da1c3dc99e4b5a045a4949dedfda40668b3504dc",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T10:02:45.880764Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/7759af9c-e572-491f-b69c-73df07c6cc88/da1c3dc99e4b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "558dc4bfeea06caebb7fd3ec4e89f5e136809839",
+        "tree": "9be101f979df0b428e9cdfbe5c77b62b9081a82c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T12:15:56.580824Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/7759af9c-e572-491f-b69c-73df07c6cc88/9be101f979df-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "One defect. Race between the new settings poll and a client change of X_TOUPTEK_MERIDIAN / X_TOUPTEK_BUZZER (indigo_mount_lx200.driver:3369 and :3374, meade_update_touptek_state). INDIGO_COPY_VALUES_PROCESS_CHANGE (indigo_mount_lx200.c:5762, :5765) copies the requested values into the property on the bus thread, sets BUSY and queues the handler behind an already running or queued mount_timer_callback. When that poll is the 5th one it reads :GTa#/:GBz# (the old mount value), sees it differ from the just-copied request, overwrites the items with the old value and publishes; the queued handler then sends :STa/:SBz with the old values, reads them back equal and reports OK, so the user's change is silently lost. Fix: skip each read in the poll while its property is BUSY (e.g. TOUPTEK_MERIDIAN_PROPERTY->state != INDIGO_BUSY_STATE before zwo_get_meridian, the same for TOUPTEK_BUZZER_PROPERTY before touptek_read_buzzer), and mention it in the comment. Everything else checked and fine: :GRV# mapping (presets 0.5/4/60/limit match :R1/:R4/:R7/:R9 actually sent; MAX 720 at limit 720 per protocol table 4.3, 1440 also at unknown limit 0 where both switches are false), nearest by |ln(rate/preset)| per owner decision, 1% exact tolerance with lastSlewRate=0 forcing a re-send before the next motion, unreadable reply keeps selection, counter reset in init so the connect poll never publishes before definition, states untouched, all changes inside TOUPTEK paths, .driver edited and regenerated output byte-identical (regenerated in a scratch dir), version 91->92, simulator v8 control lines, PROTOCOL.md accurate, MIGRATION_STATUS.md only the test count column. The four new tests exercise what they claim (preset counts before/after motion, ordering of :GRl#/:GRV#, preset re-send before Me, revision checks for publish-only-on-change, read-rate ratio). Ran INDIGO_TEST_CASE_FILTER=lx200_touptek build/integration/test_mount_lx200_simulator in the worktree: all passed; test-clean afterwards. Full suite not rerun by me.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "242ecfab5ac80c42385f6dd69b2384e02ffeb620",
+        "tree": "c18b3d8593e845700c848114899e34b6af4af21e",
+        "at": "2026-11-27T09:28:04.309599Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 review of master...HEAD (worktree clean, no uncommitted changes). The round-1 finding is closed: the settings poll skips X_TOUPTEK_MERIDIAN/X_TOUPTEK_BUZZER while BUSY and re-checks BUSY after the serial read (indigo_mount_lx200.driver meade_update_touptek_state ~3367-3378, touptek_read_buzzer ~1098). INDIGO_COPY_VALUES_PROCESS_CHANGE (indigo_bus.h:974) sets BUSY before queueing the handler, and the handler runs on the same device queue as the poll. The only gap left is a request copied between the post-read check and indigo_set_switch, a few instructions wide. The framework has no lock to close it, so it is acceptable. Not having a deterministic meridian test is also acceptable, because the guard is the same as for the buzzer. Re-checked: the mapping matches the presets sent (R1 0.5, R4 4, R7 60, R9 = 720 at limit 720 else 1440, unknown limit -> 1440), consistent with ATLAS V1.3 sec. 4.3. The log-nearest rule follows the owner decision. lastSlewRate is set only on a 1% match, otherwise 0, so the preset is sent again before the next motion. A :GRV# reply that cannot be read leaves the selection. The poll publishes only on change. The other dialects are unaffected: the new code is under the TOUPTEK branches and lastSlewRate is reset only in the TOUPTEK speed-limit handler. Regenerating with the unchanged indigo_generator gives byte-identical .c/.h/_main.c. Version is 91 -> 92. Simulator is v8. PROTOCOL.md is accurate. Only the MIGRATION_STATUS.md test-count column changed (184 -> 189). Formatting follows the rules. Tests: touptek filter 22/22 PASS. lx200_touptek_settings_poll_keeps_a_pending_change passed 3/3 repeats. The full suite run passed 163 cases with 0 failures before my 1200 s timeout cut it off, so it is not complete. Minor, non-blocking: in the new test, the comment 'The poll read :GBz# after the request was made' (test_mount_lx200_simulator.c ~6416) is inaccurate. With the fix the poll skips :GBz# while BUSY, so the counted :GBz# is the handler's read-back.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "0790fcd4e43539784ea82b322fb49e489b032f6b",
+        "tree": "da1c3dc99e4b5a045a4949dedfda40668b3504dc",
+        "at": "2026-11-27T10:34:53.180443Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Since the passed tree 0790fcd4e the only change (558dc4bfe) is two comments in indigo_test/integration/test_mount_lx200_simulator.c (header of lx200_touptek_settings_poll_keeps_a_pending_change ~6400 and above the GBz assertion ~6418). Both now match the driver: meade_update_touptek_state() skips touptek_read_buzzer() while X_TOUPTEK_BUZZER is BUSY (indigo_mount_lx200.driver:3376), and the GBz read counted after the request is the on_change read-back after :SBz%d# (driver ~4498); the fix itself is guarded by SBz2==1, SBz0==0 and HIGH kept across 6 polls. git diff --check clean, no formatting issues. INDIGO_TEST_CASE_FILTER=touptek test_mount_lx200_simulator: 22/22 PASS; test-clean run afterwards. No defects.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "558dc4bfeea06caebb7fd3ec4e89f5e136809839",
+        "tree": "9be101f979df0b428e9cdfbe5c77b62b9081a82c",
+        "at": "2026-11-27T12:32:09.111852Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-27T08:38:33.479386Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision 2026-11-27: a :GRV# rate that matches none of the four presets selects the NEAREST slew-rate item (not none). Compare on a logarithmic scale (rates span 0.5x to 1440x); document the rule in PROTOCOL.md and test an unmatched rate (e.g. 8x -> CENTERING, 20x -> FIND by log distance). The rest of the ticket description stands. Protocol text: /tmp/claude-1000/-home-rumen-work-indigo-git/03856bc6-7a17-49dd-9bf8-2cc9591bc866/scratchpad/pdf/atlas.txt.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T09:18:12.038878Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction: the 4 new cases (lx200_touptek_slew_rate_read_at_connect, _unmatched_slew_rate_selects_the_nearest, _slew_rate_at_speed_limit_720, _hand_controller_settings_appear_on_the_poll) were run against the unchanged driver (version 91) with the extended simulator: all 4 FAIL (MOUNT_SLEW_RATE stays GUIDE at 1440x/720x/400x; meridian/buzzer never refreshed). After the fix (driver 92): all 4 PASS; full test_mount_lx200_simulator 185/185 PASS (the 3 lx200_tcp_* cases are the opt-in TCP target, not run). Decisions: unmatched rate -> nearest item by |ln(rate/preset)|, MAX = 720 at limit 720 else 1440 (also when the limit is unknown); an exact match (within 1%) marks the preset as already active, an unmatched one makes the driver send the selected item's preset before the next manual motion; :GTa#/:GBz# polled every 5th status poll (TOUPTEK_SETTINGS_POLLS, ~5 s at rest, ~2.5 s while BUSY), published only on change, state left as it was. Hardware not re-run.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T10:02:53.181197Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Review fix (poll reverting a pending client change): reproduced with the new case lx200_touptek_settings_poll_keeps_a_pending_change (the poll is held at :GTa# by a dropped reply, X_TOUPTEK_BUZZER HIGH is requested meanwhile, the poll then reads :GBz#). Before the fix it FAILED: no :SBz2# was sent, the poll overwrote the BUSY request with OFF and the handler sent the old volume. Fix: the settings poll skips X_TOUPTEK_MERIDIAN / X_TOUPTEK_BUZZER while BUSY and checks BUSY again after the read before it writes. INDIGO_COPY_VALUES_PROCESS_CHANGE sets BUSY on the bus thread before queueing the handler; the generated handler sets OK only inside its own body on the same device queue as the poll, so BUSY covers the whole time the request is pending. Remaining window: a request that is copied between the post-read BUSY check and the item write, a few instructions apart. It cannot be closed without a lock that the framework does not provide, and it was not reproduced. After the fix: touptek cases 22/22 PASS; full test_mount_lx200_simulator 186/186 PASS (3 opt-in lx200_tcp_* cases not run); flow check passed. The meridian path uses the same guard but has no deterministic test, because :GTa# is the first read of the settings poll and no earlier command blocks only on that poll.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T12:23:51.379210Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision 2026-11-27: keep the assertion event_count(GBz) > buzzer_reads in lx200_touptek_settings_poll_keeps_a_pending_change with the corrected comment (it now confirms the handler's read-back; the fix is guarded by :SBz2# once, :SBz0# never and HIGH kept).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "2dfb979868536101619e5b28f564e6b461b1ebdd",
+      "tree": "9be101f979df0b428e9cdfbe5c77b62b9081a82c",
+      "base": "master",
+      "at": "2026-11-27T12:59:29.886964Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T08:36:41.366683Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-27T08:38:33.335597Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 7464613.713,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 54,
+    "sha256": "540733e7eac59c7311f8bc22c97ed71bcdc0ce5952d177df5f51540253cfc3a6"
+  }
+}
