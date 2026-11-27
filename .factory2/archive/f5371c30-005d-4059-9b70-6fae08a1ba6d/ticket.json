@@ -1,0 +1,429 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f5371c30-005d-4059-9b70-6fae08a1ba6d",
+  "revision": 18,
+  "title": "ccd_asi: support at least four ZWO ASI cameras with ST-4 ports",
+  "description": "Reported in the CloudMakers forum in November 2026 on INDIGO 3.0-11 with a Raspberry Pi 5: https://bb.cloudmakers.eu/viewtopic.php?p=11240#p11240\n\nThe trace shows that the ASI120MM Mini and ASI715MC each attach as a camera and a guider. The server receives the USB arrival event for the ASI183MC, which had attached as both a camera and a guider earlier, but skips it when it is plugged in third. The ccd_asi driver has five logical device slots and requires two free slots to attach a camera with an ST-4 port.\n\nAcceptance criterion: four ST-4-equipped ASI cameras can be attached simultaneously through ccd_asi, and INDIGO enumerates all four cameras and their four corresponding guider devices. Verify the four-camera case with a targeted check.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-27T18:46:15.037518Z",
+  "status": "closed",
+  "branch": "ticket/f5371c30-005d-4059-9b70-6fae08a1ba6d",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "e6234f54-9871-4cb2-8856-fafd8e44e0b6",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "e5a37011-bf72-4d02-aa65-9852de22b3e2",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T18:47:40.817452Z",
+          "last_activity_at": "2026-11-27T18:53:04.400041Z",
+          "ended_at": "2026-11-27T18:53:04.400041Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 323582.589,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T18:47:40.817452Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Ticket branch ticket/f5371c30-005d-4059-9b70-6fae08a1ba6d"
+        },
+        {
+          "at": "2026-11-27T18:53:04.400041Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 323582.589,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "5907f2cc-0aa5-4ab0-8616-b3ca09ed572f",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "bb536e5c-180e-4932-99d6-b3f68d2661cf",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "openai",
+            "model": "gpt-6-astra",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T18:53:04.400214Z",
+          "last_activity_at": "2026-11-27T18:54:25.003952Z",
+          "ended_at": "2026-11-27T18:54:25.003952Z",
+          "outcome": {
+            "summary": "Reviewed candidate d18640ba693a67d0c38578a30893488a43d73eaf against master. No concrete defects found. The driver-local max_devices=8 and version increment match generated C; allocation, discovery, removal and shutdown consistently use MAX_DEVICES. The existing fake-SDK regression now verifies four distinct CCD/guider pairs, public INFO interfaces and CONNECTION properties, excess-capacity rejection, slot reuse and cleanup without mocking away production allocation. Documentation accurately states the eight-slot capacity; recorded 54/54 macOS fake-SDK results and before/after reproduction support the change. Additional static inspection confirmed generator attribute handling and clean candidate status. No tests rerun by reviewer; no physical hardware, Linux/Raspberry Pi or Windows runtime validation claimed. The change is minimal and stays within the capacity-only scope.",
+            "recorded_by": "human/Peter Polakovic",
+            "source": "human_report"
+          },
+          "duration_ms": 80603.738,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T18:53:04.400214Z",
+          "status": "running",
+          "actor": "human/Peter Polakovic",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T18:54:25.003952Z",
+          "status": "succeeded",
+          "actor": "human/Peter Polakovic",
+          "reason": "Reviewed candidate d18640ba693a67d0c38578a30893488a43d73eaf against master. No concrete defects found. The driver-local max_devices=8 and version increment match generated C; allocation, discovery, removal and shutdown consistently use MAX_DEVICES. The existing fake-SDK regression now verifies four distinct CCD/guider pairs, public INFO interfaces and CONNECTION properties, excess-capacity rejection, slot reuse and cleanup without mocking away production allocation. Documentation accurately states the eight-slot capacity; recorded 54/54 macOS fake-SDK results and before/after reproduction support the change. Additional static inspection confirmed generator attribute handling and clean candidate status. No tests rerun by reviewer; no physical hardware, Linux/Raspberry Pi or Windows runtime validation claimed. The change is minimal and stays within the capacity-only scope."
+        }
+      ],
+      "result": {
+        "summary": "Reviewed candidate d18640ba693a67d0c38578a30893488a43d73eaf against master. No concrete defects found. The driver-local max_devices=8 and version increment match generated C; allocation, discovery, removal and shutdown consistently use MAX_DEVICES. The existing fake-SDK regression now verifies four distinct CCD/guider pairs, public INFO interfaces and CONNECTION properties, excess-capacity rejection, slot reuse and cleanup without mocking away production allocation. Documentation accurately states the eight-slot capacity; recorded 54/54 macOS fake-SDK results and before/after reproduction support the change. Additional static inspection confirmed generator attribute handling and clean candidate status. No tests rerun by reviewer; no physical hardware, Linux/Raspberry Pi or Windows runtime validation claimed. The change is minimal and stays within the capacity-only scope.",
+        "source": "review",
+        "recorded_by": "human/Peter Polakovic"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 80603.738,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "edf442bd-923e-4678-9a89-6bcfd799ddc6",
+      "event": "ticket/created",
+      "at": "2026-11-27T18:46:15.038849Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "403dcce8-1241-43e4-8cda-95467f16eed6",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T18:47:28.054161Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "ded536a0-de1d-406b-821f-31dbd0a394b9",
+      "event": "task/progress",
+      "at": "2026-11-27T18:47:40.817823Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e6234f54-9871-4cb2-8856-fafd8e44e0b6",
+      "text": "Implementation started on branch ticket/f5371c30-005d-4059-9b70-6fae08a1ba6d"
+    },
+    {
+      "event_id": "0679b7f5-2fcd-4f3e-988b-0d0ba212f43a",
+      "event": "ticket/started",
+      "at": "2026-11-27T18:47:40.819717Z",
+      "actor": "human/Peter Polakovic",
+      "branch": "ticket/f5371c30-005d-4059-9b70-6fae08a1ba6d",
+      "base": "master"
+    },
+    {
+      "event_id": "8d933de6-1355-4533-8e2c-bd3fa400f785",
+      "event": "task/progress",
+      "at": "2026-11-27T18:48:12.826429Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e6234f54-9871-4cb2-8856-fafd8e44e0b6",
+      "text": "Inspecting ASI slot allocation and fake SDK test coverage",
+      "attempt_id": "e5a37011-bf72-4d02-aa65-9852de22b3e2",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "716138f7-75ea-444c-894b-5bad8dacf392",
+      "event": "ticket/note",
+      "at": "2026-11-27T18:49:27.963050Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Plan: non-interactive fake-SDK/USB validation only; no physical hardware. Extend existing shutdown_pending_discovery_and_capacity case from two ST-4 pairs to four, assert all CCD/guider public INFO and CONNECTION properties and matching masters, retain capacity overflow, slot reuse and shutdown cleanup. Run it against unchanged production source to reproduce failure, then set driver-local max_devices=8, increment version and regenerate. Run the same regression and recorded ccd_asi fake-SDK suite, verify generation stability and configured checks. Scope is capacity only; no SDK, protocol, guider timing or queue redesign.",
+      "tokens": null
+    },
+    {
+      "event_id": "1b42d7c6-3322-4fa4-9a80-7f26ddf068bf",
+      "event": "task/progress",
+      "at": "2026-11-27T18:49:43.013397Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e6234f54-9871-4cb2-8856-fafd8e44e0b6",
+      "text": "Building scoped ASI fake-SDK test and reproducing four-camera enumeration failure"
+    },
+    {
+      "event_id": "fff052b6-91ad-458a-a3b6-fa6685944fcc",
+      "event": "ticket/note",
+      "at": "2026-11-27T18:50:50.121029Z",
+      "actor": "human/Peter Polakovic",
+      "text": "Reproduced before production changes on macOS arm64: make Makefile.inc; make init; make -j8 -C indigo_libs all; make -C indigo_test build/integration/test_ccd_asi_sdk succeeded. indigo_test/build/integration/test_ccd_asi_sdk shutdown_pending_discovery_and_capacity failed (exit 1): expected 8, got 4. The existing fake SDK already models eight ST-4 cameras; only the required enumeration expectation changed. Root cause: generated default MAX_DEVICES=5 permits only two camera/guider pairs. No hardware was accessed.",
+      "tokens": null
+    },
+    {
+      "event_id": "1e950ee3-a307-4824-a12e-9f087ee16fe1",
+      "event": "task/progress",
+      "at": "2026-11-27T18:51:12.317792Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e6234f54-9871-4cb2-8856-fafd8e44e0b6",
+      "text": "Verifying the eight-slot fix with capacity regression and recorded ASI fake-SDK suite"
+    },
+    {
+      "event_id": "f9ae1099-6200-493f-829e-956a1ef5cb45",
+      "event": "task/progress",
+      "at": "2026-11-27T18:52:23.361562Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e6234f54-9871-4cb2-8856-fafd8e44e0b6",
+      "text": "All 54 ASI cases passed; checking regeneration stability and final configured checks"
+    },
+    {
+      "event_id": "6a135f10-e619-42bd-98db-4131b34ddb5f",
+      "event": "ticket/note",
+      "at": "2026-11-27T18:52:40.600873Z",
+      "actor": "human/Peter Polakovic",
+      "text": "After fix on macOS arm64: the identical capacity regression passed (exit 0), confirming 4 CCDs plus 4 matching guiders, public INFO interfaces and CONNECTION properties, rejection beyond eight slots, reuse after removal and clean shutdown. Final non-interactive recorded run: PYTHONDONTWRITEBYTECODE=1 python3 tools/run_driver_test.py ccd_asi passed 54/54 fake-SDK cases and built the production driver; README Testing and TEST_SUMMARY regenerated by the script. Existing integration-case count remains 54, so MIGRATION_STATUS count is unchanged. Repeating indigo_generator produced byte-identical .c/.h/_main.c files. git diff --check passed and make -C indigo_test test-clean removed test binaries. Limitations: no physical cameras, real USB hot-plug, Linux/Raspberry Pi or Windows runtime validation; no throughput or physical ST-4 timing claim. macOS build emitted bundled SDK deployment-target warnings (10.12 objects vs 10.10 target); no ASI test compile errors. Opt-in timing/full repository suites were outside this capacity fix. Hardware tests run: 0.",
+      "tokens": null
+    },
+    {
+      "event_id": "f25b4bc6-dd18-4fa7-829b-d068c7df8899",
+      "event": "task/progress",
+      "at": "2026-11-27T18:52:44.090934Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e6234f54-9871-4cb2-8856-fafd8e44e0b6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ccd97dbe-f768-4cef-8851-d6ae396ed128",
+      "event": "task/progress",
+      "at": "2026-11-27T18:52:44.113690Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "e6234f54-9871-4cb2-8856-fafd8e44e0b6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "cfd7c947-db79-487e-b214-9e3969cca71b",
+      "event": "check/passed",
+      "at": "2026-11-27T18:52:44.115470Z",
+      "actor": "human/Peter Polakovic",
+      "commit": "d18640ba693a67d0c38578a30893488a43d73eaf",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "147577f5-3991-44fd-889f-21fda40d8097",
+      "event": "task/progress",
+      "at": "2026-11-27T18:53:04.400290Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5907f2cc-0aa5-4ab0-8616-b3ca09ed572f",
+      "text": "Review started"
+    },
+    {
+      "event_id": "12332f9a-e3e9-4f49-af25-279ab939f6fc",
+      "event": "review/started",
+      "at": "2026-11-27T18:53:04.401521Z",
+      "actor": "human/Peter Polakovic",
+      "kind": "code"
+    },
+    {
+      "event_id": "975724e4-f924-472b-9b2c-8c2649986a2e",
+      "event": "task/progress",
+      "at": "2026-11-27T18:53:41.509875Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5907f2cc-0aa5-4ab0-8616-b3ca09ed572f",
+      "text": "Reviewing the four-camera capacity change and its fake-SDK regression",
+      "attempt_id": "bb536e5c-180e-4932-99d6-b3f68d2661cf",
+      "worker": {
+        "provider": "openai",
+        "model": "gpt-6-astra",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "080dd134-da2f-40fc-99b6-dcdb847749e7",
+      "event": "task/progress",
+      "at": "2026-11-27T18:54:25.004050Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5907f2cc-0aa5-4ab0-8616-b3ca09ed572f",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "fc2b479f-bfb1-467f-b202-633969244174",
+      "event": "review/passed",
+      "at": "2026-11-27T18:54:25.005296Z",
+      "actor": "human/Peter Polakovic",
+      "task_id": "5907f2cc-0aa5-4ab0-8616-b3ca09ed572f",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "d18640ba693a67d0c38578a30893488a43d73eaf"
+    },
+    {
+      "event_id": "8532c9d5-3548-4758-bf9b-f351451ddb5d",
+      "event": "ticket/closed",
+      "at": "2026-11-27T19:04:41.058836Z",
+      "actor": "human/Peter Polakovic",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Peter Polakovic",
+    "at": "2026-11-27T19:04:41.058811Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "6ae543cee447d860dfcd6738e34bbe9983eed676"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d18640ba693a67d0c38578a30893488a43d73eaf",
+        "tree": "0644a1aa1fd8efe220dc7314cdee73cf7d88d7ea",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T18:52:44.112971Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/f5371c30-005d-4059-9b70-6fae08a1ba6d/0644a1aa1fd8-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed candidate d18640ba693a67d0c38578a30893488a43d73eaf against master. No concrete defects found. The driver-local max_devices=8 and version increment match generated C; allocation, discovery, removal and shutdown consistently use MAX_DEVICES. The existing fake-SDK regression now verifies four distinct CCD/guider pairs, public INFO interfaces and CONNECTION properties, excess-capacity rejection, slot reuse and cleanup without mocking away production allocation. Documentation accurately states the eight-slot capacity; recorded 54/54 macOS fake-SDK results and before/after reproduction support the change. Additional static inspection confirmed generator attribute handling and clean candidate status. No tests rerun by reviewer; no physical hardware, Linux/Raspberry Pi or Windows runtime validation claimed. The change is minimal and stays within the capacity-only scope.",
+        "reviewer": "human/Peter Polakovic",
+        "commit": "d18640ba693a67d0c38578a30893488a43d73eaf",
+        "tree": "0644a1aa1fd8efe220dc7314cdee73cf7d88d7ea",
+        "at": "2026-11-27T18:54:25.003794Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-27T18:49:27.961441Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Plan: non-interactive fake-SDK/USB validation only; no physical hardware. Extend existing shutdown_pending_discovery_and_capacity case from two ST-4 pairs to four, assert all CCD/guider public INFO and CONNECTION properties and matching masters, retain capacity overflow, slot reuse and shutdown cleanup. Run it against unchanged production source to reproduce failure, then set driver-local max_devices=8, increment version and regenerate. Run the same regression and recorded ccd_asi fake-SDK suite, verify generation stability and configured checks. Scope is capacity only; no SDK, protocol, guider timing or queue redesign.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T18:50:50.119854Z",
+        "actor": "human/Peter Polakovic",
+        "text": "Reproduced before production changes on macOS arm64: make Makefile.inc; make init; make -j8 -C indigo_libs all; make -C indigo_test build/integration/test_ccd_asi_sdk succeeded. indigo_test/build/integration/test_ccd_asi_sdk shutdown_pending_discovery_and_capacity failed (exit 1): expected 8, got 4. The existing fake SDK already models eight ST-4 cameras; only the required enumeration expectation changed. Root cause: generated default MAX_DEVICES=5 permits only two camera/guider pairs. No hardware was accessed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T18:52:40.599623Z",
+        "actor": "human/Peter Polakovic",
+        "text": "After fix on macOS arm64: the identical capacity regression passed (exit 0), confirming 4 CCDs plus 4 matching guiders, public INFO interfaces and CONNECTION properties, rejection beyond eight slots, reuse after removal and clean shutdown. Final non-interactive recorded run: PYTHONDONTWRITEBYTECODE=1 python3 tools/run_driver_test.py ccd_asi passed 54/54 fake-SDK cases and built the production driver; README Testing and TEST_SUMMARY regenerated by the script. Existing integration-case count remains 54, so MIGRATION_STATUS count is unchanged. Repeating indigo_generator produced byte-identical .c/.h/_main.c files. git diff --check passed and make -C indigo_test test-clean removed test binaries. Limitations: no physical cameras, real USB hot-plug, Linux/Raspberry Pi or Windows runtime validation; no throughput or physical ST-4 timing claim. macOS build emitted bundled SDK deployment-target warnings (10.12 objects vs 10.10 target); no ASI test compile errors. Opt-in timing/full repository suites were outside this capacity fix. Hardware tests run: 0.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "6ae543cee447d860dfcd6738e34bbe9983eed676",
+      "tree": "0644a1aa1fd8efe220dc7314cdee73cf7d88d7ea",
+      "base": "master",
+      "at": "2026-11-27T19:04:40.934667Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-27T18:46:15.037518Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": "2026-11-27T18:47:28.054033Z",
+    "confirmed_by": "human/Peter Polakovic"
+  },
+  "metrics": {
+    "duration_ms": 404186.327,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 24,
+    "sha256": "3d5028db4bc1daebe86568877621955cb88e06fbd8872dec6e945598df29d688"
+  }
+}
