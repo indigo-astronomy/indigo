@@ -472,11 +472,28 @@ def main():
 
 			def below_horizon():
 				client.change_text(AGENT, "AGENT_SCHEDULER_DELETE_TASK", {"NAME": "Fragile"})
-				run.upload("// @task South\n// @target 06:00:00 " + ("-89:00:00" if latitude >= 0 else "+89:00:00") + "\n// @twilight none\n// @duration 10\n\n" + capture_body(images, "south", 1, 0.2, False))
+				# a target near the opposite pole never rises at the site: unreachable, never waiting
+				run.upload("// @task South\n// @target 06:00:00 " + ("-89:00:00" if latitude >= 0 else "+89:00:00") + "\n// @twilight none\n// @duration 10\n\n" + capture_body(images, "south", 1, 0.2, False), False)
+				run.wait_task("South", "UNREACHABLE", 30)
+				assert client.task_label("South").endswith(" | never rises above the horizon"), "reason of the unreachable task: " + client.task_label("South")
+				client.wait(lambda: client.message_count("Task 'South' can never run: the target never rises above the horizon") == 1, 10, "unreachable message")
+				client.change_text(AGENT, "AGENT_SCHEDULER_DELETE_TASK", {"NAME": "South"})
+				client.wait(lambda: not client.task_label("South"), 10, "South deleted")
+				# the equator two hours before local midnight: the night plan lasts until sunrise, about 8 hours, in every season;
+				# a target on the celestial equator 7 hours east of the meridian stands 15 degrees below the horizon, rises in
+				# 1 hour and passes the global minimum altitude of 20 degrees in about 2.3 hours, so its run is planned and it waits
+				site_at(22)
+				site_longitude = client.value("Mount Agent", "GEOGRAPHIC_COORDINATES", "LONGITUDE")
+				now = ctypes.c_long(int(time.time()))
+				ra = ctypes.c_double((native.indigo_lst(ctypes.byref(now), site_longitude) + 7) % 24)
+				dec = ctypes.c_double(0)
+				native.indigo_jnow_to_j2k(ctypes.byref(ra), ctypes.byref(dec))
+				run.upload("// @task Rising\n// @target " + sexagesimal(ra.value, False) + " " + sexagesimal(dec.value, True) + "\n// @twilight none\n// @duration 10\n\n" + capture_body(images, "rising", 1, 0.2, False))
 				run.control("START")
-				run.wait_task("South", "WAITING", 30)
+				run.wait_task("Rising", "WAITING", 30)
+				assert client.task_label("Rising").endswith(" | -"), "a waiting task has a reason in the task list: " + client.task_label("Rising")
 				client.wait(lambda: "target below the horizon" in (client.value(AGENT, "AGENT_SCHEDULER_CURRENT", "REASON") or ""), 30, "reason")
-				assert client.message_count("Starting task 'South'") == 0
+				assert client.message_count("Starting task 'Rising'") == 0
 
 			run.case(cases[0], library_loaded)
 			run.case(cases[1], calibration)
@@ -501,7 +518,7 @@ def main():
 				client.wait(lambda: client.value("Mount Agent", "GEOGRAPHIC_COORDINATES", "LONGITUDE") == site_longitude, 20, "site")
 
 			def night_hooks():
-				client.change_text(AGENT, "AGENT_SCHEDULER_DELETE_TASK", {"NAME": "South"})
+				client.change_text(AGENT, "AGENT_SCHEDULER_DELETE_TASK", {"NAME": "Rising"})
 				site_at(0)
 				# the hooks are named before the first upload starts the scheduler in the night
 				client.change_text(AGENT, "AGENT_SCHEDULER_HOOKS", {"NIGHT_START": "Evening", "NIGHT_END": "Morning"})
