@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "54dcc506-43e0-454d-8f04-f926f7e82a5a",
+  "revision": 1,
+  "title": "indigo_mount_lx200: define X_GEMINI_STARTUP only while the mount type is DETECT or GEMINI",
+  "description": "X_GEMINI_STARTUP is currently always defined. Show it only when it can apply.\n\nBehaviour:\n- The property is defined while X_MOUNT_TYPE is DETECT (the default; gemini_startup() also runs during detection) or GEMINI, and deleted/hidden when another type is selected explicitly. In the MOUNT_TYPE on_change block: if GEMINI or DETECT is selected and the property is hidden, clear hidden and define it; otherwise, if it is not hidden, delete it and then set hidden = true. No duplicate define when the type is selected again, no delete of a property that was never defined.\n- When autodetection in meade_detect_mount() identifies a mount other than Gemini, the property is hidden the same way (delete, then hidden = true). When it detects Gemini the property stays defined. Check what happens to the type and the property after disconnect, so the property is visible again whenever the type is DETECT or GEMINI.\n- The property stays persistent; MOUNT_TYPE is saved before X_GEMINI_STARTUP, so a saved startup mode still loads for DETECT/GEMINI.\n\nWork: edit indigo_mount_lx200.driver (source of truth), bump version 94 -> 95, regenerate .c/.h/_main.c with the unchanged indigo_generator, build. The owner's uncommitted prototype of this change in the generated indigo_mount_lx200.c of the primary checkout (hidden = true at attach, define/delete in mount_type_handler) is superseded by this ticket and has a defect (else branch leaves hidden = false); do not copy it. Update indigo_docs/PROPERTIES.md (the X_GEMINI_STARTUP sentence about when it is defined). Extend indigo_test/integration/test_mount_lx200_simulator.c: property present for DETECT and GEMINI before connection, absent after selecting another type, absent after detection of a non-Gemini mount, present after detection of Gemini; the existing lx200_gemini_startup_mode_is_selected case must keep passing. Run only the mount_lx200 tests. Do not modify README.md.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-27T17:58:30.078408Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fbb89cb4-f481-48ee-95e9-655a6e372e1f",
+      "event": "ticket/created",
+      "at": "2026-11-27T17:58:30.080157Z",
+      "actor": "human/Peter Polakovic",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T17:58:30.078408Z",
+    "actor": "human/Peter Polakovic",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "053d97875f7f0377c206ed16e6ec9bf63a088234a5eb2ff738746c768425d8e3"
+  }
+}
