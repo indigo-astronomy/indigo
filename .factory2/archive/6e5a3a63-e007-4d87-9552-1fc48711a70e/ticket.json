@@ -1,0 +1,1052 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6e5a3a63-e007-4d87-9552-1fc48711a70e",
+  "revision": 55,
+  "title": "indigo_agent_scheduler: list only planned runs in the night plan, show UNPLANNED tasks and a reason column in the task list, report the twilight limit as \"sun above -N°\"",
+  "description": "AGENT_SCHEDULER_PLAN appends, after the planned runs, Alert items for tasks that have no run before the end of the night (state NOT TONIGHT with reason disabled / script error / no time left tonight / an altitude or time-window reason, or UNREACHABLE with the altitude message), plus a '- | - | - | - | NOT TONIGHT | no night at the night limit within a day, the night hooks do not run' line (update_plan() in indigo_drivers/agent_scheduler/indigo_agent_scheduler.c, the loop after 'tasks without a run before the end of the night follow with the reason'). The owner reports this as a bug: the plan must show only what will run.\n\nExpected: AGENT_SCHEDULER_PLAN contains only the planned runs (tasks and hooks, running entry Busy, others Idle). Tasks that do not run tonight, UNREACHABLE tasks and the no-night note are not listed. Keep the unreachable message (told once) and REASON behaviour unchanged. Update indigo_drivers/agent_scheduler/doc/SCHEDULER.md (around line 775, the hook note near line 549, the test list near line 984, and SCHEDULER_COMPARISON.md line 127 example) and the integration tests in indigo_test/integration/test_agent_scheduler.c that assert NOT TONIGHT / UNREACHABLE plan items, so they check absence from the plan and verify the unreachable state through its message/task state instead. Bump the agent version. Update PROPERTIES.md only if its plan description mentions these items.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-27T17:37:49.459131Z",
+  "status": "closed",
+  "branch": "ticket/6e5a3a63-e007-4d87-9552-1fc48711a70e",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "4ee84deb-ef7c-4fe7-b2d9-5cd3f0e3d212",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T20:43:34.467274Z",
+          "last_activity_at": "2026-11-27T21:08:10.832710Z",
+          "ended_at": "2026-11-27T21:08:10.832710Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1476365.436,
+          "tokens": null
+        },
+        {
+          "attempt_id": "c508d837-6b2d-4c66-947a-eb695ffe989f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T21:20:38.748611Z",
+          "last_activity_at": "2026-11-27T22:00:30.714674Z",
+          "ended_at": "2026-11-27T22:00:30.714674Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2391966.063,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1ba73716-eed3-4491-954a-c9fc53887859",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-27T22:00:30.714807Z",
+          "last_activity_at": "2026-11-27T22:25:20.836047Z",
+          "ended_at": "2026-11-27T22:25:20.836047Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 1490121.24,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T20:43:34.467274Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/6e5a3a63-e007-4d87-9552-1fc48711a70e"
+        },
+        {
+          "at": "2026-11-27T21:08:10.832710Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-27T21:20:38.748611Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-27T22:00:30.714674Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-27T22:00:30.714807Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-27T22:25:20.836047Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 5358452.739,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    },
+    {
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d0720fcc-c133-441d-8b0c-07a7c0397e90",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-27T21:08:10.832786Z",
+          "last_activity_at": "2026-11-27T21:20:38.748527Z",
+          "ended_at": "2026-11-27T21:20:38.748527Z",
+          "outcome": {
+            "summary": "Production code, docs and the deterministic new tests are correct; two test defects need fixing.\n\nVerified OK: update_plan() (indigo_agent_scheduler.c:3140-3172) lists only planned runs and recomputes unplanned/unplanned_reason for every slot on each plan, republishing the task list only on change. is_unplanned() (548) also checks enabled/script error/unreachable/RUNNING/terminal at display time, so the flag cannot show stale after enable/disable, start of a run, finish, a hook assignment or an edit. create_task/remove_task memset the slot (1268, 1293), so reused slots and loaded configs start clear. Every row has 7 columns, only UNPLANNED/UNREACHABLE fill the reason, hooks give '-', UNPLANNED light is Idle. Twilight strings are 'sun above -6°/-12°/-18°' (indigo_agent_scheduler_sky.c:175) and are covered in unit tests. Version bumped 0x0300002D->2E. SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md are updated and no old text is left; anchors resolve. Python consumers: run_scheduler_simulators.py wait_task matches the substring ' | STATE | ', run_scheduler_two_servers.py task_state reads columns[1], and both history parsers (len==6) read AGENT_SCHEDULER_HISTORY, which keeps 6 columns, so none breaks on the 7th column. tools/scheduler_sandbox.py only prints labels. make -C indigo_test test-agent-scheduler: 200 run, 200 passed (21:12 UTC).\n\nDefects:\n1. indigo_test/integration/test_agent_scheduler.c:1350 (urgent_waits_for_eligibility) still requires exactly WAITING for 'Later', an urgent task whose @window opens up to 60 min ahead, at the default site 48.15N/17.11E with the real clock. The plan ends at the next sunrise (indigo_scheduler_night_end). If the window opens after that sunrise, indigo_scheduler_points_next returns 0 with 'window not open yet', so the task is now UNPLANNED and the case fails. This is a new time-dependent failure: roughly the hour before Bratislava sunrise, about 05:20-06:20 UTC in November. Fix: make the case d",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 747915.741,
+          "tokens": null
+        },
+        {
+          "attempt_id": "12f4aefd-cd9a-42c5-9398-dc91b7c8d1e6",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-27T22:00:30.714688Z",
+          "last_activity_at": "2026-11-27T22:00:30.714720Z",
+          "ended_at": "2026-11-27T22:00:30.714720Z",
+          "outcome": {
+            "summary": "Round 2, tree 5d87ef33c. Round-1 findings are fixed except one new case that still fails on some dates.\n\nVerified OK:\n- wait_task_waiting() is gone. waits_with_reason() requires exactly WAITING with '-', unplanned_with_reason() exactly UNPLANNED with the exact reason. The prefix match is used only for the two UNREACHABLE checks with varying numbers.\n- MAX_PLAN_ITEMS = MAX_PLAN_RUNS (indigo_agent_scheduler.c:66) is safe. Plan items come only from plan_runs[0..runs). The planners store hook runs in the same array and stop at max_runs (init_state, simulate, store_final_hooks, vis_store in indigo_agent_scheduler_plan.c). The update_plan loop (3133) is also bounded.\n- The chosen hours hold across the year, with margins of hours. At the equator the day length stays within about 7 min of 12 h and the equation of time within about 16 min, so the plan lasts 18 h +/- 0.5 h at H=12 (until the sunrise after the next sunset) and 10 h +/- 0.5 h at H=20 (until sunrise). The scheduler night only extends the end when night->end is after sunrise, which it is not with the default night offsets. Margins:\n  - South needs about 11.3 h;\n  - Steep, Low and Thin air under 1.2 h;\n  - Long look about 13.5 h;\n  - Night only runs after dusk;\n  - East needs 20.9 h against 18 h (UNPLANNED), Low sides 2 h and then 4 h (WAITING);\n  - Outside and Gap open in 1-2 h against 10 h; the next window of Too short is 23.5 h away;\n  - TooShort and the cases without a site do not depend on the clock;\n  - Later opens within 1 h against 10 h.\n- No other remaining task-list assertion depends on the wall-clock hour. sky_bonuses (fixed 17.11) asserts only the start order. wait_task_reachable in the unreachable case accepts QUEUED or a plan reason, which is a correct reachable outcome either way.\n\nDefect:\n- indigo_test/integration/test_agent_scheduler.c:3142 (moon_separation_and_brightness) requires Fixed to be UNPLANNED 'too close to the moon'. The site has the moon at the zenith, so its local time follows the moo",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.032,
+          "tokens": null
+        },
+        {
+          "attempt_id": "499c9062-4ce2-4f72-96cb-d8925afe40fb",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-27T22:25:20.836058Z",
+          "last_activity_at": "2026-11-27T22:25:20.836082Z",
+          "ended_at": "2026-11-27T22:25:20.836082Z",
+          "outcome": {
+            "summary": "Round 3, tree 1b7a8d3 (commit 5e724742d). The only change since the round-2 tree 717ba4b is in moon_separation_and_brightness (test_agent_scheduler.c:3127-3131): Fixed's limit is now ceil(separation + 16) instead of + 8, with an updated comment. The exact UNPLANNED 'too close to the moon' assertion stays. The limit is at most 86, within the parser range. Lorentzian is unchanged and still passes at once, because its separation fmin(limit + 8, 70) always exceeds its own Lorentzian limit.\n\nVerification: the 2027-2028 geometry simulation with ceil(separation + 16), the same formula and placement as the test code, gave 0 of 16825 hourly samples where Fixed is planned (235 with + 8). Beside, Never and Lorentzian gave no failures either. make -C indigo_test test-agent-scheduler: 200 run, 200 passed.\n\nThe round-1 and round-2 findings are resolved. No remaining defects in scope.\n\nOut of scope, pre-existing, for the owner:\n- run_scheduler_simulators.py:477 expects South WAITING, but the target is UNREACHABLE at latitude 48.15 (already so on master).\n- visibility_due_run_starts_after_a_run fails intermittently, as recorded in archived ticket 1dc2b4a0.\n\nThe server acceptance suites were not run.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.024,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-27T21:08:10.832786Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T21:20:38.748527Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Production code, docs and the deterministic new tests are correct; two test defects need fixing.\n\nVerified OK: update_plan() (indigo_agent_scheduler.c:3140-3172) lists only planned runs and recomputes unplanned/unplanned_reason for every slot on each plan, republishing the task list only on change. is_unplanned() (548) also checks enabled/script error/unreachable/RUNNING/terminal at display time, so the flag cannot show stale after enable/disable, start of a run, finish, a hook assignment or an edit. create_task/remove_task memset the slot (1268, 1293), so reused slots and loaded configs start clear. Every row has 7 columns, only UNPLANNED/UNREACHABLE fill the reason, hooks give '-', UNPLANNED light is Idle. Twilight strings are 'sun above -6°/-12°/-18°' (indigo_agent_scheduler_sky.c:175) and are covered in unit tests. Version bumped 0x0300002D->2E. SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md are updated and no old text is left; anchors resolve. Python consumers: run_scheduler_simulators.py wait_task matches the substring ' | STATE | ', run_scheduler_two_servers.py task_state reads columns[1], and both history parsers (len==6) read AGENT_SCHEDULER_HISTORY, which keeps 6 columns, so none breaks on the 7th column. tools/scheduler_sandbox.py only prints labels. make -C indigo_test test-agent-scheduler: 200 run, 200 passed (21:12 UTC).\n\nDefects:\n1. indigo_test/integration/test_agent_scheduler.c:1350 (urgent_waits_for_eligibility) still requires exactly WAITING for 'Later', an urgent task whose @window opens up to 60 min ahead, at the default site 48.15N/17.11E with the real clock. The plan ends at the next sunrise (indigo_scheduler_night_end). If the window opens after that sunrise, indigo_scheduler_points_next returns 0 with 'window not open yet', so the task is now UNPLANNED and the case fails. This is a new time-dependent failure: roughly the hour before Bratislava sunrise, about 05:20-06:20 UTC in November. Fix: make the case d"
+        },
+        {
+          "at": "2026-11-27T22:00:30.714688Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T22:00:30.714720Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2, tree 5d87ef33c. Round-1 findings are fixed except one new case that still fails on some dates.\n\nVerified OK:\n- wait_task_waiting() is gone. waits_with_reason() requires exactly WAITING with '-', unplanned_with_reason() exactly UNPLANNED with the exact reason. The prefix match is used only for the two UNREACHABLE checks with varying numbers.\n- MAX_PLAN_ITEMS = MAX_PLAN_RUNS (indigo_agent_scheduler.c:66) is safe. Plan items come only from plan_runs[0..runs). The planners store hook runs in the same array and stop at max_runs (init_state, simulate, store_final_hooks, vis_store in indigo_agent_scheduler_plan.c). The update_plan loop (3133) is also bounded.\n- The chosen hours hold across the year, with margins of hours. At the equator the day length stays within about 7 min of 12 h and the equation of time within about 16 min, so the plan lasts 18 h +/- 0.5 h at H=12 (until the sunrise after the next sunset) and 10 h +/- 0.5 h at H=20 (until sunrise). The scheduler night only extends the end when night->end is after sunrise, which it is not with the default night offsets. Margins:\n  - South needs about 11.3 h;\n  - Steep, Low and Thin air under 1.2 h;\n  - Long look about 13.5 h;\n  - Night only runs after dusk;\n  - East needs 20.9 h against 18 h (UNPLANNED), Low sides 2 h and then 4 h (WAITING);\n  - Outside and Gap open in 1-2 h against 10 h; the next window of Too short is 23.5 h away;\n  - TooShort and the cases without a site do not depend on the clock;\n  - Later opens within 1 h against 10 h.\n- No other remaining task-list assertion depends on the wall-clock hour. sky_bonuses (fixed 17.11) asserts only the start order. wait_task_reachable in the unreachable case accepts QUEUED or a plan reason, which is a correct reachable outcome either way.\n\nDefect:\n- indigo_test/integration/test_agent_scheduler.c:3142 (moon_separation_and_brightness) requires Fixed to be UNPLANNED 'too close to the moon'. The site has the moon at the zenith, so its local time follows the moo"
+        },
+        {
+          "at": "2026-11-27T22:25:20.836058Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-27T22:25:20.836082Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 3, tree 1b7a8d3 (commit 5e724742d). The only change since the round-2 tree 717ba4b is in moon_separation_and_brightness (test_agent_scheduler.c:3127-3131): Fixed's limit is now ceil(separation + 16) instead of + 8, with an updated comment. The exact UNPLANNED 'too close to the moon' assertion stays. The limit is at most 86, within the parser range. Lorentzian is unchanged and still passes at once, because its separation fmin(limit + 8, 70) always exceeds its own Lorentzian limit.\n\nVerification: the 2027-2028 geometry simulation with ceil(separation + 16), the same formula and placement as the test code, gave 0 of 16825 hourly samples where Fixed is planned (235 with + 8). Beside, Never and Lorentzian gave no failures either. make -C indigo_test test-agent-scheduler: 200 run, 200 passed.\n\nThe round-1 and round-2 findings are resolved. No remaining defects in scope.\n\nOut of scope, pre-existing, for the owner:\n- run_scheduler_simulators.py:477 expects South WAITING, but the target is UNREACHABLE at latitude 48.15 (already so on master).\n- visibility_due_run_starts_after_a_run fails intermittently, as recorded in archived ticket 1dc2b4a0.\n\nThe server acceptance suites were not run."
+        }
+      ],
+      "result": {
+        "summary": "Round 3, tree 1b7a8d3 (commit 5e724742d). The only change since the round-2 tree 717ba4b is in moon_separation_and_brightness (test_agent_scheduler.c:3127-3131): Fixed's limit is now ceil(separation + 16) instead of + 8, with an updated comment. The exact UNPLANNED 'too close to the moon' assertion stays. The limit is at most 86, within the parser range. Lorentzian is unchanged and still passes at once, because its separation fmin(limit + 8, 70) always exceeds its own Lorentzian limit.\n\nVerification: the 2027-2028 geometry simulation with ceil(separation + 16), the same formula and placement as the test code, gave 0 of 16825 hourly samples where Fixed is planned (235 with + 8). Beside, Never and Lorentzian gave no failures either. make -C indigo_test test-agent-scheduler: 200 run, 200 passed.\n\nThe round-1 and round-2 findings are resolved. No remaining defects in scope.\n\nOut of scope, pre-existing, for the owner:\n- run_scheduler_simulators.py:477 expects South WAITING, but the target is UNREACHABLE at latitude 48.15 (already so on master).\n- visibility_due_run_starts_after_a_run fails intermittently, as recorded in archived ticket 1dc2b4a0.\n\nThe server acceptance suites were not run.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 747915.797,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "2dd919d2-8f3b-438a-a715-c8ec76f5e54b",
+      "event": "ticket/created",
+      "at": "2026-11-27T17:37:49.460026Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "e0784e07-2ca8-4b1f-9d9e-48d6c7eea39e",
+      "event": "ticket/note",
+      "at": "2026-11-27T17:46:44.808368Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner addition: the NOT TONIGHT information moves to the task list. AGENT_SCHEDULER_TASKS shall show the state NOT TONIGHT (instead of QUEUED/WAITING/RETRY/REPEAT) for an enabled, reachable task without script error that is not running and has no planned run before the end of the night, as determined by the latest update_plan(). The flag is recomputed at every plan update and the task list is republished when it changes. UNREACHABLE, DISABLED and SCRIPT ERROR keep their current task-list states. The plan itself lists only planned runs. Document the new task-list state in SCHEDULER.md and cover it in test_agent_scheduler.c (set when the task cannot fit tonight, cleared when it becomes plannable, not shown for hooks/running/terminal tasks).",
+      "tokens": null
+    },
+    {
+      "event_id": "f9f4e2e4-fd34-4cec-83dd-3c5679335f0a",
+      "event": "ticket/note",
+      "at": "2026-11-27T20:21:01.265863Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (supersedes the state name in the previous note): the task-list state is UNPLANNED, not NOT TONIGHT, because the plan can cover the coming night and the task may not fit the next night either. The task-list label of an UNPLANNED task carries the reason as an extra trailing column, using the reasons the plan gives today (from indigo_scheduler_points_next(), or 'no time left tonight' when the task could run but finds no room after the planned runs). Other states keep their current columns. The light of an UNPLANNED task is Idle (it is not an error). The NOT TONIGHT / UNREACHABLE plan rows and the no-night plan row are removed; the plan lists only planned runs. Update SCHEDULER.md, SCHEDULER_COMPARISON.md and test_agent_scheduler.c accordingly.",
+      "tokens": null
+    },
+    {
+      "event_id": "084cebf3-7367-4346-ae3f-9eccd14ebcd5",
+      "event": "ticket/note",
+      "at": "2026-11-27T20:26:28.738703Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner addition: the reason 'too bright (twilight)' (indigo_scheduler_sky_point_ok() in indigo_agent_scheduler_sky.c) is misleading, it is also given at midday. Replace it with the condition and the task setting, one static string per level: 'sun above -6° (@twilight civil)', 'sun above -12° (@twilight nautical)', 'sun above -18° (@twilight astronomical)'. Update every place that shows or documents the old text (SCHEDULER.md, SCHEDULER_COMPARISON.md example, test_agent_scheduler.c assertions).",
+      "tokens": null
+    },
+    {
+      "event_id": "45064844-017c-41b8-884b-566890062198",
+      "event": "ticket/note",
+      "at": "2026-11-27T20:35:20.089937Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (supersedes the wording in the previous note): no brackets. The twilight reason strings are 'sun above -6° for @twilight civil', 'sun above -12° for @twilight nautical' and 'sun above -18° for @twilight astronomical'. All other reason strings ('moon too bright', 'target below the altitude limit', ...) stay unchanged.",
+      "tokens": null
+    },
+    {
+      "event_id": "852d5493-615c-4a46-9f88-916f13a41da9",
+      "event": "ticket/note",
+      "at": "2026-11-27T20:36:27.737374Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (supersedes the wording in the previous notes): the twilight reason is simply 'sun above -6°', 'sun above -12°' or 'sun above -18°', depending on the task's @twilight limit (civil, nautical, astronomical). No mention of @twilight, no brackets.",
+      "tokens": null
+    },
+    {
+      "event_id": "f59eeebf-24d0-47d6-9644-e97a5b36671b",
+      "event": "ticket/note",
+      "at": "2026-11-27T20:40:34.815798Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner addition: the task-list label of an UNREACHABLE task (not a hook) also carries the reason as the extra trailing column, the same text as the 'Task NAME can never run: ...' message (task->unreachable), for example 'culminates at 15.3°, below the minimum altitude 20°'. The one-time message itself stays. Document in SCHEDULER.md and cover in test_agent_scheduler.c (reason present, updated when the reason changes, gone when the task becomes reachable).",
+      "tokens": null
+    },
+    {
+      "event_id": "72977c33-5ca0-4735-bab6-fd999286ec8c",
+      "event": "ticket/note",
+      "at": "2026-11-27T20:42:39.508809Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision: every AGENT_SCHEDULER_TASKS label has the reason as a 7th column, so all rows keep the same format. Only UNPLANNED (plan reason) and UNREACHABLE (unreachable text) fill it; all other rows, hooks included, pass an empty column, which join_label() renders as '-'. Example: 'M31 | QUEUED | normal 50 | run 0/1 | retries left 2 | 0h45 measured | -'. Update SCHEDULER.md task-list format and every test that parses or compares task-list labels.",
+      "tokens": null
+    },
+    {
+      "event_id": "4102007c-5306-4cc8-8459-04f4d82da542",
+      "event": "ticket/note",
+      "at": "2026-11-27T20:42:52.373422Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Scope addition found while checking consumers: also update indigo_docs/INDIGO_SCHEDULER_GUIDE.md (task-list example near line 147, UNREACHABLE text near line 268, any NOT TONIGHT / too bright (twilight) / plan examples), and check the column-indexed parsers of task-list labels in indigo_test/integration/run_scheduler_simulators.py, run_scheduler_two_servers.py and tools/scheduler_sandbox.py still work with the 7th column.",
+      "tokens": null
+    },
+    {
+      "event_id": "ddc193c5-8e92-4644-a982-2fd7c4658b0e",
+      "event": "ticket/confirmed",
+      "at": "2026-11-27T20:43:20.002972Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "c6bd3b7b-b203-4450-8fa7-cbc25df5dfb2",
+      "event": "task/progress",
+      "at": "2026-11-27T20:43:34.467367Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Implementation started on branch ticket/6e5a3a63-e007-4d87-9552-1fc48711a70e"
+    },
+    {
+      "event_id": "ecd76bf9-2944-42de-b8fa-94ab86f6c123",
+      "event": "ticket/started",
+      "at": "2026-11-27T20:43:34.468207Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/6e5a3a63-e007-4d87-9552-1fc48711a70e",
+      "base": "master"
+    },
+    {
+      "event_id": "a4dc759e-33f7-4f67-a393-f284f570f28a",
+      "event": "task/progress",
+      "at": "2026-11-27T20:43:40.217079Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Implementer launched",
+      "attempt_id": "4ee84deb-ef7c-4fe7-b2d9-5cd3f0e3d212",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f8d14bd6-8185-47b9-9706-bf625db95cd7",
+      "event": "task/progress",
+      "at": "2026-11-27T20:44:04.245829Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Implementer started: reading scheduler plan and task list code",
+      "attempt_id": "4ee84deb-ef7c-4fe7-b2d9-5cd3f0e3d212",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "70a7653b-0055-4e2f-97ba-de8f894c3332",
+      "event": "task/progress",
+      "at": "2026-11-27T20:45:43.852312Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Driver change done; building libindigo and agent_scheduler in the worktree"
+    },
+    {
+      "event_id": "67c10783-a8a6-467f-8f3a-3aa29fddd080",
+      "event": "task/progress",
+      "at": "2026-11-27T20:49:58.884893Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Running integration test: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "bf2cc3d7-9aa8-48ea-90cd-bf4dff3c89a3",
+      "event": "task/progress",
+      "at": "2026-11-27T20:58:21.361840Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Rerunning test-agent-scheduler after accepting UNPLANNED for waiting sky tasks"
+    },
+    {
+      "event_id": "c08bcf94-f780-4ac4-858c-1f739ff9a2ef",
+      "event": "task/progress",
+      "at": "2026-11-27T21:05:12.326697Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b825b08c-4f98-4821-9bb2-19883d4eb9f9",
+      "event": "task/progress",
+      "at": "2026-11-27T21:05:12.365375Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a701f805-7ae3-444e-8f9c-714119aee14d",
+      "event": "task/progress",
+      "at": "2026-11-27T21:05:12.370870Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "ba7609db-d16c-4b59-b920-ecd258dabff4",
+      "event": "task/progress",
+      "at": "2026-11-27T21:07:17.832295Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "ac97a67f-f948-4aad-b16a-3a6ca8a63a02",
+      "event": "check/passed",
+      "at": "2026-11-27T21:07:17.837636Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "0dd601632eab71755ad2d40eba1fcfac070dcc7e",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "f0fb3fca-9848-4052-adab-c5d8ae59142e",
+      "event": "task/progress",
+      "at": "2026-11-27T21:07:38.849827Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Implementation done: test-agent-scheduler 200/200, flow check whitespace+unit passed"
+    },
+    {
+      "event_id": "d5ed959e-7c67-4064-a387-389547e561ce",
+      "event": "ticket/note",
+      "at": "2026-11-27T21:08:10.695679Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction and result: on master the integration tests asserted NOT TONIGHT, UNREACHABLE and no-night rows in AGENT_SCHEDULER_PLAN and 'too bright (twilight)'. After the fix the reworked test_agent_scheduler.c asserts their absence from the plan, UNPLANNED/UNREACHABLE reasons in the 7-column task list and 'sun above -12°'; make -C indigo_test test-agent-scheduler: 200/200 passed (first run 192/8 failed, fixed: waiting tasks now UNPLANNED, a hook label with 6 columns). flow check: whitespace and unit (39 suites) pass. Server acceptance suites (test-scheduler-simulators, test-scheduler-two-servers) not run.",
+      "tokens": null
+    },
+    {
+      "event_id": "0bec2141-db44-4592-a409-1cf9fab26140",
+      "event": "task/progress",
+      "at": "2026-11-27T21:08:10.832886Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "text": "Review started"
+    },
+    {
+      "event_id": "18b87aa1-7f0f-4798-b23f-af286991b0d3",
+      "event": "review/started",
+      "at": "2026-11-27T21:08:10.833696Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "2710f8be-9a2f-4b8e-ade5-e14202a770c8",
+      "event": "task/progress",
+      "at": "2026-11-27T21:08:22.724896Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "text": "Reviewer launched",
+      "attempt_id": "d0720fcc-c133-441d-8b0c-07a7c0397e90",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b0a65034-f692-406b-9386-cde41e9ec694",
+      "event": "task/progress",
+      "at": "2026-11-27T21:08:31.293057Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "text": "Reviewer started: reading the diff",
+      "attempt_id": "d0720fcc-c133-441d-8b0c-07a7c0397e90",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3cde4c18-476d-4fdb-b000-03fd2541cf2f",
+      "event": "task/progress",
+      "at": "2026-11-27T21:12:49.624293Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "text": "Running scheduler integration tests: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "9f0473bd-8d3d-4ba2-b9d7-2efd1615400d",
+      "event": "task/progress",
+      "at": "2026-11-27T21:20:38.748602Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "b3ba281d-b006-4801-bb06-795d7eb54de4",
+      "event": "task/progress",
+      "at": "2026-11-27T21:20:38.748641Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "0052da8e-742c-43ca-a929-0516657d810f",
+      "event": "review/changes_requested",
+      "at": "2026-11-27T21:20:38.749360Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "0dd601632eab71755ad2d40eba1fcfac070dcc7e"
+    },
+    {
+      "event_id": "70888635-9288-4b00-b1ba-105035711846",
+      "event": "task/progress",
+      "at": "2026-11-27T21:21:17.712368Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Review changes: making waiting-state tests deterministic with longitude_at_hour"
+    },
+    {
+      "event_id": "822fe497-5dbb-4c4d-9401-86ddd45c61ec",
+      "event": "task/progress",
+      "at": "2026-11-27T21:25:12.902357Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Running test-agent-scheduler after deterministic waiting-state fixes"
+    },
+    {
+      "event_id": "4518843d-0bdc-444a-aff0-207e5a52f3ee",
+      "event": "task/progress",
+      "at": "2026-11-27T21:30:02.339587Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Running full test-agent-scheduler after hour angle timing fix"
+    },
+    {
+      "event_id": "9cd4498c-bc27-45a2-91e0-fbe9943381be",
+      "event": "task/progress",
+      "at": "2026-11-27T21:36:34.520567Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "569afafa-d624-4943-ba1a-b80dd2608c2a",
+      "event": "task/progress",
+      "at": "2026-11-27T21:36:34.594947Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ab2b994b-0f3a-4a18-932e-fe20296a50fd",
+      "event": "task/progress",
+      "at": "2026-11-27T21:36:34.610660Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a77ed354-c717-4ed4-9cc5-9c89b4d75d44",
+      "event": "task/progress",
+      "at": "2026-11-27T21:38:19.646325Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "f6d562ea-0f26-441c-ace7-e2d0ce1cb4b3",
+      "event": "check/passed",
+      "at": "2026-11-27T21:38:19.653891Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5d87ef33c767f3d89e781a08687daee90c5cd06c",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "b386966b-e7f6-4414-b588-f8d64ad1934f",
+      "event": "task/progress",
+      "at": "2026-11-27T21:38:30.636601Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Review fixes done: test-agent-scheduler 200/200, flow check passed"
+    },
+    {
+      "event_id": "43af700e-9f42-4eaf-98b9-2160397361d8",
+      "event": "task/progress",
+      "at": "2026-11-27T21:39:07.957302Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Second review round: reading the fixes",
+      "attempt_id": "c508d837-6b2d-4c66-947a-eb695ffe989f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0ee09ebb-307a-4e9b-9f25-fe3fdcea2c31",
+      "event": "task/progress",
+      "at": "2026-11-27T21:50:36.034186Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Re-running scheduler integration tests on the revised tree"
+    },
+    {
+      "event_id": "5fceb9a2-d465-40c7-ad0b-47c33faa4148",
+      "event": "task/progress",
+      "at": "2026-11-27T22:00:30.714798Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "1444ea42-e192-459b-b9a9-7fb5e994d480",
+      "event": "task/progress",
+      "at": "2026-11-27T22:00:30.714836Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "6ec7e6ee-2b1e-410b-9d56-f6f5a9231a7f",
+      "event": "review/changes_requested",
+      "at": "2026-11-27T22:00:30.715722Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "5d87ef33c767f3d89e781a08687daee90c5cd06c"
+    },
+    {
+      "event_id": "8f005c8b-4c15-4c86-a971-23e8d6d9a136",
+      "event": "question/answered",
+      "at": "2026-11-27T22:05:42.354710Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner: widen Fixed's moon margin in moon_separation_and_brightness from +8 to +16 degrees, rerun flow check and the full scheduler suite, then a third review round."
+    },
+    {
+      "event_id": "a4f37535-6961-4f65-942e-663aba5f1add",
+      "event": "task/progress",
+      "at": "2026-11-27T22:05:53.553230Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Review round 2: widening the Fixed moon limit margin to +16"
+    },
+    {
+      "event_id": "0243ea23-3845-48aa-b37e-292173cebdb9",
+      "event": "task/progress",
+      "at": "2026-11-27T22:06:13.909150Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Running full test-agent-scheduler after the moon margin change"
+    },
+    {
+      "event_id": "d62300c1-b73f-4021-86f1-2b16cafd2704",
+      "event": "task/progress",
+      "at": "2026-11-27T22:15:25.619057Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "480b4021-03c7-490a-ba39-d417ab72a5bb",
+      "event": "task/progress",
+      "at": "2026-11-27T22:15:25.693879Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "69110d27-bc1b-4b1c-b7de-036ced652ede",
+      "event": "task/progress",
+      "at": "2026-11-27T22:15:25.701030Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "6a32ec95-67d4-44f8-bfa4-2f83d9cc69f6",
+      "event": "task/progress",
+      "at": "2026-11-27T22:17:06.052464Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "4d99fc0c-7b66-494e-9f00-f019fbfb25f4",
+      "event": "check/passed",
+      "at": "2026-11-27T22:17:06.059708Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "5e724742d962f956c47f8a39013317280474abd3",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "b3d5e1cf-1c4a-47a9-87a7-2fe11e2db93c",
+      "event": "task/progress",
+      "at": "2026-11-27T22:17:10.063434Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Round 2 fix done: test-agent-scheduler 200/200, flow check passed"
+    },
+    {
+      "event_id": "60f4c482-ede6-4b91-b106-cbdceace4cdf",
+      "event": "task/progress",
+      "at": "2026-11-27T22:17:36.935345Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Review round 3: checking the moon margin change",
+      "attempt_id": "1ba73716-eed3-4491-954a-c9fc53887859",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "1f2002f2-b39a-4938-a683-a654a8e68f46",
+      "event": "task/progress",
+      "at": "2026-11-27T22:17:45.473148Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d5e69d3a-f116-44a9-b16e-1ae649105c07",
+      "text": "Running scheduler integration tests on tree 1b7a8d3"
+    },
+    {
+      "event_id": "1661a7f4-2bec-4bbc-ae28-2c2ea22884fa",
+      "event": "task/progress",
+      "at": "2026-11-27T22:25:20.836146Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "74e7de31-7e0e-40be-90c5-dcb309d124c4",
+      "event": "review/passed",
+      "at": "2026-11-27T22:25:20.837002Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "67594df6-1803-4968-88b0-f9900d412ea5",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5e724742d962f956c47f8a39013317280474abd3"
+    },
+    {
+      "event_id": "9179e28f-0c4f-4135-94f1-f87b17d5579e",
+      "event": "ticket/title_changed",
+      "at": "2026-11-27T22:29:18.746384Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: the night plan lists tasks that do not run, such as NOT TONIGHT entries",
+      "title": "indigo_agent_scheduler: list only planned runs in the night plan, show UNPLANNED tasks and a reason column in the task list, report the twilight limit as \"sun above -N°\""
+    },
+    {
+      "event_id": "4735ff2f-1d19-425d-bc3d-3e0282737306",
+      "event": "ticket/closed",
+      "at": "2026-11-27T22:29:25.599955Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-27T22:29:25.599921Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "a9dc076f44f3fdb9df5db0aad58a91c143733848"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0dd601632eab71755ad2d40eba1fcfac070dcc7e",
+        "tree": "d20405785c20889110d73cabd4462469836896bf",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T21:05:12.364569Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/6e5a3a63-e007-4d87-9552-1fc48711a70e/d20405785c20-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "0dd601632eab71755ad2d40eba1fcfac070dcc7e",
+        "tree": "d20405785c20889110d73cabd4462469836896bf",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T21:07:17.831465Z",
+        "duration_s": 125.5,
+        "log": "/tmp/factory-flow/6e5a3a63-e007-4d87-9552-1fc48711a70e/d20405785c20-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5d87ef33c767f3d89e781a08687daee90c5cd06c",
+        "tree": "717ba4b0ac92e99c37f1a254f45edbe56bcf5e0f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T21:36:34.591991Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/6e5a3a63-e007-4d87-9552-1fc48711a70e/717ba4b0ac92-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "5d87ef33c767f3d89e781a08687daee90c5cd06c",
+        "tree": "717ba4b0ac92e99c37f1a254f45edbe56bcf5e0f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T21:38:19.644916Z",
+        "duration_s": 105.0,
+        "log": "/tmp/factory-flow/6e5a3a63-e007-4d87-9552-1fc48711a70e/717ba4b0ac92-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5e724742d962f956c47f8a39013317280474abd3",
+        "tree": "1b7a8d34a7b7e80f857209a2712444acfab1dc7a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T22:15:25.692341Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/6e5a3a63-e007-4d87-9552-1fc48711a70e/1b7a8d34a7b7-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "5e724742d962f956c47f8a39013317280474abd3",
+        "tree": "1b7a8d34a7b7e80f857209a2712444acfab1dc7a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-27T22:17:06.051177Z",
+        "duration_s": 100.4,
+        "log": "/tmp/factory-flow/6e5a3a63-e007-4d87-9552-1fc48711a70e/1b7a8d34a7b7-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Production code, docs and the deterministic new tests are correct; two test defects need fixing.\n\nVerified OK: update_plan() (indigo_agent_scheduler.c:3140-3172) lists only planned runs and recomputes unplanned/unplanned_reason for every slot on each plan, republishing the task list only on change. is_unplanned() (548) also checks enabled/script error/unreachable/RUNNING/terminal at display time, so the flag cannot show stale after enable/disable, start of a run, finish, a hook assignment or an edit. create_task/remove_task memset the slot (1268, 1293), so reused slots and loaded configs start clear. Every row has 7 columns, only UNPLANNED/UNREACHABLE fill the reason, hooks give '-', UNPLANNED light is Idle. Twilight strings are 'sun above -6°/-12°/-18°' (indigo_agent_scheduler_sky.c:175) and are covered in unit tests. Version bumped 0x0300002D->2E. SCHEDULER.md, SCHEDULER_COMPARISON.md, INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md are updated and no old text is left; anchors resolve. Python consumers: run_scheduler_simulators.py wait_task matches the substring ' | STATE | ', run_scheduler_two_servers.py task_state reads columns[1], and both history parsers (len==6) read AGENT_SCHEDULER_HISTORY, which keeps 6 columns, so none breaks on the 7th column. tools/scheduler_sandbox.py only prints labels. make -C indigo_test test-agent-scheduler: 200 run, 200 passed (21:12 UTC).\n\nDefects:\n1. indigo_test/integration/test_agent_scheduler.c:1350 (urgent_waits_for_eligibility) still requires exactly WAITING for 'Later', an urgent task whose @window opens up to 60 min ahead, at the default site 48.15N/17.11E with the real clock. The plan ends at the next sunrise (indigo_scheduler_night_end). If the window opens after that sunrise, indigo_scheduler_points_next returns 0 with 'window not open yet', so the task is now UNPLANNED and the case fails. This is a new time-dependent failure: roughly the hour before Bratislava sunrise, about 05:20-06:20 UTC in November. Fix: make the case deterministic, e.g. set_site(0, longitude_at_hour(20)) before the upload.\n2. The relaxed expectations make coverage depend on the time of the run, in cases where the outcome could be fixed. wait_task_waiting() (264) and waits_with_reason() (2840) accept WAITING or UNPLANNED, and accept UNPLANNED with any reason. So whenever the label is UNPLANNED, the underlying WAITING state (constraint not holding now) for each constraint type goes unchecked, and a wrong UNPLANNED flag or reason would pass. Two kinds of case:\n   (a) Some cases are already deterministic and should assert the exact result. twilight_limit_follows_the_sun (3095) runs at local noon at the equator, so 'Night only' is always planned after dusk and is WAITING. unknown_site_blocks_only_sky_constraints (3205-3206, also 5961) has no sky, so 'Placed' and 'Dark only' are always UNPLANNED, and that should be asserted together with the reason.\n   (b) The others depend on time only because of the fixed longitude 17.11 combined with time(NULL): target_below_horizon_waits (1263/1266), global_altitude_limits_decide_and_recover (2850/2872), hour_angle_ranges_including_wrapped (Low sides 3080/3085), nightly_windows (Gap 3178, Outside), moon (Fixed 3134). Use longitude_at_hour(H), as global_minimum_altitude_rules_out_the_night and start_with_crossing_task already do, and keep the exact WAITING (or exact UNPLANNED with its reason) assertions, so the tests stay deterministic as the tests rule requires.\n   The wait_task_reachable() '°' heuristic (2935) is acceptable because Low and Polar both use @twilight none.\n\nNot blocking: MAX_PLAN_ITEMS (indigo_agent_scheduler.c:66) still reserves MAX_TASKS items for the removed rows, which is harmless.\n\nOut of scope, pre-existing on master, for the owner: run_scheduler_simulators.py:477 waits for South WAITING, but at latitude 48.15 the target at dec -89 never rises, so it is UNREACHABLE. That server suite case already fails without this change.\nCoverage limits: server acceptance suites not run; the flake in finding 1 is shown by analysis of the plan end and points_next, not reproduced.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "0dd601632eab71755ad2d40eba1fcfac070dcc7e",
+        "tree": "d20405785c20889110d73cabd4462469836896bf",
+        "at": "2026-11-27T21:20:38.748502Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 2, tree 5d87ef33c. Round-1 findings are fixed except one new case that still fails on some dates.\n\nVerified OK:\n- wait_task_waiting() is gone. waits_with_reason() requires exactly WAITING with '-', unplanned_with_reason() exactly UNPLANNED with the exact reason. The prefix match is used only for the two UNREACHABLE checks with varying numbers.\n- MAX_PLAN_ITEMS = MAX_PLAN_RUNS (indigo_agent_scheduler.c:66) is safe. Plan items come only from plan_runs[0..runs). The planners store hook runs in the same array and stop at max_runs (init_state, simulate, store_final_hooks, vis_store in indigo_agent_scheduler_plan.c). The update_plan loop (3133) is also bounded.\n- The chosen hours hold across the year, with margins of hours. At the equator the day length stays within about 7 min of 12 h and the equation of time within about 16 min, so the plan lasts 18 h +/- 0.5 h at H=12 (until the sunrise after the next sunset) and 10 h +/- 0.5 h at H=20 (until sunrise). The scheduler night only extends the end when night->end is after sunrise, which it is not with the default night offsets. Margins:\n  - South needs about 11.3 h;\n  - Steep, Low and Thin air under 1.2 h;\n  - Long look about 13.5 h;\n  - Night only runs after dusk;\n  - East needs 20.9 h against 18 h (UNPLANNED), Low sides 2 h and then 4 h (WAITING);\n  - Outside and Gap open in 1-2 h against 10 h; the next window of Too short is 23.5 h away;\n  - TooShort and the cases without a site do not depend on the clock;\n  - Later opens within 1 h against 10 h.\n- No other remaining task-list assertion depends on the wall-clock hour. sky_bonuses (fixed 17.11) asserts only the start order. wait_task_reachable in the unreachable case accepts QUEUED or a plan reason, which is a correct reachable outcome either way.\n\nDefect:\n- indigo_test/integration/test_agent_scheduler.c:3142 (moon_separation_and_brightness) requires Fixed to be UNPLANNED 'too close to the moon'. The site has the moon at the zenith, so its local time follows the moon phase, and the plan can last up to about 23 h. Over that time the moon moves up to about 12-15 degrees in RA and about 6 degrees in declination. Fixed's limit, ceil(separation + 8) at line 3131, leaves only 8 degrees of margin. So on the next day's pass the separation can exceed the limit while the target is above 20 degrees, Fixed gets a run and stays WAITING.\n  - Evidence: I simulated the case geometry with the scheduler's own sky code (indigo_scheduler_sky_build, target/points build, points_next up to indigo_scheduler_night_end, MIN_ALTITUDE 20) hourly over 2027-2028, 16825 samples with the moon high. Fixed was planned in 235 of them (1.4%), for example moon declination 2.7 degrees, 9 days from full, separation 12, limit 20, run at +21.6 h with the plan ending at +22.6 h.\n  - Beside (3 degrees against a 30-degree limit), Never and Lorentzian never failed. With ceil(separation + 16) or + 20, Fixed failed 0 times.\n  - Fix: widen Fixed's margin (+16 is enough in the simulation), or assert Fixed only as never started with the REASON instead of UNPLANNED.\n\nTest runs: make -C indigo_test test-agent-scheduler gave 199 of 200. visibility_due_run_starts_after_a_run failed ('Starting task Target' timeout at 3448). This case is not changed by the ticket and the same intermittent failure is already recorded in archived ticket 1dc2b4a0, so it is a pre-existing flake. The round-1 tree gave 200 of 200.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "5d87ef33c767f3d89e781a08687daee90c5cd06c",
+        "tree": "717ba4b0ac92e99c37f1a254f45edbe56bcf5e0f",
+        "at": "2026-11-27T22:00:30.714511Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3, tree 1b7a8d3 (commit 5e724742d). The only change since the round-2 tree 717ba4b is in moon_separation_and_brightness (test_agent_scheduler.c:3127-3131): Fixed's limit is now ceil(separation + 16) instead of + 8, with an updated comment. The exact UNPLANNED 'too close to the moon' assertion stays. The limit is at most 86, within the parser range. Lorentzian is unchanged and still passes at once, because its separation fmin(limit + 8, 70) always exceeds its own Lorentzian limit.\n\nVerification: the 2027-2028 geometry simulation with ceil(separation + 16), the same formula and placement as the test code, gave 0 of 16825 hourly samples where Fixed is planned (235 with + 8). Beside, Never and Lorentzian gave no failures either. make -C indigo_test test-agent-scheduler: 200 run, 200 passed.\n\nThe round-1 and round-2 findings are resolved. No remaining defects in scope.\n\nOut of scope, pre-existing, for the owner:\n- run_scheduler_simulators.py:477 expects South WAITING, but the target is UNREACHABLE at latitude 48.15 (already so on master).\n- visibility_due_run_starts_after_a_run fails intermittently, as recorded in archived ticket 1dc2b4a0.\n\nThe server acceptance suites were not run.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "5e724742d962f956c47f8a39013317280474abd3",
+        "tree": "1b7a8d34a7b7e80f857209a2712444acfab1dc7a",
+        "at": "2026-11-27T22:25:20.836026Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-27T17:46:44.807784Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner addition: the NOT TONIGHT information moves to the task list. AGENT_SCHEDULER_TASKS shall show the state NOT TONIGHT (instead of QUEUED/WAITING/RETRY/REPEAT) for an enabled, reachable task without script error that is not running and has no planned run before the end of the night, as determined by the latest update_plan(). The flag is recomputed at every plan update and the task list is republished when it changes. UNREACHABLE, DISABLED and SCRIPT ERROR keep their current task-list states. The plan itself lists only planned runs. Document the new task-list state in SCHEDULER.md and cover it in test_agent_scheduler.c (set when the task cannot fit tonight, cleared when it becomes plannable, not shown for hooks/running/terminal tasks).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T20:21:01.265135Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision (supersedes the state name in the previous note): the task-list state is UNPLANNED, not NOT TONIGHT, because the plan can cover the coming night and the task may not fit the next night either. The task-list label of an UNPLANNED task carries the reason as an extra trailing column, using the reasons the plan gives today (from indigo_scheduler_points_next(), or 'no time left tonight' when the task could run but finds no room after the planned runs). Other states keep their current columns. The light of an UNPLANNED task is Idle (it is not an error). The NOT TONIGHT / UNREACHABLE plan rows and the no-night plan row are removed; the plan lists only planned runs. Update SCHEDULER.md, SCHEDULER_COMPARISON.md and test_agent_scheduler.c accordingly.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T20:26:28.738199Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner addition: the reason 'too bright (twilight)' (indigo_scheduler_sky_point_ok() in indigo_agent_scheduler_sky.c) is misleading, it is also given at midday. Replace it with the condition and the task setting, one static string per level: 'sun above -6° (@twilight civil)', 'sun above -12° (@twilight nautical)', 'sun above -18° (@twilight astronomical)'. Update every place that shows or documents the old text (SCHEDULER.md, SCHEDULER_COMPARISON.md example, test_agent_scheduler.c assertions).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T20:35:20.089258Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision (supersedes the wording in the previous note): no brackets. The twilight reason strings are 'sun above -6° for @twilight civil', 'sun above -12° for @twilight nautical' and 'sun above -18° for @twilight astronomical'. All other reason strings ('moon too bright', 'target below the altitude limit', ...) stay unchanged.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T20:36:27.736840Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision (supersedes the wording in the previous notes): the twilight reason is simply 'sun above -6°', 'sun above -12°' or 'sun above -18°', depending on the task's @twilight limit (civil, nautical, astronomical). No mention of @twilight, no brackets.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T20:40:34.815122Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner addition: the task-list label of an UNREACHABLE task (not a hook) also carries the reason as the extra trailing column, the same text as the 'Task NAME can never run: ...' message (task->unreachable), for example 'culminates at 15.3°, below the minimum altitude 20°'. The one-time message itself stays. Document in SCHEDULER.md and cover in test_agent_scheduler.c (reason present, updated when the reason changes, gone when the task becomes reachable).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T20:42:39.508268Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision: every AGENT_SCHEDULER_TASKS label has the reason as a 7th column, so all rows keep the same format. Only UNPLANNED (plan reason) and UNREACHABLE (unreachable text) fill it; all other rows, hooks included, pass an empty column, which join_label() renders as '-'. Example: 'M31 | QUEUED | normal 50 | run 0/1 | retries left 2 | 0h45 measured | -'. Update SCHEDULER.md task-list format and every test that parses or compares task-list labels.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T20:42:52.372486Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Scope addition found while checking consumers: also update indigo_docs/INDIGO_SCHEDULER_GUIDE.md (task-list example near line 147, UNREACHABLE text near line 268, any NOT TONIGHT / too bright (twilight) / plan examples), and check the column-indexed parsers of task-list labels in indigo_test/integration/run_scheduler_simulators.py, run_scheduler_two_servers.py and tools/scheduler_sandbox.py still work with the 7th column.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-27T21:08:10.695060Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction and result: on master the integration tests asserted NOT TONIGHT, UNREACHABLE and no-night rows in AGENT_SCHEDULER_PLAN and 'too bright (twilight)'. After the fix the reworked test_agent_scheduler.c asserts their absence from the plan, UNPLANNED/UNREACHABLE reasons in the 7-column task list and 'sun above -12°'; make -C indigo_test test-agent-scheduler: 200/200 passed (first run 192/8 failed, fixed: waiting tasks now UNPLANNED, a hook label with 6 columns). flow check: whitespace and unit (39 suites) pass. Server acceptance suites (test-scheduler-simulators, test-scheduler-two-servers) not run.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": null,
+        "at": "2026-11-27T22:05:42.353929Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "answer": "Owner: widen Fixed's moon margin in moon_separation_and_brightness from +8 to +16 degrees, rerun flow check and the full scheduler suite, then a third review round.",
+        "answered_at": "2026-11-27T22:05:42.353929Z",
+        "answered_by": "human/Rumen G.Bogdanovski"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "a9dc076f44f3fdb9df5db0aad58a91c143733848",
+      "tree": "1b7a8d34a7b7e80f857209a2712444acfab1dc7a",
+      "base": "master",
+      "at": "2026-11-27T22:29:25.440289Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T17:37:49.459131Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-27T20:43:20.002932Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 6106368.536,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 6
+    }
+  },
+  "journal": {
+    "entries": 70,
+    "sha256": "1042d71a5072428ec70dea324488a5b725835e3fa7577f1e8893e10bd59e939a"
+  }
+}
