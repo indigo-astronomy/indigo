@@ -1435,6 +1435,73 @@ static void lx200_gemini_startup_mode_is_selected(void) {
 	}
 }
 
+// Whether the client holds X_GEMINI_STARTUP as wanted, after the definitions and deletions
+// the driver has sent.
+static bool gemini_startup_defined(bool defined) {
+	for (int i = 0; i < 20 && (find_cached_property("X_GEMINI_STARTUP") != NULL) != defined; i++) {
+		indigo_usleep(100000);
+	}
+	return (find_cached_property("X_GEMINI_STARTUP") != NULL) == defined;
+}
+
+// X_GEMINI_STARTUP is defined exactly while X_MOUNT_TYPE is DETECT or GEMINI: before the
+// connection, after a type the client selected and after the type the autodetection found,
+// which stays selected after the disconnection.
+static void lx200_gemini_startup_follows_the_mount_type(void) {
+	static const char *models[] = { "meade", "gemini" };
+	static const char *detected[] = { "MEADE", "GEMINI" };
+	for (int i = 0; i < 2; i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, (const char *[]) { "--model", models[i], NULL }));
+		SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+		online = true;
+		enumerate_simulator_device();
+		SERIAL_CHECK_TRUE(gemini_switch_value(MOUNT_TYPE_PROPERTY_NAME, "DETECT"));
+		SERIAL_CHECK_TRUE(gemini_startup_defined(true));
+		if (i == 0) {
+			// GEMINI after DETECT keeps the property without defining it again.
+			int defines = context.define_count;
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, "GEMINI", true, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(gemini_startup_defined(true));
+			SERIAL_CHECK_EQ_INT(defines, context.define_count);
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, "MEADE", true, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(gemini_startup_defined(false));
+			// A new enumeration does not bring it back, nor does another type without a Gemini.
+			enumerate_simulator_device();
+			SERIAL_CHECK_TRUE(gemini_startup_defined(false));
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, "AP", true, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(gemini_startup_defined(false));
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, "GEMINI", true, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(gemini_startup_defined(true));
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, "GENERIC", true, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(gemini_startup_defined(false));
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, "DETECT", true, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(gemini_startup_defined(true));
+			SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+		} else {
+			SERIAL_CHECK_TRUE(gemini_connect(&lx200_mount, simulator.port));
+		}
+		SERIAL_CHECK_TRUE(gemini_switch_value(MOUNT_TYPE_PROPERTY_NAME, detected[i]));
+		SERIAL_CHECK_TRUE(gemini_startup_defined(i == 1));
+		disconnect_serial_device(&lx200_mount);
+		SERIAL_CHECK_TRUE(gemini_switch_value(MOUNT_TYPE_PROPERTY_NAME, detected[i]));
+		SERIAL_CHECK_TRUE(gemini_startup_defined(i == 1));
+		if (i == 0) {
+			SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TYPE_PROPERTY_NAME, "DETECT", true, INDIGO_OK_STATE));
+			SERIAL_CHECK_TRUE(gemini_startup_defined(true));
+		}
+	cleanup:
+		if (online) {
+			stop_serial_driver(&lx200_mount);
+		}
+		stop_external_serial_simulator(&simulator);
+		if (!online) {
+			return;
+		}
+	}
+}
+
 // A Gemini follows a refused :MS# with its reason, which reaches the client.
 static void lx200_gemini_slew_refusal_has_a_reason(void) {
 	external_serial_simulator simulator = { 0 };
@@ -6688,6 +6755,7 @@ int main(int argc, char **argv) {
 		{ "lx200_gemini_unpark_stays_unparked", lx200_gemini_unpark_stays_unparked },
 		{ "lx200_gemini_double_precision_clock_is_kept", lx200_gemini_double_precision_clock_is_kept },
 		{ "lx200_gemini_startup_mode_is_selected", lx200_gemini_startup_mode_is_selected },
+		{ "lx200_gemini_startup_follows_the_mount_type", lx200_gemini_startup_follows_the_mount_type },
 		{ "lx200_gemini_slew_refusal_has_a_reason", lx200_gemini_slew_refusal_has_a_reason },
 		{ "lx200_gemini_park_positions", lx200_gemini_park_positions },
 		{ "lx200_gemini_guide_and_tracking_rates", lx200_gemini_guide_and_tracking_rates },

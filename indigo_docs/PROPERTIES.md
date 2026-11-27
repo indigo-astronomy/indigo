@@ -1531,7 +1531,7 @@ Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AU
 
 `X_AP_PARK_POSITION` (Astro-Physics GTO only, persistent, shown when the controller has firmware park positions: every GTOCP5/6, and a GTOCP3/4 that reports them) chooses where a park ends: `CURRENT` (default) parks where the mount stands with `:KA#`, `PARK1` to `PARK5` stop the tracking and let the controller slew to that park position itself with `$K1#` to `$K5#`; `MOUNT_PARK` stays busy until `:GOS#` reports the mount parked.
 
-`X_GEMINI_STARTUP` (Losmandy Gemini, persistent, defined also while the mount is not connected) selects the startup mode the driver chooses when a Gemini that was just switched on waits for it: `COLD` (default) cold start with `bC#`, `WARM` warm start with `bW#`, `WARM_RESTART` warm restart with `bR#`. The connection waits until the controller reports it is ready.
+`X_GEMINI_STARTUP` (Losmandy Gemini, persistent, defined also while the mount is not connected, but only while `X_MOUNT_TYPE` is `DETECT` or `GEMINI`; it is deleted when another type is selected or detected) selects the startup mode the driver chooses when a Gemini that was just switched on waits for it: `COLD` (default) cold start with `bC#`, `WARM` warm start with `bW#`, `WARM_RESTART` warm restart with `bR#`. The connection waits until the controller reports it is ready.
 
 `X_GEMINI_PARK_POSITION` (Losmandy Gemini only, persistent) chooses where `MOUNT_PARK` parks: `STARTUP` (default) the counterweight-down startup position with `:hC#`, `HOME` the home position with `:hP#`, `ZENITH` the zenith with `:hZ#`, which Level 4 refuses.
 

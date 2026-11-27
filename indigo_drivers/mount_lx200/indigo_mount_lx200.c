@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300005E
+#define DRIVER_VERSION       0x0300005F
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -787,6 +787,22 @@ static void keep_alive_callback(indigo_device *device) {
 	}
 }
 
+// X_GEMINI_STARTUP applies only to a Gemini, and to autodetection, which runs the Gemini
+// startup as well, so it is defined exactly while X_MOUNT_TYPE is DETECT or GEMINI. Called
+// with the mount device whenever the type changes, also when the driver selects it itself.
+// The delete comes first, indigo_delete_property() ignores a hidden property.
+static void gemini_update_startup_visibility(indigo_device *device) {
+	if (MOUNT_TYPE_DETECT_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value) {
+		if (GEMINI_STARTUP_PROPERTY->hidden) {
+			GEMINI_STARTUP_PROPERTY->hidden = false;
+			indigo_define_property(device, GEMINI_STARTUP_PROPERTY, NULL);
+		}
+	} else if (!GEMINI_STARTUP_PROPERTY->hidden) {
+		indigo_delete_property(device, GEMINI_STARTUP_PROPERTY, NULL);
+		GEMINI_STARTUP_PROPERTY->hidden = true;
+	}
+}
+
 // A Gemini that was just switched on answers no :GR# until its startup is completed. The ACK
 // byte answers B while the startup message is shown, b while it waits for the startup mode,
 // S during a cold start and G or A once it is ready; the mode is chosen with bC#, bW# or bR#.
@@ -830,6 +846,7 @@ static bool lx200_open(indigo_device *device, const char **error_message) {
 		} else if (device->matched_pattern_index == ZWO_TEMPLATE_INDEX) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ZWO_ITEM, true);
 		}
+		gemini_update_startup_visibility(device);
 		// A ToupTek SH20 talks at 115200 8N1 over its USB-C port, as its ASCOM server opens it.
 		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
 			indigo_set_text_item_value(DEVICE_BAUDRATE_ITEM, "115200-8N1");
@@ -2590,6 +2607,7 @@ static bool meade_detect_mount(indigo_device *device) {
 		MOUNT_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
 		result = false;
 	}
+	gemini_update_startup_visibility(device);
 	indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
 	return result;
 }
@@ -4804,6 +4822,7 @@ static void mount_type_handler(indigo_device *device) {
 		strcpy(DEVICE_PORT_ITEM->text.value, "lx200://StarGo2.local:9624");
 		INDIGO_UPDATE_PROPERTY_STATE(DEVICE_PORT_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
+	gemini_update_startup_visibility(device);
 	//- mount.MOUNT_TYPE.on_change
 	indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
 }
