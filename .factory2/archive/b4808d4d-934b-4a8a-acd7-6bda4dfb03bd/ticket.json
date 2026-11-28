@@ -1,0 +1,927 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b4808d4d-934b-4a8a-acd7-6bda4dfb03bd",
+  "revision": 51,
+  "title": "indigo_agent_scheduler: add a combined timeline of history and plan, convert the run history to a text property and add a history window",
+  "description": "Owner-approved design (2026-11-28).\n\n1. Properties, all three always defined, no view switch:\n   - AGENT_SCHEDULER_PLAN: unchanged (light list, running entry Busy, planned runs Idle).\n   - AGENT_SCHEDULER_TIMELINE (new, light list, label e.g. 'Timeline'): the history entries inside the history window, then the running entry, then the planned runs, in time order. History entries keep their lights (Ok for success, Alert for failure, as AGENT_SCHEDULER_HISTORY has them today), running Busy, planned Idle. Same 6-column labels as the plan. Item names LINE_<n> (or similar internal ids). Redefined only when items or labels change, updated in place when only lights change, like the plan.\n   - AGENT_SCHEDULER_HISTORY: converted from a light list to a TEXT property (text only, read-only), holding the full stored history (up to MAX_HISTORY = 200 runs), one line per run, oldest first, each line exactly the label format used by the timeline/plan. Check that INDIGO long text values carry the whole text (up to 200 lines) and clients receive it; keep the existing 511-byte per-line label cut.\n2. AGENT_SCHEDULER_HISTORY_WINDOW (new, separate number property, not in AGENT_SCHEDULER_SETTINGS since it is not scheduling related): one item in hours, default 16, range -1 to 8760 (one year). < 0 = the timeline shows all stored history; 0 = no history in the timeline; > 0 = history entries whose run ended within that many hours before now. Applies only to the timeline; AGENT_SCHEDULER_HISTORY always holds everything stored. Saved with the agent configuration. Entries leaving the window must disappear without other events: check on the regular IDLE_CHECK_INTERVAL pass, also while a task runs.\n3. Column alignment: history entries get the plan's columns 3 and 4, 'run N/M' and the priority text (e.g. 'run 1/1 | normal 50', 'urgent', '- | hook night end' for hooks, as the plan shows them). Store the repeat count and priority text (or class/level/urgency/hook kind) in each history entry when the run ends. Extend the saved history format of AGENT_SCHEDULER_RESTORE_HISTORY with the new fields appended so older saved entries still restore (missing fields shown as '-') and the reader stays tolerant as documented; CLEAR_HISTORY clears both HISTORY and the history part of the timeline; RESTORE_HISTORY keeps working.\n4. Names: add the new property/item names to indigo_libs/indigo/indigo_names.h following the existing AGENT_SCHEDULER_* pattern.\n5. Docs: SCHEDULER.md (properties table, Run history, labels and list properties, configuration save/restore format), INDIGO_SCHEDULER_GUIDE.md (examples using AGENT_SCHEDULER_HISTORY.RUN_n must change), SCHEDULER_COMPARISON.md if it mentions history/plan, PROPERTIES.md (removed light items, new properties). Bump the agent version.\n6. Tests and tools: indigo_test/integration/test_agent_scheduler.c (history assertions now parse the text lines; new cases for the timeline order and lights, the window: default 16 h, -1 all, 0 none, entries ageing out, saved/restored; alignment columns for task, urgent and hook entries; restore of old-format entries), indigo_test/integration/run_scheduler_simulators.py and run_scheduler_two_servers.py (they parse history labels by column), tools/scheduler_sandbox.py (shows lists). Keep tests deterministic with respect to the run date and time. Run test-agent-scheduler, test-scheduler-simulators and test-scheduler-two-servers.\n\nImpact accepted by the owner: clients reading AGENT_SCHEDULER_HISTORY as a light list must be updated.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-28T08:27:01.354065Z",
+  "status": "closed",
+  "branch": "ticket/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "9d326aa6-4908-407c-b621-ba778fd7162b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-28T08:28:30.404366Z",
+          "last_activity_at": "2026-11-28T09:08:30.518901Z",
+          "ended_at": "2026-11-28T09:08:30.518901Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2400114.535,
+          "tokens": null
+        },
+        {
+          "attempt_id": "848e7033-722e-489a-97cc-010f089de7e4",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-28T09:17:33.342105Z",
+          "last_activity_at": "2026-11-28T10:02:09.868219Z",
+          "ended_at": "2026-11-28T10:02:09.868219Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 2676526.114,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-28T08:28:30.404366Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd"
+        },
+        {
+          "at": "2026-11-28T09:08:30.518901Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-28T09:17:33.342105Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-28T10:02:09.868219Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 5076640.649,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3437eec3-351f-475e-804f-085209b88ad2",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-28T09:08:30.519000Z",
+          "last_activity_at": "2026-11-28T09:17:33.342016Z",
+          "ended_at": "2026-11-28T09:17:33.342016Z",
+          "outcome": {
+            "summary": "Reviewed git diff master...HEAD (dc3d48b68) against the approved design. Most of it matches the design. Two small defects in indigo_drivers/agent_scheduler/indigo_agent_scheduler.c must be fixed.\n\nDEFECTS\n1. history_text() buffer is now too small for a worst-case entry, so the write can overflow the heap (indigo_agent_scheduler.c:991 and :1009). The size is still history_count * (INDIGO_VALUE_SIZE + 128) + 128, that is 640 bytes per entry, but the line format now appends repeat and priority. A restored entry can reach: task 40 + run 11 (atoi) + start 20 + end 20 (atol) + result 9 + mark 1 + reason 511 + repeat 10 + priority 47 (fields[8], kept up to 47 bytes) + 8 tabs and a newline = 678 bytes. Before this change the worst case was about 620, so it fit. The loop does out += snprintf(out, size - (out - text), ...). Once one entry is truncated, out passes the end of the buffer and size - (out - text) wraps to a huge size_t, so later entries write past the allocation. Only a corrupted or hand-edited configuration reaches it: legitimate values peak at about 616 bytes (repeat <= 10000, priority <= 16 bytes). It is still a memory-safety regression in the code that reads that input. Fix: reserve more per entry, for example INDIGO_VALUE_SIZE + 256, or bound the appends.\n2. The comment at indigo_agent_scheduler.c:1008 is wrong. It says 'the repeat count and the priority are appended, so an older version reads the entry as before'. The old reader (master, restore_history) keeps the rest of the line, tabs included, as its 7th field, and insert_history turns the tabs into spaces. An older version therefore shows reasons such as 'broken 3 high 70', or ' 1 normal 50' when the reason is empty. Either correct the comment or drop the claim. Restoring older entries in the new version, which is what the design asks for, works and is tested. SCHEDULER.md says only that, so the doc is correct.\n\nVERIFIED OK\n- AGENT_SCHEDULER_HISTORY is a read-only text property with one ENTRIES item, set",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 542823.016,
+          "tokens": null
+        },
+        {
+          "attempt_id": "a1ac9119-e6e8-40fd-96b0-afc462835a0c",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-28T10:02:09.868230Z",
+          "last_activity_at": "2026-11-28T10:02:09.868254Z",
+          "ended_at": "2026-11-28T10:02:09.868254Z",
+          "outcome": {
+            "summary": "Round 2 review of dfa4c31a5 (diff dc3d48b68..HEAD, plus the whole branch against master). Both round-1 defects are fixed and the owner's light decision is applied completely.\n\n1. history_text()/append_line() (indigo_agent_scheduler.c:985-1021) is correct.\n   - *used < size holds on every path. vsnprintf gets size - *used, and a line is accepted only when length < size - *used.\n   - A line that does not fit is dropped whole: text[*used] = 0 removes the truncated part vsnprintf wrote, so the text stays NUL-terminated and the write position never passes the end.\n   - The budget is history_count * (INDIGO_VALUE_SIZE + 256) + 256, that is 768 bytes per entry plus 256 for the header. That covers the real worst case: task 40 + run 11 + start 20 + end 20 + result 9 + mark 1 + reason 511 + repeat 10 + priority 47 + 9 separators = 678 bytes. The #urgent and #safety lines together are under 70 bytes.\n   - So the skip path cannot happen in practice. If it ever did, that entry would only be missing from the saved history; the driver logs an error and every other line stays intact. restore_history's 768-byte line buffer also takes the 678-byte maximum.\n   - The new history_with_longest_fields_round_trips (657-byte lines) passes. The implementer reports an ASan SEGV with the old sizing.\n2. The comment at :1015 and SCHEDULER.md (persistence, item 3) now correctly describe how an older version reads the appended fields.\n3. Interrupted runs are Alert. history_light (:905-908) returns Ok only for succeeded and Alert for everything else; its only caller is update_timeline (:3037).\n   - No Busy remains for history entries in SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md or PROPERTIES.md (checked with git grep).\n   - Nothing else used the old light: HISTORY is text now, the Python harnesses and the sandbox parse text and labels only, and the sandbox timeline view shows lights without judging them.\n   - Tests cover it: history_records_runs and history_restores_entries_of_older_versions expect A",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.024,
+          "tokens": null
+        },
+        {
+          "attempt_id": "e6d66a97-970f-4732-aefe-aad6de44b7e3",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-28T10:18:34.809795Z",
+          "last_activity_at": "2026-11-28T10:18:34.809821Z",
+          "ended_at": "2026-11-28T10:18:34.809821Z",
+          "outcome": {
+            "summary": "Round 3 review of 92c9ef6d0. The diff since dfa4c31a5 changes only indigo_test/integration/test_agent_scheduler.c, 3 insertions and 2 deletions, all in history_with_longest_fields_round_trips. expected is now char[INDIGO_VALUE_SIZE] and the search string is ' | Longest name of a task, number 000000199 | run 2147483647/2147483647 | <47-byte priority> | PREEMPTED | rrr'. That is about 125 bytes, so it is no longer truncated, and the full repeat count, the full priority, the result and the start of the reason are now checked after the first restore. The worktree has no uncommitted changes. I rebuilt the test binary with make -B: the -Wformat-truncation warning for this line is gone. The only test warnings left are test_agent_scheduler.c:2729 and :2731 (JSON hints needles), and both lines are unchanged from master. indigo_agent_scheduler.c:1554 (snprintf(directory, ...)) is code from master that this branch does not touch; I did not reproduce the ASan build. history_with_longest_fields_round_trips passes 1/1. The round-1 and round-2 findings are all resolved.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.026,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-28T09:08:30.519000Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-28T09:17:33.342016Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Reviewed git diff master...HEAD (dc3d48b68) against the approved design. Most of it matches the design. Two small defects in indigo_drivers/agent_scheduler/indigo_agent_scheduler.c must be fixed.\n\nDEFECTS\n1. history_text() buffer is now too small for a worst-case entry, so the write can overflow the heap (indigo_agent_scheduler.c:991 and :1009). The size is still history_count * (INDIGO_VALUE_SIZE + 128) + 128, that is 640 bytes per entry, but the line format now appends repeat and priority. A restored entry can reach: task 40 + run 11 (atoi) + start 20 + end 20 (atol) + result 9 + mark 1 + reason 511 + repeat 10 + priority 47 (fields[8], kept up to 47 bytes) + 8 tabs and a newline = 678 bytes. Before this change the worst case was about 620, so it fit. The loop does out += snprintf(out, size - (out - text), ...). Once one entry is truncated, out passes the end of the buffer and size - (out - text) wraps to a huge size_t, so later entries write past the allocation. Only a corrupted or hand-edited configuration reaches it: legitimate values peak at about 616 bytes (repeat <= 10000, priority <= 16 bytes). It is still a memory-safety regression in the code that reads that input. Fix: reserve more per entry, for example INDIGO_VALUE_SIZE + 256, or bound the appends.\n2. The comment at indigo_agent_scheduler.c:1008 is wrong. It says 'the repeat count and the priority are appended, so an older version reads the entry as before'. The old reader (master, restore_history) keeps the rest of the line, tabs included, as its 7th field, and insert_history turns the tabs into spaces. An older version therefore shows reasons such as 'broken 3 high 70', or ' 1 normal 50' when the reason is empty. Either correct the comment or drop the claim. Restoring older entries in the new version, which is what the design asks for, works and is tested. SCHEDULER.md says only that, so the doc is correct.\n\nVERIFIED OK\n- AGENT_SCHEDULER_HISTORY is a read-only text property with one ENTRIES item, set"
+        },
+        {
+          "at": "2026-11-28T10:02:09.868230Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-28T10:02:09.868254Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2 review of dfa4c31a5 (diff dc3d48b68..HEAD, plus the whole branch against master). Both round-1 defects are fixed and the owner's light decision is applied completely.\n\n1. history_text()/append_line() (indigo_agent_scheduler.c:985-1021) is correct.\n   - *used < size holds on every path. vsnprintf gets size - *used, and a line is accepted only when length < size - *used.\n   - A line that does not fit is dropped whole: text[*used] = 0 removes the truncated part vsnprintf wrote, so the text stays NUL-terminated and the write position never passes the end.\n   - The budget is history_count * (INDIGO_VALUE_SIZE + 256) + 256, that is 768 bytes per entry plus 256 for the header. That covers the real worst case: task 40 + run 11 + start 20 + end 20 + result 9 + mark 1 + reason 511 + repeat 10 + priority 47 + 9 separators = 678 bytes. The #urgent and #safety lines together are under 70 bytes.\n   - So the skip path cannot happen in practice. If it ever did, that entry would only be missing from the saved history; the driver logs an error and every other line stays intact. restore_history's 768-byte line buffer also takes the 678-byte maximum.\n   - The new history_with_longest_fields_round_trips (657-byte lines) passes. The implementer reports an ASan SEGV with the old sizing.\n2. The comment at :1015 and SCHEDULER.md (persistence, item 3) now correctly describe how an older version reads the appended fields.\n3. Interrupted runs are Alert. history_light (:905-908) returns Ok only for succeeded and Alert for everything else; its only caller is update_timeline (:3037).\n   - No Busy remains for history entries in SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md or PROPERTIES.md (checked with git grep).\n   - Nothing else used the old light: HISTORY is text now, the Python harnesses and the sandbox parse text and labels only, and the sandbox timeline view shows lights without judging them.\n   - Tests cover it: history_records_runs and history_restores_entries_of_older_versions expect A"
+        },
+        {
+          "at": "2026-11-28T10:18:34.809795Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-28T10:18:34.809821Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 3 review of 92c9ef6d0. The diff since dfa4c31a5 changes only indigo_test/integration/test_agent_scheduler.c, 3 insertions and 2 deletions, all in history_with_longest_fields_round_trips. expected is now char[INDIGO_VALUE_SIZE] and the search string is ' | Longest name of a task, number 000000199 | run 2147483647/2147483647 | <47-byte priority> | PREEMPTED | rrr'. That is about 125 bytes, so it is no longer truncated, and the full repeat count, the full priority, the result and the start of the reason are now checked after the first restore. The worktree has no uncommitted changes. I rebuilt the test binary with make -B: the -Wformat-truncation warning for this line is gone. The only test warnings left are test_agent_scheduler.c:2729 and :2731 (JSON hints needles), and both lines are unchanged from master. indigo_agent_scheduler.c:1554 (snprintf(directory, ...)) is code from master that this branch does not touch; I did not reproduce the ASan build. history_with_longest_fields_round_trips passes 1/1. The round-1 and round-2 findings are all resolved."
+        }
+      ],
+      "result": {
+        "summary": "Round 3 review of 92c9ef6d0. The diff since dfa4c31a5 changes only indigo_test/integration/test_agent_scheduler.c, 3 insertions and 2 deletions, all in history_with_longest_fields_round_trips. expected is now char[INDIGO_VALUE_SIZE] and the search string is ' | Longest name of a task, number 000000199 | run 2147483647/2147483647 | <47-byte priority> | PREEMPTED | rrr'. That is about 125 bytes, so it is no longer truncated, and the full repeat count, the full priority, the result and the start of the reason are now checked after the first restore. The worktree has no uncommitted changes. I rebuilt the test binary with make -B: the -Wformat-truncation warning for this line is gone. The only test warnings left are test_agent_scheduler.c:2729 and :2731 (JSON hints needles), and both lines are unchanged from master. indigo_agent_scheduler.c:1554 (snprintf(directory, ...)) is code from master that this branch does not touch; I did not reproduce the ASan build. history_with_longest_fields_round_trips passes 1/1. The round-1 and round-2 findings are all resolved.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 542823.066,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "c31e1128-25f0-4aa1-8832-446b84d06c5c",
+      "event": "ticket/created",
+      "at": "2026-11-28T08:27:01.354897Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "8c51f50e-c4f0-43e1-a072-85f6dc0ad107",
+      "event": "ticket/confirmed",
+      "at": "2026-11-28T08:28:18.405376Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "60e442b7-75e9-431f-bf30-536a678c11b8",
+      "event": "task/progress",
+      "at": "2026-11-28T08:28:30.404493Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Implementation started on branch ticket/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd"
+    },
+    {
+      "event_id": "ffab5188-3cdb-4ee2-83ca-adda8310a3a4",
+      "event": "ticket/started",
+      "at": "2026-11-28T08:28:30.405563Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd",
+      "base": "master"
+    },
+    {
+      "event_id": "b611eb20-3782-4340-84cc-54453475d8e3",
+      "event": "task/progress",
+      "at": "2026-11-28T08:28:30.609944Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Implementer launched",
+      "attempt_id": "9d326aa6-4908-407c-b621-ba778fd7162b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "cdef18db-805a-46b4-aabc-eb7ca4508a58",
+      "event": "task/progress",
+      "at": "2026-11-28T08:28:53.734360Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Implementer launched; reading scheduler agent sources and docs",
+      "attempt_id": "9d326aa6-4908-407c-b621-ba778fd7162b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "00e4de27-b515-424a-8b6a-352e2d96269c",
+      "event": "task/progress",
+      "at": "2026-11-28T08:33:05.850861Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Implementing timeline, text history and history window in the scheduler agent"
+    },
+    {
+      "event_id": "d0f71e5a-7918-45c7-9f43-0514c39ca134",
+      "event": "task/progress",
+      "at": "2026-11-28T08:37:55.782638Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Building indigo_server and the simulator drivers for the scheduler server suites"
+    },
+    {
+      "event_id": "cbb1dfbd-889c-4389-9880-dce37c88a663",
+      "event": "task/progress",
+      "at": "2026-11-28T08:40:56.926493Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Running make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "2b4d8c91-af57-4eca-87d3-1bfe97d77956",
+      "event": "task/progress",
+      "at": "2026-11-28T08:50:17.969539Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Running make -C indigo_test test-scheduler-simulators"
+    },
+    {
+      "event_id": "17053649-aec9-45de-ae67-8b7d2afb3041",
+      "event": "task/progress",
+      "at": "2026-11-28T08:54:21.002361Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Running make -C indigo_test test-scheduler-two-servers"
+    },
+    {
+      "event_id": "d44cfb54-815c-4ff6-9478-2cdb79922a41",
+      "event": "task/progress",
+      "at": "2026-11-28T08:56:57.902951Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Running make -C indigo_test test-scheduler-sandbox"
+    },
+    {
+      "event_id": "1eb4c67b-6a24-47ce-9e48-218491869a9d",
+      "event": "task/progress",
+      "at": "2026-11-28T08:57:40.832434Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Rerunning make -C indigo_test test-agent-scheduler after the test fix"
+    },
+    {
+      "event_id": "2efe439c-6830-4b25-90ed-39d06d03c34c",
+      "event": "task/progress",
+      "at": "2026-11-28T09:05:21.322781Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "88a92bf2-c780-4342-9f9b-cca9b000cc32",
+      "event": "task/progress",
+      "at": "2026-11-28T09:05:21.361557Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "bbe07d4b-76ed-4ea5-b2ea-6dbd55f5c0cd",
+      "event": "task/progress",
+      "at": "2026-11-28T09:05:21.367901Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "fb4f8bdd-b961-4ef9-9dd4-9eab11ad2868",
+      "event": "task/progress",
+      "at": "2026-11-28T09:07:27.539743Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "df19b7df-472f-45fc-89d3-7ce5abdbf372",
+      "event": "check/passed",
+      "at": "2026-11-28T09:07:27.544714Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "dc3d48b6850b50560a1dd1a6639c4967ddc96781",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "b02a2128-d29d-46d2-9259-e5afb49c5955",
+      "event": "task/progress",
+      "at": "2026-11-28T09:07:42.971853Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Implementation done; scheduler suites and flow check clean"
+    },
+    {
+      "event_id": "d18fd6bf-4a93-4403-83f8-0a1c86fac775",
+      "event": "task/progress",
+      "at": "2026-11-28T09:08:30.519078Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "text": "Review started"
+    },
+    {
+      "event_id": "8a59613b-70f2-4bbb-be3c-4fffc914308e",
+      "event": "review/started",
+      "at": "2026-11-28T09:08:30.519701Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "85c7fd11-83e0-4f91-9dc8-c26df374fca3",
+      "event": "task/progress",
+      "at": "2026-11-28T09:08:30.715769Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "text": "Reviewer launched",
+      "attempt_id": "3437eec3-351f-475e-804f-085209b88ad2",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5b12ab97-25b3-4842-8fbc-5a6ac5368bd3",
+      "event": "task/progress",
+      "at": "2026-11-28T09:08:38.763558Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "text": "Reviewer started: reading the diff against master",
+      "attempt_id": "3437eec3-351f-475e-804f-085209b88ad2",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7631d382-b3cf-4dd2-880a-0a2c9e2ccb74",
+      "event": "task/progress",
+      "at": "2026-11-28T09:11:07.434173Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "text": "Reviewing test changes in test_agent_scheduler.c and Python harnesses"
+    },
+    {
+      "event_id": "2747c271-44a2-4024-979d-b88f81caab50",
+      "event": "task/progress",
+      "at": "2026-11-28T09:12:46.013425Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "text": "Running test-agent-scheduler cases filtered by history, timeline and hooks_run"
+    },
+    {
+      "event_id": "c8ec46da-b008-4704-bb69-3b07cbb3d66a",
+      "event": "task/progress",
+      "at": "2026-11-28T09:17:33.342096Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "fb83152c-05c6-476f-9434-52717152c5c4",
+      "event": "task/progress",
+      "at": "2026-11-28T09:17:33.342133Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "cf535c3c-3d86-4cb9-a07c-943a907f5e83",
+      "event": "review/changes_requested",
+      "at": "2026-11-28T09:17:33.342766Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "dc3d48b6850b50560a1dd1a6639c4967ddc96781"
+    },
+    {
+      "event_id": "6b9f1709-a5ff-4571-988b-c8ff6bf02366",
+      "event": "task/progress",
+      "at": "2026-11-28T09:18:33.343021Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Review round 1: reproducing the saved-history buffer overflow with maximal entries"
+    },
+    {
+      "event_id": "33320026-a32c-485d-88a3-5c4b8b9b9ddb",
+      "event": "task/progress",
+      "at": "2026-11-28T09:23:59.737453Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Running test-agent-scheduler, test-scheduler-simulators and test-scheduler-two-servers after the review fixes"
+    },
+    {
+      "event_id": "93aacf55-2641-4461-9660-a74c7962b8cf",
+      "event": "ticket/note",
+      "at": "2026-11-28T09:24:39.922561Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision: interrupted history entries (preempted, aborted, unsafe; today Busy in history_light) get the Alert light in the timeline, so Busy in AGENT_SCHEDULER_TIMELINE means only the running entry. Update the docs that describe the timeline/history lights and the tests asserting those lights.",
+      "tokens": null
+    },
+    {
+      "event_id": "d9b24b21-f6f4-45dd-a396-89c7302420ef",
+      "event": "task/progress",
+      "at": "2026-11-28T09:24:50.039263Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Owner decision: interrupted history entries get the Alert light in the timeline"
+    },
+    {
+      "event_id": "6d909339-edee-4fce-b0d0-ed42d7cf3612",
+      "event": "task/progress",
+      "at": "2026-11-28T09:30:42.411657Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Running test-agent-scheduler, test-scheduler-simulators and test-scheduler-two-servers after review fixes and Alert lights"
+    },
+    {
+      "event_id": "de334c59-4c4f-4267-971b-4517ae9aac7a",
+      "event": "task/progress",
+      "at": "2026-11-28T09:46:11.220324Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Known intermittent visibility_due_run_starts_after_a_run failed; rerunning the full test-agent-scheduler"
+    },
+    {
+      "event_id": "451e178c-b457-407d-a56c-044fc1852e48",
+      "event": "task/progress",
+      "at": "2026-11-28T09:55:22.425952Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "a8c6f8fe-8e93-4fec-8650-e002720876b2",
+      "event": "task/progress",
+      "at": "2026-11-28T09:55:22.465100Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "3d3f6d54-fb39-4b4f-bac1-676f498e051f",
+      "event": "task/progress",
+      "at": "2026-11-28T09:55:22.470649Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "b9c23b7b-7e16-46d1-9362-d9180ed16af3",
+      "event": "task/progress",
+      "at": "2026-11-28T09:57:27.563172Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "77f35312-1aeb-4faf-9b86-a1d4d2fbe9e8",
+      "event": "check/passed",
+      "at": "2026-11-28T09:57:27.569305Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "dfa4c31a51ef2ec97f460ddb8e7e49e2b09b9652",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "6bc2fa8e-67fe-4f9e-b0ea-89c7560c7c02",
+      "event": "task/progress",
+      "at": "2026-11-28T09:57:40.619484Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Review fixes and Alert lights done; suites and flow check clean"
+    },
+    {
+      "event_id": "5ec11b59-2a8c-4b07-bd0f-82261f8b3e1b",
+      "event": "task/progress",
+      "at": "2026-11-28T09:58:24.824371Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Round 2 review: reading the changes since dc3d48b68",
+      "attempt_id": "848e7033-722e-489a-97cc-010f089de7e4",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f21f603b-eb2b-4fbb-8c85-264fc0cad3ab",
+      "event": "task/progress",
+      "at": "2026-11-28T09:58:56.512829Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "2152f8b2-1bd6-4372-a891-227053e78a69",
+      "text": "Round 2: building and running history/timeline cases of test_agent_scheduler"
+    },
+    {
+      "event_id": "138089fa-4a63-427a-9208-9e824de264d0",
+      "event": "task/progress",
+      "at": "2026-11-28T10:02:09.868316Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "a33c74e0-5847-4ac7-a853-74d3d3238ff6",
+      "event": "review/passed",
+      "at": "2026-11-28T10:02:09.869037Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "dfa4c31a51ef2ec97f460ddb8e7e49e2b09b9652"
+    },
+    {
+      "event_id": "5e35d766-ea3f-4e5e-aa13-2363fb9d49cd",
+      "event": "task/progress",
+      "at": "2026-11-28T10:02:42.459116Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Round 2: fixing the truncated search string in history_with_longest_fields_round_trips"
+    },
+    {
+      "event_id": "9f101d46-7bb9-4472-b513-81e13b66898c",
+      "event": "task/progress",
+      "at": "2026-11-28T10:08:01.600426Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Running the full make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "8af99d7a-34a0-4270-aaec-dcdcdabc7802",
+      "event": "task/progress",
+      "at": "2026-11-28T10:15:20.959138Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "511ccc41-7b53-4c10-b4e2-ee5f6052a62b",
+      "event": "task/progress",
+      "at": "2026-11-28T10:15:21.039397Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a1226340-1fc2-4219-bf18-e5a681b3cfa3",
+      "event": "task/progress",
+      "at": "2026-11-28T10:15:21.048779Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "ea56f743-f6d8-488d-8a9e-bb1a86e41e51",
+      "event": "task/progress",
+      "at": "2026-11-28T10:17:28.659321Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "8ed02c64-a30d-4816-b192-82b60f2cc28b",
+      "event": "check/passed",
+      "at": "2026-11-28T10:17:28.665552Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "92c9ef6d0d4e0fd7c39d8e2d6961174fe0a0fd0e",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "6ec48dac-4090-4db6-9a4f-02b95006b5d2",
+      "event": "task/progress",
+      "at": "2026-11-28T10:17:42.768780Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Round 2 test fix done; full scheduler suite and flow check clean"
+    },
+    {
+      "event_id": "e3e15b95-ea16-4752-9566-5a9338494fd3",
+      "event": "task/progress",
+      "at": "2026-11-28T10:18:16.212096Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "text": "Round 3: rebuilding the test binary, checking warnings, running history_with_longest",
+      "attempt_id": "a1ac9119-e6e8-40fd-96b0-afc462835a0c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "46170be7-afa6-4698-a644-909a01e2e912",
+      "event": "task/progress",
+      "at": "2026-11-28T10:18:34.809887Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "3bcaa456-fcc8-4f62-8f47-cc80e517a62f",
+      "event": "review/passed",
+      "at": "2026-11-28T10:18:34.810681Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "d3f89d2d-ff5b-41ab-bb58-fd31d1919a6f",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "92c9ef6d0d4e0fd7c39d8e2d6961174fe0a0fd0e"
+    },
+    {
+      "event_id": "4be74077-f2ae-456e-ab30-9a1a0fd58e2c",
+      "event": "ticket/closed",
+      "at": "2026-11-28T10:21:33.870773Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-28T10:21:33.870746Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "aa138b414abce28b6c042bacdd309e6bbb65aee3"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "high",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "dc3d48b6850b50560a1dd1a6639c4967ddc96781",
+        "tree": "7beb286b950c431e160e132eceab425b47849eed",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T09:05:21.360698Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd/7beb286b950c-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "dc3d48b6850b50560a1dd1a6639c4967ddc96781",
+        "tree": "7beb286b950c431e160e132eceab425b47849eed",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T09:07:27.538993Z",
+        "duration_s": 126.2,
+        "log": "/tmp/factory-flow/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd/7beb286b950c-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "dfa4c31a51ef2ec97f460ddb8e7e49e2b09b9652",
+        "tree": "5028d4f0adc4e05615923970f04d74af92820b64",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T09:55:22.464105Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd/5028d4f0adc4-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "dfa4c31a51ef2ec97f460ddb8e7e49e2b09b9652",
+        "tree": "5028d4f0adc4e05615923970f04d74af92820b64",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T09:57:27.562105Z",
+        "duration_s": 125.1,
+        "log": "/tmp/factory-flow/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd/5028d4f0adc4-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "92c9ef6d0d4e0fd7c39d8e2d6961174fe0a0fd0e",
+        "tree": "10f3561f1520b8d60c5a02a5aa93c9c53ff6bba8",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T10:15:21.038152Z",
+        "duration_s": 0.1,
+        "log": "/tmp/factory-flow/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd/10f3561f1520-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "92c9ef6d0d4e0fd7c39d8e2d6961174fe0a0fd0e",
+        "tree": "10f3561f1520b8d60c5a02a5aa93c9c53ff6bba8",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T10:17:28.657763Z",
+        "duration_s": 127.6,
+        "log": "/tmp/factory-flow/b4808d4d-934b-4a8a-acd7-6bda4dfb03bd/10f3561f1520-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Reviewed git diff master...HEAD (dc3d48b68) against the approved design. Most of it matches the design. Two small defects in indigo_drivers/agent_scheduler/indigo_agent_scheduler.c must be fixed.\n\nDEFECTS\n1. history_text() buffer is now too small for a worst-case entry, so the write can overflow the heap (indigo_agent_scheduler.c:991 and :1009). The size is still history_count * (INDIGO_VALUE_SIZE + 128) + 128, that is 640 bytes per entry, but the line format now appends repeat and priority. A restored entry can reach: task 40 + run 11 (atoi) + start 20 + end 20 (atol) + result 9 + mark 1 + reason 511 + repeat 10 + priority 47 (fields[8], kept up to 47 bytes) + 8 tabs and a newline = 678 bytes. Before this change the worst case was about 620, so it fit. The loop does out += snprintf(out, size - (out - text), ...). Once one entry is truncated, out passes the end of the buffer and size - (out - text) wraps to a huge size_t, so later entries write past the allocation. Only a corrupted or hand-edited configuration reaches it: legitimate values peak at about 616 bytes (repeat <= 10000, priority <= 16 bytes). It is still a memory-safety regression in the code that reads that input. Fix: reserve more per entry, for example INDIGO_VALUE_SIZE + 256, or bound the appends.\n2. The comment at indigo_agent_scheduler.c:1008 is wrong. It says 'the repeat count and the priority are appended, so an older version reads the entry as before'. The old reader (master, restore_history) keeps the rest of the line, tabs included, as its 7th field, and insert_history turns the tabs into spaces. An older version therefore shows reasons such as 'broken 3 high 70', or ' 1 normal 50' when the reason is empty. Either correct the comment or drop the claim. Restoring older entries in the new version, which is what the design asks for, works and is tested. SCHEDULER.md says only that, so the doc is correct.\n\nVERIFIED OK\n- AGENT_SCHEDULER_HISTORY is a read-only text property with one ENTRIES item, set with indigo_set_text_item_value under property_mutex and published with indigo_update_property, never redefined (:928-943, :4184-4188). The buffer count*512+1 fits lines of up to 511 bytes plus a newline, and it is freed. XML (indigo_xml.c:2203/2282, escape index 5 is the unbounded buffer) and JSON (indigo_json.c:855/981, JSON_ESCAPE_BUFFER_COUNT is unbounded and escapes the newline) both carry the whole long value. The test checks a 200-line text longer than 20 x 512 bytes.\n- The timeline lists, in order, the history inside the window (oldest first), then the published plan (running Busy, planned Idle). It reuses the plan's published labels and states. update_timeline runs whenever timeline_dirty is set (history, plan, window or clear) and on every plan pass, including while a task runs and when the VISIBILITY plan is kept (:3387). publish_list sends nothing when nothing changed, so a regular pass makes no redefinition traffic.\n- publish_list() is a faithful generalisation of the old publish_plan, so plan behaviour is unchanged.\n- HISTORY_WINDOW: range -1..8760, default 16, step 1. The semantics are correct (end < now - h*3600 excluded). It is routed through own_property and saved in group 2, before RESTORE_HISTORY. The order does not matter because the timeline is computed lazily.\n- The history columns match the plan: run N/M with the task repeat, task_priority_text for tasks and urgent tasks, '- | hook <kind>' from plan_hook_name. Restore tolerates 5-7 field entries and shows '-' for the missing fields. CLEAR_HISTORY empties both.\n- AGENT_SCHEDULER_HISTORY_ITEM_NAME has no remaining users (git grep, excluding .factory2). test_prop_tool_parser.c only uses RUN_n as generic light names.\n- indigo_names.h, PROPERTIES.md, SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER_COMPARISON.md and PROPERTY_MANIPULATION.md are updated. The version is bumped 0x2F->0x30. There are no new files, so the Xcode project needs no change.\n- Tests are deterministic with respect to the date (all relative to now). I reran the cases matching history, timeline, hooks_run_at_start, labels_have_uniform, night_hooks_run_at_dusk and unsafe_hold_aborts with SCHEDULER_TEST_FILTER: 18/18 passed.\n\nOWNER QUESTIONS RAISED BY THE IMPLEMENTER\n- indigo_prop_tool shows only the first 80 characters of a long text (indigo_tools/indigo_prop_tool.c:41,404), so using the timeline for the CLI examples is the right call. Changing prop_tool is out of scope.\n- Preempted, aborted and unsafe entries keep the Busy light. This matches 'as AGENT_SCHEDULER_HISTORY has them today' (history_light is unchanged), and the docs say the RESULT/STATE column tells them apart. It is not a defect, but the owner may want a different light in the timeline.\n\nNON-BLOCKING NOTES\n- history_window_limits_the_timeline: REQUIRE(time(NULL) < recent_end + 3600) runs before wait_timeline_composed(1, 5) and the strstr on Recent. With a 30 s margin, a setup slower than about 25 s would fail instead of skipping.\n- Out of scope, already in the existing harness: with INDIGO_TEST_CASE_FILTER, make test-agent-scheduler reports 199 failures because the per-case children do not honour it. SCHEDULER_TEST_FILTER works.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "dc3d48b6850b50560a1dd1a6639c4967ddc96781",
+        "tree": "7beb286b950c431e160e132eceab425b47849eed",
+        "at": "2026-11-28T09:17:33.341985Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 review of dfa4c31a5 (diff dc3d48b68..HEAD, plus the whole branch against master). Both round-1 defects are fixed and the owner's light decision is applied completely.\n\n1. history_text()/append_line() (indigo_agent_scheduler.c:985-1021) is correct.\n   - *used < size holds on every path. vsnprintf gets size - *used, and a line is accepted only when length < size - *used.\n   - A line that does not fit is dropped whole: text[*used] = 0 removes the truncated part vsnprintf wrote, so the text stays NUL-terminated and the write position never passes the end.\n   - The budget is history_count * (INDIGO_VALUE_SIZE + 256) + 256, that is 768 bytes per entry plus 256 for the header. That covers the real worst case: task 40 + run 11 + start 20 + end 20 + result 9 + mark 1 + reason 511 + repeat 10 + priority 47 + 9 separators = 678 bytes. The #urgent and #safety lines together are under 70 bytes.\n   - So the skip path cannot happen in practice. If it ever did, that entry would only be missing from the saved history; the driver logs an error and every other line stays intact. restore_history's 768-byte line buffer also takes the 678-byte maximum.\n   - The new history_with_longest_fields_round_trips (657-byte lines) passes. The implementer reports an ASan SEGV with the old sizing.\n2. The comment at :1015 and SCHEDULER.md (persistence, item 3) now correctly describe how an older version reads the appended fields.\n3. Interrupted runs are Alert. history_light (:905-908) returns Ok only for succeeded and Alert for everything else; its only caller is update_timeline (:3037).\n   - No Busy remains for history entries in SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md or PROPERTIES.md (checked with git grep).\n   - Nothing else used the old light: HISTORY is text now, the Python harnesses and the sandbox parse text and labels only, and the sandbox timeline view shows lights without judging them.\n   - Tests cover it: history_records_runs and history_restores_entries_of_older_versions expect Alert. timeline_lists_history_then_plan checks PREEMPTED Alert next to the RUNNING entry Busy, then ABORTED Alert with no Busy history entry.\n4. The ageing margin is now 60 s and the poll limit was raised to match. The end+3600..+5 s assertion is unchanged.\nNo other changes outside these points. git diff --check is clean.\n\nI rebuilt the agent and test binary in the worktree and ran test_agent_scheduler with SCHEDULER_TEST_FILTER set to history (6 cases), timeline (2) and labels_have_uniform (1): 9/9 passed.\n\nNON-BLOCKING, should be fixed in passing: test_agent_scheduler.c:4157-4159, char expected[64] is too small. The format ' | Longest name of a task, number %09d | run 2147483647/2147483647 | ppp' needs 77 bytes. gcc warns (-Wformat-truncation, a new warning) and the needle is cut after about 'run 2147483647/'. The assertion therefore does not check the restored repeat count or the 47-byte priority column on the first restore. The 200-line count and the line-by-line equality after save and restart still catch lost or corrupted lines, and other tests cover priority and repeat restore at normal lengths, so the fixed overflow stays covered. Fix: make expected 128 bytes.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "dfa4c31a51ef2ec97f460ddb8e7e49e2b09b9652",
+        "tree": "5028d4f0adc4e05615923970f04d74af92820b64",
+        "at": "2026-11-28T10:02:09.868198Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3 review of 92c9ef6d0. The diff since dfa4c31a5 changes only indigo_test/integration/test_agent_scheduler.c, 3 insertions and 2 deletions, all in history_with_longest_fields_round_trips. expected is now char[INDIGO_VALUE_SIZE] and the search string is ' | Longest name of a task, number 000000199 | run 2147483647/2147483647 | <47-byte priority> | PREEMPTED | rrr'. That is about 125 bytes, so it is no longer truncated, and the full repeat count, the full priority, the result and the start of the reason are now checked after the first restore. The worktree has no uncommitted changes. I rebuilt the test binary with make -B: the -Wformat-truncation warning for this line is gone. The only test warnings left are test_agent_scheduler.c:2729 and :2731 (JSON hints needles), and both lines are unchanged from master. indigo_agent_scheduler.c:1554 (snprintf(directory, ...)) is code from master that this branch does not touch; I did not reproduce the ASan build. history_with_longest_fields_round_trips passes 1/1. The round-1 and round-2 findings are all resolved.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "92c9ef6d0d4e0fd7c39d8e2d6961174fe0a0fd0e",
+        "tree": "10f3561f1520b8d60c5a02a5aa93c9c53ff6bba8",
+        "at": "2026-11-28T10:18:34.809770Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-28T09:24:39.921909Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision: interrupted history entries (preempted, aborted, unsafe; today Busy in history_light) get the Alert light in the timeline, so Busy in AGENT_SCHEDULER_TIMELINE means only the running entry. Update the docs that describe the timeline/history lights and the tests asserting those lights.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "aa138b414abce28b6c042bacdd309e6bbb65aee3",
+      "tree": "10f3561f1520b8d60c5a02a5aa93c9c53ff6bba8",
+      "base": "master",
+      "at": "2026-11-28T10:21:33.737066Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-28T08:27:01.354065Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-28T08:28:18.405346Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 5619463.715,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 64,
+    "sha256": "314e4037788c0b4a31062c91407410c4575fe340f0479430195bd39dcbe12ea5"
+  }
+}
