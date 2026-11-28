@@ -1,0 +1,532 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8819800b-9890-4bf2-a035-2abdfa9d4665",
+  "revision": 28,
+  "title": "indigo_agent_scheduler: show the reason of a WAITING task in the task list and the next planned run in REASON",
+  "description": "Owner request. A task becomes WAITING in select_task() (indigo_drivers/agent_scheduler/indigo_agent_scheduler.c, around line 2046) when eligible_now() fails; the reason (e.g. 'target below the altitude limit', 'sun above -12°', 'hour angle out of range') is computed there but not kept, so AGENT_SCHEDULER_TASK_STATE shows WAITING with '-' in the 7th (reason) column introduced by ticket 6e5a3a63. Users see WAITING without knowing why.\n\nExpected: store the eligibility reason per task when it becomes WAITING (clear it when the task becomes QUEUED, runs, finishes, is edited/reset/removed, or the slot is reused) and show it in the reason column of WAITING rows, e.g. 'Orion Nebula | WAITING | high 50 | run 0/1 | retries left 0 | 0h31 measured | target below the altitude limit'. Republish the task list when the reason changes. UNPLANNED and UNREACHABLE keep their reasons and precedence (an UNPLANNED task shows its plan reason). Other rows stay '-'.\n\nNote for the implementer: WAITING/QUEUED are only re-evaluated at selections, which do not happen while a task runs, so the state and its reason are a snapshot of the last selection. The owner did not ask to change that; do not refresh states during runs in this ticket, but document in SCHEDULER.md that the reason is the one found at the last selection.\n\nUpdate SCHEDULER.md (task list label description, states table), INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md where they say only UNPLANNED and UNREACHABLE fill the reason; update tests in indigo_test/integration/test_agent_scheduler.c (waits_with_reason() currently asserts '-' for WAITING: assert the exact reason instead, cleared when the task becomes QUEUED/runs) and check run_scheduler_simulators.py (below_horizon expects '-' for Rising's reason column). Bump the agent version.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-27T23:52:50.382709Z",
+  "status": "closed",
+  "branch": "ticket/8819800b-9890-4bf2-a035-2abdfa9d4665",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d362df20-c01d-4872-be6d-742c56a8e8f8",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-28T00:14:08.845161Z",
+          "last_activity_at": "2026-11-28T01:17:32.122553Z",
+          "ended_at": "2026-11-28T01:17:32.122553Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 3803277.392,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-28T00:14:08.845161Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/8819800b-9890-4bf2-a035-2abdfa9d4665"
+        },
+        {
+          "at": "2026-11-28T01:17:32.122553Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 3803277.392,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "16153e2d-3101-4570-b5f5-033604d0841d",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "ad4041cf-2a55-41cc-93e4-f65b4f4d879c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-28T01:17:32.122598Z",
+          "last_activity_at": "2026-11-28T01:28:32.202743Z",
+          "ended_at": "2026-11-28T01:28:32.202743Z",
+          "outcome": {
+            "summary": "Independent review of master...326854b6b. No blocking defects.\nCorrectness: indigo_scheduler_points_check() (indigo_agent_scheduler_sky.c:420-447) sets later only on the grid branch as next_bad[first] > first; first = floor((from-start)/step) is the point at/before now, last the ceiling point (same as before), so an interval ending mid-step and a from exactly on a grid point behave as the eligibility check already did; window, site and forecast failures return later=false. points_ok() is a thin wrapper (sky.c:415-418) with identical result/reason for plan, visibility, points_next and next_bad_step callers. Every failing path sets a non-NULL reason, so the snprintf at indigo_agent_scheduler.c:2061 is safe.\nwaiting_reason: set at WAITING (2060-2061), cleared at QUEUED (2066), replace_text (1324-1327), reset_task (3636), memset in create/remove (1273/1298); apply_status maps WAITING to QUEUED on restore. build_task_state_label (1110) shows it only for WAITING after hook/SCRIPT ERROR/UNREACHABLE/DISABLED/UNPLANNED, matching the state column precedence. The task list is republished by refresh() at the end of the pass (labels compared in update_task_state_property).\nREASON: set_reason() is the only writer and clears reason_follows_plan; start_task, begin_stop, hold, Scripting Agent/Sequencer.js, another sequence, all tasks finished and stop_scheduler (1635) all end following, so update_plan (3192-3194) cannot overwrite a scheduler-level reason. COMPACT and VISIBILITY share set_next_run_reason (3198-3211, the same text select_planned used before). The plan update added in select_task (2099-2103) only runs when tasks wait and the plan is dirty and replaces the update process_night would make right after, so it adds no plan computation in the usual case (only when no nights are known or a hand-started sequence occupies the agent does process() compute it once more at the end of the same pass because 'plan' was captured at the start - minor, not blocking).\nImplementer's quest",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 660080.145,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-28T01:17:32.122598Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-28T01:28:32.202743Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Independent review of master...326854b6b. No blocking defects.\nCorrectness: indigo_scheduler_points_check() (indigo_agent_scheduler_sky.c:420-447) sets later only on the grid branch as next_bad[first] > first; first = floor((from-start)/step) is the point at/before now, last the ceiling point (same as before), so an interval ending mid-step and a from exactly on a grid point behave as the eligibility check already did; window, site and forecast failures return later=false. points_ok() is a thin wrapper (sky.c:415-418) with identical result/reason for plan, visibility, points_next and next_bad_step callers. Every failing path sets a non-NULL reason, so the snprintf at indigo_agent_scheduler.c:2061 is safe.\nwaiting_reason: set at WAITING (2060-2061), cleared at QUEUED (2066), replace_text (1324-1327), reset_task (3636), memset in create/remove (1273/1298); apply_status maps WAITING to QUEUED on restore. build_task_state_label (1110) shows it only for WAITING after hook/SCRIPT ERROR/UNREACHABLE/DISABLED/UNPLANNED, matching the state column precedence. The task list is republished by refresh() at the end of the pass (labels compared in update_task_state_property).\nREASON: set_reason() is the only writer and clears reason_follows_plan; start_task, begin_stop, hold, Scripting Agent/Sequencer.js, another sequence, all tasks finished and stop_scheduler (1635) all end following, so update_plan (3192-3194) cannot overwrite a scheduler-level reason. COMPACT and VISIBILITY share set_next_run_reason (3198-3211, the same text select_planned used before). The plan update added in select_task (2099-2103) only runs when tasks wait and the plan is dirty and replaces the update process_night would make right after, so it adds no plan computation in the usual case (only when no nights are known or a hand-started sequence occupies the agent does process() compute it once more at the end of the same pass because 'plan' was captured at the start - minor, not blocking).\nImplementer's quest"
+        }
+      ],
+      "result": {
+        "summary": "Independent review of master...326854b6b. No blocking defects.\nCorrectness: indigo_scheduler_points_check() (indigo_agent_scheduler_sky.c:420-447) sets later only on the grid branch as next_bad[first] > first; first = floor((from-start)/step) is the point at/before now, last the ceiling point (same as before), so an interval ending mid-step and a from exactly on a grid point behave as the eligibility check already did; window, site and forecast failures return later=false. points_ok() is a thin wrapper (sky.c:415-418) with identical result/reason for plan, visibility, points_next and next_bad_step callers. Every failing path sets a non-NULL reason, so the snprintf at indigo_agent_scheduler.c:2061 is safe.\nwaiting_reason: set at WAITING (2060-2061), cleared at QUEUED (2066), replace_text (1324-1327), reset_task (3636), memset in create/remove (1273/1298); apply_status maps WAITING to QUEUED on restore. build_task_state_label (1110) shows it only for WAITING after hook/SCRIPT ERROR/UNREACHABLE/DISABLED/UNPLANNED, matching the state column precedence. The task list is republished by refresh() at the end of the pass (labels compared in update_task_state_property).\nREASON: set_reason() is the only writer and clears reason_follows_plan; start_task, begin_stop, hold, Scripting Agent/Sequencer.js, another sequence, all tasks finished and stop_scheduler (1635) all end following, so update_plan (3192-3194) cannot overwrite a scheduler-level reason. COMPACT and VISIBILITY share set_next_run_reason (3198-3211, the same text select_planned used before). The plan update added in select_task (2099-2103) only runs when tasks wait and the plan is dirty and replaces the update process_night would make right after, so it adds no plan computation in the usual case (only when no nights are known or a hand-started sequence occupies the agent does process() compute it once more at the end of the same pass because 'plan' was captured at the start - minor, not blocking).\nImplementer's quest",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 660080.145,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "c4300037-eecc-4869-a503-9adf84103fc5",
+      "event": "ticket/created",
+      "at": "2026-11-27T23:52:50.383524Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "1c7f98fe-93cb-4958-9ea4-1e49eba74d0f",
+      "event": "ticket/note",
+      "at": "2026-11-28T00:02:24.492502Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner-approved design:\n1. Storage: per task char waiting_reason[128], filled in select_task() when it sets TASK_WAITING; cleared on create, edit, reset and remove (a task restored from the configuration starts QUEUED with an empty reason).\n2. Display: build_task_state_label() fills the 7th column only when the row shows WAITING (UNPLANNED, UNREACHABLE precedence unchanged; every other row '-'), so no leftover reason can show on other states.\n3. Wording (option A): eligible_now() checks the whole interval now..now+duration. If the first failing check is at the current time (the first grid point, or a window/site/forecast check), the column shows the reason unchanged, e.g. 'sun above -12°', 'target below the altitude limit'. If the constraints hold now and fail only later in the interval, append ' before the end of the run', e.g. 'sun above -12° before the end of the run', 'target below the altitude limit before the end of the run'. Determine this from the failing grid index (points->next_bad[first] compared with first, or an equivalent exact check) without changing the reasons returned by indigo_scheduler_points_ok() to other callers unless needed.\n4. Republish the task list when a selection changes a task's state or waiting reason. The reason is the one found at the last selection (selections run every IDLE_CHECK_INTERVAL while idle, not while a task runs); document that.\n5. A task waiting for its duration estimate stays QUEUED; its row is unchanged.\nPossible reasons to document: window not open yet; window ends before the task can finish; outside of the nightly window; nightly window ends before the task can finish; site coordinates unknown; beyond the forecast; sun above -6°/-12°/-18°; target below the horizon; target below/above the altitude limit; airmass too high; hour angle out of range; too close to the moon; moon too bright; plus the ' before the end of the run' form for the sky reasons.\nTests: each case asserts the exact column text, including at least one ",
+      "tokens": null
+    },
+    {
+      "event_id": "53e3afb7-d85e-4264-96b3-a9d87817107f",
+      "event": "ticket/note",
+      "at": "2026-11-28T00:10:54.274871Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision on REASON (AGENT_SCHEDULER_CURRENT.REASON): keep it for the scheduler-level reasons (safety and unsafe hold, Scripting Agent / Sequencer.js / another sequence, stopping, no tasks, all tasks finished, estimating the task duration, no task is ready). Replace the case where select_task() copies the first waiting task's reason (around line 2084): when tasks only wait for their constraints, REASON names the next planned task run in the wording VISIBILITY already uses, 'NAME starts at HH:MM UTC, as planned', in both strategies (COMPACT too, from the plan's first non-running task run); 'no task can run tonight' when the plan has no task run. Per-task reasons appear only in the task list. Update SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER_COMPARISON.md/PROPERTIES.md where they describe REASON, and every test asserting a constraint reason in REASON (waits_with_reason(), unplanned_with_reason() and others in test_agent_scheduler.c; run_scheduler_simulators.py below_horizon expects 'target below the horizon' in REASON) so they assert the reason in the task list and the next-run text in REASON.",
+      "tokens": null
+    },
+    {
+      "event_id": "5f1624e2-07dd-4768-a88b-8bdb1b10b2f6",
+      "event": "ticket/confirmed",
+      "at": "2026-11-28T00:13:57.489290Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "ff6bb1f1-4b2f-46d2-8360-56b276a0ad86",
+      "event": "task/progress",
+      "at": "2026-11-28T00:14:08.845288Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Implementation started on branch ticket/8819800b-9890-4bf2-a035-2abdfa9d4665"
+    },
+    {
+      "event_id": "35ff3bb6-f334-4e68-a761-76bacbdf3878",
+      "event": "ticket/started",
+      "at": "2026-11-28T00:14:08.846128Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/8819800b-9890-4bf2-a035-2abdfa9d4665",
+      "base": "master"
+    },
+    {
+      "event_id": "f7c06d39-51fd-474c-9bcb-82df427ab914",
+      "event": "task/progress",
+      "at": "2026-11-28T00:14:09.032245Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Implementer launched",
+      "attempt_id": "d362df20-c01d-4872-be6d-742c56a8e8f8",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b2ede966-95de-4af1-81f0-d6f5e744512d",
+      "event": "task/progress",
+      "at": "2026-11-28T00:14:31.610148Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Implementer started: reading scheduler sources and tests",
+      "attempt_id": "d362df20-c01d-4872-be6d-742c56a8e8f8",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "4ccd5be4-e8e4-4b19-9e0c-37552595aa49",
+      "event": "task/progress",
+      "at": "2026-11-28T00:18:42.933766Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Building libindigo and the scheduler agent in the worktree"
+    },
+    {
+      "event_id": "2c95b3d5-9fc1-4e66-af97-94027efb98c5",
+      "event": "task/progress",
+      "at": "2026-11-28T00:23:23.053194Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Running test_agent_scheduler_sky unit test and building the integration test"
+    },
+    {
+      "event_id": "200c71dc-936e-4c23-82c6-0c9cb194bc49",
+      "event": "task/progress",
+      "at": "2026-11-28T00:24:02.970880Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Running make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "bdf9f646-6ec9-46fd-acb5-ef9b9d14268e",
+      "event": "task/progress",
+      "at": "2026-11-28T00:30:57.401501Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Building indigo_server and simulator drivers for the scheduler acceptance suite"
+    },
+    {
+      "event_id": "2c88b3c1-bcdd-421f-90d2-37a4c319bccc",
+      "event": "task/progress",
+      "at": "2026-11-28T00:31:39.712500Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Running make -C indigo_test test-scheduler-simulators"
+    },
+    {
+      "event_id": "913319c3-bcd1-4443-976d-a9f7b950d5c6",
+      "event": "task/progress",
+      "at": "2026-11-28T00:35:45.300340Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Rerunning make -C indigo_test test-agent-scheduler on the final tree"
+    },
+    {
+      "event_id": "3a7906d4-ce84-42af-bcf1-f2c1a758fde3",
+      "event": "task/progress",
+      "at": "2026-11-28T01:00:21.706763Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f786ee79-a554-409c-8f8e-af57b744a501",
+      "event": "task/progress",
+      "at": "2026-11-28T01:00:21.745193Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c92b4ff6-4c1f-4ec2-94bb-dea2910cf5d8",
+      "event": "task/progress",
+      "at": "2026-11-28T01:00:21.750354Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "1d65900f-51e2-4d16-ba93-7cc7230c208a",
+      "event": "task/progress",
+      "at": "2026-11-28T01:02:27.061280Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "71edc144-8e8e-45c8-9c77-956b54ae01cf",
+      "event": "check/passed",
+      "at": "2026-11-28T01:02:27.066912Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "326854b6bafde7d9c1f39a8e7bd5f35b0a57c953",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "7c831272-1527-41fe-9565-ae52fa22bc3d",
+      "event": "task/progress",
+      "at": "2026-11-28T01:10:19.522239Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Third full test-agent-scheduler run after the known intermittent failure"
+    },
+    {
+      "event_id": "136b3c33-688a-468b-a767-7211d60165f3",
+      "event": "task/progress",
+      "at": "2026-11-28T01:16:49.868228Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "41d850c3-c96a-4218-ab3f-c8d9a0004ea5",
+      "text": "Done: test-agent-scheduler 200/201, 200/201, 201/201; simulators 12/12; flow check passed"
+    },
+    {
+      "event_id": "707e59e2-2a32-41a8-8e42-65c2ce950937",
+      "event": "task/progress",
+      "at": "2026-11-28T01:17:32.122670Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "16153e2d-3101-4570-b5f5-033604d0841d",
+      "text": "Review started"
+    },
+    {
+      "event_id": "d7351676-a0a1-45cb-8170-e319710fcbcd",
+      "event": "review/started",
+      "at": "2026-11-28T01:17:32.123343Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "2ccaf899-ad38-4a4a-b8f8-1a97147ac579",
+      "event": "task/progress",
+      "at": "2026-11-28T01:17:32.285957Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "16153e2d-3101-4570-b5f5-033604d0841d",
+      "text": "Reviewer launched",
+      "attempt_id": "ad4041cf-2a55-41cc-93e4-f65b4f4d879c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b389b244-6b43-4140-897b-0c2aee327426",
+      "event": "task/progress",
+      "at": "2026-11-28T01:17:41.760181Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "16153e2d-3101-4570-b5f5-033604d0841d",
+      "text": "Reviewer started: reading the diff against master",
+      "attempt_id": "ad4041cf-2a55-41cc-93e4-f65b4f4d879c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f09eea3e-e02c-483a-82f8-d36ccf1e39c4",
+      "event": "task/progress",
+      "at": "2026-11-28T01:22:10.421483Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "16153e2d-3101-4570-b5f5-033604d0841d",
+      "text": "Running test_agent_scheduler changed cases via INDIGO_TEST_CASE_FILTER"
+    },
+    {
+      "event_id": "d08234f0-ff8c-48c2-803b-d6118e864c4c",
+      "event": "task/progress",
+      "at": "2026-11-28T01:28:32.202819Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "16153e2d-3101-4570-b5f5-033604d0841d",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "aa4a250c-63d8-4aa6-85cc-8020912d5d13",
+      "event": "review/passed",
+      "at": "2026-11-28T01:28:32.203495Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "16153e2d-3101-4570-b5f5-033604d0841d",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "326854b6bafde7d9c1f39a8e7bd5f35b0a57c953"
+    },
+    {
+      "event_id": "9206e425-2fda-4801-a1bb-8fcd7b231e85",
+      "event": "ticket/title_changed",
+      "at": "2026-11-28T07:38:15.477418Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: show the reason of a WAITING task in the task list reason column",
+      "title": "indigo_agent_scheduler: show the reason of a WAITING task in the task list and the next planned run in REASON"
+    },
+    {
+      "event_id": "22319e79-bd3c-4780-9393-821e150e310c",
+      "event": "ticket/closed",
+      "at": "2026-11-28T07:38:15.926420Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-28T07:38:15.926376Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "9458479fdf0ba23d65e594172a869a71d532176e"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "326854b6bafde7d9c1f39a8e7bd5f35b0a57c953",
+        "tree": "76b63bec84afd603dbae24728c7f76539bc3965c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T01:00:21.744381Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/8819800b-9890-4bf2-a035-2abdfa9d4665/76b63bec84af-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "326854b6bafde7d9c1f39a8e7bd5f35b0a57c953",
+        "tree": "76b63bec84afd603dbae24728c7f76539bc3965c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T01:02:27.060426Z",
+        "duration_s": 125.3,
+        "log": "/tmp/factory-flow/8819800b-9890-4bf2-a035-2abdfa9d4665/76b63bec84af-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of master...326854b6b. No blocking defects.\nCorrectness: indigo_scheduler_points_check() (indigo_agent_scheduler_sky.c:420-447) sets later only on the grid branch as next_bad[first] > first; first = floor((from-start)/step) is the point at/before now, last the ceiling point (same as before), so an interval ending mid-step and a from exactly on a grid point behave as the eligibility check already did; window, site and forecast failures return later=false. points_ok() is a thin wrapper (sky.c:415-418) with identical result/reason for plan, visibility, points_next and next_bad_step callers. Every failing path sets a non-NULL reason, so the snprintf at indigo_agent_scheduler.c:2061 is safe.\nwaiting_reason: set at WAITING (2060-2061), cleared at QUEUED (2066), replace_text (1324-1327), reset_task (3636), memset in create/remove (1273/1298); apply_status maps WAITING to QUEUED on restore. build_task_state_label (1110) shows it only for WAITING after hook/SCRIPT ERROR/UNREACHABLE/DISABLED/UNPLANNED, matching the state column precedence. The task list is republished by refresh() at the end of the pass (labels compared in update_task_state_property).\nREASON: set_reason() is the only writer and clears reason_follows_plan; start_task, begin_stop, hold, Scripting Agent/Sequencer.js, another sequence, all tasks finished and stop_scheduler (1635) all end following, so update_plan (3192-3194) cannot overwrite a scheduler-level reason. COMPACT and VISIBILITY share set_next_run_reason (3198-3211, the same text select_planned used before). The plan update added in select_task (2099-2103) only runs when tasks wait and the plan is dirty and replaces the update process_night would make right after, so it adds no plan computation in the usual case (only when no nights are known or a hand-started sequence occupies the agent does process() compute it once more at the end of the same pass because 'plan' was captured at the start - minor, not blocking).\nImplementer's questions: edited WAITING task -> QUEUED until the next selection is consistent with design items 1 and 5 (an estimate-pending task is skipped by the selection, so it would otherwise show WAITING with '-'); 'estimating the task duration' winning over waiting tasks matches the owner's list of scheduler-level reasons and avoids naming a plan run computed with a provisional duration. Both are correct.\nTwilight claim verified: the plan ends at the night end (at most NIGHT_END_OFFSET later), never reaching the next dusk, and any later start in the same night also reaches dawn, so a twilight 'before the end of the run' task has no plan run and shows UNPLANNED; the unit test test_points_check_tells_a_later_failure covers the flag, the end-to-end form is covered by duration_must_fit_before_the_target_sets.\nTests: exact column text for each reason, the 'before the end of the run' case, next-run REASON compared with the first PLANNED plan label (and with hhmm(open) in window_wait_and_expiry), the clear-on-QUEUED case; positions are relative to local sidereal/solar time at latitude 0, so they do not depend on the run date. moon_separation_and_brightness passes '' (either form) because the plan depends on the moon's position - acceptable. waiting_reason_is_cleared_when_queued relies on the 10 s hand-started sequence outlasting set_site + one selection, ample margin.\nDocs (SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER_COMPARISON.md, PROPERTIES.md) match the behaviour; version 0x0300002E -> 0x0300002F; no new files, no README change.\nReviewer runs: built test_agent_scheduler in the worktree and ran 14 changed cases by name (waiting_reason_is_cleared_when_queued, duration_must_fit, global_altitude_limits, window_wait_and_expiry, nightly_windows, hour_angle_ranges, twilight_limit_follows, moon_separation, unknown_site_blocks, altitude_limit_decides, airmass_limit, target_below_horizon, urgent_waits_for, agents_survive_a_restart): 15/15 passed. Did not rerun the full suite or run_scheduler_simulators.py.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "326854b6bafde7d9c1f39a8e7bd5f35b0a57c953",
+        "tree": "76b63bec84afd603dbae24728c7f76539bc3965c",
+        "at": "2026-11-28T01:28:32.202718Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-28T00:02:24.491969Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner-approved design:\n1. Storage: per task char waiting_reason[128], filled in select_task() when it sets TASK_WAITING; cleared on create, edit, reset and remove (a task restored from the configuration starts QUEUED with an empty reason).\n2. Display: build_task_state_label() fills the 7th column only when the row shows WAITING (UNPLANNED, UNREACHABLE precedence unchanged; every other row '-'), so no leftover reason can show on other states.\n3. Wording (option A): eligible_now() checks the whole interval now..now+duration. If the first failing check is at the current time (the first grid point, or a window/site/forecast check), the column shows the reason unchanged, e.g. 'sun above -12°', 'target below the altitude limit'. If the constraints hold now and fail only later in the interval, append ' before the end of the run', e.g. 'sun above -12° before the end of the run', 'target below the altitude limit before the end of the run'. Determine this from the failing grid index (points->next_bad[first] compared with first, or an equivalent exact check) without changing the reasons returned by indigo_scheduler_points_ok() to other callers unless needed.\n4. Republish the task list when a selection changes a task's state or waiting reason. The reason is the one found at the last selection (selections run every IDLE_CHECK_INTERVAL while idle, not while a task runs); document that.\n5. A task waiting for its duration estimate stays QUEUED; its row is unchanged.\nPossible reasons to document: window not open yet; window ends before the task can finish; outside of the nightly window; nightly window ends before the task can finish; site coordinates unknown; beyond the forecast; sun above -6°/-12°/-18°; target below the horizon; target below/above the altitude limit; airmass too high; hour angle out of range; too close to the moon; moon too bright; plus the ' before the end of the run' form for the sky reasons.\nTests: each case asserts the exact column text, including at least one 'before the end of the run' case (e.g. a target that sets during the run, a twilight run reaching dawn) and the plain form; reason cleared when the task becomes QUEUED/runs; deterministic with respect to the run date/time.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-28T00:10:54.274318Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision on REASON (AGENT_SCHEDULER_CURRENT.REASON): keep it for the scheduler-level reasons (safety and unsafe hold, Scripting Agent / Sequencer.js / another sequence, stopping, no tasks, all tasks finished, estimating the task duration, no task is ready). Replace the case where select_task() copies the first waiting task's reason (around line 2084): when tasks only wait for their constraints, REASON names the next planned task run in the wording VISIBILITY already uses, 'NAME starts at HH:MM UTC, as planned', in both strategies (COMPACT too, from the plan's first non-running task run); 'no task can run tonight' when the plan has no task run. Per-task reasons appear only in the task list. Update SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER_COMPARISON.md/PROPERTIES.md where they describe REASON, and every test asserting a constraint reason in REASON (waits_with_reason(), unplanned_with_reason() and others in test_agent_scheduler.c; run_scheduler_simulators.py below_horizon expects 'target below the horizon' in REASON) so they assert the reason in the task list and the next-run text in REASON.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "9458479fdf0ba23d65e594172a869a71d532176e",
+      "tree": "76b63bec84afd603dbae24728c7f76539bc3965c",
+      "base": "master",
+      "at": "2026-11-28T07:38:15.711856Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-27T23:52:50.382709Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-28T00:13:57.489257Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 4463357.537,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 34,
+    "sha256": "949110e73232132541ab87504aabf6310e7e936ae43e15c5c7435d12bc975125"
+  }
+}
