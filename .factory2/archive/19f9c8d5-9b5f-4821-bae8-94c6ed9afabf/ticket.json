@@ -1,0 +1,857 @@
+{
+  "schema_version": 1,
+  "ticket_id": "19f9c8d5-9b5f-4821-bae8-94c6ed9afabf",
+  "revision": 46,
+  "title": "indigo_prop_tool: add -f/--full-text to print long and multiline text values in whole",
+  "description": "Owner request (2026-11-28). indigo_prop_tool prints only the first TEXT_LEN_TO_PRINT (80) characters of a text item followed by '+ N characters' (indigo_tools/indigo_prop_tool.c, around line 403), in both list and get output, so long or multiline values such as the scheduler's AGENT_SCHEDULER_HISTORY.ENTRIES (text, one line per run, ticket b4808d4d) or the task bodies AGENT_SCHEDULER_TASK_n.TASK cannot be read from the command line.\n\nExpected: a new option -f / --full-text (check it does not collide with existing options -e -b -l -r -p -T -t -w -s -h) prints text values in whole, including embedded newlines, for list, get and the wait/track modes wherever text values are printed. Without the option the output stays exactly as now (80-character cut), so existing scripts are unaffected. Choose a readable format for multiline values (e.g. print the value verbatim inside the quotes, newlines kept) and document it in --help and in indigo_docs/PROPERTY_MANIPULATION.md (and update the scheduler docs that now say the full history must be read in a client, if ticket b4808d4d has landed). Add tests in the existing prop_tool test suite (indigo_test/unit/test_prop_tool_parser.c or similar) for a long single-line value, a multiline value, and the default cut unchanged. Keep the code portable (Linux, macOS, Windows).",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-28T09:24:39.806825Z",
+  "status": "closed",
+  "branch": "ticket/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "16bfb692-2432-45fb-95d8-2a9ccf6a50b0",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-28T10:23:37.241345Z",
+          "last_activity_at": "2026-11-28T10:33:49.217809Z",
+          "ended_at": "2026-11-28T10:33:49.217809Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 611976.464,
+          "tokens": null
+        },
+        {
+          "attempt_id": "c463c8d8-7a57-4dd9-929b-bb8badcdf226",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-28T10:36:04.880195Z",
+          "last_activity_at": "2026-11-28T10:40:25.519452Z",
+          "ended_at": "2026-11-28T10:40:25.519452Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 260639.257,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-28T10:23:37.241345Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf"
+        },
+        {
+          "at": "2026-11-28T10:33:49.217809Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-28T10:36:04.880195Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-28T10:40:25.519452Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 872615.721,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "1dc0e497-bc5e-4127-91b1-626221b4b1b1",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "fef3776f-e156-4374-8bf4-f7ea364c6c8c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-28T10:33:49.217854Z",
+          "last_activity_at": "2026-11-28T10:36:04.880113Z",
+          "ended_at": "2026-11-28T10:36:04.880113Z",
+          "outcome": {
+            "summary": "Product code and docs are correct. One test-coverage defect needs fixing.\n\nVerified: indigo_tools/indigo_prop_tool.c:1019 parses -f/--full-text without clashing with -e -b -l -r -p -T -t -w -s -h (and -r/-p/-T/-t/-w still consume their argument first). Every text value goes through print_property_list (:404, also used for set output and -w at :851/:861, -e labels and the -s prefix) or print_property_get_filtered (:502), and both honour print_full_text. Without -f both branches are unchanged byte for byte. indigo_get_text_item_value() returns long_value when set, so values over INDIGO_VALUE_SIZE print in whole. text_value[] (:485) points into the callback's property, which stays valid until the printf loop at :560 in the same synchronous call; nothing in between frees it, so the lifetime is safe. Removing static from print_property_get_filtered (:481) matches print_property_list and print_property_list_state, which are already exported. No other definition exists in indigo_libs, and it builds into the executable only. The multiline format (verbatim, quotes not escaped, closing quote and '  # label' after the last line, -s prefix once per item) follows from the code. PROPERTY_MANIPULATION.md documents it, and its default-cut example is arithmetically right (68+12=80, 143-80=63, blank line from the existing extra newline). --help, PROPERTY_MANIPULATION.md, INDIGO_SCHEDULER_GUIDE.md:120,1358 and SCHEDULER.md:431 agree. Portable: plain printf, nothing platform-specific. I rebuilt test_prop_tool_parser.c myself with -Wall -Wextra (no new warnings in indigo_prop_tool.c) and with ASan/UBSan: 8/8 pass.\n\nDefect (test coverage regression): indigo_test/unit/test_prop_tool_parser.c:321. full_text_output now runs before list_output and leaves print_full_text=true; the runner has no way to reset it. So list_output's existing plain and extended TEXT assertions ('Dev.TEXT.ITEM = \"value\"') now go through the new -f branch (indigo_prop_tool.c:404) and no longer reach the default short",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 135662.259,
+          "tokens": null
+        },
+        {
+          "attempt_id": "22b3044c-0f66-41db-9ca0-d0f528423281",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-28T10:40:25.519464Z",
+          "last_activity_at": "2026-11-28T10:40:25.519489Z",
+          "ended_at": "2026-11-28T10:40:25.519489Z",
+          "outcome": {
+            "summary": "Round 2 (6736b923e, tree 741e4fee4): the round-1 coverage defect is fixed. Nothing blocks.\n\nCoverage restored: test_prop_tool_parser.c:287-291. full_text_output first checks a short value in default mode (list 'Dev.TEXT.ITEM = \"value\"\\n', get 'value\\n'), so the default short-text branch indigo_prop_tool.c:409-410 and the default get branch are exercised again. :319 resets print_full_text at the end of the case. :216 resets it again at the start of list_output, so list_output's plain and extended text checks go through the default path even if full_text_output stops early on a failed assert. The default checks run before enable_full_text(), so they can only pass through the default branches.\n\nExporting print_full_text (indigo_prop_tool.c:54) is acceptable. The file already exports test hooks and globals with external linkage: is_connected (:966), the parse_* functions, read_file, process_quotes, print_property_list, print_property_list_state and print_property_get_filtered. nm on build/lib/libindigo_client.a finds no print_full_text, and grep finds no other definition in the tree, so neither the prop_tool binary nor the unit-test link can clash. The tool sets the flag only in option parsing (:1020), so its behaviour does not change.\n\nDoc: PROPERTY_MANIPULATION.md:207-208 now says that with -s the [STATE] prefix appears only on the first line. That matches the code: the prefix is printed once per item at :399, and only without -e, where it appears at all.\n\nVerified myself: I rebuilt test_prop_tool_parser.c with -Wall (no warnings in indigo_prop_tool.c) and with ASan/UBSan. Both gave 8/8 PASS, and full_text_output also passes when run alone (INDIGO_TEST_CASE_FILTER). Recorded checks whitespace and unit pass on the current tree. The ad-hoc command-1 check (make -C indigo_test test-tool-input-safety) is recorded as failing on this tree. Its 3 failures are the baseline Python cases tracked in ticket 2b46dfdb, not this change. flow status therefore still lists 'A check fai",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 0.025,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-28T10:33:49.217854Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-28T10:36:04.880113Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Product code and docs are correct. One test-coverage defect needs fixing.\n\nVerified: indigo_tools/indigo_prop_tool.c:1019 parses -f/--full-text without clashing with -e -b -l -r -p -T -t -w -s -h (and -r/-p/-T/-t/-w still consume their argument first). Every text value goes through print_property_list (:404, also used for set output and -w at :851/:861, -e labels and the -s prefix) or print_property_get_filtered (:502), and both honour print_full_text. Without -f both branches are unchanged byte for byte. indigo_get_text_item_value() returns long_value when set, so values over INDIGO_VALUE_SIZE print in whole. text_value[] (:485) points into the callback's property, which stays valid until the printf loop at :560 in the same synchronous call; nothing in between frees it, so the lifetime is safe. Removing static from print_property_get_filtered (:481) matches print_property_list and print_property_list_state, which are already exported. No other definition exists in indigo_libs, and it builds into the executable only. The multiline format (verbatim, quotes not escaped, closing quote and '  # label' after the last line, -s prefix once per item) follows from the code. PROPERTY_MANIPULATION.md documents it, and its default-cut example is arithmetically right (68+12=80, 143-80=63, blank line from the existing extra newline). --help, PROPERTY_MANIPULATION.md, INDIGO_SCHEDULER_GUIDE.md:120,1358 and SCHEDULER.md:431 agree. Portable: plain printf, nothing platform-specific. I rebuilt test_prop_tool_parser.c myself with -Wall -Wextra (no new warnings in indigo_prop_tool.c) and with ASan/UBSan: 8/8 pass.\n\nDefect (test coverage regression): indigo_test/unit/test_prop_tool_parser.c:321. full_text_output now runs before list_output and leaves print_full_text=true; the runner has no way to reset it. So list_output's existing plain and extended TEXT assertions ('Dev.TEXT.ITEM = \"value\"') now go through the new -f branch (indigo_prop_tool.c:404) and no longer reach the default short"
+        },
+        {
+          "at": "2026-11-28T10:40:25.519464Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-28T10:40:25.519489Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Round 2 (6736b923e, tree 741e4fee4): the round-1 coverage defect is fixed. Nothing blocks.\n\nCoverage restored: test_prop_tool_parser.c:287-291. full_text_output first checks a short value in default mode (list 'Dev.TEXT.ITEM = \"value\"\\n', get 'value\\n'), so the default short-text branch indigo_prop_tool.c:409-410 and the default get branch are exercised again. :319 resets print_full_text at the end of the case. :216 resets it again at the start of list_output, so list_output's plain and extended text checks go through the default path even if full_text_output stops early on a failed assert. The default checks run before enable_full_text(), so they can only pass through the default branches.\n\nExporting print_full_text (indigo_prop_tool.c:54) is acceptable. The file already exports test hooks and globals with external linkage: is_connected (:966), the parse_* functions, read_file, process_quotes, print_property_list, print_property_list_state and print_property_get_filtered. nm on build/lib/libindigo_client.a finds no print_full_text, and grep finds no other definition in the tree, so neither the prop_tool binary nor the unit-test link can clash. The tool sets the flag only in option parsing (:1020), so its behaviour does not change.\n\nDoc: PROPERTY_MANIPULATION.md:207-208 now says that with -s the [STATE] prefix appears only on the first line. That matches the code: the prefix is printed once per item at :399, and only without -e, where it appears at all.\n\nVerified myself: I rebuilt test_prop_tool_parser.c with -Wall (no warnings in indigo_prop_tool.c) and with ASan/UBSan. Both gave 8/8 PASS, and full_text_output also passes when run alone (INDIGO_TEST_CASE_FILTER). Recorded checks whitespace and unit pass on the current tree. The ad-hoc command-1 check (make -C indigo_test test-tool-input-safety) is recorded as failing on this tree. Its 3 failures are the baseline Python cases tracked in ticket 2b46dfdb, not this change. flow status therefore still lists 'A check fai"
+        }
+      ],
+      "result": {
+        "summary": "Round 2 (6736b923e, tree 741e4fee4): the round-1 coverage defect is fixed. Nothing blocks.\n\nCoverage restored: test_prop_tool_parser.c:287-291. full_text_output first checks a short value in default mode (list 'Dev.TEXT.ITEM = \"value\"\\n', get 'value\\n'), so the default short-text branch indigo_prop_tool.c:409-410 and the default get branch are exercised again. :319 resets print_full_text at the end of the case. :216 resets it again at the start of list_output, so list_output's plain and extended text checks go through the default path even if full_text_output stops early on a failed assert. The default checks run before enable_full_text(), so they can only pass through the default branches.\n\nExporting print_full_text (indigo_prop_tool.c:54) is acceptable. The file already exports test hooks and globals with external linkage: is_connected (:966), the parse_* functions, read_file, process_quotes, print_property_list, print_property_list_state and print_property_get_filtered. nm on build/lib/libindigo_client.a finds no print_full_text, and grep finds no other definition in the tree, so neither the prop_tool binary nor the unit-test link can clash. The tool sets the flag only in option parsing (:1020), so its behaviour does not change.\n\nDoc: PROPERTY_MANIPULATION.md:207-208 now says that with -s the [STATE] prefix appears only on the first line. That matches the code: the prefix is printed once per item at :399, and only without -e, where it appears at all.\n\nVerified myself: I rebuilt test_prop_tool_parser.c with -Wall (no warnings in indigo_prop_tool.c) and with ASan/UBSan. Both gave 8/8 PASS, and full_text_output also passes when run alone (INDIGO_TEST_CASE_FILTER). Recorded checks whitespace and unit pass on the current tree. The ad-hoc command-1 check (make -C indigo_test test-tool-input-safety) is recorded as failing on this tree. Its 3 failures are the baseline Python cases tracked in ticket 2b46dfdb, not this change. flow status therefore still lists 'A check fai",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 135662.284,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "d4061264-004f-490e-b7f6-7cd935d91d53",
+      "event": "ticket/created",
+      "at": "2026-11-28T09:24:39.807441Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "c66b102a-95c9-453f-9ef5-c5582925afa5",
+      "event": "ticket/confirmed",
+      "at": "2026-11-28T09:25:54.042892Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "f73ee059-1027-4d7b-ba95-e4aa9a7b7d5b",
+      "event": "task/progress",
+      "at": "2026-11-28T10:23:37.241468Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Implementation started on branch ticket/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf"
+    },
+    {
+      "event_id": "5bf36a36-631a-4a50-a4ed-7a269663747c",
+      "event": "ticket/started",
+      "at": "2026-11-28T10:23:37.242086Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf",
+      "base": "master"
+    },
+    {
+      "event_id": "eea1e256-ad06-4e6e-8449-f0e7a981bd5f",
+      "event": "task/progress",
+      "at": "2026-11-28T10:23:48.526384Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Implementer launched",
+      "attempt_id": "16bfb692-2432-45fb-95d8-2a9ccf6a50b0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "bebf2a4e-3535-413f-8cff-e30c1347fea8",
+      "event": "task/progress",
+      "at": "2026-11-28T10:23:58.073688Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Implementer launched, reading prop_tool sources and tests",
+      "attempt_id": "16bfb692-2432-45fb-95d8-2a9ccf6a50b0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "55fcd357-ef83-4086-9f0d-096ae98ba107",
+      "event": "task/progress",
+      "at": "2026-11-28T10:25:25.615287Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Implementing -f/--full-text in indigo_prop_tool.c"
+    },
+    {
+      "event_id": "6b609cd3-19d3-4ade-a501-cd7d78ff257a",
+      "event": "task/progress",
+      "at": "2026-11-28T10:26:38.443174Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d16cf146-3b6a-4fa8-bb1b-75c46efaa8c0",
+      "event": "task/progress",
+      "at": "2026-11-28T10:26:38.463479Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2a3600b7-3c19-467d-971a-08b536a13677",
+      "event": "task/progress",
+      "at": "2026-11-28T10:26:38.472333Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "ccb4d36f-9197-4aee-9a50-7cc9ebeb5a60",
+      "event": "task/progress",
+      "at": "2026-11-28T10:30:29.862082Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "dd7d34ba-51df-40d5-912e-870799105480",
+      "event": "check/passed",
+      "at": "2026-11-28T10:30:29.889186Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "14e1b751256c634dca7311d57177b056f33df6fd",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "d9939722-8f33-416f-a634-f9aa50dc8dcb",
+      "event": "task/progress",
+      "at": "2026-11-28T10:30:41.541912Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Running prop_tool tests: make -C indigo_test test-tool-input-safety"
+    },
+    {
+      "event_id": "85811711-662d-4aed-a516-86467a432267",
+      "event": "task/progress",
+      "at": "2026-11-28T10:30:41.817598Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check command-1 started: make -C indigo_test test-tool-input-safety"
+    },
+    {
+      "event_id": "46044be8-0fcc-4bea-94fe-1dc8ec4b75ac",
+      "event": "task/progress",
+      "at": "2026-11-28T10:30:43.343236Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check command-1 failed: 3 of 14 tests failed"
+    },
+    {
+      "event_id": "17060b7a-515b-4b85-acfc-71fc0ef97954",
+      "event": "check/failed",
+      "at": "2026-11-28T10:30:43.349439Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "f103d8a44daf8d8aa3448803e5a313ab1bc7275b",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "265d98b5-99fe-456e-a7e9-2f0fe5855f9f",
+      "event": "ticket/note",
+      "at": "2026-11-28T10:31:25.432253Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Evidence: new test full_text_output compiled against the master indigo_prop_tool.c (only print_property_get_filtered made non-static to link) passes its default-cut assertions (list and get output byte-for-byte as before) and fails at the -f part (no --full-text in help), so the cut behaviour is unchanged and -f is new. With the change: Property tool input safety suite 8/8 PASS (ordinary_requests, field_boundaries, item_count_boundaries, malformed_requests, empty_values, remote_endpoints, full_text_output, list_output). make -C indigo_test test-tool-input-safety still exits 2 because of 3 Python cases unrelated to prop_tool (RawCropSafety fread1/fread2, GaiaCatalogSafety test_join_overflow_fails_before_opening_truncated_path); the same 3 fail on an unchanged master copy built against the same library, so they are a baseline failure, not caused by this ticket.",
+      "tokens": null
+    },
+    {
+      "event_id": "821e3ef8-a3c2-40a1-9181-0878f11ffe24",
+      "event": "task/progress",
+      "at": "2026-11-28T10:31:25.621165Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "247a208c-7b22-4170-a468-1d66c949d1bd",
+      "event": "task/progress",
+      "at": "2026-11-28T10:31:25.642907Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "49af95e1-296d-4eb8-83ad-ae16cae7444a",
+      "event": "task/progress",
+      "at": "2026-11-28T10:31:25.648134Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "fa83882b-a029-4fba-b569-eebcd662e6ba",
+      "event": "task/progress",
+      "at": "2026-11-28T10:33:06.159200Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "e7eeab17-5dea-4670-8f7e-ff6da8a4d202",
+      "event": "check/passed",
+      "at": "2026-11-28T10:33:06.164884Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "f103d8a44daf8d8aa3448803e5a313ab1bc7275b",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "3118fc0b-21af-4f15-932d-d735ca3b8dcd",
+      "event": "task/progress",
+      "at": "2026-11-28T10:33:16.521953Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Implementation done; flow check whitespace+unit passed, prop_tool suite 8/8"
+    },
+    {
+      "event_id": "0dbf1c75-537f-4267-a4d0-45cafbb49953",
+      "event": "task/progress",
+      "at": "2026-11-28T10:33:49.217926Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dc0e497-bc5e-4127-91b1-626221b4b1b1",
+      "text": "Review started"
+    },
+    {
+      "event_id": "32aee922-e5aa-48fe-8c06-047b4e4faa05",
+      "event": "review/started",
+      "at": "2026-11-28T10:33:49.218640Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "fef67a4f-83b7-408d-ac74-6fef311f5a39",
+      "event": "task/progress",
+      "at": "2026-11-28T10:33:49.391242Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dc0e497-bc5e-4127-91b1-626221b4b1b1",
+      "text": "Reviewer launched",
+      "attempt_id": "fef3776f-e156-4374-8bf4-f7ea364c6c8c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "9aba4c9e-50e1-4ff7-b990-39962a6403ed",
+      "event": "task/progress",
+      "at": "2026-11-28T10:33:57.152124Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dc0e497-bc5e-4127-91b1-626221b4b1b1",
+      "text": "Reviewer started: reading diff",
+      "attempt_id": "fef3776f-e156-4374-8bf4-f7ea364c6c8c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7601f933-5ea0-46df-9c55-695f5adf71ec",
+      "event": "task/progress",
+      "at": "2026-11-28T10:35:17.036774Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dc0e497-bc5e-4127-91b1-626221b4b1b1",
+      "text": "Running test_prop_tool_parser directly (ASan/UBSan, -Wall) in scratchpad"
+    },
+    {
+      "event_id": "468b69e1-11e8-4b05-803c-091020210b4b",
+      "event": "task/progress",
+      "at": "2026-11-28T10:36:04.880186Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dc0e497-bc5e-4127-91b1-626221b4b1b1",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "1f74fcf1-be4c-46cd-804e-7fc6ad130aec",
+      "event": "task/progress",
+      "at": "2026-11-28T10:36:04.880222Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "067c13e5-ed3a-46c4-8f0c-f910fb7154b8",
+      "event": "review/changes_requested",
+      "at": "2026-11-28T10:36:04.880860Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dc0e497-bc5e-4127-91b1-626221b4b1b1",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "f103d8a44daf8d8aa3448803e5a313ab1bc7275b"
+    },
+    {
+      "event_id": "8f9430fb-93d7-4360-b3a1-3a1863247e4e",
+      "event": "task/progress",
+      "at": "2026-11-28T10:36:38.654435Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Review round 1: restoring default short-text coverage and resetting -f after its test"
+    },
+    {
+      "event_id": "104881c1-b82c-4352-8787-41c71ec5860b",
+      "event": "task/progress",
+      "at": "2026-11-28T10:37:11.535880Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Running prop_tool tests: make -C indigo_test test-tool-input-safety"
+    },
+    {
+      "event_id": "861982af-5998-4866-a076-e05a589b92cd",
+      "event": "task/progress",
+      "at": "2026-11-28T10:37:11.767618Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check command-1 started: make -C indigo_test test-tool-input-safety"
+    },
+    {
+      "event_id": "c766e9a0-51b3-42a4-ae7a-d26f3a231088",
+      "event": "task/progress",
+      "at": "2026-11-28T10:37:13.241195Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check command-1 failed: 3 of 14 tests failed"
+    },
+    {
+      "event_id": "4dbfc9ac-0b64-4589-9fcb-7ab8dc9a9e9f",
+      "event": "check/failed",
+      "at": "2026-11-28T10:37:13.246720Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "6736b923e4a3ee7e77bbabd1634def1fe5ea39c6",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "5c0f1531-3191-45fd-8426-160c763ee2d5",
+      "event": "task/progress",
+      "at": "2026-11-28T10:37:17.415774Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "50fbf643-1227-44b9-b3ad-3195ec66dd4a",
+      "event": "task/progress",
+      "at": "2026-11-28T10:37:17.438686Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "670e9a41-c6e7-475f-8360-c42369693d9b",
+      "event": "task/progress",
+      "at": "2026-11-28T10:37:17.444434Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "b04972f3-b63c-4563-ab3e-c91ffe26ad28",
+      "event": "task/progress",
+      "at": "2026-11-28T10:39:19.311305Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "bdf14d7d-c270-4851-b88c-5c73864c7d92",
+      "event": "check/passed",
+      "at": "2026-11-28T10:39:19.317921Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "6736b923e4a3ee7e77bbabd1634def1fe5ea39c6",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "c3b99803-d8ba-47fd-8235-49d335876cb3",
+      "event": "task/progress",
+      "at": "2026-11-28T10:39:27.092635Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Review fixes done; flow check passed, prop_tool suite 8/8"
+    },
+    {
+      "event_id": "0db47387-3131-4f08-a123-d635e1f86106",
+      "event": "task/progress",
+      "at": "2026-11-28T10:39:49.741948Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Round-2 review: reading diff since f103d8a44",
+      "attempt_id": "c463c8d8-7a57-4dd9-929b-bb8badcdf226",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e9f1a724-fc20-4ef1-aca8-9a840a396e21",
+      "event": "task/progress",
+      "at": "2026-11-28T10:40:02.336432Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "c5aacc2b-bbc4-41a4-a630-4d0922c12977",
+      "text": "Round 2: running test_prop_tool_parser directly (-Wall, ASan/UBSan) in scratchpad"
+    },
+    {
+      "event_id": "9e682321-d8f0-4cb4-ac5c-282902ef8c0a",
+      "event": "task/progress",
+      "at": "2026-11-28T10:40:25.519555Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dc0e497-bc5e-4127-91b1-626221b4b1b1",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "5328c960-3ce3-41f3-8da0-cb9fc259a4c0",
+      "event": "review/passed",
+      "at": "2026-11-28T10:40:25.520301Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "1dc0e497-bc5e-4127-91b1-626221b4b1b1",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "6736b923e4a3ee7e77bbabd1634def1fe5ea39c6"
+    },
+    {
+      "event_id": "687fe9eb-9ee9-4aa3-8f37-d43129d71c9e",
+      "event": "task/progress",
+      "at": "2026-11-28T10:41:13.963737Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check command-1 started: {python} -B -c \"import sys, tempfile, subprocess, pathlib; sys.path.insert(0, 'indigo_test/unit'); import test_tool_input_safety as t; d = tempfile.Te"
+    },
+    {
+      "event_id": "a12bcf95-cd20-4cca-8e5b-470bc8b70e73",
+      "event": "task/progress",
+      "at": "2026-11-28T10:41:15.540120Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "ebc9f6d5-8994-41d7-9dbf-8c0866d46a4e",
+      "event": "check/passed",
+      "at": "2026-11-28T10:41:15.547815Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "6736b923e4a3ee7e77bbabd1634def1fe5ea39c6",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "4c790736-fffd-4b62-b3a6-784b77c6fdbe",
+      "event": "ticket/closed",
+      "at": "2026-11-28T10:51:22.353485Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-28T10:51:22.353458Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "3a5a589ab7e8ad2f42f196f80c7af5a8da4ad00d"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "14e1b751256c634dca7311d57177b056f33df6fd",
+        "tree": "be580d4067b1d68aebe4e6ae78eeb02a54b79450",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T10:26:38.462743Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf/be580d4067b1-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "14e1b751256c634dca7311d57177b056f33df6fd",
+        "tree": "be580d4067b1d68aebe4e6ae78eeb02a54b79450",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T10:30:29.830771Z",
+        "duration_s": 231.4,
+        "log": "/tmp/factory-flow/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf/be580d4067b1-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-tool-input-safety",
+        "commit": "f103d8a44daf8d8aa3448803e5a313ab1bc7275b",
+        "tree": "d8de60743f50a76f2da1e32de4f183a0ac310427",
+        "exit_code": 2,
+        "counts": {
+          "executed": 14,
+          "failed": 3,
+          "skipped": 0
+        },
+        "passed": false,
+        "at": "2026-11-28T10:30:43.342162Z",
+        "duration_s": 1.5,
+        "log": "/tmp/factory-flow/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf/d8de60743f50-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f103d8a44daf8d8aa3448803e5a313ab1bc7275b",
+        "tree": "d8de60743f50a76f2da1e32de4f183a0ac310427",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T10:31:25.642141Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf/d8de60743f50-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "f103d8a44daf8d8aa3448803e5a313ab1bc7275b",
+        "tree": "d8de60743f50a76f2da1e32de4f183a0ac310427",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T10:33:06.158410Z",
+        "duration_s": 100.5,
+        "log": "/tmp/factory-flow/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf/d8de60743f50-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6736b923e4a3ee7e77bbabd1634def1fe5ea39c6",
+        "tree": "741e4fee41cfea1afb220c6ce3c0fbe7da3e0485",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T10:37:17.437658Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf/741e4fee41cf-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "6736b923e4a3ee7e77bbabd1634def1fe5ea39c6",
+        "tree": "741e4fee41cfea1afb220c6ce3c0fbe7da3e0485",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T10:39:19.310262Z",
+        "duration_s": 121.9,
+        "log": "/tmp/factory-flow/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf/741e4fee41cf-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "{python} -B -c \"import sys, tempfile, subprocess, pathlib; sys.path.insert(0, 'indigo_test/unit'); import test_tool_input_safety as t; d = tempfile.TemporaryDirectory(prefix='indigo-prop-tool-'); p = t.build_programs(pathlib.Path(d.name))[0]; subprocess.run([str(p)], check=True, timeout=10)\"",
+        "commit": "6736b923e4a3ee7e77bbabd1634def1fe5ea39c6",
+        "tree": "741e4fee41cfea1afb220c6ce3c0fbe7da3e0485",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-28T10:41:15.538547Z",
+        "duration_s": 1.6,
+        "log": "/tmp/factory-flow/19f9c8d5-9b5f-4821-bae8-94c6ed9afabf/741e4fee41cf-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Product code and docs are correct. One test-coverage defect needs fixing.\n\nVerified: indigo_tools/indigo_prop_tool.c:1019 parses -f/--full-text without clashing with -e -b -l -r -p -T -t -w -s -h (and -r/-p/-T/-t/-w still consume their argument first). Every text value goes through print_property_list (:404, also used for set output and -w at :851/:861, -e labels and the -s prefix) or print_property_get_filtered (:502), and both honour print_full_text. Without -f both branches are unchanged byte for byte. indigo_get_text_item_value() returns long_value when set, so values over INDIGO_VALUE_SIZE print in whole. text_value[] (:485) points into the callback's property, which stays valid until the printf loop at :560 in the same synchronous call; nothing in between frees it, so the lifetime is safe. Removing static from print_property_get_filtered (:481) matches print_property_list and print_property_list_state, which are already exported. No other definition exists in indigo_libs, and it builds into the executable only. The multiline format (verbatim, quotes not escaped, closing quote and '  # label' after the last line, -s prefix once per item) follows from the code. PROPERTY_MANIPULATION.md documents it, and its default-cut example is arithmetically right (68+12=80, 143-80=63, blank line from the existing extra newline). --help, PROPERTY_MANIPULATION.md, INDIGO_SCHEDULER_GUIDE.md:120,1358 and SCHEDULER.md:431 agree. Portable: plain printf, nothing platform-specific. I rebuilt test_prop_tool_parser.c myself with -Wall -Wextra (no new warnings in indigo_prop_tool.c) and with ASan/UBSan: 8/8 pass.\n\nDefect (test coverage regression): indigo_test/unit/test_prop_tool_parser.c:321. full_text_output now runs before list_output and leaves print_full_text=true; the runner has no way to reset it. So list_output's existing plain and extended TEXT assertions ('Dev.TEXT.ITEM = \"value\"') now go through the new -f branch (indigo_prop_tool.c:404) and no longer reach the default short-text branch (:409-410). In a full suite run, no test exercises that default branch any more. full_text_output checks the default mode only for values over 80 characters. Before this change list_output covered the branch, so existing regression coverage is silently lost (indigo_test/AGENTS.md: preserve regression coverage). Fix: in full_text_output, before enable_full_text(), add a default-mode check of a short value, e.g. set 'value' and assert list prints 'Dev.TEXT.ITEM = \"value\"\\n' and get prints 'value\\n'. Alternatively run full_text_output last and adjust its expectations for the -e that list_output leaves on.\n\nNon-blocking: PROPERTY_MANIPULATION.md does not say that with -s the '[STATE]' prefix appears only on the first line of a multiline value. The general 'printed verbatim' sentence implies it; a short clause would make it explicit.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "f103d8a44daf8d8aa3448803e5a313ab1bc7275b",
+        "tree": "d8de60743f50a76f2da1e32de4f183a0ac310427",
+        "at": "2026-11-28T10:36:04.880088Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 (6736b923e, tree 741e4fee4): the round-1 coverage defect is fixed. Nothing blocks.\n\nCoverage restored: test_prop_tool_parser.c:287-291. full_text_output first checks a short value in default mode (list 'Dev.TEXT.ITEM = \"value\"\\n', get 'value\\n'), so the default short-text branch indigo_prop_tool.c:409-410 and the default get branch are exercised again. :319 resets print_full_text at the end of the case. :216 resets it again at the start of list_output, so list_output's plain and extended text checks go through the default path even if full_text_output stops early on a failed assert. The default checks run before enable_full_text(), so they can only pass through the default branches.\n\nExporting print_full_text (indigo_prop_tool.c:54) is acceptable. The file already exports test hooks and globals with external linkage: is_connected (:966), the parse_* functions, read_file, process_quotes, print_property_list, print_property_list_state and print_property_get_filtered. nm on build/lib/libindigo_client.a finds no print_full_text, and grep finds no other definition in the tree, so neither the prop_tool binary nor the unit-test link can clash. The tool sets the flag only in option parsing (:1020), so its behaviour does not change.\n\nDoc: PROPERTY_MANIPULATION.md:207-208 now says that with -s the [STATE] prefix appears only on the first line. That matches the code: the prefix is printed once per item at :399, and only without -e, where it appears at all.\n\nVerified myself: I rebuilt test_prop_tool_parser.c with -Wall (no warnings in indigo_prop_tool.c) and with ASan/UBSan. Both gave 8/8 PASS, and full_text_output also passes when run alone (INDIGO_TEST_CASE_FILTER). Recorded checks whitespace and unit pass on the current tree. The ad-hoc command-1 check (make -C indigo_test test-tool-input-safety) is recorded as failing on this tree. Its 3 failures are the baseline Python cases tracked in ticket 2b46dfdb, not this change. flow status therefore still lists 'A check failed for the current tree', which the coordinator or owner must resolve before close.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "6736b923e4a3ee7e77bbabd1634def1fe5ea39c6",
+        "tree": "741e4fee41cfea1afb220c6ce3c0fbe7da3e0485",
+        "at": "2026-11-28T10:40:25.519431Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-28T10:31:25.431678Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Evidence: new test full_text_output compiled against the master indigo_prop_tool.c (only print_property_get_filtered made non-static to link) passes its default-cut assertions (list and get output byte-for-byte as before) and fails at the -f part (no --full-text in help), so the cut behaviour is unchanged and -f is new. With the change: Property tool input safety suite 8/8 PASS (ordinary_requests, field_boundaries, item_count_boundaries, malformed_requests, empty_values, remote_endpoints, full_text_output, list_output). make -C indigo_test test-tool-input-safety still exits 2 because of 3 Python cases unrelated to prop_tool (RawCropSafety fread1/fread2, GaiaCatalogSafety test_join_overflow_fails_before_opening_truncated_path); the same 3 fail on an unchanged master copy built against the same library, so they are a baseline failure, not caused by this ticket.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "3a5a589ab7e8ad2f42f196f80c7af5a8da4ad00d",
+      "tree": "741e4fee41cfea1afb220c6ce3c0fbe7da3e0485",
+      "base": "master",
+      "at": "2026-11-28T10:51:22.187261Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-28T09:24:39.806825Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-28T09:25:54.042863Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 1008278.005,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 57,
+    "sha256": "914022b5e9b9a1ac87d0f3d091adb19525d4ebb327da8213a92c9b0be0725e83"
+  }
+}
