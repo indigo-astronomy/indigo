@@ -83,7 +83,8 @@ Scheduler:
   set ITEM=VALUE ...              settings, for example set NIGHT_START_OFFSET=-30 IDLE_HOOK_DELAY=1
 Watching (new scheduler messages are printed after every command):
   status                          scheduler state, current task and the task list
-  plan | history [N]
+  plan | timeline | history [N]   the night plan; the history inside AGENT_SCHEDULER_HISTORY_WINDOW
+                                  followed by the plan; the last N runs of the history (default 10)
   wait SECONDS                    wait and print messages as they come
   until TEXT [SECONDS]            wait for a message containing TEXT (default 60 s), counting the
                                   messages since the previous command began
@@ -466,13 +467,17 @@ class Sandbox:
 				self.status()
 			elif verb == "plan":
 				self.show_list("AGENT_SCHEDULER_PLAN", "night plan")
+			elif verb == "timeline":
+				self.show_list("AGENT_SCHEDULER_TIMELINE", "timeline")
 			elif verb == "history":
 				count = int(arguments[0]) if arguments else 10
-				p = self.client.property(AGENT, "AGENT_SCHEDULER_HISTORY")
+				text = self.client.value(AGENT, "AGENT_SCHEDULER_HISTORY", "ENTRIES") or ""
+				lines = [line for line in text.split("\n") if line]
 				self.say("history:")
-				items = (p or {}).get("items", [])
-				for i in items[max(len(items) - count, 0):]:
-					self.say("  %-5s %s" % (i.get("value", ""), i.get("label", "")))
+				if not lines:
+					self.say("  (empty)")
+				for line in lines[max(len(lines) - count, 0):]:
+					self.say("  " + line)
 			elif verb == "wait":
 				deadline = time.monotonic() + float(arguments[0])
 				while time.monotonic() < deadline:

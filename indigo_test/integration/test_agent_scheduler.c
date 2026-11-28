@@ -480,36 +480,55 @@ static bool set_night_limit(const char *item) {
 	return wait_property_state(AGENT_SCHEDULER_NIGHT_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
 }
 
+#define MAX_HISTORY_LINES	200
+
+// the lines of the text of AGENT_SCHEDULER_HISTORY, oldest first; the count, or -1 when the property is missing
+static int history_lines(char lines[][INDIGO_VALUE_SIZE], int max) {
+	indigo_property *property = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
+	if (property == NULL) {
+		return -1;
+	}
+	indigo_item *item = indigo_get_item(property, AGENT_SCHEDULER_HISTORY_ENTRIES_ITEM_NAME);
+	const char *text = item ? indigo_get_text_item_value(item) : "";
+	int count = 0;
+	while (*text && count < max) {
+		const char *end = strchr(text, '\n');
+		size_t length = end ? (size_t)(end - text) : strlen(text);
+		if (length >= INDIGO_VALUE_SIZE) {
+			length = INDIGO_VALUE_SIZE - 1;
+		}
+		memcpy(lines[count], text, length);
+		lines[count++][length] = 0;
+		text = end ? end + 1 : text + strlen(text);
+	}
+	indigo_release_property(property);
+	return count;
+}
+
 // label of the index-th history entry of a task given as "Name" or "Name #run", empty if none
 static bool history_label(const char *task, int index, char *label) {
+	static char lines[MAX_HISTORY_LINES][INDIGO_VALUE_SIZE];
 	char needle[INDIGO_VALUE_SIZE];
 	const char *run = strstr(task, " #");
 	if (run) {
-		snprintf(needle, sizeof(needle), " | %.*s | run %s | ", (int)(run - task), task, run + 2);
+		snprintf(needle, sizeof(needle), " | %.*s | run %s/", (int)(run - task), task, run + 2);
 	} else {
 		snprintf(needle, sizeof(needle), " | %s | ", task);
 	}
-	indigo_property *property = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
-	bool found = false;
+	int count = history_lines(lines, MAX_HISTORY_LINES);
 	int seen = 0;
-	if (property) {
-		for (int i = 0; i < property->count; i++) {
-			if (strstr(property->items[i].label, needle) && seen++ == index) {
-				strcpy(label, property->items[i].label);
-				found = true;
-				break;
-			}
+	for (int i = 0; i < count; i++) {
+		if (strstr(lines[i], needle) && seen++ == index) {
+			strcpy(label, lines[i]);
+			return true;
 		}
-		indigo_release_property(property);
 	}
-	return found;
+	return false;
 }
 
 static int history_count(void) {
-	indigo_property *property = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
-	int count = property ? property->count : -1;
-	indigo_release_property(property);
-	return count;
+	static char lines[MAX_HISTORY_LINES][INDIGO_VALUE_SIZE];
+	return history_lines(lines, MAX_HISTORY_LINES);
 }
 
 static void utc(time_t t, char *buffer) {
@@ -905,6 +924,118 @@ static int check_columns(const char *property_name, int count) {
 	}
 	indigo_release_property(property);
 	return result;
+}
+
+// every line of the history has six non-empty columns; the count of lines is returned or -1
+static int check_history_columns(void) {
+	static char lines[MAX_HISTORY_LINES][INDIGO_VALUE_SIZE];
+	int count = history_lines(lines, MAX_HISTORY_LINES);
+	for (int i = 0; i < count; i++) {
+		char columns[6][INDIGO_VALUE_SIZE];
+		if (!split_label(lines[i], 6, columns)) {
+			fprintf(stderr, "history line '%s' has no 6 columns\n", lines[i]);
+			return -1;
+		}
+	}
+	return count;
+}
+
+static bool wait_history_count(int count, double timeout) {
+	for (double t = 0; t < timeout; t += 0.02) {
+		if (history_count() == count) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	fprintf(stderr, "Timeout waiting for %d history entries, found %d\n", count, history_count());
+	return false;
+}
+
+#define MAX_TIMELINE_LINES	(MAX_HISTORY_LINES + 256)
+
+// the timeline labels and states, the count or -1 when the property is missing; a redefine deletes it for a moment
+static int timeline_items(char labels[][INDIGO_VALUE_SIZE], indigo_property_state *states, int max) {
+	indigo_property *property = snapshot(AGENT_SCHEDULER_TIMELINE_PROPERTY_NAME);
+	for (int i = 0; i < 100 && property == NULL; i++) {
+		indigo_usleep(10000);
+		property = snapshot(AGENT_SCHEDULER_TIMELINE_PROPERTY_NAME);
+	}
+	if (property == NULL) {
+		return -1;
+	}
+	int count = property->count;
+	for (int i = 0; i < count && i < max; i++) {
+		strcpy(labels[i], property->items[i].label);
+		states[i] = property->items[i].light.value;
+	}
+	indigo_release_property(property);
+	return count;
+}
+
+static void print_timeline(char labels[][INDIGO_VALUE_SIZE], indigo_property_state *states, int count) {
+	for (int i = 0; i < count && i < MAX_TIMELINE_LINES; i++) {
+		fprintf(stderr, "  %s [%d]\n", labels[i], states[i]);
+	}
+}
+
+// waits until the timeline has exactly count items, each containing its text with its light
+static bool wait_timeline(const char **texts, const indigo_property_state *expected, int count, double timeout) {
+	static char labels[MAX_TIMELINE_LINES][INDIGO_VALUE_SIZE];
+	static indigo_property_state states[MAX_TIMELINE_LINES];
+	int found = -1;
+	for (double t = 0; t < timeout; t += 0.02) {
+		found = timeline_items(labels, states, MAX_TIMELINE_LINES);
+		bool match = found == count;
+		for (int i = 0; i < count && match; i++) {
+			match = strstr(labels[i], texts[i]) != NULL && states[i] == expected[i];
+		}
+		if (match) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	fprintf(stderr, "Timeout waiting for a timeline of %d items, found %d:\n", count, found);
+	print_timeline(labels, states, found);
+	return false;
+}
+
+// waits until the timeline is the last entries lines of the history followed by the night plan, item by item
+static bool wait_timeline_composed(int entries, double timeout) {
+	static char history[MAX_HISTORY_LINES][INDIGO_VALUE_SIZE], plan[256][INDIGO_VALUE_SIZE], labels[MAX_TIMELINE_LINES][INDIGO_VALUE_SIZE];
+	static indigo_property_state plan_states[256], states[MAX_TIMELINE_LINES];
+	int found = -1;
+	for (double t = 0; t < timeout; t += 0.02) {
+		int history_found = history_lines(history, MAX_HISTORY_LINES);
+		int plan_found = plan_items(plan, plan_states, 256);
+		found = timeline_items(labels, states, MAX_TIMELINE_LINES);
+		bool match = history_found >= entries && plan_found >= 0 && found == entries + plan_found;
+		for (int i = 0; i < entries && match; i++) {
+			match = !strcmp(labels[i], history[history_found - entries + i]);
+		}
+		for (int i = 0; i < plan_found && match; i++) {
+			match = !strcmp(labels[entries + i], plan[i]) && states[entries + i] == plan_states[i];
+		}
+		if (match) {
+			return true;
+		}
+		indigo_usleep(20000);
+	}
+	fprintf(stderr, "Timeout waiting for a timeline of %d history entries and the plan, found %d:\n", entries, found);
+	print_timeline(labels, states, found);
+	return false;
+}
+
+static bool set_history_window(double hours) {
+	unsigned before = revision(AGENT_SCHEDULER_HISTORY_WINDOW_PROPERTY_NAME);
+	indigo_change_number_property_1(&observer, AGENT, AGENT_SCHEDULER_HISTORY_WINDOW_PROPERTY_NAME, AGENT_SCHEDULER_HISTORY_WINDOW_HOURS_ITEM_NAME, hours);
+	return wait_property_state(AGENT_SCHEDULER_HISTORY_WINDOW_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
+}
+
+static double history_window(void) {
+	indigo_property *property = snapshot(AGENT_SCHEDULER_HISTORY_WINDOW_PROPERTY_NAME);
+	double value = property ? property->items[0].number.value : -1000;
+	indigo_release_property(property);
+	return value;
 }
 
 static bool task_light(const char *name, indigo_property_state expected) {
@@ -1741,6 +1872,17 @@ static void hooks_run_at_start_idle_and_stop(void) {
 	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Later'"));
+	// a hook has "-" as the run and its hook as the priority, as in the plan
+	ASSERT_TRUE(wait_history_count(4, 5));
+	char lines[4][INDIGO_VALUE_SIZE];
+	REQUIRE(history_lines(lines, 4) == 4);
+	ASSERT_TRUE(strstr(lines[0], " | Prepare | - | hook startup | SUCCEEDED | -") != NULL);
+	ASSERT_TRUE(strstr(lines[1], " | Work | run 1/1 | normal 50 | SUCCEEDED | -") != NULL);
+	ASSERT_TRUE(strstr(lines[2], " | Park | - | hook idle | SUCCEEDED | -") != NULL);
+	ASSERT_TRUE(strstr(lines[3], " | Close | - | hook shutdown | SUCCEEDED | -") != NULL);
+	// the timeline follows the history with the plan, the run of Later
+	ASSERT_TRUE(wait_timeline_composed(4, 10));
+	ASSERT_TRUE(wait_plan_contains(" | Later | run 1/1 | normal 50 | PLANNED | ", true, 5));
 }
 
 static void disabled_startup_hook_is_skipped_until_enabled(void) {
@@ -1896,7 +2038,7 @@ static void night_hooks_run_at_dusk_and_dawn(void) {
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Later'"));
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(history_label("Morning", 0, label));
-	ASSERT_TRUE(strstr(label, "| Morning | run 1 | hook | SUCCEEDED | -") != NULL);
+	ASSERT_TRUE(strstr(label, "| Morning | - | hook night end | SUCCEEDED | -") != NULL);
 }
 
 // the first plan item containing text, its start and end in minutes of the day and its state
@@ -3756,26 +3898,41 @@ static void history_records_runs(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 15));
 	char label[INDIGO_VALUE_SIZE];
-	ASSERT_TRUE(history_label("Good #1", 0, label) && strstr(label, "| SUCCEEDED | -"));
-	ASSERT_TRUE(history_label("Bad #1", 0, label) && strstr(label, "| FAILED | Error: broken"));
-	ASSERT_TRUE(history_label("Victim #1", 0, label) && strstr(label, "| PREEMPTED | by Rush"));
-	ASSERT_TRUE(history_label("Rush #1", 0, label) && strstr(label, "| Rush | run 1 | urgent | SUCCEEDED | -"));
+	// the run and priority columns are those of the night plan
+	ASSERT_TRUE(history_label("Good #1", 0, label) && strstr(label, "| Good | run 1/1 | normal 50 | SUCCEEDED | -"));
+	ASSERT_TRUE(history_label("Bad #1", 0, label) && strstr(label, "| Bad | run 1/1 | low 50 | FAILED | Error: broken"));
+	ASSERT_TRUE(history_label("Victim #1", 0, label) && strstr(label, "| Victim | run 1/1 | low 10 | PREEMPTED | by Rush"));
+	ASSERT_TRUE(history_label("Rush #1", 0, label) && strstr(label, "| Rush | run 1/1 | urgent | SUCCEEDED | -"));
 	ASSERT_TRUE(history_label("Victim #1", 1, label) && strstr(label, "| ABORTED | -"));
 	ASSERT_EQ_INT(5, history_count());
+	ASSERT_EQ_INT(5, check_history_columns());
 	// oldest first, newest last
-	indigo_property *history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
-	REQUIRE(history != NULL);
-	ASSERT_TRUE(strstr(history->items[history->count - 1].label, "Victim") && strstr(history->items[history->count - 1].label, "| ABORTED |"));
-	ASSERT_EQ_INT(INDIGO_ALERT_STATE, history->items[1].light.value);
-	indigo_release_property(history);
+	ASSERT_TRUE(history_label("Victim", 1, label) && strstr(label, "| ABORTED |"));
+	char lines[5][INDIGO_VALUE_SIZE];
+	REQUIRE(history_lines(lines, 5) == 5);
+	ASSERT_TRUE(strstr(lines[4], " | Victim | ") && strstr(lines[4], "| ABORTED |"));
+	// the timeline starts with the history entries and their lights: Ok succeeded, Alert failed, preempted and aborted
+	const char *texts[] = { lines[0], lines[1], lines[2], lines[3], lines[4] };
+	const indigo_property_state lights[] = { INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE };
+	ASSERT_TRUE(wait_timeline_composed(5, 10));
+	char timeline[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	REQUIRE(timeline_items(timeline, states, 16) >= 5);
+	for (int i = 0; i < 5; i++) {
+		ASSERT_STREQ(texts[i], timeline[i]);
+		ASSERT_EQ_INT(lights[i], states[i]);
+	}
 	stop_scheduler();
 	REQUIRE(start_scheduler());
 	ASSERT_EQ_INT(5, history_count());
-	ASSERT_TRUE(history_label("Rush #1", 0, label) && strstr(label, "| Rush | run 1 | urgent | SUCCEEDED | -"));
+	ASSERT_TRUE(history_label("Rush #1", 0, label) && strstr(label, "| Rush | run 1/1 | urgent | SUCCEEDED | -"));
+	ASSERT_TRUE(wait_timeline_composed(5, 10));
 	unsigned before = revision(AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME);
 	indigo_change_switch_property_1(&observer, AGENT, AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME, AGENT_SCHEDULER_CLEAR_HISTORY_CLEAR_ITEM_NAME, true);
 	ASSERT_TRUE(wait_property_state(AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL));
 	ASSERT_EQ_INT(0, history_count());
+	// the clear also empties the history part of the timeline
+	ASSERT_TRUE(wait_timeline_composed(0, 10));
 	// clients cannot write the history
 	char message[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(change_text(AGENT_SCHEDULER_RESTORE_HISTORY_PROPERTY_NAME, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME, "Fake\t1\t0\t0\tsucceeded\t \t\n", INDIGO_ALERT_STATE, message));
@@ -3794,18 +3951,20 @@ static void history_lists_oldest_first(void) {
 	REQUIRE(set_saved_history(entries));
 	REQUIRE(start_scheduler());
 	ASSERT_EQ_INT(200, history_count());
+	// the whole text of 200 lines reaches the client, far longer than one INDIGO value
 	indigo_property *history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
 	REQUIRE(history != NULL);
-	// the oldest kept entry is the first, the newest the last, and the item names count the runs
-	for (int i = 0; i < history->count; i++) {
-		char expected[INDIGO_VALUE_SIZE];
-		snprintf(expected, sizeof(expected), " | Run%d | run %d | ", i + 6, i + 6);
-		ASSERT_TRUE(strstr(history->items[i].label, expected) != NULL);
-		snprintf(expected, sizeof(expected), AGENT_SCHEDULER_HISTORY_ITEM_NAME, i + 6);
-		ASSERT_STREQ(expected, history->items[i].name);
-		ASSERT_EQ_INT((i + 6) % 2 ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, history->items[i].light.value);
-	}
+	ASSERT_EQ_INT(INDIGO_RO_PERM, history->perm);
+	ASSERT_TRUE(strlen(indigo_get_text_item_value(history->items)) > 20 * INDIGO_VALUE_SIZE);
 	indigo_release_property(history);
+	static char lines[200][INDIGO_VALUE_SIZE];
+	REQUIRE(history_lines(lines, 200) == 200);
+	// the oldest kept entry is the first, the newest the last; the entries of an older version have no repeat count and priority
+	for (int i = 0; i < 200; i++) {
+		char expected[INDIGO_VALUE_SIZE];
+		snprintf(expected, sizeof(expected), " | Run%d | - | - | %s | ", i + 6, (i + 6) % 2 ? "SUCCEEDED" : "FAILED");
+		ASSERT_TRUE(strstr(lines[i], expected) != NULL);
+	}
 	// the new runs, Seed and Newest, are appended at the end and the oldest entries drop off the top
 	REQUIRE(upload("// @task Newest\n" BODY_WAIT(1)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
@@ -3813,14 +3972,202 @@ static void history_lists_oldest_first(void) {
 	for (int i = 0; i < 500 && !history_label("Newest #1", 0, (char[INDIGO_VALUE_SIZE]){ 0 }); i++) {
 		indigo_usleep(20000);
 	}
-	ASSERT_EQ_INT(200, history_count());
-	history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
-	REQUIRE(history != NULL);
-	ASSERT_TRUE(strstr(history->items[0].label, " | Run8 | run 8 | ") != NULL);
-	ASSERT_TRUE(strstr(history->items[history->count - 3].label, " | Run205 | run 205 | ") != NULL);
-	ASSERT_TRUE(strstr(history->items[history->count - 2].label, " | Seed | run 1 | ") != NULL);
-	ASSERT_TRUE(strstr(history->items[history->count - 1].label, " | Newest | run 1 | ") != NULL);
-	indigo_release_property(history);
+	REQUIRE(history_lines(lines, 200) == 200);
+	ASSERT_TRUE(strstr(lines[0], " | Run8 | - | - | ") != NULL);
+	ASSERT_TRUE(strstr(lines[197], " | Run205 | - | - | ") != NULL);
+	ASSERT_TRUE(strstr(lines[198], " | Seed | run 1/1 | normal 50 | SUCCEEDED | -") != NULL);
+	ASSERT_TRUE(strstr(lines[199], " | Newest | run 1/1 | normal 50 | SUCCEEDED | -") != NULL);
+}
+
+// the timeline: the history entries with their lights, then the running entry (Busy) and the planned runs (Idle) of the plan
+static void timeline_lists_history_then_plan(void) {
+	site_at_evening();
+	REQUIRE(upload("// @task First\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Broken\n// @priority low\nif (!scheduler_task.estimate) { throw new Error(\"broken\"); }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Long\n// @priority low 10\n// @repeat 2\n" BODY_WAIT(60)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 30));
+	const char *texts[] = { " | First | run 1/1 | normal 50 | SUCCEEDED | -", " | Broken | run 1/1 | low 50 | FAILED | Error: broken", " | Long | run 1/2 | low 10 | RUNNING | ", " | Long | run 2/2 | low 10 | PLANNED | " };
+	const indigo_property_state lights[] = { INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_BUSY_STATE, INDIGO_IDLE_STATE };
+	ASSERT_TRUE(wait_timeline(texts, lights, 4, 10));
+	// the plan part is the plan itself, the history part the history
+	ASSERT_TRUE(wait_timeline_composed(2, 5));
+	ASSERT_EQ_INT(4, check_columns(AGENT_SCHEDULER_TIMELINE_PROPERTY_NAME, 6));
+	// a preempted run is Alert, Busy marks only the running entry, here the run of Long again after the urgent task
+	REQUIRE(urgent("// @task Rush\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Rush' completed", 1, 15));
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 15));
+	const char *preempted_texts[] = { texts[0], texts[1], " | Long | run 1/2 | low 10 | PREEMPTED | by Rush", " | Rush | run 1/1 | urgent | SUCCEEDED | -", " | Long | run 1/2 | low 10 | RUNNING | ", " | Long | run 2/2 | low 10 | PLANNED | " };
+	const indigo_property_state preempted_lights[] = { INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_IDLE_STATE };
+	ASSERT_TRUE(wait_timeline(preempted_texts, preempted_lights, 6, 10));
+	// an aborted run is Alert too
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 15));
+	ASSERT_TRUE(wait_history_count(5, 5));
+	ASSERT_TRUE(history_label("Long #1", 1, (char[INDIGO_VALUE_SIZE]){ 0 }));
+	ASSERT_TRUE(wait_timeline_composed(5, 10));
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	REQUIRE(timeline_items(labels, states, 16) >= 5);
+	ASSERT_TRUE(strstr(labels[4], " | Long | run 1/2 | low 10 | ABORTED | ") != NULL);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[4]);
+	for (int i = 0; i < 5; i++) {
+		ASSERT_TRUE(states[i] != INDIGO_BUSY_STATE);
+	}
+}
+
+// the window of the timeline: 16 hours by default, all with -1, none with 0, saved; an entry leaves it at the regular check, also while a task runs
+static void history_window_limits_the_timeline(void) {
+	indigo_property *window = snapshot(AGENT_SCHEDULER_HISTORY_WINDOW_PROPERTY_NAME);
+	REQUIRE(window != NULL);
+	ASSERT_EQ_INT(INDIGO_RW_PERM, window->perm);
+	ASSERT_TRUE(window->items[0].number.value == 16 && window->items[0].number.min == -1 && window->items[0].number.max == 8760);
+	indigo_release_property(window);
+	// a task whose window opens in three days is never in the plan, so the timeline holds only the history
+	char later[32], text[256];
+	utc(time(NULL) + 3 * 86400, later);
+	snprintf(text, sizeof(text), "// @task Seed\n// @window %s ..\n" BODY_WAIT(1), later);
+	REQUIRE(upload(text));
+	stop_scheduler();
+	// entries that ended 20 h and 10 h ago, and one that leaves a window of one hour 60 s after now, which leaves time for the setup below
+	time_t now = time(NULL);
+	time_t recent_end = now - 3600 + 60;
+	char entries[1024];
+	snprintf(entries, sizeof(entries), "Old\t1\t%ld\t%ld\tsucceeded\t-\t\t1\tnormal 50\nMid\t2\t%ld\t%ld\tfailed\t-\tbroken\t3\thigh 70\nRecent\t1\t%ld\t%ld\tsucceeded\tH\t\t0\thook night end\n", (long)(now - 21 * 3600), (long)(now - 20 * 3600), (long)(now - 11 * 3600), (long)(now - 10 * 3600), (long)(recent_end - 600), (long)recent_end);
+	REQUIRE(set_saved_history(entries));
+	REQUIRE(start_scheduler());
+	const char *old_text = " | Old | run 1/1 | normal 50 | SUCCEEDED | -", *mid_text = " | Mid | run 2/3 | high 70 | FAILED | broken", *recent_text = " | Recent | - | hook night end | SUCCEEDED | -";
+	const char *default_texts[] = { mid_text, recent_text };
+	const indigo_property_state default_lights[] = { INDIGO_ALERT_STATE, INDIGO_OK_STATE };
+	ASSERT_TRUE(wait_timeline(default_texts, default_lights, 2, 10));
+	// the history always holds everything
+	ASSERT_EQ_INT(3, history_count());
+	REQUIRE(set_history_window(-1));
+	const char *all_texts[] = { old_text, mid_text, recent_text };
+	const indigo_property_state all_lights[] = { INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE };
+	ASSERT_TRUE(wait_timeline(all_texts, all_lights, 3, 10));
+	REQUIRE(set_history_window(0));
+	ASSERT_TRUE(wait_timeline(NULL, NULL, 0, 10));
+	ASSERT_EQ_INT(3, history_count());
+	// one hour: only Recent, until it leaves the window while a task runs
+	REQUIRE(set_history_window(1));
+	REQUIRE(upload("// @task Runner\n" BODY_WAIT(120)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Runner", "RUNNING", 20));
+	REQUIRE(time(NULL) < recent_end + 3600);
+	ASSERT_TRUE(wait_timeline_composed(1, 5));
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	REQUIRE(timeline_items(labels, states, 16) >= 1);
+	ASSERT_TRUE(strstr(labels[0], recent_text) != NULL);
+	bool present = true;
+	time_t gone = 0;
+	for (int i = 0; i < 12000 && present; i++) {
+		int count = timeline_items(labels, states, 16);
+		present = count < 0;
+		for (int j = 0; j < count && j < 16; j++) {
+			present = present || strstr(labels[j], " | Recent | ") != NULL;
+		}
+		if (present) {
+			indigo_usleep(10000);
+		} else {
+			gone = time(NULL);
+		}
+	}
+	ASSERT_FALSE(present);
+	// the regular check runs every second here
+	ASSERT_TRUE(gone >= recent_end + 3600 && gone <= recent_end + 3600 + 5);
+	ASSERT_TRUE(task_light("Runner", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_timeline_composed(0, 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 15));
+	// saved with the configuration
+	REQUIRE(set_history_window(5));
+	stop_scheduler();
+	REQUIRE(start_scheduler());
+	ASSERT_TRUE(history_window() == 5);
+}
+
+// entries saved by an older version have no repeat count and priority, "-" in their columns; every entry is saved again with the appended fields
+static void history_restores_entries_of_older_versions(void) {
+	char later[32], text[256];
+	utc(time(NULL) + 3 * 86400, later);
+	snprintf(text, sizeof(text), "// @task Seed\n// @window %s ..\n" BODY_WAIT(1), later);
+	REQUIRE(upload(text));
+	stop_scheduler();
+	time_t now = time(NULL);
+	char entries[1024];
+	snprintf(entries, sizeof(entries), "Ancient\t4\t%ld\t%ld\tpreempted\t-\tby Rush\nTrimmed\t1\t%ld\t%ld\tsucceeded\nFresh\t1\t%ld\t%ld\tsucceeded\tU\t\t1\turgent\nDusk\t1\t%ld\t%ld\taborted\tH\tstopped\t0\thook night start\n", (long)(now - 4000), (long)(now - 3900), (long)(now - 3000), (long)(now - 2900), (long)(now - 2000), (long)(now - 1900), (long)(now - 1000), (long)(now - 900));
+	REQUIRE(set_saved_history(entries));
+	REQUIRE(start_scheduler());
+	const char *texts[] = { " | Ancient | - | - | PREEMPTED | by Rush", " | Trimmed | - | - | SUCCEEDED | -", " | Fresh | run 1/1 | urgent | SUCCEEDED | -", " | Dusk | - | hook night start | ABORTED | stopped" };
+	const indigo_property_state lights[] = { INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE };
+	char lines[4][INDIGO_VALUE_SIZE];
+	REQUIRE(history_lines(lines, 4) == 4);
+	for (int i = 0; i < 4; i++) {
+		ASSERT_TRUE(strstr(lines[i], texts[i]) != NULL);
+	}
+	ASSERT_EQ_INT(4, check_history_columns());
+	ASSERT_TRUE(wait_timeline(texts, lights, 4, 10));
+	// a change saves the configuration, with the repeat count and the priority appended to every entry
+	snprintf(text, sizeof(text), "// @task Other\n// @window %s ..\n" BODY_WAIT(1), later);
+	REQUIRE(upload(text));
+	stop_scheduler();
+	char path[512];
+	snprintf(path, sizeof(path), "%s/Scheduler_Agent.config", indigo_uni_config_folder());
+	FILE *file = fopen(path, "rb");
+	REQUIRE(file != NULL);
+	static char content[1048576];
+	size_t length = fread(content, 1, sizeof(content) - 1, file);
+	fclose(file);
+	content[length] = 0;
+	ASSERT_TRUE(strstr(content, "\tpreempted\t-\tby Rush\t0\t\n") != NULL);
+	ASSERT_TRUE(strstr(content, "\tsucceeded\tU\t\t1\turgent\n") != NULL);
+	ASSERT_TRUE(strstr(content, "\taborted\tH\tstopped\t0\thook night start\n") != NULL);
+	REQUIRE(start_scheduler());
+	char again[4][INDIGO_VALUE_SIZE];
+	REQUIRE(history_lines(again, 4) == 4);
+	for (int i = 0; i < 4; i++) {
+		ASSERT_STREQ(lines[i], again[i]);
+	}
+}
+
+// 200 restored entries with every field at its longest are saved and restored again without loss
+static void history_with_longest_fields_round_trips(void) {
+	char later[32], text[256];
+	utc(time(NULL) + 3 * 86400, later);
+	snprintf(text, sizeof(text), "// @task Seed\n// @window %s ..\n" BODY_WAIT(1), later);
+	REQUIRE(upload(text));
+	stop_scheduler();
+	// a name of 40 bytes, the longest reason of 511 bytes, the longest priority of 47 bytes and the largest numbers
+	char reason[INDIGO_VALUE_SIZE], priority[48];
+	memset(reason, 'r', sizeof(reason) - 1);
+	reason[sizeof(reason) - 1] = 0;
+	memset(priority, 'p', sizeof(priority) - 1);
+	priority[sizeof(priority) - 1] = 0;
+	static char entries[200 * 768];
+	size_t used = 0;
+	time_t now = time(NULL);
+	for (int i = 0; i < 200; i++) {
+		used += snprintf(entries + used, sizeof(entries) - used, "Longest name of a task, number %09d\t2147483647\t%ld\t%ld\tpreempted\tU\t%s\t2147483647\t%s\n", i, (long)(now - 7200), (long)(now - 3600), reason, priority);
+	}
+	REQUIRE(set_saved_history(entries));
+	REQUIRE(start_scheduler());
+	static char lines[200][INDIGO_VALUE_SIZE], again[200][INDIGO_VALUE_SIZE];
+	REQUIRE(history_lines(lines, 200) == 200);
+	// the whole repeat count and the whole priority of 47 bytes are restored
+	char expected[INDIGO_VALUE_SIZE];
+	snprintf(expected, sizeof(expected), " | Longest name of a task, number %09d | run 2147483647/2147483647 | %s | PREEMPTED | rrr", 199, priority);
+	ASSERT_TRUE(strstr(lines[199], expected) != NULL);
+	// a change saves the configuration with every entry, then a restart restores them unchanged
+	snprintf(text, sizeof(text), "// @task Other\n// @window %s ..\n" BODY_WAIT(1), later);
+	REQUIRE(upload(text));
+	stop_scheduler();
+	REQUIRE(start_scheduler());
+	REQUIRE(history_lines(again, 200) == 200);
+	for (int i = 0; i < 200; i++) {
+		ASSERT_STREQ(lines[i], again[i]);
+	}
 }
 
 static void labels_have_uniform_columns(void) {
@@ -3890,17 +4237,20 @@ static void labels_have_uniform_columns(void) {
 		indigo_usleep(20000);
 	}
 	ASSERT_EQ_INT(3, history_count());
-	ASSERT_EQ_INT(history_count(), check_columns(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME, 6));
+	ASSERT_EQ_INT(history_count(), check_history_columns());
 	ASSERT_TRUE(history_label("Good #2", 0, label) && split_label(label, 6, columns));
 	ASSERT_STREQ("Good", columns[1]);
-	ASSERT_STREQ("run 2", columns[2]);
-	ASSERT_STREQ("task", columns[3]);
+	ASSERT_STREQ("run 2/2", columns[2]);
+	ASSERT_STREQ("normal 50", columns[3]);
 	ASSERT_STREQ("SUCCEEDED", columns[4]);
 	ASSERT_STREQ("-", columns[5]);
 	ASSERT_TRUE(history_label("Bad #1", 0, label) && split_label(label, 6, columns));
 	ASSERT_STREQ("FAILED", columns[4]);
 	ASSERT_TRUE(!strncmp(columns[5], "Error: a | b xxx", 16));
 	ASSERT_TRUE(strlen(label) < INDIGO_VALUE_SIZE);
+	// the timeline has the same six columns
+	ASSERT_TRUE(wait_timeline_composed(3, 10));
+	ASSERT_TRUE(check_columns(AGENT_SCHEDULER_TIMELINE_PROPERTY_NAME, 6) >= 3);
 }
 
 static void duration_estimated_measured_and_set(void) {
@@ -4122,7 +4472,7 @@ static void urgent_insertion(bool fail) {
 	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 20));
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(history_label("Long #1", 0, label) && strstr(label, "| PREEMPTED | by Flash"));
-	ASSERT_TRUE(history_label("Flash #1", 0, label) && strstr(label, "| Flash | run 1 | urgent | SUCCEEDED | -"));
+	ASSERT_TRUE(history_label("Flash #1", 0, label) && strstr(label, "| Flash | run 1/1 | urgent | SUCCEEDED | -"));
 	ASSERT_TRUE(wait_message("Task 'Queued' completed", 1, 20));
 	ASSERT_TRUE(message_position("Starting task 'Queued'") > message_position("Task 'Flash' completed"));
 	if (fail) {
@@ -4943,7 +5293,7 @@ static void unsafe_hold_aborts_a_running_task(void) {
 	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
 	ASSERT_TRUE(message_position("Task 'Work' aborted") < message_position("Starting hook 'Secure'"));
 	ASSERT_TRUE(wait_reason("unsafe conditions", 5));
-	ASSERT_TRUE(history_has("Work #1", "| task | UNSAFE | unsafe conditions"));
+	ASSERT_TRUE(history_has("Work #1", "| run 1/1 | normal 50 | UNSAFE | unsafe conditions"));
 	// the run used no retry and had no retry delay
 	ASSERT_TRUE(wait_task_state("Work", "QUEUED", 5));
 	char label[INDIGO_VALUE_SIZE];
@@ -4972,7 +5322,7 @@ static void unsafe_hold_fails_a_task_with_preempted_fail(void) {
 	set_safety(INDIGO_ALERT_STATE);
 	ASSERT_TRUE(wait_message("Task 'Work' aborted by unsafe conditions and failed", 1, 10));
 	ASSERT_EQ_INT(0, count_messages("Task 'Work' aborted by unsafe conditions, it will be retried"));
-	ASSERT_TRUE(history_has("Work #1", "| task | UNSAFE | unsafe conditions"));
+	ASSERT_TRUE(history_has("Work #1", "| run 1/1 | normal 50 | UNSAFE | unsafe conditions"));
 	// @preempted fail applies as after an urgent preemption, the retry is not used
 	ASSERT_TRUE(wait_task_state("Work", "FAILED", 5));
 	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
@@ -4993,7 +5343,7 @@ static void unsafe_hold_aborts_an_urgent_task(void) {
 	indigo_usleep(1000000);
 	set_safety(INDIGO_ALERT_STATE);
 	ASSERT_TRUE(wait_message("Task 'Flash' aborted by unsafe conditions, it will be retried", 1, 10));
-	ASSERT_TRUE(history_has("Flash #1", "| urgent | UNSAFE | unsafe conditions"));
+	ASSERT_TRUE(history_has("Flash #1", "| run 1/1 | urgent | UNSAFE | unsafe conditions"));
 	// the one-off urgent task stays in the list
 	ASSERT_TRUE(wait_task_state("Flash", "QUEUED", 5));
 	indigo_usleep(2000000);
@@ -5013,7 +5363,7 @@ static void unsafe_hold_fails_an_urgent_task_with_preempted_fail(void) {
 	indigo_usleep(1000000);
 	set_safety(INDIGO_ALERT_STATE);
 	ASSERT_TRUE(wait_message("Task 'Flash' aborted by unsafe conditions and failed", 1, 10));
-	ASSERT_TRUE(history_has("Flash #1", "| urgent | UNSAFE | unsafe conditions"));
+	ASSERT_TRUE(history_has("Flash #1", "| run 1/1 | urgent | UNSAFE | unsafe conditions"));
 	// the ended one-off urgent task leaves the list and is counted as an urgent failure
 	ASSERT_TRUE(wait_task_removed("Flash", 5));
 	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, 1, 5));
@@ -5073,7 +5423,7 @@ static void unsafe_hold_lets_shutdown_finish(void) {
 	ASSERT_TRUE(wait_message("Unsafe conditions, the scheduler holds", 1, 5));
 	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
-	ASSERT_TRUE(history_has("Close", "| hook | SUCCEEDED | -"));
+	ASSERT_TRUE(history_has("Close", "| - | hook shutdown | SUCCEEDED | -"));
 	indigo_usleep(1500000);
 	// the stop runs the shutdown hook, the unsafe hook does not run
 	ASSERT_EQ_INT(0, count_messages("aborted by unsafe conditions"));
@@ -5094,7 +5444,7 @@ static void unsafe_hold_lets_night_end_finish(void) {
 	ASSERT_TRUE(wait_message("Hook 'Morning' completed", 1, 15));
 	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
 	ASSERT_TRUE(message_position("Hook 'Morning' completed") < message_position("Starting hook 'Secure'"));
-	ASSERT_TRUE(history_has("Morning", "| hook | SUCCEEDED | -"));
+	ASSERT_TRUE(history_has("Morning", "| - | hook night end | SUCCEEDED | -"));
 	ASSERT_EQ_INT(0, count_messages("aborted by unsafe conditions"));
 }
 
@@ -5111,7 +5461,7 @@ static void unsafe_hold_aborts_the_startup_hook(void) {
 	indigo_usleep(1000000);
 	set_safety(INDIGO_ALERT_STATE);
 	ASSERT_TRUE(wait_message("Hook 'Prepare' aborted by unsafe conditions", 1, 10));
-	ASSERT_TRUE(history_has("Prepare", "| hook | UNSAFE | unsafe conditions"));
+	ASSERT_TRUE(history_has("Prepare", "| - | hook startup | UNSAFE | unsafe conditions"));
 	// the startup hook may have prepared half of the equipment, the unsafe hook runs
 	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 1, 15));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_BUSY_STATE, 1));
@@ -5139,7 +5489,7 @@ static void unsafe_hold_aborts_the_idle_hook(void) {
 	indigo_usleep(1000000);
 	set_safety(INDIGO_ALERT_STATE);
 	ASSERT_TRUE(wait_message("Hook 'Park' aborted by unsafe conditions", 1, 10));
-	ASSERT_TRUE(history_has("Park", "| hook | UNSAFE | unsafe conditions"));
+	ASSERT_TRUE(history_has("Park", "| - | hook idle | UNSAFE | unsafe conditions"));
 	set_safety(INDIGO_OK_STATE);
 	ASSERT_TRUE(wait_message("Safe conditions, the unsafe hold ends", 1, 10));
 	indigo_usleep(2000000);
@@ -5159,7 +5509,7 @@ static void unsafe_hold_aborts_the_night_start_hook(void) {
 	indigo_usleep(1000000);
 	set_safety(INDIGO_ALERT_STATE);
 	ASSERT_TRUE(wait_message("Hook 'Evening' aborted by unsafe conditions", 1, 10));
-	ASSERT_TRUE(history_has("Evening", "| hook | UNSAFE | unsafe conditions"));
+	ASSERT_TRUE(history_has("Evening", "| - | hook night start | UNSAFE | unsafe conditions"));
 	set_safety(INDIGO_OK_STATE);
 	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 20));
 	// the night counts as started, its start hook does not run again
@@ -5186,7 +5536,7 @@ static void unsafe_hold_aborts_the_resume_hook(void) {
 	indigo_usleep(1000000);
 	set_safety(INDIGO_ALERT_STATE);
 	ASSERT_TRUE(wait_message("Hook 'Prepare' aborted by unsafe conditions", 1, 10));
-	ASSERT_TRUE(history_has("Prepare", "| hook | UNSAFE | unsafe conditions"));
+	ASSERT_TRUE(history_has("Prepare", "| - | hook resume | UNSAFE | unsafe conditions"));
 	set_safety(INDIGO_OK_STATE);
 	// the hold ends in standby, so the resume hook prepares before the urgent task
 	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 25));
@@ -5211,7 +5561,7 @@ static void unsafe_hold_aborts_the_safe_hook(void) {
 	indigo_usleep(1000000);
 	set_safety(INDIGO_ALERT_STATE);
 	ASSERT_TRUE(wait_message("Hook 'Reopen' aborted by unsafe conditions", 1, 10));
-	ASSERT_TRUE(history_has("Reopen", "| hook | UNSAFE | unsafe conditions"));
+	ASSERT_TRUE(history_has("Reopen", "| - | hook safe | UNSAFE | unsafe conditions"));
 	// a new hold, with its own unsafe hook
 	ASSERT_TRUE(wait_message("Hook 'Secure' completed", 2, 15));
 	ASSERT_EQ_INT(2, count_messages("Unsafe conditions, the scheduler holds"));
@@ -6543,6 +6893,10 @@ static const indigo_test_case cases[] = {
 	{ "start_during_shutdown_hook_continues", start_during_shutdown_hook_continues },
 	{ "history_records_runs", history_records_runs },
 	{ "history_lists_oldest_first", history_lists_oldest_first },
+	{ "timeline_lists_history_then_plan", timeline_lists_history_then_plan },
+	{ "history_window_limits_the_timeline", history_window_limits_the_timeline },
+	{ "history_restores_entries_of_older_versions", history_restores_entries_of_older_versions },
+	{ "history_with_longest_fields_round_trips", history_with_longest_fields_round_trips },
 	{ "labels_have_uniform_columns", labels_have_uniform_columns },
 	{ "duration_estimated_measured_and_set", duration_estimated_measured_and_set },
 	{ "library_without_estimate_uses_the_default", library_without_estimate_uses_the_default },

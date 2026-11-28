@@ -388,8 +388,10 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Task counters: `DONE` and `FAILED` (failed or expired) count the tasks of the list; `URGENT_DONE` and `URGENT_FAILED` count the one-off urgent tasks, which leave the list when they end; a deleted or aborted one-off task is not counted. The urgent counters are saved with the history and reset with it. `TOTAL` counts the tasks of the list. The property state is Idle before the first `START`, Busy while scheduling, Ok after `STOP` and the automatic stop, and Alert after `ABORT` (also while stopped), a failed `STARTUP`, `NIGHT_START`, `RESUME`, `UNSAFE`, `SAFE` or `SHUTDOWN` hook, or a `STOP_TIMEOUT` stop |
 | `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `REASON` | The running task or hook, and why nothing starts when the scheduler waits. `REASON` gives the reasons of the scheduler itself (the unsafe hold, the Scripting Agent, `Sequencer.js` or another sequence, the stop, `no tasks`, `all tasks finished`, `estimating the task duration`, `no task is ready`). When the tasks only wait for their constraints, or the [VISIBILITY](#strategies) plan waits for its next run, it names the next task run of the [night plan](#night-plan-preview), `<task> starts at HH:MM UTC, as planned`, in both strategies, and follows every new plan; it is `no task can run tonight` when the plan has no task run. Why each task waits is in the reason column of `AGENT_SCHEDULER_TASK_STATE` |
 | `AGENT_SCHEDULER_PLAN` | light | one per planned run | The forecast of the rest of the night in expected run order, see [Night plan preview](#night-plan-preview) |
-| `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The record of finished runs, oldest first, newest last, see [Run history](#run-history) |
-| `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Remove all entries from `AGENT_SCHEDULER_HISTORY` |
+| `AGENT_SCHEDULER_TIMELINE` | light | one per entry | The finished runs inside the history window followed by the night plan, in time order, see [Timeline](#timeline) |
+| `AGENT_SCHEDULER_HISTORY` | text, read-only | `ENTRIES` | The record of all stored finished runs, one line per run, oldest first, newest last, see [Run history](#run-history) |
+| `AGENT_SCHEDULER_HISTORY_WINDOW` | number | `HOURS` | How much of the history the timeline shows: the runs that ended within that many hours before now, −1 to 8760, default 16; −1 shows all stored runs, 0 none. It does not change `AGENT_SCHEDULER_HISTORY`, see [Timeline](#timeline) |
+| `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Remove all entries from `AGENT_SCHEDULER_HISTORY` and from the timeline |
 | `AGENT_SCHEDULER_RESTORE_HISTORY` | text | `ENTRIES` | Used only to restore the run history from the configuration; published with an empty value, and changes from clients are rejected |
 | `AGENT_SCHEDULER_SETTINGS` | number | see below | Scheduler settings |
 | `AGENT_SCHEDULER_DATA` | switch | `OBJECT`, `FITS`, `FOLDER` | What the agent sets on the Imager Agent for a run, any of many, see [Observation data](#observation-data) |
@@ -424,9 +426,9 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 
 `AGENT_SCHEDULER_TASK_NAME` and `AGENT_SCHEDULER_TASK_COMMAND` form a two-step command, which is a common INDIGO idiom. Two clients that issue commands at the same moment can interfere. If both properties are changed in one client action, the command applies to the name sent with it.
 
-**Labels and list properties.** INDIGO item labels are limited to 511 bytes, and clients show them in narrow lists. Task names are therefore limited to 40 bytes. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are cut to fit without splitting a UTF-8 character; only the last column, the reason, is cut. These properties are defined and updated without a message; a full failure reason reaches the client in the agent's own message, such as `Task '<name>' failed: <reason>`. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `RUN_<n>`), not task names.
+**Labels and list properties.** INDIGO item labels are limited to 511 bytes, and clients show them in narrow lists. Task names are therefore limited to 40 bytes. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_TIMELINE` and the lines of `AGENT_SCHEDULER_HISTORY` are cut to 511 bytes without splitting a UTF-8 character; only the last column, the reason, is cut. These properties are defined and updated without a message; a full failure reason reaches the client in the agent's own message, such as `Task '<name>' failed: <reason>`. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `LINE_<n>`), not task names.
 
-Changing the number of items of a list property requires deleting and defining it again, which clients see as the list being rebuilt. INDIGO cannot change an item label with an update either. The agent therefore redefines `AGENT_SCHEDULER_TASK_STATE` and `AGENT_SCHEDULER_PLAN` only when their items or labels change, and updates them in place when only the lights change. `AGENT_SCHEDULER_HISTORY` is redefined whenever it changes.
+Changing the number of items of a list property requires deleting and defining it again, which clients see as the list being rebuilt. INDIGO cannot change an item label with an update either. The agent therefore redefines `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_TIMELINE` only when their items or labels change, and updates them in place when only the lights change. `AGENT_SCHEDULER_HISTORY` is a text property with one item, which is updated whenever the history changes; its value holds the whole history, up to 200 lines.
 
 ### Editing tasks
 
@@ -492,7 +494,7 @@ Everything the agent restores therefore goes through a defined, writable text pr
 
 - a task added, edited or deleted;
 - a `TASK_COMMAND`;
-- a change of `SETTINGS`, `HOOKS`, `NIGHT` or `SAFETY_MISSING`;
+- a change of `SETTINGS`, `HOOKS`, `NIGHT`, `SAFETY_MISSING` or `HISTORY_WINDOW`;
 - a task state transition or a new history entry;
 - a change between safe and unsafe conditions, and the start and end of an [unsafe hold](#unsafe-hold);
 - a history clear.
@@ -502,8 +504,8 @@ Changes that come in quick succession are written once, two seconds after the la
 1. one `AGENT_SCHEDULER_ADD_TASK` change per stored task, in list order. The agent saves a temporary copy of the property with two items:
    - `TASK`, the task text;
    - `STATUS`, the runtime status in a compact form, for example `state=DONE runs=2 retries=0 disabled=0 measured=3540`.
-2. `AGENT_SCHEDULER_SETTINGS`, `AGENT_SCHEDULER_DATA`, `AGENT_SCHEDULER_DATA_DIR`, `AGENT_SCHEDULER_HOOKS`, `AGENT_SCHEDULER_NIGHT`, `AGENT_SCHEDULER_STRATEGY` and `AGENT_SCHEDULER_SAFETY_MISSING`;
-3. one `AGENT_SCHEDULER_RESTORE_HISTORY` change. The agent saves a temporary copy whose `ENTRIES` item holds all history entries, one line per entry, oldest first, preceded by a line `#urgent`, `URGENT_DONE`, `URGENT_FAILED` when either counter is not zero, and by a line `#safety`, `unsafe` or `safe`, time when the conditions have ever been unsafe: `unsafe` when they were unsafe at the save, `safe` with the time of the latest unsafe report otherwise; both lines have too few fields to be read as an entry by a version without them, and `AGENT_SCHEDULER_CLEAR_HISTORY` does not remove the `#safety` line. Each line holds the task name, run number, start, end, result, a mark (`H` for a hook, `U` for an urgent task, `-` for neither) and the reason, separated by tabs. The configuration reader trims trailing whitespace, so no field is saved as a space, and entries whose trailing empty fields were trimmed are still restored.
+2. `AGENT_SCHEDULER_SETTINGS`, `AGENT_SCHEDULER_DATA`, `AGENT_SCHEDULER_DATA_DIR`, `AGENT_SCHEDULER_HOOKS`, `AGENT_SCHEDULER_NIGHT`, `AGENT_SCHEDULER_STRATEGY`, `AGENT_SCHEDULER_SAFETY_MISSING` and `AGENT_SCHEDULER_HISTORY_WINDOW`;
+3. one `AGENT_SCHEDULER_RESTORE_HISTORY` change. The agent saves a temporary copy whose `ENTRIES` item holds all history entries, one line per entry, oldest first, preceded by a line `#urgent`, `URGENT_DONE`, `URGENT_FAILED` when either counter is not zero, and by a line `#safety`, `unsafe` or `safe`, time when the conditions have ever been unsafe: `unsafe` when they were unsafe at the save, `safe` with the time of the latest unsafe report otherwise; both lines have too few fields to be read as an entry by a version without them, and `AGENT_SCHEDULER_CLEAR_HISTORY` does not remove the `#safety` line. Each line holds the task name, run number, start, end, result, a mark (`H` for a hook, `U` for an urgent task, `-` for neither), the reason, the repeat count of the task (`0` for a hook) and the priority column of the [plan](#night-plan-preview) (for example `normal 50`, `urgent` or `hook night end`), separated by tabs. The last two fields are appended after the reason, so an entry saved without them, by an earlier version, is still restored, with `-` in the run and priority columns of its label. An earlier version reading a newer file takes the two fields as part of the reason, with the tabs turned into spaces. The configuration reader trims trailing whitespace, so no field is saved as a space, and entries whose trailing empty fields were trimmed are still restored.
 
 With a task text of at most 16 KiB and 128 tasks, the file stays below about 2 MiB.
 
@@ -812,41 +814,50 @@ It is also published while the scheduler is stopped, as the plan that `START` wo
 
 ### Run history
 
-`AGENT_SCHEDULER_TASK_STATE` shows only the current state of each task. To show what actually happened, the agent keeps a record of finished runs in `AGENT_SCHEDULER_HISTORY`.
+`AGENT_SCHEDULER_TASK_STATE` shows only the current state of each task. To show what actually happened, the agent keeps a record of finished runs in `AGENT_SCHEDULER_HISTORY`, a read-only text property whose item `ENTRIES` holds one line per run, and shows the recent part of it in the [timeline](#timeline).
 
-**Entries.** An entry is added whenever a run ends, including hook runs and urgent tasks:
+**Entries.** An entry is added whenever a run ends, including hook runs and urgent tasks. Its light in the timeline follows the result:
 
 | Result | Light | Meaning |
 |---|---|---|
 | `succeeded` | Ok | The sequence ended Ok |
 | `failed` | Alert | The sequence ended Alert, or the task failed to start |
-| `preempted` | Busy | An urgent task interrupted the run |
-| `aborted` | Busy | `ABORT` or a delete of the running task |
-| `unsafe` | Busy | The [unsafe hold](#unsafe-hold) aborted the run |
+| `preempted` | Alert | An urgent task interrupted the run |
+| `aborted` | Alert | `ABORT` or a delete of the running task |
+| `unsafe` | Alert | The [unsafe hold](#unsafe-hold) aborted the run |
 
-The Busy light is used for interrupted runs, so that they stand out from both successes and failures.
+Every run that did not succeed has the Alert light, so that Busy in the timeline marks only the running entry; the result column tells a failure from an interrupted run.
 
 A run that does not stop within `STOP_TIMEOUT` keeps the result of what caused the stop: `preempted`, `aborted` or `failed`. The reason of a task run preempted or aborted by `ABORT` is then `did not stop in time`; a deleted task keeps `deleted` and a failed run its failure reason.
 
-The item label has six columns joined by ` | `, `-` for an empty one:
+Each line has the six columns of the [night plan](#night-plan-preview) joined by ` | `, `-` for an empty one, so that the history and the plan line up in the timeline:
 
 - the UTC start and end times, `YYYY-MM-DD HH:MM-HH:MM`;
 - the task name;
-- the run number, `run <n>`;
-- the kind, `task`, `urgent` or `hook`;
+- the run, `run <n>/<repeat>` with the repeat count of the task when the run ended, or `-` for a hook;
+- the priority as the plan shows it: `<class> <level>` such as `normal 50` for a task, `urgent` for an urgent task, and `hook startup`, `hook shutdown`, `hook night start`, `hook night end`, `hook idle`, `hook resume`, `hook unsafe` or `hook safe` for a hook;
 - the result in capitals: `SUCCEEDED`, `FAILED`, `PREEMPTED`, `ABORTED` or `UNSAFE`;
 - the reason, the last column; for a failure it is, for a sequence that ended Alert, `SEQUENCE_FAILURE.MESSAGE` of the Scripting Agent, which is the failure message of the step when a step failed and empty when the sequence was aborted by hand outside the scheduler, see [Running a task](#running-a-task); the script error message, for a failed start `the sequence was not started` or `no result from the Scripting Agent`, or `the Scripting Agent or Sequencer.js disappeared` when either disappears during the run.
 
-For example: `2026-11-12 20:15-21:02 | M31 LRGB | run 1 | task | PREEMPTED | by SN 2026abc`.
+For example: `2026-11-12 20:15-21:02 | M31 LRGB | run 1/1 | normal 50 | PREEMPTED | by SN 2026abc` or `2026-11-13 05:40-05:42 | Park | - | hook night end | SUCCEEDED | -`.
 
-Entries are oldest first, the newest is last. Expiry is not a run, so an expired task gets no entry; its state remains visible in `AGENT_SCHEDULER_TASK_STATE`.
+Entries are oldest first, the newest is last; the lines are separated by a line feed, with none after the last. Expiry is not a run, so an expired task gets no entry; its state remains visible in `AGENT_SCHEDULER_TASK_STATE`.
 
 **Limits.**
 
 - The history keeps the last 200 entries. Older entries are dropped.
 - It survives a restart: entries are saved in the configuration and replayed on load, see [Persistence](#persistence).
 - Deleting or resetting a task does not remove its entries.
-- `AGENT_SCHEDULER_CLEAR_HISTORY` removes all entries and resets the urgent counters of `AGENT_SCHEDULER_STATE`.
+- `AGENT_SCHEDULER_CLEAR_HISTORY` removes all entries, also from the timeline, and resets the urgent counters of `AGENT_SCHEDULER_STATE`.
+
+### Timeline
+
+`AGENT_SCHEDULER_TIMELINE` shows what happened and what comes next in one list: the history entries whose run ended inside the history window, oldest first, then the running task or hook and the planned runs exactly as in [`AGENT_SCHEDULER_PLAN`](#night-plan-preview). Its labels have the same six columns as the plan and the history.
+
+- A history entry has the light of its result: Ok for `succeeded`, Alert for `failed`, `preempted`, `aborted` and `unsafe`, see [Run history](#run-history). The running entry is the only Busy one, with the state `RUNNING`, and the planned runs are Idle with the state `PLANNED`.
+- `AGENT_SCHEDULER_HISTORY_WINDOW.HOURS` selects the history entries: with a positive value those whose run ended within that many hours before now, with `0` none and with `-1` all stored entries. The default is 16 hours, which covers the previous night; the value is saved with the configuration. `AGENT_SCHEDULER_HISTORY` always holds all stored entries.
+- The timeline is published again when the history or the plan changes, when the window changes, and at every `IDLE_CHECK_INTERVAL`, also while a task runs, so that an entry leaves it at the latest one check after its run end falls out of the window.
+- Like the plan, it is redefined only when its items or labels change and updated in place when only the lights change.
 
 ### State between tasks
 
@@ -988,7 +999,8 @@ Phases 1, 2, 3, 5 and 6 are implemented. Phases 4 and 7 are planned.
   - the night plan preview: expected order and times of several tasks with different windows and priorities, repeats, only planned runs listed, `UNPLANNED` tasks with the reason in the task list, set when a task finds no room and cleared when it is planned again, never for a hook, a running or a finished task, and recomputation after an upload, an urgent submission and a task ending early;
   - `Sequence.prototype.estimate()` in the sequencer tests: every counted builder, `repeat()` and the `unknown` flag;
   - the duration: estimates for bodies with `repeat()`, captures, operations and fixed waits; `UNKNOWN` for time and sky waits and for a loaded `Sequencer.js` without `estimate()`; a set `@duration` taking precedence; the measured duration replacing the estimate after a successful run and being discarded after an edit; no sequence started during estimation, also while another sequence runs;
-  - the run history: one entry per finished run with the correct result and reason for success, failure, failed start, preemption and abort, the entry limit, persistence across restarts and clearing;
+  - the run history: one line per finished run with the correct result and reason for success, failure, failed start, preemption and abort, the run and priority columns of the plan for tasks, urgent tasks and hooks, the whole text of 200 lines, the entry limit, persistence across restarts, entries saved without the repeat count and the priority, and clearing;
+  - the timeline: the history entries with their lights followed by the running and planned runs of the plan, the window of 16 hours by default, `-1`, `0` and a saved value, an entry leaving the window at the regular check while a task runs, and clearing;
   - labels cut to 511 bytes, and list properties redefined only when their items or labels change;
   - a body that fails only when it runs, and a body without `start()`, counting as failures;
   - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task;

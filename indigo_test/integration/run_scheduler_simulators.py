@@ -670,12 +670,12 @@ def main():
 				return client.value(device, name, item)
 
 			def history(name):
-				# (kind, result, reason) of the runs of one task in the history, oldest first
+				# (run, priority, result, reason) of the runs of one task in the history text, one line per run, oldest first
 				entries = []
-				for i in (client.property(AGENT, "AGENT_SCHEDULER_HISTORY") or {}).get("items", []):
-					columns = i.get("label", "").split(" | ")
+				for line in (client.value(AGENT, "AGENT_SCHEDULER_HISTORY", "ENTRIES") or "").split("\n"):
+					columns = line.split(" | ")
 					if len(columns) == 6 and columns[1] == name:
-						entries.append((columns[3], columns[4], columns[5]))
+						entries.append((columns[2], columns[3], columns[4], columns[5]))
 				return entries
 
 			def set_wind(speed):
@@ -729,7 +729,7 @@ def main():
 				client.wait(lambda: client.state("Imager Agent", "AGENT_START_PROCESS") != "Busy", 30, "imager idle after the abort")
 				interrupted = len(run.frames("windy"))
 				assert interrupted < frames, "the capture was not interrupted"
-				client.wait(lambda: ("task", "UNSAFE", "unsafe conditions") in history("Windy"), 10, "unsafe history entry (" + str(history("Windy")) + ")")
+				client.wait(lambda: ("run 1/1", "normal 50", "UNSAFE", "unsafe conditions") in history("Windy"), 10, "unsafe history entry (" + str(history("Windy")) + ")")
 				client.wait(lambda: client.message_count("Hook 'Shelter' completed") == 1, 60, "unsafe hook")
 				client.wait(lambda: client.value(AGENT, "AGENT_SCHEDULER_CURRENT", "REASON") == "unsafe conditions", 10, "hold reason")
 				# the hold keeps everything still while the wind blows
@@ -778,9 +778,9 @@ def main():
 				assert client.value(AGENT, "AGENT_SCHEDULER_STATE", "DONE") == done + 1, "DONE %s, expected %s" % (client.value(AGENT, "AGENT_SCHEDULER_STATE", "DONE"), done + 1)
 				assert client.value(AGENT, "AGENT_SCHEDULER_STATE", "FAILED") == failed, "FAILED changed"
 				assert client.value(AGENT, "AGENT_SCHEDULER_STATE", "TOTAL") == len(client.property(AGENT, "AGENT_SCHEDULER_TASK_STATE")["items"]) == 3, "TOTAL does not match the task list"
-				assert [(k, r) for k, r, _ in history("Windy")] == [("task", "UNSAFE"), ("task", "SUCCEEDED")], "history of Windy: " + str(history("Windy"))
-				assert [(k, r) for k, r, _ in history("Shelter")] == [("hook", "SUCCEEDED")], "history of Shelter: " + str(history("Shelter"))
-				assert [(k, r) for k, r, _ in history("Reopen")] == [("hook", "SUCCEEDED")], "history of Reopen: " + str(history("Reopen"))
+				assert [(n, p, r) for n, p, r, _ in history("Windy")] == [("run 1/1", "normal 50", "UNSAFE"), ("run 1/1", "normal 50", "SUCCEEDED")], "history of Windy: " + str(history("Windy"))
+				assert [(n, p, r) for n, p, r, _ in history("Shelter")] == [("-", "hook unsafe", "SUCCEEDED")], "history of Shelter: " + str(history("Shelter"))
+				assert [(n, p, r) for n, p, r, _ in history("Reopen")] == [("-", "hook safe", "SUCCEEDED")], "history of Reopen: " + str(history("Reopen"))
 
 			run.case(cases[4], preemption_fails)
 			run.case(cases[5], below_horizon)

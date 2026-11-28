@@ -327,9 +327,10 @@ class Topology:
 		return self.client.value(AGENT, "AGENT_SCHEDULER_STATE", item)
 
 	def history(self, name):
+		# (priority, result, reason) of the runs of one task in the history text, one line per run, oldest first
 		entries = []
-		for i in (self.client.property(AGENT, "AGENT_SCHEDULER_HISTORY") or {}).get("items", []):
-			columns = i.get("label", "").split(" | ")
+		for line in (self.client.value(AGENT, "AGENT_SCHEDULER_HISTORY", "ENTRIES") or "").split("\n"):
+			columns = line.split(" | ")
 			if len(columns) == 6 and columns[1] == name:
 				entries.append((columns[3], columns[4], columns[5]))
 		return entries

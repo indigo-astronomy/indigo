@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300002F
+#define DRIVER_VERSION 0x03000030
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -59,11 +59,15 @@
 #define AUX_SAFETY_PROPERTY				"AGENT_AUX_SAFETY"
 #define AUX_SAFETY_SAFE_ITEM			"SAFE"
 #define MAX_HISTORY								200
+// the fields of a saved history entry: task, run, start, end, result, mark, reason, repeat and priority
+#define HISTORY_FIELDS						9
 #define MAX_URGENT_COUNT					1000000
 #define ESTIMATE_TIMEOUT					10
 #define MAX_DURATION							86400
 #define MAX_PLAN_RUNS							256
 #define MAX_PLAN_ITEMS						MAX_PLAN_RUNS
+// the timeline lists the history entries inside the window followed by the night plan
+#define MAX_TIMELINE_ITEMS				(MAX_HISTORY + MAX_PLAN_ITEMS)
 #define LIBRARY_RETRY_INTERVAL		30
 #define SAVE_DELAY								2
 #define SKY_REFRESH_INTERVAL			3600
@@ -157,10 +161,14 @@
 #define SAFETY_MISSING_SAFE_ITEM	(SAFETY_MISSING_PROPERTY->items + 0)
 #define SAFETY_MISSING_UNSAFE_ITEM	(SAFETY_MISSING_PROPERTY->items + 1)
 #define HISTORY_PROPERTY					(PRIVATE_DATA->history_property)
+#define HISTORY_ENTRIES_ITEM			(HISTORY_PROPERTY->items + 0)
+#define HISTORY_WINDOW_PROPERTY		(PRIVATE_DATA->history_window_property)
+#define HISTORY_WINDOW_HOURS_ITEM	(HISTORY_WINDOW_PROPERTY->items + 0)
 #define CLEAR_HISTORY_PROPERTY		(PRIVATE_DATA->clear_history_property)
 #define CLEAR_HISTORY_ITEM				(CLEAR_HISTORY_PROPERTY->items + 0)
 #define RESTORE_HISTORY_PROPERTY	(PRIVATE_DATA->restore_history_property)
 #define PLAN_PROPERTY							(PRIVATE_DATA->plan_property)
+#define TIMELINE_PROPERTY					(PRIVATE_DATA->timeline_property)
 #define RESTORE_HISTORY_ITEM			(RESTORE_HISTORY_PROPERTY->items + 0)
 #define AGENTS_PROPERTY						(PRIVATE_DATA->agents_property)
 #define AGENT_LIST_PROPERTY(role)	(PRIVATE_DATA->agent_list_properties[role])
@@ -263,6 +271,9 @@ typedef struct {
 	run_result result;
 	char mark;
 	char reason[INDIGO_VALUE_SIZE];
+	// the repeat count of the task (0 for a hook and a restored entry without it) and the priority column of the plan
+	int repeat;
+	char priority[48];
 } history_entry;
 
 typedef enum {
@@ -385,9 +396,11 @@ typedef struct {
 	indigo_property *data_dir_property;
 	indigo_property *hooks_property;
 	indigo_property *history_property;
+	indigo_property *history_window_property;
 	indigo_property *clear_history_property;
 	indigo_property *restore_history_property;
 	indigo_property *plan_property;
+	indigo_property *timeline_property;
 	indigo_property *night_property;
 	indigo_property *strategy_property;
 	indigo_property *safety_missing_property;
@@ -406,6 +419,11 @@ typedef struct {
 	indigo_property_state plan_states[MAX_PLAN_ITEMS];
 	int plan_count;
 	bool plan_dirty;
+	// the published timeline, and whether the history or the plan changed since it was published
+	char timeline_labels[MAX_TIMELINE_ITEMS][INDIGO_VALUE_SIZE];
+	indigo_property_state timeline_states[MAX_TIMELINE_ITEMS];
+	int timeline_count;
+	bool timeline_dirty;
 	double plan_due;
 	scheduler_observed observed;
 	// the directory and the object name of the Imager Agent before the first run, restored after every run
@@ -422,7 +440,6 @@ typedef struct {
 	// finished one-off urgent tasks, which leave the task list; saved and cleared with the history
 	int urgent_done;
 	int urgent_failed;
-	unsigned history_serial;
 	scheduler_task tasks[MAX_TASKS];
 	int order[MAX_TASKS];
 	int order_count;
@@ -525,6 +542,8 @@ static void process(indigo_device *device);
 static void update_plan(indigo_device *device, time_t now);
 static int select_planned(indigo_device *device, time_t now, const bool *candidates, int best);
 static void set_next_run_reason(indigo_device *device);
+static const char *task_priority_text(indigo_device *device, scheduler_task *task, char *text, size_t size);
+static const char *plan_hook_name(run_kind kind);
 
 // -------------------------------------------------------------------------------- Helpers
 
@@ -883,43 +902,41 @@ static void apply_status(scheduler_task *task, const char *status) {
 
 // -------------------------------------------------------------------------------- Run history
 
+// the light of a history entry in the timeline: Ok for a success, Alert for a failure and an interrupted run, so that Busy marks only the running entry
 static indigo_property_state history_light(run_result result) {
-	switch (result) {
-		case RESULT_SUCCEEDED:
-			return INDIGO_OK_STATE;
-		case RESULT_FAILED:
-			return INDIGO_ALERT_STATE;
-		default:
-			return INDIGO_BUSY_STATE;
-	}
+	return result == RESULT_SUCCEEDED ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 }
 
+// the columns of the night plan: when, name, run, priority, result and reason; a hook and an entry restored without the repeat count have "-" as the run
 static void history_label(history_entry *entry, char *label, size_t size) {
-	char when[48], run[32];
+	char when[48], run[32] = "";
 	time_range(entry->start, entry->end, when, sizeof(when));
-	snprintf(run, sizeof(run), "run %d", entry->run);
-	const char *columns[] = { when, entry->task, run, entry->mark == 'H' ? "hook" : entry->mark == 'U' ? "urgent" : "task", run_result_labels[entry->result], entry->reason };
+	if (entry->repeat > 0) {
+		snprintf(run, sizeof(run), "run %d/%d", entry->run, entry->repeat);
+	}
+	const char *columns[] = { when, entry->task, run, entry->priority, run_result_labels[entry->result], entry->reason };
 	join_label(label, size, 6, columns);
 }
 
-// the history is a list of finished runs, oldest first and newest last, while the array keeps the newest first; its length changes, so it is defined again
+// the history is the text of all stored runs, one line per run, oldest first and newest last, while the array keeps the newest first; the timeline follows it
 static void update_history_property(indigo_device *device) {
-	indigo_delete_property(device, HISTORY_PROPERTY, NULL);
-	pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
-	for (int position = 0; position < PRIVATE_DATA->history_count; position++) {
-		int i = PRIVATE_DATA->history_count - 1 - position;
-		char name[INDIGO_NAME_SIZE];
+	char *text = indigo_safe_malloc(PRIVATE_DATA->history_count * INDIGO_VALUE_SIZE + 1);
+	char *out = text;
+	*out = 0;
+	for (int i = PRIVATE_DATA->history_count - 1; i >= 0; i--) {
 		char label[INDIGO_VALUE_SIZE];
-		snprintf(name, sizeof(name), AGENT_SCHEDULER_HISTORY_ITEM_NAME, PRIVATE_DATA->history_serial - i);
 		history_label(PRIVATE_DATA->history + i, label, sizeof(label));
-		indigo_init_light_item(HISTORY_PROPERTY->items + position, name, label, history_light(PRIVATE_DATA->history[i].result));
+		out += sprintf(out, "%s%s", out > text ? "\n" : "", label);
 	}
-	HISTORY_PROPERTY->count = PRIVATE_DATA->history_count;
+	pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+	indigo_set_text_item_value(HISTORY_ENTRIES_ITEM, text);
 	pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
-	indigo_define_property(device, HISTORY_PROPERTY, NULL);
+	free(text);
+	indigo_update_property(device, HISTORY_PROPERTY, NULL);
+	PRIVATE_DATA->timeline_dirty = true;
 }
 
-static void insert_history(indigo_device *device, const char *task, int run, time_t start, time_t end, run_result result, char mark, const char *reason) {
+static void insert_history(indigo_device *device, const char *task, int run, int repeat, const char *priority, time_t start, time_t end, run_result result, char mark, const char *reason) {
 	if (PRIVATE_DATA->history_count == MAX_HISTORY) {
 		PRIVATE_DATA->history_count--;
 	}
@@ -929,6 +946,8 @@ static void insert_history(indigo_device *device, const char *task, int run, tim
 	// the name field is shorter than INDIGO_NAME_SIZE, and a restored name may be longer than a valid one
 	snprintf(entry->task, sizeof(entry->task), "%s", task);
 	entry->run = run;
+	entry->repeat = repeat < 0 ? 0 : repeat;
+	snprintf(entry->priority, sizeof(entry->priority), "%s", priority ? priority : "");
 	entry->start = start;
 	entry->end = end;
 	entry->result = result;
@@ -940,36 +959,63 @@ static void insert_history(indigo_device *device, const char *task, int run, tim
 			*c = ' ';
 		}
 	}
+	for (char *c = entry->priority; *c; c++) {
+		if (*c == '\t' || *c == '\n' || *c == '\r') {
+			*c = ' ';
+		}
+	}
 	PRIVATE_DATA->history_count++;
-	PRIVATE_DATA->history_serial++;
 }
 
-// records the end of the current run
+// records the end of the current run with the run and priority columns the plan shows for it
 static void add_history(indigo_device *device, scheduler_task *task, run_result result, const char *reason) {
 	char mark = PRIVATE_DATA->kind != RUN_TASK ? 'H' : is_urgent(task) ? 'U' : ' ';
-	insert_history(device, task->header.name, PRIVATE_DATA->run_number, PRIVATE_DATA->run_start, time(NULL), result, mark, reason);
+	char priority[48], text[48];
+	int repeat = 0;
+	if (PRIVATE_DATA->kind != RUN_TASK) {
+		snprintf(priority, sizeof(priority), "hook %s", plan_hook_name(PRIVATE_DATA->kind));
+	} else {
+		snprintf(priority, sizeof(priority), "%s", task_priority_text(device, task, text, sizeof(text)));
+		repeat = task->header.repeat;
+	}
+	insert_history(device, task->header.name, PRIVATE_DATA->run_number, repeat, priority, PRIVATE_DATA->run_start, time(NULL), result, mark, reason);
 	update_history_property(device);
 }
 
+// appends a whole line to the text of size bytes, of which used are taken; a line that does not fit is left out, the text stays terminated
+static void append_line(char *text, size_t size, size_t *used, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	int length = vsnprintf(text + *used, size - *used, format, args);
+	va_end(args);
+	if (length < 0 || (size_t)length >= size - *used) {
+		text[*used] = 0;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "A history line does not fit into the saved history");
+		return;
+	}
+	*used += length;
+}
+
 static char *history_text(indigo_device *device) {
-	size_t size = PRIVATE_DATA->history_count * (INDIGO_VALUE_SIZE + 128) + 128;
+	// an entry takes at most the name, the reason, the priority, five numbers, the result, the mark and the separators, well below INDIGO_VALUE_SIZE + 256 bytes
+	size_t size = PRIVATE_DATA->history_count * (INDIGO_VALUE_SIZE + 256) + 256;
+	size_t used = 0;
 	char *text = indigo_safe_malloc(size);
-	char *out = text;
-	*out = 0;
+	*text = 0;
 	// the urgent counters go first; a version without them skips the line, which has too few fields for an entry
 	if (PRIVATE_DATA->urgent_done || PRIVATE_DATA->urgent_failed) {
-		out += snprintf(out, size, "#urgent\t%d\t%d\n", PRIVATE_DATA->urgent_done, PRIVATE_DATA->urgent_failed);
+		append_line(text, size, &used, "#urgent\t%d\t%d\n", PRIVATE_DATA->urgent_done, PRIVATE_DATA->urgent_failed);
 	}
 	// the safety at the save and the time of the latest unsafe report, so that START waits for SAFE_DELAY after a restart; CLEAR_HISTORY keeps it
 	if (PRIVATE_DATA->last_unsafe != 0) {
 		// a hold that only awaits the first safety information is no unsafe report, it keeps the saved state
 		bool unsafe = PRIVATE_DATA->safety_awaited ? PRIVATE_DATA->saved_unsafe : PRIVATE_DATA->unsafe_now;
-		out += snprintf(out, size - (out - text), "#safety\t%s\t%ld\n", unsafe ? "unsafe" : "safe", (long)PRIVATE_DATA->last_unsafe);
+		append_line(text, size, &used, "#safety\t%s\t%ld\n", unsafe ? "unsafe" : "safe", (long)PRIVATE_DATA->last_unsafe);
 	}
 	for (int i = PRIVATE_DATA->history_count - 1; i >= 0; i--) {
 		history_entry *entry = PRIVATE_DATA->history + i;
-		// the configuration reader trims trailing whitespace, so no field is saved as a space
-		out += snprintf(out, size - (out - text), "%s\t%d\t%ld\t%ld\t%s\t%c\t%s\n", entry->task, entry->run, (long)entry->start, (long)entry->end, run_result_names[entry->result], entry->mark == ' ' ? '-' : entry->mark, entry->reason);
+		// the configuration reader trims trailing whitespace, so no field is saved as a space; the repeat count and the priority are appended after the reason, which an older version reads as part of the reason, with the tabs turned into spaces
+		append_line(text, size, &used, "%s\t%d\t%ld\t%ld\t%s\t%c\t%s\t%d\t%s\n", entry->task, entry->run, (long)entry->start, (long)entry->end, run_result_names[entry->result], entry->mark == ' ' ? '-' : entry->mark, entry->reason, entry->repeat, entry->priority);
 	}
 	return text;
 }
@@ -985,19 +1031,19 @@ static void restore_history(indigo_device *device, const char *text) {
 		if (length < sizeof(buffer)) {
 			memcpy(buffer, line, length);
 			buffer[length] = 0;
-			char *fields[7];
+			char *fields[HISTORY_FIELDS];
 			int count = 0;
 			char *field = buffer;
-			while (count < 7) {
+			while (count < HISTORY_FIELDS) {
 				fields[count++] = field;
-				char *tab = count < 7 ? strchr(field, '\t') : NULL;
+				char *tab = count < HISTORY_FIELDS ? strchr(field, '\t') : NULL;
 				if (tab == NULL) {
 					break;
 				}
 				*tab = 0;
 				field = tab + 1;
 			}
-			// trailing empty fields may have been trimmed
+			// trailing empty fields may have been trimmed, and an entry of an older version has no repeat count and priority
 			if (count >= 3 && !strcmp(fields[0], "#urgent")) {
 				int done = atoi(fields[1]), failed = atoi(fields[2]);
 				PRIVATE_DATA->urgent_done = done < 0 ? 0 : done > MAX_URGENT_COUNT ? MAX_URGENT_COUNT : done;
@@ -1014,7 +1060,7 @@ static void restore_history(indigo_device *device, const char *text) {
 					}
 				}
 				char mark = count > 5 && (*fields[5] == 'H' || *fields[5] == 'U') ? *fields[5] : ' ';
-				insert_history(device, fields[0], atoi(fields[1]), (time_t)atol(fields[2]), (time_t)atol(fields[3]), result, mark, count > 6 ? fields[6] : "");
+				insert_history(device, fields[0], atoi(fields[1]), count > 7 ? atoi(fields[7]) : 0, count > 8 ? fields[8] : "", (time_t)atol(fields[2]), (time_t)atol(fields[3]), result, mark, count > 6 ? fields[6] : "");
 			}
 		}
 		line = end ? end + 1 : NULL;
@@ -1057,6 +1103,7 @@ static void save_config(indigo_device *device) {
 	indigo_save_property(device, NULL, NIGHT_PROPERTY);
 	indigo_save_property(device, NULL, STRATEGY_PROPERTY);
 	indigo_save_property(device, NULL, SAFETY_MISSING_PROPERTY);
+	indigo_save_property(device, NULL, HISTORY_WINDOW_PROPERTY);
 	char *entries = history_text(device);
 	indigo_property *history = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_RESTORE_HISTORY_PROPERTY_NAME, SCHEDULER_GROUP, "Restore history", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	indigo_init_text_item_raw(history->items, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME, "Entries", entries);
@@ -2929,42 +2976,73 @@ static void plan_run_label(indigo_device *device, scheduler_plan_run *run, char 
 	join_label(label, size, 6, columns);
 }
 
-static void publish_plan(indigo_device *device, char (*labels)[INDIGO_VALUE_SIZE], indigo_property_state *states, int count) {
-	bool redefine = count != PRIVATE_DATA->plan_count;
+// publishes a light list: redefined only when its items or labels change, updated in place when only the lights change; published holds what clients have
+static void publish_list(indigo_device *device, indigo_property *property, const char *item_format, char (*published)[INDIGO_VALUE_SIZE], indigo_property_state *published_states, int *published_count, char (*labels)[INDIGO_VALUE_SIZE], indigo_property_state *states, int count) {
+	bool redefine = count != *published_count;
 	bool changed = false;
 	for (int i = 0; i < count && !redefine; i++) {
-		if (strcmp(labels[i], PRIVATE_DATA->plan_labels[i])) {
+		if (strcmp(labels[i], published[i])) {
 			redefine = true;
-		} else if (states[i] != PRIVATE_DATA->plan_states[i]) {
+		} else if (states[i] != published_states[i]) {
 			changed = true;
 		}
 	}
 	if (redefine) {
-		indigo_delete_property(device, PLAN_PROPERTY, NULL);
+		indigo_delete_property(device, property, NULL);
 	}
 	if (redefine || changed) {
 		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
 		for (int i = 0; i < count; i++) {
 			if (redefine) {
 				char name[INDIGO_NAME_SIZE];
-				snprintf(name, sizeof(name), AGENT_SCHEDULER_PLAN_ITEM_NAME, i);
-				indigo_init_light_item(PLAN_PROPERTY->items + i, name, labels[i], states[i]);
+				snprintf(name, sizeof(name), item_format, i);
+				indigo_init_light_item(property->items + i, name, labels[i], states[i]);
 			} else {
 				// the bus sends an update only for a value that differs from the previous one, which init would overwrite
-				PLAN_PROPERTY->items[i].light.value = states[i];
+				property->items[i].light.value = states[i];
 			}
-			strcpy(PRIVATE_DATA->plan_labels[i], labels[i]);
-			PRIVATE_DATA->plan_states[i] = states[i];
+			strcpy(published[i], labels[i]);
+			published_states[i] = states[i];
 		}
-		PLAN_PROPERTY->count = count;
-		PRIVATE_DATA->plan_count = count;
+		property->count = count;
+		*published_count = count;
 		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
 	}
 	if (redefine) {
-		indigo_define_property(device, PLAN_PROPERTY, NULL);
+		indigo_define_property(device, property, NULL);
 	} else if (changed) {
-		indigo_update_property(device, PLAN_PROPERTY, NULL);
+		indigo_update_property(device, property, NULL);
 	}
+}
+
+static void publish_plan(indigo_device *device, char (*labels)[INDIGO_VALUE_SIZE], indigo_property_state *states, int count) {
+	publish_list(device, PLAN_PROPERTY, AGENT_SCHEDULER_PLAN_ITEM_NAME, PRIVATE_DATA->plan_labels, PRIVATE_DATA->plan_states, &PRIVATE_DATA->plan_count, labels, states, count);
+	PRIVATE_DATA->timeline_dirty = true;
+}
+
+// the history entries whose run ended inside the window, oldest first, followed by the published night plan; called after a change of either and on every check, when entries leave the window
+static void update_timeline(indigo_device *device) {
+	static char labels[MAX_TIMELINE_ITEMS][INDIGO_VALUE_SIZE];
+	static indigo_property_state states[MAX_TIMELINE_ITEMS];
+	double window = HISTORY_WINDOW_HOURS_ITEM->number.value;
+	time_t now = time(NULL);
+	int count = 0;
+	if (window != 0) {
+		for (int i = PRIVATE_DATA->history_count - 1; i >= 0; i--) {
+			history_entry *entry = PRIVATE_DATA->history + i;
+			if (window > 0 && (double)entry->end < (double)now - window * 3600) {
+				continue;
+			}
+			history_label(entry, labels[count], INDIGO_VALUE_SIZE);
+			states[count++] = history_light(entry->result);
+		}
+	}
+	for (int i = 0; i < PRIVATE_DATA->plan_count; i++) {
+		strcpy(labels[count], PRIVATE_DATA->plan_labels[i]);
+		states[count++] = PRIVATE_DATA->plan_states[i];
+	}
+	PRIVATE_DATA->timeline_dirty = false;
+	publish_list(device, TIMELINE_PROPERTY, AGENT_SCHEDULER_TIMELINE_ITEM_NAME, PRIVATE_DATA->timeline_labels, PRIVATE_DATA->timeline_states, &PRIVATE_DATA->timeline_count, labels, states, count);
 }
 
 // whether a planned task run starts within from and end
@@ -3313,6 +3391,10 @@ static void process(indigo_device *device) {
 		update_plan(device, now);
 		PRIVATE_DATA->plan_dirty = false;
 		PRIVATE_DATA->plan_due = indigo_monotonic_time() + SETTINGS_IDLE_CHECK_ITEM->number.value;
+	}
+	// history entries leave the window of the timeline at the regular check, also while a task runs
+	if (plan || PRIVATE_DATA->timeline_dirty) {
+		update_timeline(device);
 	}
 	if (PRIVATE_DATA->save_due > 0 && indigo_monotonic_time() >= PRIVATE_DATA->save_due) {
 		save_config(device);
@@ -3879,6 +3961,14 @@ static void command_handler(indigo_device *device, void *data) {
 		CLEAR_HISTORY_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CLEAR_HISTORY_PROPERTY, NULL);
 		schedule_save(device);
+	} else if (indigo_property_match_changeable(HISTORY_WINDOW_PROPERTY, request)) {
+		indigo_property_copy_values(HISTORY_WINDOW_PROPERTY, request, false);
+		HISTORY_WINDOW_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, HISTORY_WINDOW_PROPERTY, NULL);
+		if (!command->config_reader) {
+			schedule_save(device);
+		}
+		PRIVATE_DATA->timeline_dirty = true;
 	} else if (indigo_property_match_changeable(RESTORE_HISTORY_PROPERTY, request)) {
 		if (command->config_reader) {
 			indigo_item *item = indigo_get_item(request, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME);
@@ -4100,11 +4190,17 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(SAFETY_MISSING_SAFE_ITEM, AGENT_SCHEDULER_SAFETY_MISSING_SAFE_ITEM_NAME, "Treat as safe", true);
 		indigo_init_switch_item(SAFETY_MISSING_UNSAFE_ITEM, AGENT_SCHEDULER_SAFETY_MISSING_UNSAFE_ITEM_NAME, "Treat as unsafe", false);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_HISTORY
-		HISTORY_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_SCHEDULER_HISTORY_PROPERTY_NAME, SCHEDULER_GROUP, "Run history", INDIGO_OK_STATE, MAX_HISTORY);
+		HISTORY_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_HISTORY_PROPERTY_NAME, SCHEDULER_GROUP, "Run history", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 		if (HISTORY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		HISTORY_PROPERTY->count = 0;
+		indigo_init_text_item_raw(HISTORY_ENTRIES_ITEM, AGENT_SCHEDULER_HISTORY_ENTRIES_ITEM_NAME, "Entries", "");
+		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_HISTORY_WINDOW
+		HISTORY_WINDOW_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_HISTORY_WINDOW_PROPERTY_NAME, SCHEDULER_GROUP, "Timeline history window", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (HISTORY_WINDOW_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(HISTORY_WINDOW_HOURS_ITEM, AGENT_SCHEDULER_HISTORY_WINDOW_HOURS_ITEM_NAME, "History in the timeline (h, -1 = all)", -1, 8760, 1, 16);
 		CLEAR_HISTORY_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME, SCHEDULER_GROUP, "Clear history", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (CLEAR_HISTORY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -4122,6 +4218,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		PLAN_PROPERTY->count = 0;
+		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_TIMELINE
+		TIMELINE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_SCHEDULER_TIMELINE_PROPERTY_NAME, SCHEDULER_GROUP, "Timeline", INDIGO_OK_STATE, MAX_TIMELINE_ITEMS);
+		if (TIMELINE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		TIMELINE_PROPERTY->count = 0;
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_AGENTS
 		AGENTS_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_AGENTS_PROPERTY_NAME, AGENTS_GROUP, "Agents", INDIGO_OK_STATE, INDIGO_RW_PERM, ROLE_COUNT);
 		if (AGENTS_PROPERTY == NULL) {
@@ -4185,9 +4287,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_define_property(device, STRATEGY_PROPERTY, NULL);
 		indigo_define_property(device, SAFETY_MISSING_PROPERTY, NULL);
 		indigo_define_property(device, HISTORY_PROPERTY, NULL);
+		indigo_define_property(device, HISTORY_WINDOW_PROPERTY, NULL);
 		indigo_define_property(device, CLEAR_HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, RESTORE_HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, PLAN_PROPERTY, NULL);
+		indigo_define_property(device, TIMELINE_PROPERTY, NULL);
 		indigo_define_property(device, AGENTS_PROPERTY, NULL);
 		for (int role = 0; role < ROLE_COUNT; role++) {
 			indigo_define_property(device, AGENT_LIST_PROPERTY(role), NULL);
@@ -4233,9 +4337,11 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	define_copy(device, client, STRATEGY_PROPERTY, property);
 	define_copy(device, client, SAFETY_MISSING_PROPERTY, property);
 	define_copy(device, client, HISTORY_PROPERTY, property);
+	define_copy(device, client, HISTORY_WINDOW_PROPERTY, property);
 	define_copy(device, client, CLEAR_HISTORY_PROPERTY, property);
 	define_copy(device, client, RESTORE_HISTORY_PROPERTY, property);
 	define_copy(device, client, PLAN_PROPERTY, property);
+	define_copy(device, client, TIMELINE_PROPERTY, property);
 	define_copy(device, client, AGENTS_PROPERTY, property);
 	for (int role = 0; role < ROLE_COUNT; role++) {
 		define_copy(device, client, AGENT_LIST_PROPERTY(role), property);
@@ -4251,7 +4357,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 
 // returns the property of the agent the request changes, NULL for other properties
 static indigo_property *own_property(indigo_device *device, indigo_property *property) {
-	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, DATA_PROPERTY, DATA_DIR_PROPERTY, HOOKS_PROPERTY, NIGHT_PROPERTY, STRATEGY_PROPERTY, SAFETY_MISSING_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY, AGENTS_PROPERTY, AGENT_LIST_PROPERTY(ROLE_SCRIPTING), AGENT_LIST_PROPERTY(ROLE_IMAGER), AGENT_LIST_PROPERTY(ROLE_MOUNT), AGENT_LIST_PROPERTY(ROLE_GUIDER), AGENT_LIST_PROPERTY(ROLE_AUX), AGENT_LIST_PROPERTY(ROLE_SOLVER) };
+	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, DATA_PROPERTY, DATA_DIR_PROPERTY, HOOKS_PROPERTY, NIGHT_PROPERTY, STRATEGY_PROPERTY, SAFETY_MISSING_PROPERTY, HISTORY_WINDOW_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY, AGENTS_PROPERTY, AGENT_LIST_PROPERTY(ROLE_SCRIPTING), AGENT_LIST_PROPERTY(ROLE_IMAGER), AGENT_LIST_PROPERTY(ROLE_MOUNT), AGENT_LIST_PROPERTY(ROLE_GUIDER), AGENT_LIST_PROPERTY(ROLE_AUX), AGENT_LIST_PROPERTY(ROLE_SOLVER) };
 	for (int i = 0; i < (int)(sizeof(properties) / sizeof(properties[0])); i++) {
 		if (indigo_property_match_changeable(properties[i], property)) {
 			return properties[i];
@@ -4318,9 +4424,11 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(STRATEGY_PROPERTY);
 	indigo_release_property(SAFETY_MISSING_PROPERTY);
 	indigo_release_property(HISTORY_PROPERTY);
+	indigo_release_property(HISTORY_WINDOW_PROPERTY);
 	indigo_release_property(CLEAR_HISTORY_PROPERTY);
 	indigo_release_property(RESTORE_HISTORY_PROPERTY);
 	indigo_release_property(PLAN_PROPERTY);
+	indigo_release_property(TIMELINE_PROPERTY);
 	indigo_release_property(AGENTS_PROPERTY);
 	for (int role = 0; role < ROLE_COUNT; role++) {
 		indigo_release_property(AGENT_LIST_PROPERTY(role));

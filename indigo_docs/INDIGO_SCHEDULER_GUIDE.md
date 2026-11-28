@@ -107,15 +107,17 @@ The examples in this guide use `indigo_prop_tool`, which can do everything:
 
 - **Set short values** with `set`. It splits values at `;`, so it cannot send a task. `ITEM=` or `ITEM=""` sends an empty value. This clears a text item, such as a hook.
 - **Read values** with `get`. It prints light items as `ON` or `OFF`, or with `-e` as their state, but never their text.
-- **Read the task list, the night plan and the history** with `list -e`. It prints the label of each item after `  # `, and the state of each light as `IDLE`, `OK`, `BUSY` or `ALERT`:
+- **Read the task list, the night plan and the timeline** with `list -e`. It prints the label of each item after `  # `, and the state of each light as `IDLE`, `OK`, `BUSY` or `ALERT`:
 
   ```
-  indigo_prop_tool list -e "Scheduler Agent.AGENT_SCHEDULER_HISTORY"
+  indigo_prop_tool list -e "Scheduler Agent.AGENT_SCHEDULER_TIMELINE"
   ```
 
   ```
-  Scheduler Agent.AGENT_SCHEDULER_HISTORY.RUN_1 = OK  # 2026-11-20 20:02-20:02 | Test | run 1 | task | SUCCEEDED | -
+  Scheduler Agent.AGENT_SCHEDULER_TIMELINE.LINE_0 = OK  # 2026-11-20 20:02-20:02 | Test | run 1/1 | normal 50 | SUCCEEDED | -
   ```
+
+  The whole history is the text of `AGENT_SCHEDULER_HISTORY`, one line per run. `indigo_prop_tool` prints only the first 80 characters of a long text, so read it in a client or see its recent part in the timeline.
 - **Reach a remote server** with `-r host` after the command word, for example `indigo_prop_tool get -r host ...`. Options before the command word are not recognised.
 - **See the result** with `-s`. It prints the state of the property you change: `[OK]` for an accepted upload, `[ALERT]` for a rejected one.
 
@@ -160,16 +162,16 @@ This walk-through needs only the Scheduler and Scripting Agents. The test task w
 
    While the task runs, `CURRENT` is `Test`. Ten seconds later the task is `DONE`. Nothing is left to do, so the scheduler stops by itself with the message `All tasks finished, the scheduler stopped`.
 
-   The history `AGENT_SCHEDULER_HISTORY` now has the run. Show it with:
+   The history `AGENT_SCHEDULER_HISTORY` now has the run, and the timeline `AGENT_SCHEDULER_TIMELINE` shows it before the planned runs, of which there are none left. Show the timeline with:
 
    ```
-   indigo_prop_tool list -e "Scheduler Agent.AGENT_SCHEDULER_HISTORY"
+   indigo_prop_tool list -e "Scheduler Agent.AGENT_SCHEDULER_TIMELINE"
    ```
 
-   The run is its last item, for example:
+   The run is its item, for example:
 
    ```
-   Scheduler Agent.AGENT_SCHEDULER_HISTORY.RUN_1 = OK  # 2026-11-20 20:02-20:02 | Test | run 1 | task | SUCCEEDED | -
+   Scheduler Agent.AGENT_SCHEDULER_TIMELINE.LINE_0 = OK  # 2026-11-20 20:02-20:02 | Test | run 1/1 | normal 50 | SUCCEEDED | -
    ```
 
 5. Remove the task:
@@ -836,16 +838,18 @@ Every run, including a rerun, executes the whole sequence from the beginning. Fr
 
 **What counts as success.** A run succeeds when its sequence ends in the Ok state, even when it ends early through a checkpoint. A sequence that ends in the Alert state fails.
 
-**The history.** `AGENT_SCHEDULER_HISTORY` lists the finished runs, newest last:
+**The history.** `AGENT_SCHEDULER_HISTORY` is a text with one line per finished run, newest last:
 
 ```
-2026-11-20 20:02-20:04 | Evening | run 1 | hook | SUCCEEDED | -
-2026-11-20 20:44-21:10 | M31 LRGB | run 1 | task | PREEMPTED | by SN 2026abc
-2026-11-20 21:10-21:40 | SN 2026abc | run 1 | urgent | SUCCEEDED | -
-2026-11-21 01:28-03:31 | NGC 7000 Ha | run 1 | task | SUCCEEDED | -
+2026-11-20 20:02-20:04 | Evening | - | hook night start | SUCCEEDED | -
+2026-11-20 20:44-21:10 | M31 LRGB | run 1/2 | normal 60 | PREEMPTED | by SN 2026abc
+2026-11-20 21:10-21:40 | SN 2026abc | run 1/1 | urgent | SUCCEEDED | -
+2026-11-21 01:28-03:31 | NGC 7000 Ha | run 1/1 | normal 50 | SUCCEEDED | -
 ```
 
-Each line shows the time, the task, the run number, the kind and the result. A failed run usually ends with the failure message of the step that failed.
+Each line shows the time, the task, the run, the priority and the result, in the columns of the night plan. A failed run usually ends with the failure message of the step that failed.
+
+**The timeline.** `AGENT_SCHEDULER_TIMELINE` puts the recent history and the night plan into one list: the runs that ended within the last 16 hours, then the running task and the planned runs. A finished run is Ok when it succeeded and Alert otherwise, the running one is Busy and the planned ones are Idle. `AGENT_SCHEDULER_HISTORY_WINDOW.HOURS` sets how many hours of history it shows: `-1` for all of it, `0` for none.
 
 Details: [The history](#the-history).
 
@@ -1166,7 +1170,7 @@ A hook aborted by the unsafe hold is not a failure. Its history entry has the re
 - One task may serve several hooks, for example `Park` as `SHUTDOWN`, `NIGHT_END` and `IDLE`. The task list shows the first of them, in the order of the `AGENT_SCHEDULER_HOOKS` items.
 - When two hooks naming the same task are due one right after the other, the task runs once. An example is `STARTUP` and `NIGHT_START` on `START` during the night.
 - A hook task is never scheduled as an ordinary task. Its constraints are ignored.
-- The task list shows it as, for example, `Park | HOOK | hook shutdown | - | - | -`. The history shows its runs with the kind `hook`.
+- The task list shows it as, for example, `Park | HOOK | hook shutdown | - | - | -`. The history shows its runs with `-` as the run and the hook as the priority, for example `hook shutdown`.
 - Only the night hooks appear in the night plan in advance. `@duration` sets their length there.
 - To remove a hook, set its item to an empty value: `indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE="`. Its task then becomes an ordinary task, unless it has `@priority hook`.
 
@@ -1388,7 +1392,7 @@ A change with `MIN_ALTITUDE` at or above `MAX_ALTITUDE` is rejected with Alert a
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.IDLE_CHECK_INTERVAL=10;IDLE_HOOK_DELAY=20"
 ```
 
-The scheduler saves its configuration and restores it when the server starts. This covers the tasks with their states and counters, the settings, the strategy, the data settings, the hooks, the night limit, `AGENT_SCHEDULER_SAFETY_MISSING`, the time of the last unsafe report and the history.
+The scheduler saves its configuration and restores it when the server starts. This covers the tasks with their states and counters, the settings, the strategy, the data settings, the hooks, the night limit, `AGENT_SCHEDULER_SAFETY_MISSING`, the time of the last unsafe report, the history and the history window of the timeline.
 
 ### Scheduler state
 
@@ -1432,21 +1436,22 @@ See also: [Starting, stopping and restarting](#starting-stopping-and-restarting)
 
 ### Label format
 
-The item labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are meant to be parsed by clients. Every item label of the task list has exactly seven columns, and every item label of the night plan and the history exactly six, always in the same order. The columns are joined by ` | `: space, pipe, space.
+The item labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_TIMELINE` and the lines of the text of `AGENT_SCHEDULER_HISTORY` are meant to be parsed by clients. Every item label of the task list has exactly seven columns, and every item label of the night plan and the timeline and every line of the history exactly six, always in the same order. The columns are joined by ` | `: space, pipe, space.
 
 - An empty column is `-`.
 - The separators, placeholders, fixed words and times are ASCII. The times are UTC. Names and reasons are UTF-8 text.
 - A time range is `YYYY-MM-DD HH:MM-HH:MM`, dated by its start.
 - State and result are fixed words in capitals.
-- The only free text, a reason, is the last column. It may contain ` | `. Split an item label at the first six separators of the task list, or the first five of the night plan and the history, only.
-- An item label is at most 511 bytes. When it is longer, only the last column is cut.
+- The only free text, a reason, is the last column. It may contain ` | `. Split an item label at the first six separators of the task list, or the first five of the night plan, the timeline and the history, only.
+- An item label or a history line is at most 511 bytes. When it is longer, only the last column is cut.
 - Task names cannot contain `|`. A task with such a name in its `@task` line has a header error.
 
 | List | Columns |
 |---|---|
 | task list | name, state, priority, runs, retries, duration, reason |
 | night plan | when, name, run, priority, state, reason |
-| history | when, name, run, kind, result, reason |
+| history | when, name, run, priority, result, reason |
+| timeline | the history entries, then the night plan |
 
 ### The task list
 
@@ -1502,20 +1507,28 @@ See also: [The night plan](#the-night-plan).
 
 ### The history
 
-`AGENT_SCHEDULER_HISTORY` lists the finished runs, oldest first and newest last. It keeps up to 200 runs. The columns are when, name, run, kind, result and reason. The kind is `task`, `urgent` or `hook`.
+`AGENT_SCHEDULER_HISTORY` is a read-only text property. Its item `ENTRIES` holds the finished runs, one line per run, oldest first and newest last. It keeps up to 200 runs. The columns are those of the night plan: when, name, run, priority, result and reason. The run is `run <n>/<repeat>` for a task, with the repeat count it had when the run ended, and `-` for a hook. The priority is shown as in the plan: `normal 50` and the like for a task, `urgent` for an urgent task, and `hook startup`, `hook night end` and so on for a hook. A run saved by an older version of the scheduler shows `-` in both columns.
+
+The light of a run in the timeline follows its result:
 
 | Result | Light | Meaning |
 |---|---|---|
 | `SUCCEEDED` | Ok | The sequence ended Ok |
 | `FAILED` | Alert | The sequence ended Alert, or the task could not start. The reason follows. For a failed step, it is the failure message of the step, for example `There is no CCD_GAIN on Imager Agent`. `Sequencer.js` publishes it in `SEQUENCE_FAILURE`. A sequence aborted by hand, outside the scheduler, has no reason |
-| `PREEMPTED` | Busy | An urgent task interrupted the run. The reason names the urgent task. It says `did not stop in time` when the sequence did not stop within `STOP_TIMEOUT` |
-| `ABORTED` | Busy | `ABORT`, or a delete of the running task. A deleted task has the reason `deleted`. A run aborted by `ABORT` that does not stop within `STOP_TIMEOUT` has the reason `did not stop in time` |
-| `UNSAFE` | Busy | The unsafe hold aborted the run. The reason is `unsafe conditions` |
+| `PREEMPTED` | Alert | An urgent task interrupted the run. The reason names the urgent task. It says `did not stop in time` when the sequence did not stop within `STOP_TIMEOUT` |
+| `ABORTED` | Alert | `ABORT`, or a delete of the running task. A deleted task has the reason `deleted`. A run aborted by `ABORT` that does not stop within `STOP_TIMEOUT` has the reason `did not stop in time` |
+| `UNSAFE` | Alert | The unsafe hold aborted the run. The reason is `unsafe conditions` |
 
-The history survives restarts. To clear it, together with the urgent counters of `AGENT_SCHEDULER_STATE`:
+The history survives restarts. To clear it, together with the urgent counters of `AGENT_SCHEDULER_STATE` and the history part of the timeline:
 
 ```
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_CLEAR_HISTORY.CLEAR=ON"
+```
+
+**The timeline.** `AGENT_SCHEDULER_TIMELINE` lists the runs of the history that ended inside the history window, oldest first, followed by the items of the night plan: the running task or hook (Busy) and the planned runs (Idle). Its labels have the six columns of the plan. `AGENT_SCHEDULER_HISTORY_WINDOW.HOURS` is the window: the runs that ended within that many hours, 16 by default, up to 8760; `-1` shows the whole history and `0` none. The window is saved with the configuration. A run leaves the timeline at the next check after its end falls out of the window, within `IDLE_CHECK_INTERVAL` seconds, also while a task runs. To show the last two nights:
+
+```
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HISTORY_WINDOW.HOURS=40"
 ```
 
 See also: [Repeats, retries and the history](#repeats-retries-and-the-history).
@@ -1646,7 +1659,9 @@ All properties belong to the device "Scheduler Agent".
 | `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `REASON` | What runs now and why nothing runs |
 | `AGENT_SCHEDULER_TASK_STATE` | light | one per task | The task list |
 | `AGENT_SCHEDULER_PLAN` | light | one per planned run | The night plan |
-| `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The run history |
+| `AGENT_SCHEDULER_TIMELINE` | light | one per entry | The recent history followed by the night plan |
+| `AGENT_SCHEDULER_HISTORY` | text, read-only | `ENTRIES` | The run history, one line per run |
+| `AGENT_SCHEDULER_HISTORY_WINDOW` | number | `HOURS` | How many hours of history the timeline shows, `-1` all, `0` none |
 | `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Clear the history |
 | `AGENT_SCHEDULER_SETTINGS` | number | see [Settings](#settings) | Settings |
 | `AGENT_SCHEDULER_DATA` | switch | `OBJECT`, `FITS`, `FOLDER` | What the scheduler sets on the Imager Agent for a run |
@@ -1687,7 +1702,7 @@ The sandbox puts the site on the equator. It moves the longitude to choose the t
 | `strategy visibility`, `strategy compact` | The strategy. `status` shows it |
 | `start`, `stop`, `abort`, `reset NAME`, `delete NAME` | Control the scheduler and the tasks |
 | `reset_all`, `delete_all` | Reset every task, or delete every task that is not a hook task. The sandbox prompt does not ask for a confirmation |
-| `status`, `plan`, `history` | The task list, the night plan and the history |
+| `status`, `plan`, `timeline`, `history` | The task list, the night plan, the timeline and the history |
 | `wait 10`, `until TEXT 60` | Wait while new scheduler messages are printed, or until one contains `TEXT` |
 
 - New messages of the scheduler are printed after every command.
