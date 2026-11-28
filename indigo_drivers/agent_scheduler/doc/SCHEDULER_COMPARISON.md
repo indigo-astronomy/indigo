@@ -205,7 +205,7 @@ Ekos and Voyager, and N.I.N.A. through its framing tool, generate the panels of 
 
 ### 5. No horizon profile
 
-Ekos, N.I.N.A. Target Scheduler and ACP support a custom horizon for trees and buildings. INDIGO has a minimum altitude per task (`@altitude > deg`) and a global altitude band in `AGENT_SCHEDULER_SETTINGS`: `MIN_ALTITUDE` for every target, and `MAX_ALTITUDE` as a ceiling for the zenith blind spot of an alt-az or fork mount or the edge of a roof or dome opening. A target that can never stand within the band is marked `UNREACHABLE`. The band is the same at every azimuth, so it cannot follow trees or buildings in one direction and is not a horizon profile.
+Ekos, N.I.N.A. Target Scheduler and ACP support a custom horizon for trees and buildings. In ACP the horizon curve belongs to ACP itself, not to ACP Scheduler: it is drawn in the Observatory preferences, and ACP uses it together with its minimum elevation for visibility and refuses slews below it. The Horizon constraint of ACP Scheduler is a single minimum elevation at every azimuth. INDIGO has a minimum altitude per task (`@altitude > deg`) and a global altitude band in `AGENT_SCHEDULER_SETTINGS`: `MIN_ALTITUDE` for every target, and `MAX_ALTITUDE` as a ceiling for the zenith blind spot of an alt-az or fork mount or the edge of a roof or dome opening. A target that can never stand within the band is marked `UNREACHABLE`. The band is the same at every azimuth, so it cannot follow trees or buildings in one direction and is not a horizon profile.
 
 ### 6. Open items
 
