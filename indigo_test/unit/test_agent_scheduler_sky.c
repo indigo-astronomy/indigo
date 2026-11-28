@@ -451,6 +451,37 @@ static void test_points_match_reference(void) {
 	sky.valid = true;
 }
 
+// the failure of an interval is at its start when the first grid point or the window fails, later when the constraints hold on the first point and fail on a later one
+static void test_points_check_tells_a_later_failure(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	scheduler_task_points points;
+	scheduler_header header = make_header();
+	header.twilight = SCHEDULER_TWILIGHT_NAUTICAL;
+	indigo_scheduler_points_build(&sky, NULL, &header, &points);
+	ASSERT_TRUE(points.valid);
+	const char *reason = NULL, *plain_reason = NULL;
+	bool later = true;
+	// at midnight local time a short run is dark, a run of seven hours reaches the dawn
+	ASSERT_TRUE(indigo_scheduler_points_check(&sky, &points, &header, T_NOVEMBER_NIGHT, T_NOVEMBER_NIGHT + 3600, &reason, &later));
+	ASSERT_FALSE(indigo_scheduler_points_check(&sky, &points, &header, T_NOVEMBER_NIGHT, T_NOVEMBER_NIGHT + 7 * 3600, &reason, &later));
+	ASSERT_STREQ("sun above -12°", reason);
+	ASSERT_TRUE(later);
+	ASSERT_FALSE(indigo_scheduler_points_ok(&sky, &points, &header, T_NOVEMBER_NIGHT, T_NOVEMBER_NIGHT + 7 * 3600, &plain_reason));
+	ASSERT_STREQ(reason, plain_reason);
+	// at noon the first point fails
+	ASSERT_FALSE(indigo_scheduler_points_check(&sky, &points, &header, T_NOVEMBER_NOON + 600, T_NOVEMBER_NOON + 1200, &reason, &later));
+	ASSERT_STREQ("sun above -12°", reason);
+	ASSERT_FALSE(later);
+	// a window that fails is never a later failure, even when the sky would fail later too
+	header.window_kind = SCHEDULER_WINDOW_ABSOLUTE;
+	header.has_window_end = true;
+	header.window_end = T_NOVEMBER_NIGHT + 3600;
+	indigo_scheduler_points_build(&sky, NULL, &header, &points);
+	ASSERT_FALSE(indigo_scheduler_points_check(&sky, &points, &header, T_NOVEMBER_NIGHT, T_NOVEMBER_NIGHT + 7 * 3600, &reason, &later));
+	ASSERT_STREQ("window ends before the task can finish", reason);
+	ASSERT_FALSE(later);
+}
+
 static void test_global_altitude_limits(void) {
 	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NIGHT, LATITUDE, LONGITUDE, 140);
 	// a new grid has no global limits
@@ -627,6 +658,7 @@ int main(void) {
 		{ "interval_next_eligible_and_time_to_set", test_interval_next_eligible_and_time_to_set },
 		{ "unknown_site", test_unknown_site },
 		{ "points_match_reference", test_points_match_reference },
+		{ "points_check_tells_a_later_failure", test_points_check_tells_a_later_failure },
 		{ "global_altitude_limits", test_global_altitude_limits },
 		{ "reachability", test_reachability },
 		{ "night_end", test_night_end },

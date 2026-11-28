@@ -142,6 +142,10 @@ extern void indigo_scheduler_points_build(const scheduler_sky_grid *sky, const s
  */
 extern bool indigo_scheduler_points_ok(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, time_t to, const char **reason);
 
+/** Same result and reason as indigo_scheduler_points_ok(); on a failure later is true when the sky constraints hold on the first grid point of the interval and fail only on a later one, false when the first point or the window, site or forecast checks fail.
+ */
+extern bool indigo_scheduler_points_check(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, time_t to, const char **reason, bool *later);
+
 /** Same result as indigo_scheduler_next_eligible(), searching up to limit (0 for the end of the grid).
  */
 extern time_t indigo_scheduler_points_next(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, int duration, time_t limit, const char **reason);

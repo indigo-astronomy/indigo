@@ -124,7 +124,7 @@ None of the other schedulers plans the whole night with a guarantee that no run 
 
 ### 5. The plan is visible and explained
 
-`AGENT_SCHEDULER_PLAN` applies exactly the rules of the live scheduler. It shows every planned run of the night with its time. A task without a run in it is `UNPLANNED` in the task list, with the reason, for example `UNPLANNED | normal 50 | run 0/1 | retries left 1 | 1h00 set | sun above -18°`. `REASON` always says why nothing runs, for example `Soul starts at 21:15 UTC, as planned`. `AGENT_SCHEDULER_HISTORY` keeps the outcome of every run.
+`AGENT_SCHEDULER_PLAN` applies exactly the rules of the live scheduler. It shows every planned run of the night with its time. A task without a run in it is `UNPLANNED` in the task list, with the reason, for example `UNPLANNED | normal 50 | run 0/1 | retries left 1 | 1h00 set | sun above -18°`. A WAITING task has its reason there too, for example `target below the altitude limit`, or `target below the horizon before the end of the run` for a target that would set during the run. `REASON` always says why nothing runs; while the tasks wait for their constraints it names the next planned run in both strategies, for example `Soul starts at 21:15 UTC, as planned`, or says `no task can run tonight`. `AGENT_SCHEDULER_HISTORY` keeps the outcome of every run.
 
 Voyager and N.I.N.A. Target Scheduler offer previews. In Ekos and SGP the plan is mostly seen as it happens. APT shows the list of triggers the user set up, not a computed plan of the night.
 

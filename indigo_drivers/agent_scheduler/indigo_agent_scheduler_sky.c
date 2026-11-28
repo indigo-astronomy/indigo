@@ -413,6 +413,12 @@ void indigo_scheduler_points_build(const scheduler_sky_grid *sky, const schedule
 }
 
 bool indigo_scheduler_points_ok(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, time_t to, const char **reason) {
+	bool later;
+	return indigo_scheduler_points_check(sky, points, header, from, to, reason, &later);
+}
+
+bool indigo_scheduler_points_check(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, time_t to, const char **reason, bool *later) {
+	*later = false;
 	if (!indigo_scheduler_window_ok(header, from, to, reason)) {
 		return false;
 	}
@@ -435,6 +441,7 @@ bool indigo_scheduler_points_ok(const scheduler_sky_grid *sky, const scheduler_t
 	int bad = points->next_bad[first];
 	if (bad <= last) {
 		*reason = points->reason[bad];
+		*later = bad > first;
 		return false;
 	}
 	return true;

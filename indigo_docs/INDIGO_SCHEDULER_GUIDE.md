@@ -398,14 +398,14 @@ The scheduler decides what to start each time nothing runs:
 
 Each decision has four steps.
 
-1. **Find the tasks that can run now.** A task can run now when all its constraints hold from now until the end of its run. Example: a one-hour run on a target with `@altitude > 30`. If the target sinks below 30° after twenty minutes, the task cannot run now. It shows `WAITING` in the task list.
+1. **Find the tasks that can run now.** A task can run now when all its constraints hold from now until the end of its run. Example: a one-hour run on a target with `@altitude > 30`. If the target sinks below 30° after twenty minutes, the task cannot run now. It shows `WAITING` in the task list, with the reason `target below the altitude limit before the end of the run`, or `UNPLANNED` when no later run fits in the night plan.
 2. **Start an urgent task, if one can run.** When several urgent tasks can run, the one submitted first starts.
 3. **Rank the other tasks.** The class decides first, then the score.
 4. **Start the best task.** When it starts depends on the strategy:
    - With `COMPACT`, the default, it starts now.
    - With `VISIBILITY`, the scheduler follows its night plan. The next planned run may start later. Until then, `REASON` names the run and its start time.
 
-When no task can run, `REASON` shows why. It gives the reason of the first waiting task in the task list. After `IDLE_HOOK_DELAY` minutes without a task start, the `IDLE` hook runs.
+When no task can run because the tasks wait for their constraints, `REASON` names the next planned run, for example `M42 starts at 22:40 UTC, as planned`, with both strategies, or says `no task can run tonight`. Each waiting task has its own reason in the task list. Other reasons, such as the unsafe hold, are in [Reasons](#reasons). After `IDLE_HOOK_DELAY` minutes without a task start, the `IDLE` hook runs.
 
 The night plan uses the same steps for the rest of the night. It therefore shows the order and the times the scheduler will follow.
 
@@ -1420,7 +1420,7 @@ Its items count the tasks:
 | Item | Meaning |
 |---|---|
 | `CURRENT` | The running task or hook, empty when none runs |
-| `REASON` | Why nothing runs now. This is the reason of the first waiting task in the list. With `VISIBILITY`, it can also be the next planned run and its start time |
+| `REASON` | Why nothing runs now. When the tasks only wait for their constraints, or `VISIBILITY` waits for a better time, it names the next planned run and its start time, or says `no task can run tonight`; why each task waits is in the task list |
 
 ```
 indigo_prop_tool get_state "Scheduler Agent.AGENT_SCHEDULER_STATE"
@@ -1456,6 +1456,7 @@ The item labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGE
 M31 LRGB | REPEAT | normal 60 | run 1/2 | retries left 1 | 1h52 estimated | -
 SN 2026abc | RUNNING | urgent | run 0/1 | retries left 0 | 0h30 set | -
 M42 | UNPLANNED | normal 50 | run 0/1 | retries left 0 | 1h00 set | target below the altitude limit
+Orion Nebula | WAITING | high 50 | run 0/1 | retries left 0 | 0h31 measured | target below the altitude limit
 NGC 253 | UNREACHABLE | normal 50 | run 0/1 | retries left 0 | 1h00 set | culminates at 16.7°, below the minimum altitude 20°
 Park | HOOK | hook shutdown | - | - | - | -
 ```
@@ -1464,13 +1465,14 @@ Park | HOOK | hook shutdown | - | - | - | -
 - **Runs.** `run <done>/<repeat>`, always shown.
 - **Retries.** `retries left <n>`, always shown.
 - **Duration.** Hours and minutes, followed by the source: `set`, `measured`, `estimated` or `default`.
-- **Reason.** Why the task will not run: for an `UNPLANNED` task the reason of the night plan, see [Reasons](#reasons), or `no time left tonight` for a task that finds no room after the planned runs; for an `UNREACHABLE` task the reason of its `can never run` message. It is `-` for every other task, hooks included.
+- **Reason.** Why the task will not run: for an `UNPLANNED` task the reason of the night plan, see [Reasons](#reasons), or `no time left tonight` for a task that finds no room after the planned runs; for an `UNREACHABLE` task the reason of its `can never run` message; for a `WAITING` task the first constraint that fails for its run from now, see [Reasons](#reasons). A sky constraint that holds now but fails before the run would end gets ` before the end of the run`, for example `target below the horizon before the end of the run` for a target that sets during the run. It is `-` for every other task, hooks included.
+- **A snapshot.** `WAITING`, `QUEUED` and the reason of a waiting task come from the last check of the scheduler, every `IDLE_CHECK_INTERVAL` seconds while nothing runs. While a task runs, the list keeps what the check before it found.
 - A hook task has `-` for the runs, the retries, the duration and the reason.
 
 | State | Light | Meaning |
 |---|---|---|
 | `QUEUED` | Idle | Ready to run |
-| `WAITING` | Idle | Its constraints do not hold now. The night plan shows when they will |
+| `WAITING` | Idle | Its constraints do not hold now. The reason column says why, the night plan shows when they will |
 | `UNPLANNED` | Idle | It could run, but the night plan has no run of it before its end. The reason column says why. Shown instead of `QUEUED`, `WAITING`, `RETRY` or `REPEAT`; it is not a state of its own, and the scheduler selects the task as before when it can run |
 | `RUNNING` | Busy | Its sequence is executing |
 | `RETRY` | Idle | Failed or interrupted. It will run again after the retry delay |
@@ -1558,7 +1560,7 @@ A rejected request puts the property you changed into the Alert state. A message
 
 ### Reasons
 
-`REASON` in `AGENT_SCHEDULER_CURRENT` and the reason column of an `UNPLANNED` task in the task list explain why a task does not run:
+The reason column of a `WAITING` or `UNPLANNED` task in the task list explains why the task does not run, and `REASON` in `AGENT_SCHEDULER_CURRENT` why nothing runs. The constraint reasons appear only in the task list; a waiting task adds ` before the end of the run` to a sky reason that holds now and fails later in its run:
 
 | Reason | Meaning |
 |---|---|
@@ -1574,8 +1576,9 @@ A rejected request puts the property you changed into the Alert state. A message
 | `window ends before the task can finish`, `nightly window ends before the task can finish` | The run does not fit in `@window` |
 | `site coordinates unknown` | The Mount Agent of `AGENT_SCHEDULER_AGENTS` is not loaded, or it has no site coordinates |
 | `beyond the forecast` | The constraints would have to hold beyond the next 48 hours |
-| `<task> starts at HH:MM UTC, as planned` | With `VISIBILITY`, a task could run now, but the plan starts the named task at the given time. It takes precedence over the reasons of the tasks that cannot run |
-| `estimating the task duration` | The estimate of a task waiting to run has not finished yet. No other task starts before it, except an urgent one. Shown when another task could start, or when the estimating task comes first in the list among the tasks waiting to run |
+| `<task> starts at HH:MM UTC, as planned` | `REASON` only. The tasks wait for their constraints, or with `VISIBILITY` a task could run now but the plan waits for a better time: the night plan starts the named task at the given time. Follows the plan when it changes |
+| `no task can run tonight` | `REASON` only. The tasks wait for their constraints and the night plan has no task run |
+| `estimating the task duration` | `REASON` only. The estimate of a task waiting to run has not finished yet. No other task starts before it, except an urgent one |
 | `no task is ready`, `no tasks`, `all tasks finished` | Nothing to run |
 | `another sequence is running` | A sequence started by hand occupies the Scripting Agent |
 | `loading Sequencer.js`, `waiting for the Scripting Agent` | The scheduler is preparing the Scripting Agent |

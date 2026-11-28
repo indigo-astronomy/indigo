@@ -25,7 +25,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300002E
+#define DRIVER_VERSION 0x0300002F
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -303,6 +303,8 @@ typedef struct {
 	// set by the latest plan for a task that could run but has no run in it, with the reason
 	bool unplanned;
 	char unplanned_reason[INDIGO_VALUE_SIZE];
+	// why the task was WAITING at the last selection, shown in the task list only while it is WAITING
+	char waiting_reason[128];
 	scheduler_target_grid target;
 	scheduler_task_points points;
 	indigo_property *property;
@@ -488,6 +490,8 @@ typedef struct {
 	double save_due;
 	scheduler_sky_grid sky;
 	char reason[INDIGO_VALUE_SIZE];
+	// the reason names the plan's next task run and follows every new plan until another reason replaces it
+	bool reason_follows_plan;
 	// the safety: the time of the latest unsafe report (0 = never, saved), the last evaluation and the baseline of the ALERT count
 	time_t last_unsafe;
 	bool unsafe_now;
@@ -520,6 +524,7 @@ static indigo_client *agent_client = NULL;
 static void process(indigo_device *device);
 static void update_plan(indigo_device *device, time_t now);
 static int select_planned(indigo_device *device, time_t now, const bool *candidates, int best);
+static void set_next_run_reason(indigo_device *device);
 
 // -------------------------------------------------------------------------------- Helpers
 
@@ -1101,8 +1106,8 @@ static const char *task_priority_text(indigo_device *device, scheduler_task *tas
 static void build_task_state_label(indigo_device *device, scheduler_task *task, char *label, size_t size) {
 	bool hook = is_hook(device, task);
 	const char *state = hook ? is_enabled(task) ? "HOOK" : "DISABLED" : task->script_error ? "SCRIPT ERROR" : is_unreachable(task) ? "UNREACHABLE" : !is_enabled(task) ? "DISABLED" : is_unplanned(task) ? "UNPLANNED" : task_state_names[task->state];
-	// the reason column is filled only for an unreachable or unplanned task
-	const char *reason = hook || task->script_error ? "" : is_unreachable(task) ? task->unreachable : is_unplanned(task) ? task->unplanned_reason : "";
+	// the reason column is filled only for an unreachable, unplanned or waiting task
+	const char *reason = hook || task->script_error ? "" : is_unreachable(task) ? task->unreachable : !is_enabled(task) ? "" : is_unplanned(task) ? task->unplanned_reason : task->state == TASK_WAITING ? task->waiting_reason : "";
 	char priority[48], runs[32] = "", retries[32] = "", duration[48] = "";
 	const char *priority_text = task_priority_text(device, task, priority, sizeof(priority));
 	if (!hook) {
@@ -1315,6 +1320,11 @@ static void replace_text(indigo_device *device, int slot, const char *text, sche
 	task->script_error = false;
 	// an edited task that still cannot run is told again
 	task->unreachable[0] = 0;
+	// the new text waits for its estimate as QUEUED, its constraints are checked at the next selection
+	if (task->state == TASK_WAITING) {
+		task->state = TASK_QUEUED;
+	}
+	task->waiting_reason[0] = 0;
 	// a result of the old text is ignored
 	if (PRIVATE_DATA->estimate_slot == slot) {
 		PRIVATE_DATA->estimate_slot = -1;
@@ -1431,6 +1441,7 @@ static void release_owner(indigo_device *device) {
 
 static void set_reason(indigo_device *device, const char *reason) {
 	INDIGO_COPY_VALUE(PRIVATE_DATA->reason, reason ? reason : "");
+	PRIVATE_DATA->reason_follows_plan = false;
 }
 
 static void apply_pending_edit(indigo_device *device, scheduler_task *task, int slot) {
@@ -1620,6 +1631,8 @@ static void stop_scheduler(indigo_device *device, indigo_property_state state, c
 	PRIVATE_DATA->shutdown_ran = false;
 	// last_unsafe stays, a later START waits again if needed
 	PRIVATE_DATA->hold = HOLD_NONE;
+	// the last reason stays, a stopped scheduler does not follow the plan
+	PRIVATE_DATA->reason_follows_plan = false;
 	set_scheduler_state(device, state, message);
 }
 
@@ -1963,9 +1976,10 @@ static void refresh_sky(indigo_device *device, time_t now) {
 	}
 }
 
-static bool eligible_now(indigo_device *device, scheduler_task *task, time_t now, const char **reason) {
+// the task can run from now for its duration; later tells whether the sky constraints hold now and fail only later in the run
+static bool eligible_now(indigo_device *device, scheduler_task *task, time_t now, const char **reason, bool *later) {
 	int duration = task_duration(task, NULL);
-	return indigo_scheduler_points_ok(&PRIVATE_DATA->sky, &task->points, &task->header, now, now + duration, reason);
+	return indigo_scheduler_points_check(&PRIVATE_DATA->sky, &task->points, &task->header, now, now + duration, reason, later);
 }
 
 static double score(indigo_device *device, scheduler_task *task, time_t now) {
@@ -2011,7 +2025,8 @@ static int select_urgent(indigo_device *device, time_t now) {
 		int slot = PRIVATE_DATA->order[i];
 		scheduler_task *task = PRIVATE_DATA->tasks + slot;
 		const char *reason;
-		if (is_urgent(task) && !is_hook(device, task) && !task->script_error && !is_unreachable(task) && !estimate_pending(device, slot) && is_selectable_state(task->state) && is_enabled(task) && eligible_now(device, task, now, &reason)) {
+		bool later;
+		if (is_urgent(task) && !is_hook(device, task) && !task->script_error && !is_unreachable(task) && !estimate_pending(device, slot) && is_selectable_state(task->state) && is_enabled(task) && eligible_now(device, task, now, &reason, &later)) {
 			if (best < 0 || task->urgent_order < PRIVATE_DATA->tasks[best].urgent_order) {
 				best = slot;
 			}
@@ -2020,12 +2035,11 @@ static int select_urgent(indigo_device *device, time_t now) {
 	return best;
 }
 
-// selects the task to run now, -1 if none; publishes why nothing can run
+// selects the task to run now, -1 if none; keeps why each task waits and publishes why nothing can run
 static int select_task(indigo_device *device, time_t now) {
 	int best = select_urgent(device, now);
 	double best_score = 0;
-	const char *first_reason = NULL;
-	bool estimating = false;
+	bool estimating = false, waiting = false;
 	// the eligible tasks without urgency, by slot, which may start when the VISIBILITY plan names them
 	bool candidates[MAX_TASKS] = { false };
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
@@ -2035,22 +2049,21 @@ static int select_task(indigo_device *device, time_t now) {
 			continue;
 		}
 		const char *reason = NULL;
+		bool later = false;
 		if (estimate_pending(device, slot)) {
-			if (first_reason == NULL) {
-				first_reason = "estimating the task duration";
-			}
 			estimating = true;
 			PRIVATE_DATA->dirty = true;
 			continue;
 		}
-		if (!eligible_now(device, task, now, &reason)) {
+		if (!eligible_now(device, task, now, &reason, &later)) {
+			// the task list shows the change at the next refresh
 			task->state = TASK_WAITING;
-			if (first_reason == NULL) {
-				first_reason = reason;
-			}
+			snprintf(task->waiting_reason, sizeof(task->waiting_reason), "%s%s", reason, later ? " before the end of the run" : "");
+			waiting = true;
 			continue;
 		}
 		task->state = TASK_QUEUED;
+		task->waiting_reason[0] = 0;
 		if (best >= 0 && is_urgent(PRIVATE_DATA->tasks + best)) {
 			continue;
 		}
@@ -2064,7 +2077,6 @@ static int select_task(indigo_device *device, time_t now) {
 	// a task still waiting for its estimate may outrank the best one, only an urgent task starts before the estimates are known
 	if (estimating && best >= 0 && !is_urgent(PRIVATE_DATA->tasks + best)) {
 		best = -1;
-		first_reason = "estimating the task duration";
 	}
 	// VISIBILITY starts the plan's first run at its planned time; urgent tasks never wait for it
 	if (best >= 0 && !is_urgent(PRIVATE_DATA->tasks + best) && STRATEGY_VISIBILITY_ITEM->sw.value) {
@@ -2080,8 +2092,16 @@ static int select_task(indigo_device *device, time_t now) {
 	}
 	if (PRIVATE_DATA->order_count == 0) {
 		set_reason(device, "no tasks");
-	} else if (first_reason) {
-		set_reason(device, first_reason);
+	} else if (estimating) {
+		set_reason(device, "estimating the task duration");
+	} else if (waiting) {
+		// the tasks wait for their constraints, their reasons are in the task list; the plan made with the latest changes names the next run
+		if (PRIVATE_DATA->plan_dirty) {
+			update_plan(device, now);
+			PRIVATE_DATA->plan_dirty = false;
+			PRIVATE_DATA->plan_due = indigo_monotonic_time() + SETTINGS_IDLE_CHECK_ITEM->number.value;
+		}
+		set_next_run_reason(device);
 	} else {
 		set_reason(device, "no task is ready");
 	}
@@ -3169,7 +3189,26 @@ static void update_plan(indigo_device *device, time_t now) {
 	if (tasks_changed) {
 		update_task_state_property(device);
 	}
+	if (PRIVATE_DATA->reason_follows_plan) {
+		set_next_run_reason(device);
+	}
 	update_current(device);
+}
+
+// REASON while the scheduler waits for the plan: its first task run that is not running, or that no task can run tonight; every new plan updates it until another reason replaces it
+static void set_next_run_reason(indigo_device *device) {
+	int first = plan_first_task_run(plan_run_count);
+	if (first < 0) {
+		set_reason(device, "no task can run tonight");
+	} else {
+		char reason[INDIGO_VALUE_SIZE];
+		struct tm at;
+		time_t start = plan_runs[first].start;
+		indigo_gmtime(&start, &at);
+		snprintf(reason, sizeof(reason), "%s starts at %02d:%02d UTC, as planned", PRIVATE_DATA->tasks[plan_slots[plan_runs[first].task]].header.name, at.tm_hour, at.tm_min);
+		set_reason(device, reason);
+	}
+	PRIVATE_DATA->reason_follows_plan = true;
 }
 
 // VISIBILITY at a decision: the plan's first task run starts at its planned time; returns the slot to start, or -1 with the reason while the plan waits
@@ -3193,11 +3232,7 @@ static int select_planned(indigo_device *device, time_t now, const bool *candida
 		int slot = plan_slots[plan_runs[first].task];
 		time_t start = plan_runs[first].start;
 		if (now < start) {
-			char reason[INDIGO_VALUE_SIZE];
-			struct tm at;
-			indigo_gmtime(&start, &at);
-			snprintf(reason, sizeof(reason), "%s starts at %02d:%02d UTC, as planned", PRIVATE_DATA->tasks[slot].header.name, at.tm_hour, at.tm_min);
-			set_reason(device, reason);
+			set_next_run_reason(device);
 			// the next check comes at the planned start, so the run starts on time
 			double check = indigo_monotonic_time() + (double)(start - now);
 			if (check < PRIVATE_DATA->next_check) {
@@ -3598,6 +3633,7 @@ static bool task_is_running(indigo_device *device, int slot) {
 
 static void reset_task(scheduler_task *task) {
 	task->state = TASK_QUEUED;
+	task->waiting_reason[0] = 0;
 	task->runs = 0;
 	task->retries_used = 0;
 	task->delay_until = 0;

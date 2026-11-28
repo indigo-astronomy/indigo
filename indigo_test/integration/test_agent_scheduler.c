@@ -936,6 +936,30 @@ static bool wait_task_reason_prefix(const char *name, const char *state_name, co
 	return wait_task_columns(name, state_name, reason, true, timeout);
 }
 
+// waits until REASON names the first PLANNED task run of the plan, "NAME starts at HH:MM UTC, as planned", and that run is of the task next; next NULL waits for a plan without a task run and "no task can run tonight", an empty next accepts either, as the plan has it
+static bool wait_next_run_reason(const char *next, double timeout) {
+	char labels[32][INDIGO_VALUE_SIZE], columns[6][INDIGO_VALUE_SIZE], expected[2 * INDIGO_VALUE_SIZE] = "", reason[INDIGO_VALUE_SIZE] = "";
+	indigo_property_state states[32];
+	for (double t = 0; t < timeout; t += 0.01) {
+		int count = plan_items(labels, states, 32);
+		bool matches = next == NULL || *next == 0;
+		strcpy(expected, "no task can run tonight");
+		for (int i = 0; i < count && i < 32; i++) {
+			if (split_label(labels[i], 6, columns) && !strncmp(columns[2], "run ", 4) && !strcmp(columns[4], "PLANNED")) {
+				snprintf(expected, sizeof(expected), "%s starts at %.5s UTC, as planned", columns[1], columns[0] + 11);
+				matches = next != NULL && (*next == 0 || !strcmp(columns[1], next));
+				break;
+			}
+		}
+		if (current_reason(reason) && count >= 0 && matches && !strcmp(reason, expected)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for the reason of the next run of '%s', expected '%s', reason is '%s'\n", next ? next : "no task", expected, reason);
+	return false;
+}
+
 static int minutes_between(int from, int to) {
 	return (to - from + 1440) % 1440;
 }
@@ -1127,7 +1151,8 @@ static void cleanup(void) {
 
 static bool upload_placed(const char *name, double hour_angle, double declination, const char *header);
 static double longitude_at_hour(double hour);
-static bool waits_with_reason(const char *name, const char *reason);
+static bool waits_with_reason(const char *name, const char *reason, const char *next);
+static void hhmm(time_t t, char *text);
 
 static void store_edit_and_delete(void) {
 	REQUIRE(upload("// @task Alpha\n// @priority high 70\n\n" BODY_WAIT(1)));
@@ -1230,10 +1255,15 @@ static void window_wait_and_expiry(void) {
 	snprintf(text, sizeof(text), "// @task TooShort\n// @window .. %s\n// @duration 5\n" BODY_WAIT(1), short_end);
 	REQUIRE(upload(text));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(wait_task_state("Window", "WAITING", 5));
+	ASSERT_TRUE(wait_task_reason("Window", "WAITING", "window not open yet", 5));
 	// no run fits the window of TooShort, it is UNPLANNED until it expires
 	ASSERT_TRUE(wait_task_reason("TooShort", "UNPLANNED", "window ends before the task can finish", 5));
-	ASSERT_TRUE(wait_reason("window", 5));
+	// REASON names the planned run, which starts when the window opens
+	char planned[128], at[8];
+	hhmm(open, at);
+	snprintf(planned, sizeof(planned), "Window starts at %s UTC, as planned", at);
+	ASSERT_TRUE(wait_reason(planned, 5));
+	ASSERT_TRUE(wait_next_run_reason("Window", 5));
 	indigo_property *current = snapshot(AGENT_SCHEDULER_CURRENT_PROPERTY_NAME);
 	REQUIRE(current != NULL);
 	ASSERT_EQ_INT(2, current->count);
@@ -1255,7 +1285,7 @@ static void target_below_horizon_waits(void) {
 	set_site(0, longitude_at_hour(12));
 	REQUIRE(upload_placed("South", 8, 0, "// @duration 1\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(waits_with_reason("South", "target below the horizon"));
+	ASSERT_TRUE(waits_with_reason("South", "target below the horizon", "South"));
 }
 
 static void repeat_retry_and_failures(void) {
@@ -1339,7 +1369,7 @@ static void urgent_waits_for_eligibility(void) {
 	REQUIRE(urgent(text));
 	ASSERT_TRUE(wait_message("Task 'Steady' completed", 1, 15));
 	ASSERT_EQ_INT(0, count_messages("preempted"));
-	ASSERT_TRUE(wait_task_reason("Later", "WAITING", "-", 5));
+	ASSERT_TRUE(wait_task_reason("Later", "WAITING", "window not open yet", 5));
 }
 
 static void second_urgent_waits_for_the_first(void) {
@@ -2828,20 +2858,20 @@ static void hhmm(time_t t, char *text) {
 	sprintf(text, "%02d:%02d", tm.tm_hour, tm.tm_min);
 }
 
-// a waiting task never started that has a run in the plan, WAITING without a reason in the task list, with the scheduler's reason
-static bool waits_with_reason(const char *name, const char *reason) {
-	CHECK(wait_task_reason(name, "WAITING", "-", 10));
-	CHECK(wait_reason(reason, 10));
+// a waiting task never started that has a run in the plan, WAITING with its reason in the task list; REASON names the next planned run, of the task next
+static bool waits_with_reason(const char *name, const char *reason, const char *next) {
+	CHECK(wait_task_reason(name, "WAITING", reason, 10));
+	CHECK(wait_next_run_reason(next, 10));
 	char text[128];
 	snprintf(text, sizeof(text), "Starting task '%s'", name);
 	CHECK(count_messages(text) == 0);
 	return true;
 }
 
-// a task never started that has no run in the plan, UNPLANNED in the task list with the reason the scheduler also gives, the reason at the current time
-static bool unplanned_with_reason(const char *name, const char *reason) {
+// a task never started that has no run in the plan, UNPLANNED in the task list with the reason at the current time; REASON names the next planned run, of the task next, or no run for NULL
+static bool unplanned_with_reason(const char *name, const char *reason, const char *next) {
 	CHECK(wait_task_reason(name, "UNPLANNED", reason, 10));
-	CHECK(wait_reason(reason, 10));
+	CHECK(wait_next_run_reason(next, 10));
 	char text[128];
 	snprintf(text, sizeof(text), "Starting task '%s'", name);
 	CHECK(count_messages(text) == 0);
@@ -2857,10 +2887,11 @@ static void altitude_limit_decides_and_follows_the_sky(void) {
 	REQUIRE(upload_placed("Moderate", -3, 0, "// @altitude > 30\n// @duration 5\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Moderate", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("Steep", "target below the altitude limit"));
+	ASSERT_TRUE(waits_with_reason("Steep", "target below the altitude limit", "Steep"));
 	// three hours of sidereal time later, the target culminates and the waiting task runs by itself
 	set_site(0, fmod(longitude + 45, 360));
 	ASSERT_TRUE(wait_task_state("Steep", "DONE", 15));
+	ASSERT_TRUE(wait_task_reason("Steep", "DONE", "-", 5));
 }
 
 // the global limits hold back every task with @target: the minimum beats a lower @altitude, the maximum is a ceiling, relaxing them lets the tasks run
@@ -2872,11 +2903,12 @@ static void global_altitude_limits_decide_and_recover(void) {
 	// 82.5 degrees high, above the maximum
 	REQUIRE(upload_placed("Steep", -0.5, 0, "// @duration 5\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(waits_with_reason("Low", "target below the altitude limit"));
-	ASSERT_TRUE(wait_task_reason("Steep", "WAITING", "-", 5));
+	// Low reaches the minimum in about 20 minutes, before Steep falls below the maximum
+	ASSERT_TRUE(waits_with_reason("Low", "target below the altitude limit", "Low"));
+	ASSERT_TRUE(wait_task_reason("Steep", "WAITING", "target above the altitude limit", 5));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MIN_ALTITUDE_ITEM_NAME, 10));
 	ASSERT_TRUE(wait_task_state("Low", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("Steep", "target above the altitude limit"));
+	ASSERT_TRUE(waits_with_reason("Steep", "target above the altitude limit", "Steep"));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_MAX_ALTITUDE_ITEM_NAME, 85));
 	ASSERT_TRUE(wait_task_state("Steep", "DONE", 15));
 	ASSERT_EQ_INT(0, count_messages("can never run"));
@@ -3064,7 +3096,7 @@ static void airmass_limit_decides_and_follows_the_sky(void) {
 	REQUIRE(upload_placed("Thick air", -4, 0, "// @airmass < 2.5\n// @duration 5\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Thick air", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("Thin air", "airmass too high"));
+	ASSERT_TRUE(waits_with_reason("Thin air", "airmass too high", "Thin air"));
 	set_site(0, fmod(longitude + 60, 360));
 	ASSERT_TRUE(wait_task_state("Thin air", "DONE", 15));
 }
@@ -3083,13 +3115,13 @@ static void hour_angle_ranges_including_wrapped(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("West", "DONE", 15));
 	ASSERT_TRUE(wait_task_state("Off meridian", "DONE", 15));
-	ASSERT_TRUE(unplanned_with_reason("East", "hour angle out of range"));
-	ASSERT_TRUE(wait_task_reason("Low sides", "WAITING", "-", 5));
+	ASSERT_TRUE(unplanned_with_reason("East", "hour angle out of range", "Low sides"));
+	ASSERT_TRUE(wait_task_reason("Low sides", "WAITING", "hour angle out of range", 5));
 	// two hours earlier in sidereal time the target is at -1h: East runs, the meridian is still outside 3 .. -3 and Low sides waits four hours, within the plan
 	set_site(0, fmod(longitude - 30 + 360, 360));
 	ASSERT_TRUE(wait_task_state("East", "DONE", 15));
 	indigo_usleep(2000000);
-	ASSERT_TRUE(wait_task_reason("Low sides", "WAITING", "-", 5));
+	ASSERT_TRUE(wait_task_reason("Low sides", "WAITING", "hour angle out of range", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Low sides'"));
 }
 
@@ -3099,7 +3131,7 @@ static void twilight_limit_follows_the_sun(void) {
 	REQUIRE(upload("// @task Any time\n// @duration 5\n" BODY_WAIT(1)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Any time", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("Night only", "sun above -12°"));
+	ASSERT_TRUE(waits_with_reason("Night only", "sun above -12°", "Night only"));
 	// at midnight even the astronomical limit holds
 	set_site(0, longitude_at_hour(0));
 	ASSERT_TRUE(wait_task_state("Night only", "DONE", 15));
@@ -3138,14 +3170,14 @@ static void moon_separation_and_brightness(void) {
 	ASSERT_TRUE(wait_task_state("Away", "DONE", 15));
 	ASSERT_TRUE(wait_task_state("Lorentzian", "DONE", 15));
 	ASSERT_TRUE(wait_task_state("Any phase", "DONE", 15));
-	ASSERT_TRUE(unplanned_with_reason("Beside", "too close to the moon"));
+	ASSERT_TRUE(unplanned_with_reason("Beside", "too close to the moon", ""));
 	ASSERT_TRUE(wait_task_reason("Fixed", "UNPLANNED", "too close to the moon", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Fixed'"));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Beside", INDIGO_OK_STATE, NULL));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Fixed", INDIGO_OK_STATE, NULL));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Never", INDIGO_OK_STATE, NULL));
 	REQUIRE(upload_placed("Never", 0, moon_dec + toward * 40, "// @priority high\n// @illumination < 0\n// @duration 5\n"));
-	ASSERT_TRUE(unplanned_with_reason("Never", "moon too bright"));
+	ASSERT_TRUE(unplanned_with_reason("Never", "moon too bright", NULL));
 	// twelve hours of sidereal time later the moon is below the horizon and its limits are ignored
 	set_site(moon_dec, fmod(longitude + 180, 360));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Never", INDIGO_OK_STATE, NULL));
@@ -3184,11 +3216,12 @@ static void nightly_windows(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Inside", "DONE", 15));
 	ASSERT_TRUE(wait_task_state("Around", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("Outside", "outside of the nightly window"));
-	ASSERT_TRUE(wait_task_reason("Gap", "WAITING", "-", 5));
+	// Gap opens an hour before Outside, its run comes first
+	ASSERT_TRUE(waits_with_reason("Outside", "outside of the nightly window", "Gap"));
+	ASSERT_TRUE(wait_task_reason("Gap", "WAITING", "outside of the nightly window", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Gap'"));
 	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Outside", INDIGO_OK_STATE, NULL));
-	ASSERT_TRUE(unplanned_with_reason("Too short", "nightly window ends before the task can finish"));
+	ASSERT_TRUE(unplanned_with_reason("Too short", "nightly window ends before the task can finish", "Gap"));
 	// a nightly window never expires
 	ASSERT_EQ_INT(0, count_messages("expired"));
 }
@@ -3203,7 +3236,28 @@ static void duration_must_fit_before_the_target_sets(void) {
 	REQUIRE(upload_placed("Short look", 5.5, 0, "// @duration 10\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Short look", "DONE", 15));
-	ASSERT_TRUE(waits_with_reason("Long look", "target below the horizon"));
+	// the target stands above the horizon now and sets during the run
+	ASSERT_TRUE(waits_with_reason("Long look", "target below the horizon before the end of the run", "Long look"));
+}
+
+// the reason of a WAITING task is the one of its last selection: gone once the selection finds the task QUEUED, here while a sequence started by hand keeps it from starting
+static void waiting_reason_is_cleared_when_queued(void) {
+	double longitude = longitude_at_hour(12);
+	set_site(0, longitude);
+	// 45 degrees high and rising, below its own limit now
+	REQUIRE(upload_placed("Rising", -3, 0, "// @altitude > 70\n// @duration 5\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(waits_with_reason("Rising", "target below the altitude limit", "Rising"));
+	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
+	const char *values[] = { "var manual = new Sequence(\"Manual\");\nmanual.wait(10);\nmanual.start();\n" };
+	indigo_change_text_property(&observer, SCRIPTING_AGENT_NAME, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+	ASSERT_TRUE(wait_sequence_state(INDIGO_BUSY_STATE, 5));
+	ASSERT_TRUE(wait_reason("another sequence is running", 5));
+	// three hours of sidereal time later the target culminates
+	set_site(0, fmod(longitude + 45, 360));
+	ASSERT_TRUE(wait_task_reason("Rising", "QUEUED", "-", 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Rising'"));
+	ASSERT_TRUE(wait_task_state("Rising", "DONE", 25));
 }
 
 static void unknown_site_blocks_only_sky_constraints(void) {
@@ -3214,7 +3268,7 @@ static void unknown_site_blocks_only_sky_constraints(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Anywhere", "DONE", 15));
 	// without a site no sky point passes, neither task has a run
-	ASSERT_TRUE(unplanned_with_reason("Placed", "site coordinates unknown"));
+	ASSERT_TRUE(unplanned_with_reason("Placed", "site coordinates unknown", NULL));
 	ASSERT_TRUE(wait_task_reason("Dark only", "UNPLANNED", "site coordinates unknown", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Dark only'"));
 	// the site appears at midnight with the target at the zenith
@@ -5970,7 +6024,7 @@ static void agents_survive_a_restart(void) {
 	ASSERT_TRUE(wait_selector(AGENT_SCHEDULER_SOLVER_AGENT_LIST_PROPERTY_NAME, AGENT_SCHEDULER_SOLVER_AGENT_LIST_AUTOMATIC_ITEM_NAME, NULL, 5));
 	REQUIRE(upload_placed("Placed", 0, 48, "// @duration 5\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(unplanned_with_reason("Placed", "site coordinates unknown"));
+	ASSERT_TRUE(unplanned_with_reason("Placed", "site coordinates unknown", NULL));
 	// once it is attached it is listed, selected and gives the site
 	indigo_property *mount_properties[] = { mount_info, site_property };
 	REQUIRE(rename_standin(&mount_standin, mount_properties, 2, "Mount Agent @ obs2"));
@@ -6534,6 +6588,7 @@ static const indigo_test_case cases[] = {
 	{ "moon_separation_and_brightness", moon_separation_and_brightness },
 	{ "nightly_windows", nightly_windows },
 	{ "duration_must_fit_before_the_target_sets", duration_must_fit_before_the_target_sets },
+	{ "waiting_reason_is_cleared_when_queued", waiting_reason_is_cleared_when_queued },
 	{ "unknown_site_blocks_only_sky_constraints", unknown_site_blocks_only_sky_constraints },
 	{ "disabled_in_the_header_stays_disabled", disabled_in_the_header_stays_disabled },
 	{ "sky_bonuses_order_equal_priorities", sky_bonuses_order_equal_priorities },

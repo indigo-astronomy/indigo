@@ -491,8 +491,16 @@ def main():
 				run.upload("// @task Rising\n// @target " + sexagesimal(ra.value, False) + " " + sexagesimal(dec.value, True) + "\n// @twilight none\n// @duration 10\n\n" + capture_body(images, "rising", 1, 0.2, False))
 				run.control("START")
 				run.wait_task("Rising", "WAITING", 30)
-				assert client.task_label("Rising").endswith(" | -"), "a waiting task has a reason in the task list: " + client.task_label("Rising")
-				client.wait(lambda: "target below the horizon" in (client.value(AGENT, "AGENT_SCHEDULER_CURRENT", "REASON") or ""), 30, "reason")
+				client.wait(lambda: client.task_label("Rising").split(" | ")[1:2] == ["WAITING"] and client.task_label("Rising").endswith(" | target below the horizon"), 30, "reason of the waiting task")
+				# REASON names the first planned task run of the night plan, the run of Rising
+				def next_run_reason():
+					p = client.property(AGENT, "AGENT_SCHEDULER_PLAN")
+					for item in (p["items"] if p else []):
+						columns = item.get("label", "").split(" | ")
+						if len(columns) == 6 and columns[2].startswith("run ") and columns[4] == "PLANNED":
+							return columns[1] + " starts at " + columns[0][11:16] + " UTC, as planned"
+					return "no task can run tonight"
+				client.wait(lambda: next_run_reason().startswith("Rising starts at ") and client.value(AGENT, "AGENT_SCHEDULER_CURRENT", "REASON") == next_run_reason(), 30, "reason naming the planned run of Rising")
 				assert client.message_count("Starting task 'Rising'") == 0
 
 			run.case(cases[0], library_loaded)
