@@ -117,7 +117,11 @@ The examples in this guide use `indigo_prop_tool`, which can do everything:
   Scheduler Agent.AGENT_SCHEDULER_TIMELINE.LINE_0 = OK  # 2026-11-20 20:02-20:02 | Test | run 1/1 | normal 50 | SUCCEEDED | -
   ```
 
-  The whole history is the text of `AGENT_SCHEDULER_HISTORY`, one line per run. `indigo_prop_tool` prints only the first 80 characters of a long text, so read it in a client or see its recent part in the timeline.
+  The whole history is the text of `AGENT_SCHEDULER_HISTORY`, one line per run. `indigo_prop_tool` prints only the first 80 characters of a long text unless you add `-f`, which prints the whole text:
+
+  ```
+  indigo_prop_tool get -f "Scheduler Agent.AGENT_SCHEDULER_HISTORY.ENTRIES"
+  ```
 - **Reach a remote server** with `-r host` after the command word, for example `indigo_prop_tool get -r host ...`. Options before the command word are not recognised.
 - **See the result** with `-s`. It prints the state of the property you change: `[OK]` for an accepted upload, `[ALERT]` for a rejected one.
 
@@ -1351,7 +1355,7 @@ indigo_prop_tool set_script -s "Scheduler Agent.AGENT_SCHEDULER_TASK_0.TASK=m31.
 - An edit keeps the task's state and counters, but forgets its measured duration. To run a finished task again, use `RESET`.
 - An edit of a running task takes effect when the run ends.
 
-Keep your task files, which are the easiest copy to edit. `indigo_prop_tool get` prints only the first 80 characters of a long text. An INDIGO client shows the full text.
+Keep your task files, which are the easiest copy to edit. `indigo_prop_tool get` prints only the first 80 characters of a long text; with `-f` it prints the whole text, for example `indigo_prop_tool get -f "Scheduler Agent.AGENT_SCHEDULER_TASK_0.TASK" > m31.task`. An INDIGO client shows the full text too.
 
 **Deleting a task.** This deletes a stored task or a pending urgent task, including a hook task:
 

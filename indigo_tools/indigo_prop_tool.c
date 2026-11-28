@@ -51,6 +51,7 @@ static bool get_requested = false;
 static bool list_state_requested = false;
 static bool get_state_requested = false;
 static bool print_verbose = false;
+bool print_full_text = false; /* not static, the unit test resets it between its cases */
 static bool save_blobs = false;
 static bool discover_requested = false;
 static bool wait_state_requested = false;
@@ -400,7 +401,9 @@ void print_property_list(indigo_property *property, const char *message) {
 		}
 		switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
-			if (item->text.length > TEXT_LEN_TO_PRINT) {
+			if (print_full_text) {
+				printf("%s.%s.%s = \"%s\"", property->device, property->name, item->name, indigo_get_text_item_value(item));
+			} else if (item->text.length > TEXT_LEN_TO_PRINT) {
 				printf("%s.%s.%s = \"%.*s\" + %ld characters", property->device, property->name, item->name, TEXT_LEN_TO_PRINT, item->text.value, item->text.length - TEXT_LEN_TO_PRINT - 1);
 			} else {
 				printf("%s.%s.%s = \"%s\"", property->device, property->name, item->name, item->text.value);
@@ -475,9 +478,11 @@ static void print_property_list_filtered(indigo_property *property, const char *
 }
 
 
-static void print_property_get_filtered(indigo_property *property, const char *message, const property_get_request *filter) {
+void print_property_get_filtered(indigo_property *property, const char *message, const property_get_request *filter) {
 	indigo_item *item;
 	char value_string[MAX_ITEMS][PATH_MAX] = {0};
+	/* with -f a text value is printed in whole from the item, it may be longer than value_string */
+	const char *text_value[MAX_ITEMS] = { NULL };
 	char filename[PATH_MAX+15];
 	int i, r, items_found = 0;
 
@@ -494,7 +499,9 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 
 			switch (property->type) {
 			case INDIGO_TEXT_VECTOR:
-				if (item->text.length > TEXT_LEN_TO_PRINT) {
+				if (print_full_text) {
+					text_value[items_found] = indigo_get_text_item_value(item);
+				} else if (item->text.length > TEXT_LEN_TO_PRINT) {
 					sprintf(value_string[items_found], "%.*s + %ld characters\n", TEXT_LEN_TO_PRINT, item->text.value, item->text.length - TEXT_LEN_TO_PRINT - 1);
 				} else {
 					sprintf(value_string[items_found], "%s", item->text.value);
@@ -550,7 +557,7 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 	if (items_found != filter->item_count) return;
 
 	for (i = 0; i < items_found; i++) {
-		printf("%s\n", value_string[i]);
+		printf("%s\n", text_value[i] ? text_value[i] : value_string[i]);
 	}
 	stop_waiting_if_requested(property->state);
 }
@@ -940,6 +947,8 @@ static void print_help(const char *name) {
 	       "       -l  | --use_legacy_blobs\n"
 	       "       -e  | --extended-info               print property details, item labels (\"  # label\")\n"
 	       "                                           and light states (IDLE, OK, BUSY, ALERT)\n"
+	       "       -f  | --full-text                   print text values in whole, line breaks included\n"
+	       "                                           (default: the first 80 characters and \"+ N characters\")\n"
 	       "       -v  | --enable-log\n"
 	       "       -vv | --enable-debug\n"
 	       "       -vvv| --enable-trace\n"
@@ -1007,6 +1016,8 @@ int main(int argc, const char * argv[]) {
 	for (int i = arg_base; i < argc; i++) {
 		if (!strcmp(argv[i], "-e") || !strcmp(argv[i], "--extended-info")) {
 			print_verbose = true;
+		} else if (!strcmp(argv[i], "-f") || !strcmp(argv[i], "--full-text")) {
+			print_full_text = true;
 		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--save-blobs")) {
 			if (list_state_requested) {
 				fprintf(stderr, "Blobs can not be saved with 'state' command\n");

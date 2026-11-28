@@ -52,6 +52,8 @@ extern int parse_get_property_string(const char *, property_get_request *);
 extern int parse_set_property_string(const char *, property_change_request *);
 extern int indigo_prop_tool_main(int, const char *[]);
 extern void print_property_list(indigo_property *, const char *);
+extern void print_property_get_filtered(indigo_property *, const char *, const property_get_request *);
+extern bool print_full_text;
 
 static property_change_request set_result;
 static property_get_request get_result;
@@ -210,6 +212,8 @@ static bool capture_stdout(void (*function)(void), char *buffer, size_t size) {
 // Without -e the item lines stay as before; with -e they carry the item label and the light state.
 static void list_output(void) {
 	char output[4096];
+	// -f is set by full_text_output only; this case checks the default output
+	print_full_text = false;
 	list_property = indigo_init_light_property(NULL, "Dev", "LIGHTS", "Group", "Lights", INDIGO_OK_STATE, 4);
 	indigo_init_light_item(list_property->items + 0, "RUN_1", "2026-11-20 20:02-20:02 | Test | run 1 | task | SUCCEEDED | -", INDIGO_OK_STATE);
 	indigo_init_light_item(list_property->items + 1, "RUN_2", "Second", INDIGO_ALERT_STATE);
@@ -253,6 +257,68 @@ static void list_output(void) {
 	}
 }
 
+static indigo_property *text_property;
+
+static void print_text_list(void) {
+	print_property_list(text_property, NULL);
+}
+
+static void print_text_get(void) {
+	ASSERT_EQ_INT(1, parse_get_property_string("Dev.TEXT.ITEM", &get_result));
+	print_property_get_filtered(text_property, NULL, &get_result);
+}
+
+static void enable_full_text(void) {
+	// -f is parsed before --help returns, so this sets the full text mode without starting the bus.
+	const char *arguments[] = { "indigo_prop_tool", "get", "-f", "--help" };
+	indigo_prop_tool_main(4, arguments);
+}
+
+// Without -f a short text is printed whole and a text longer than 80 characters is cut as before; with -f
+// list and get print it in whole, a value longer than INDIGO_VALUE_SIZE and line breaks included. The case
+// resets -f at its end, and list_output resets it too, so -f does not leak into the default-mode checks.
+static void full_text_output(void) {
+	static char output[8192], expected[8192], long_value[1001];
+	static const char multiline[] = "2026-11-20 20:02-20:02 | Test | run 1/1 | normal 50 | SUCCEEDED | -\n2026-11-21 20:10-21:10 | M 42 | run 1/2 | normal 50 | FAILED | \"guiding lost\"";
+	memset(long_value, 'x', sizeof(long_value) - 1);
+	long_value[sizeof(long_value) - 1] = '\0';
+	text_property = indigo_init_text_property(NULL, "Dev", "TEXT", "Group", "Text", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+	indigo_init_text_item(text_property->items, "ITEM", "Text item", "%s", "");
+	indigo_set_text_item_value(text_property->items, "value");
+	ASSERT_TRUE(capture_stdout(print_text_list, output, sizeof(output)));
+	ASSERT_STREQ("Dev.TEXT.ITEM = \"value\"\n", output);
+	ASSERT_TRUE(capture_stdout(print_text_get, output, sizeof(output)));
+	ASSERT_STREQ("value\n", output);
+	indigo_set_text_item_value(text_property->items, long_value);
+	ASSERT_TRUE(capture_stdout(print_text_list, output, sizeof(output)));
+	snprintf(expected, sizeof(expected), "Dev.TEXT.ITEM = \"%.80s\" + 920 characters\n", long_value);
+	ASSERT_STREQ(expected, output);
+	ASSERT_TRUE(capture_stdout(print_text_get, output, sizeof(output)));
+	snprintf(expected, sizeof(expected), "%.80s + 920 characters\n\n", long_value);
+	ASSERT_STREQ(expected, output);
+	indigo_set_text_item_value(text_property->items, multiline);
+	ASSERT_TRUE(capture_stdout(print_text_list, output, sizeof(output)));
+	snprintf(expected, sizeof(expected), "Dev.TEXT.ITEM = \"%.80s\" + %d characters\n", multiline, (int)strlen(multiline) - 80);
+	ASSERT_STREQ(expected, output);
+	ASSERT_TRUE(capture_stdout(enable_full_text, output, sizeof(output)));
+	ASSERT_TRUE(strstr(output, "--full-text") != NULL);
+	ASSERT_TRUE(capture_stdout(print_text_list, output, sizeof(output)));
+	snprintf(expected, sizeof(expected), "Dev.TEXT.ITEM = \"%s\"\n", multiline);
+	ASSERT_STREQ(expected, output);
+	ASSERT_TRUE(capture_stdout(print_text_get, output, sizeof(output)));
+	snprintf(expected, sizeof(expected), "%s\n", multiline);
+	ASSERT_STREQ(expected, output);
+	indigo_set_text_item_value(text_property->items, long_value);
+	ASSERT_TRUE(capture_stdout(print_text_list, output, sizeof(output)));
+	snprintf(expected, sizeof(expected), "Dev.TEXT.ITEM = \"%s\"\n", long_value);
+	ASSERT_STREQ(expected, output);
+	ASSERT_TRUE(capture_stdout(print_text_get, output, sizeof(output)));
+	snprintf(expected, sizeof(expected), "%s\n", long_value);
+	ASSERT_STREQ(expected, output);
+	indigo_release_property(text_property);
+	print_full_text = false;
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "ordinary_requests", ordinary_requests },
@@ -261,6 +327,7 @@ int main(void) {
 		{ "malformed_requests", malformed_requests },
 		{ "empty_values", empty_values },
 		{ "remote_endpoints", remote_endpoints },
+		{ "full_text_output", full_text_output },
 		{ "list_output", list_output }
 	};
 	return indigo_run_tests("Property tool input safety", tests, ARRAY_SIZE(tests));

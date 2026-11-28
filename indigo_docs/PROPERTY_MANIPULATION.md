@@ -88,6 +88,8 @@ options:
        -l  | --use_legacy_blobs
        -e  | --extended-info               print property details, item labels ("  # label")
                                            and light states (IDLE, OK, BUSY, ALERT)
+       -f  | --full-text                   print text values in whole, line breaks included
+                                           (default: the first 80 characters and "+ N characters")
        -v  | --enable-log
        -vv | --enable-debug
        -vvv| --enable-trace
@@ -187,6 +189,35 @@ Scheduler Agent.AGENT_SCHEDULER_TIMELINE.LINE_0 = OK  # 2026-11-20 20:02-20:02 |
 ```
 
 The output without **-e** does not change, so scripts that parse it keep working.
+
+### Printing Long and Multiline Text Values
+
+By default **list**, **get** and the output of **set** and **-w** show only the first 80 characters
+of a longer text value, followed by the number of characters left out:
+```
+indigo@indigosky:~ $ indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_HISTORY.ENTRIES"
+2026-11-20 20:02-20:02 | Test | run 1/1 | normal 50 | SUCCEEDED | -
+2026-11-21 2 + 63 characters
+
+```
+
+With **-f** (**--full-text**) the whole value is printed, wherever a text value is printed, also with **-e** and **-s**.
+The value is printed verbatim: a line break in the value starts a new output line, and quotes
+in the value are not escaped. **list** keeps the value inside the quotes, so the closing quote,
+and with **-e** the item label, follow the last line of the value; with **-s** the `[STATE]`
+prefix appears only on the first line. **get** prints the value followed by one line break:
+```
+indigo@indigosky:~ $ indigo_prop_tool list -f "Scheduler Agent.AGENT_SCHEDULER_HISTORY"
+Scheduler Agent.AGENT_SCHEDULER_HISTORY.ENTRIES = "2026-11-20 20:02-20:02 | Test | run 1/1 | normal 50 | SUCCEEDED | -
+2026-11-21 20:10-21:10 | M 42 | run 1/2 | normal 50 | FAILED | guiding lost"
+
+indigo@indigosky:~ $ indigo_prop_tool get -f "Scheduler Agent.AGENT_SCHEDULER_HISTORY.ENTRIES"
+2026-11-20 20:02-20:02 | Test | run 1/1 | normal 50 | SUCCEEDED | -
+2026-11-21 20:10-21:10 | M 42 | run 1/2 | normal 50 | FAILED | guiding lost
+```
+
+A multiline value cannot be told apart from several values in the output of **get**, so get one
+text item per call when the value may contain line breaks. Without **-f** the output does not change.
 
 ### Setting Item Values
 
